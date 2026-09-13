@@ -53,11 +53,15 @@ test('inventory and procurement cases use the shared work-order supply chain', (
   assert.match(source, /canAccessDecisionCaseDomain\(request, 'procurement'\)/);
 });
 
-test('production cases group source-fidelity exceptions instead of one case per source row', () => {
+test('production cases use source-specific cutoffs and exact aggregation', () => {
   assert.match(production, /CURRENT_WINDOW_DAYS = 31/);
-  assert.match(production, /new Map/);
-  assert.match(production, /domain,exception_type,event_date/);
-  assert.match(production, /rows\.length/);
+  assert.match(production, /FIDELITY_SPECS/);
+  assert.match(production, /sourceTable: 'production_drilling_source_reports'/);
+  assert.match(production, /sourceTable: 'production_drill_holes'/);
+  assert.match(production, /sourceTable: 'production_fine_copper_v1'/);
+  assert.match(production, /sourceTable: 'production_concentrate_shipments'/);
+  assert.match(production, /count: 'exact', head: true/);
+  assert.doesNotMatch(production, /\.limit\(500\)/);
   assert.match(source, /canAccessDecisionCaseDomain\(request, 'production'\)/);
   assert.match(source, /productionDecisionCandidates/);
 });
@@ -66,7 +70,13 @@ test('production fidelity cases preserve semantic boundaries', () => {
   assert.match(production, /no demuestra por sí sola una falla física/i);
   assert.match(production, /no demuestra.*incumplimiento productivo/i);
   assert.match(production, /no demuestra.*causa raíz/i);
-  assert.match(production, /ventana vigente de la fuente/i);
+  assert.match(production, /ventana vigente de su propia fuente/i);
+});
+
+test('production archival fails closed without a verifiable source cutoff', () => {
+  assert.match(production, /if \(!spec\) return false/);
+  assert.match(production, /if \(!window\) return false/);
+  assert.match(production, /return window\.count === 0/);
 });
 
 test('archival requires exact canonical resolution and respects currently authorized domains', () => {
@@ -77,7 +87,6 @@ test('archival requires exact canonical resolution and respects currently author
   assert.match(source, /material_shortage_count \|\| 0\) === 0/);
   assert.match(source, /!\['shortage_without_request', 'waiting_procurement', 'waiting_delivery'\]\.includes/);
   assert.match(source, /isProductionDecisionResolved/);
-  assert.match(production, /return !data\?\.length/);
 });
 
 test('decision center exposes explicit human revalidation', () => {
