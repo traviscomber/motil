@@ -3,8 +3,9 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getOrganizationContext } from '@/lib/api/organization-context';
 import { canAccessDecisionCaseDomain } from '@/lib/intelligence/decision-case-access';
+import { isProductionDecisionResolved, productionDecisionCandidates } from '@/lib/intelligence/production-decision-cases';
 
-type DecisionDomain = 'maintenance' | 'geology' | 'inventory' | 'procurement';
+type DecisionDomain = 'maintenance' | 'geology' | 'inventory' | 'procurement' | 'production';
 
 type Candidate = {
   decisionKey: string;
@@ -277,6 +278,10 @@ async function isResolved(db: any, organizationId: string, decisionKey: string):
     return !data || !['shortage_without_request', 'waiting_procurement', 'waiting_delivery'].includes(String(data.supply_chain_status || ''));
   }
 
+  if (decisionKey.startsWith('operational:production:fidelity:')) {
+    return isProductionDecisionResolved(db, organizationId, decisionKey);
+  }
+
   return false;
 }
 
@@ -287,11 +292,12 @@ export async function POST(request: NextRequest) {
   const sourceAllowed = await canAccessDecisionCaseDomain(request, 'executive');
   if (!sourceAllowed) return NextResponse.json({ error: 'No tienes acceso al contexto ejecutivo requerido para sincronizar casos.' }, { status: 403 });
 
-  const [maintenanceAllowed, geologyAllowed, inventoryAllowed, procurementAllowed] = await Promise.all([
+  const [maintenanceAllowed, geologyAllowed, inventoryAllowed, procurementAllowed, productionAllowed] = await Promise.all([
     canAccessDecisionCaseDomain(request, 'maintenance'),
     canAccessDecisionCaseDomain(request, 'geology'),
     canAccessDecisionCaseDomain(request, 'inventory'),
     canAccessDecisionCaseDomain(request, 'procurement'),
+    canAccessDecisionCaseDomain(request, 'production'),
   ]);
 
   try {
@@ -303,6 +309,7 @@ export async function POST(request: NextRequest) {
       geologyAllowed ? geologyCandidates(context.supabase, context.organizationId) : Promise.resolve([]),
       Promise.resolve(inventoryAllowed ? inventoryCandidates(supplyRows) : []),
       Promise.resolve(procurementAllowed ? procurementCandidates(supplyRows) : []),
+      productionAllowed ? productionDecisionCandidates(context.supabase, context.organizationId) : Promise.resolve([]),
     ]);
     const candidates = candidateGroups.flat();
     const now = new Date().toISOString();
@@ -311,6 +318,7 @@ export async function POST(request: NextRequest) {
       geologyAllowed ? 'geology' : null,
       inventoryAllowed ? 'inventory' : null,
       procurementAllowed ? 'procurement' : null,
+      productionAllowed ? 'production' : null,
     ]);
 
     const { data: existing, error: existingError } = authorizedDomains.length
@@ -403,9 +411,10 @@ export async function POST(request: NextRequest) {
         geology: geologyAllowed,
         inventory: inventoryAllowed,
         procurement: procurementAllowed,
+        production: productionAllowed,
       },
       authority: 'advisory_only',
-      policy: 'La sincronización sólo materializa y revalida casos advisory. No crea/cierra OT, no cambia activos, no modifica stock ni órdenes de compra y no escribe hechos geológicos. Un caso sólo se archiva tras comprobar su fuente canónica exacta.',
+      policy: 'La sincronización sólo materializa y revalida casos advisory. No crea/cierra OT, no cambia activos, no modifica stock ni órdenes de compra, no escribe hechos geológicos y no altera datos de Producción. Un caso sólo se archiva tras comprobar su fuente canónica exacta.',
     });
   } catch (error) {
     console.error('[decision-cases-sync] failed', { detail: error instanceof Error ? error.message : String(error ?? 'unknown') });
