@@ -35,7 +35,7 @@ test('procurement-only cross-domain evidence does not expose inventory fields', 
 test('cross-domain reasoning stays read only and refuses hidden-domain inference', () => {
   assert.match(source, /No hay permiso de Compras en esta consulta: no inferir solicitud, orden, proveedor ni entrega/);
   assert.match(source, /No hay permiso de Inventario en esta consulta: no inferir stock, reserva, faltante físico ni disponibilidad de bodega/);
-  assert.match(source, /No conviertas supply_chain_status en causa raíz/);
+  assert.match(source, /Nunca conviertas supply_chain_status en causa raíz/);
   assert.match(source, /No ejecutes acciones, no apruebes, no cierres, no compres, no ajustes stock y no cambies estados/);
   assert.doesNotMatch(source, /from\('work_order_supply_chain_v1'\)\s*\.update/);
   assert.doesNotMatch(source, /from\('work_order_supply_chain_v1'\)\s*\.insert/);
