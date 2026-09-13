@@ -4,8 +4,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getOrganizationContext } from '@/lib/api/organization-context';
 import { canAccessDecisionCaseDomain } from '@/lib/intelligence/decision-case-access';
 import { isProductionDecisionResolved, productionDecisionCandidates } from '@/lib/intelligence/production-decision-cases';
+import { financeDecisionCandidates, isFinanceDecisionResolved } from '@/lib/intelligence/finance-decision-cases';
 
-type DecisionDomain = 'maintenance' | 'geology' | 'inventory' | 'procurement' | 'production';
+type DecisionDomain = 'maintenance' | 'geology' | 'inventory' | 'procurement' | 'production' | 'finance';
 
 type Candidate = {
   decisionKey: string;
@@ -282,6 +283,10 @@ async function isResolved(db: any, organizationId: string, decisionKey: string):
     return isProductionDecisionResolved(db, organizationId, decisionKey);
   }
 
+  if (decisionKey.startsWith('operational:finance:alert:')) {
+    return isFinanceDecisionResolved(db, organizationId, decisionKey);
+  }
+
   return false;
 }
 
@@ -292,12 +297,13 @@ export async function POST(request: NextRequest) {
   const sourceAllowed = await canAccessDecisionCaseDomain(request, 'executive');
   if (!sourceAllowed) return NextResponse.json({ error: 'No tienes acceso al contexto ejecutivo requerido para sincronizar casos.' }, { status: 403 });
 
-  const [maintenanceAllowed, geologyAllowed, inventoryAllowed, procurementAllowed, productionAllowed] = await Promise.all([
+  const [maintenanceAllowed, geologyAllowed, inventoryAllowed, procurementAllowed, productionAllowed, financeAllowed] = await Promise.all([
     canAccessDecisionCaseDomain(request, 'maintenance'),
     canAccessDecisionCaseDomain(request, 'geology'),
     canAccessDecisionCaseDomain(request, 'inventory'),
     canAccessDecisionCaseDomain(request, 'procurement'),
     canAccessDecisionCaseDomain(request, 'production'),
+    canAccessDecisionCaseDomain(request, 'finance'),
   ]);
 
   try {
@@ -310,6 +316,7 @@ export async function POST(request: NextRequest) {
       Promise.resolve(inventoryAllowed ? inventoryCandidates(supplyRows) : []),
       Promise.resolve(procurementAllowed ? procurementCandidates(supplyRows) : []),
       productionAllowed ? productionDecisionCandidates(context.supabase, context.organizationId) : Promise.resolve([]),
+      financeAllowed ? financeDecisionCandidates(context.supabase, context.organizationId) : Promise.resolve([]),
     ]);
     const candidates = candidateGroups.flat();
     const now = new Date().toISOString();
@@ -319,6 +326,7 @@ export async function POST(request: NextRequest) {
       inventoryAllowed ? 'inventory' : null,
       procurementAllowed ? 'procurement' : null,
       productionAllowed ? 'production' : null,
+      financeAllowed ? 'finance' : null,
     ]);
 
     const { data: existing, error: existingError } = authorizedDomains.length
@@ -412,9 +420,10 @@ export async function POST(request: NextRequest) {
         inventory: inventoryAllowed,
         procurement: procurementAllowed,
         production: productionAllowed,
+        finance: financeAllowed,
       },
       authority: 'advisory_only',
-      policy: 'La sincronización sólo materializa y revalida casos advisory. No crea/cierra OT, no cambia activos, no modifica stock ni órdenes de compra, no escribe hechos geológicos y no altera datos de Producción. Un caso sólo se archiva tras comprobar su fuente canónica exacta.',
+      policy: 'La sincronización sólo materializa y revalida casos advisory. No crea/cierra OT, no cambia activos, no modifica stock ni órdenes de compra, no escribe hechos geológicos, no altera datos de Producción y no modifica datos financieros. Un caso sólo se archiva tras comprobar su fuente canónica exacta.',
     });
   } catch (error) {
     console.error('[decision-cases-sync] failed', { detail: error instanceof Error ? error.message : String(error ?? 'unknown') });
