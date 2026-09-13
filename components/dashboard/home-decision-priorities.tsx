@@ -87,7 +87,7 @@ export function HomeDecisionPriorities() {
             <h2 className="text-lg font-semibold tracking-tight">Qué requiere atención</h2>
             <Badge variant="outline">Advisory</Badge>
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">Máximo tres casos priorizados por evidencia explícita y permisos reales. El volumen por sí solo no eleva prioridad.</p>
+          <p className="mt-1 text-xs text-muted-foreground">Máximo tres casos priorizados por evidencia explícita y permisos reales. El volumen por sí solo no eleva prioridad. No ejecutan cambios por sí solos.</p>
         </div>
         <Button asChild variant="ghost" size="sm"><Link href="/dashboard/decisiones">Ver casos <ArrowRight className="ml-2 size-4" /></Link></Button>
       </div>
