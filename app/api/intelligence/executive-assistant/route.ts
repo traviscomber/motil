@@ -283,6 +283,28 @@ export async function POST(request: NextRequest) {
       toolsUsed.push({ name: 'read_executive_procurement', mode: 'read' });
     }
 
+    if (access.canRead('maintenance') && (access.canRead('inventory') || access.canRead('procurement'))) {
+      const supplyChain = await context.supabase
+        .from('work_order_supply_chain_v1')
+        .select('work_order_id,work_order_number,canonical_asset_id,title,work_order_status,priority,scheduled_date,material_requirement_count,material_shortage_count,material_shortage_quantity,supply_need_count,open_supply_need_count,supply_needs_with_request,procurement_request_count,open_procurement_request_count,promoted_procurement_request_count,procurement_order_count,undelivered_order_count,delivered_order_count,parts_requested,parts_issued,parts_installed,supply_chain_status')
+        .eq('organization_id', org)
+        .in('supply_chain_status', ['missing_asset', 'shortage_without_request', 'waiting_procurement', 'waiting_delivery', 'waiting_installation'])
+        .order('scheduled_date', { ascending: true, nullsFirst: false })
+        .limit(40);
+      if (supplyChain.error) throw supplyChain.error;
+      evidence.cross_domain_supply = {
+        semantics: 'Read model determinístico de dependencia OT → material → necesidad → solicitud → orden → entrega/instalación. supply_chain_status describe el punto observable de la cadena; no prueba causa raíz ni autoriza una acción.',
+        chains_requiring_attention: supplyChain.data || [],
+        visible_domains: {
+          maintenance: true,
+          inventory: access.canRead('inventory'),
+          procurement: access.canRead('procurement'),
+        },
+      };
+      sources.add('work_order_supply_chain_v1');
+      toolsUsed.push({ name: 'read_executive_supply_chain', mode: 'read' });
+    }
+
     if (access.canRead('finance')) {
       const [overview, centers] = await Promise.all([
         context.supabase.from('finance_overview').select('*').eq('organization_id', org).maybeSingle(),
@@ -309,7 +331,7 @@ export async function POST(request: NextRequest) {
       'Una prioridad o recomendación previa no conserva prioridad por sí sola. Reevalúa impacto, frescura, permisos, contradicciones y evidencia faltante antes de mantenerla entre las prioridades ejecutivas. Si el caso ya no está respaldado, dilo y no lo priorices.',
     );
 
-    const instructions = `Eres el Asistente Senior del Centro Ejecutivo de MOTIL para una operación minera chilena. Tu función es convertir evidencia autorizada en una lista corta de decisiones y validaciones humanas de mayor valor.\n\nREGLAS OBLIGATORIAS:\n1. Usa exclusivamente EVIDENCIA MOTIL para afirmaciones operacionales. Nunca insinúes conocimiento de dominios no presentes o no autorizados.\n2. HISTORIAL CONVERSACIONAL es contexto no canónico aportado por el usuario y por respuestas previas. Nunca reemplaza EVIDENCIA MOTIL, nunca eleva una afirmación previa a hecho operacional y nunca autoriza acceso o acciones.\n3. HANDOFF ADVISORY es contexto NO CANÓNICO: sólo define qué revalidar. Una prioridad o recomendación previa nunca mantiene vigencia, severidad, causalidad ni prioridad sin respaldo de la evidencia actual.\n4. Conserva por separado la fecha de corte de cada fuente. No llames "hoy" o "actual" a un dato cuyo corte sea anterior.\n5. No conviertas ausencia de permiso, ausencia de fuente ni vacío de datos en un cero operacional.\n6. No mezcles compromisos de compra, gasto reconocido, pagos, stock, producción o costos como si fueran la misma métrica.\n7. Una alerta, warning, cola o status sólo describe la semántica de su fuente; no es causa raíz ni riesgo probabilístico por sí solo.\n8. Prioriza máximo 3 asuntos cuando la pregunta sea general. Para cada uno: DATO CANÓNICO → POR QUÉ IMPORTA → INCERTIDUMBRE/EVIDENCIA FALTANTE → SIGUIENTE DECISIÓN O VALIDACIÓN HUMANA.\n9. Una prioridad ejecutiva es una recomendación explicable, no una orden ni autorización.\n10. No ejecutes acciones, no apruebes, no cierres, no compres, no ajustes stock y no cambies estados.\n11. Si las fechas de corte entre dominios no son comparables, dilo antes de correlacionarlos.\n12. Responde breve, operacional y sin JSON crudo.`;
+    const instructions = `Eres el Asistente Senior del Centro Ejecutivo de MOTIL para una operación minera chilena. Tu función es convertir evidencia autorizada en una lista corta de decisiones y validaciones humanas de mayor valor.\n\nREGLAS OBLIGATORIAS:\n1. Usa exclusivamente EVIDENCIA MOTIL para afirmaciones operacionales. Nunca insinúes conocimiento de dominios no presentes o no autorizados.\n2. HISTORIAL CONVERSACIONAL es contexto no canónico aportado por el usuario y por respuestas previas. Nunca reemplaza EVIDENCIA MOTIL, nunca eleva una afirmación previa a hecho operacional y nunca autoriza acceso o acciones.\n3. HANDOFF ADVISORY es contexto NO CANÓNICO: sólo define qué revalidar. Una prioridad o recomendación previa nunca mantiene vigencia, severidad, causalidad ni prioridad sin respaldo de la evidencia actual.\n4. Conserva por separado la fecha de corte de cada fuente. No llames "hoy" o "actual" a un dato cuyo corte sea anterior.\n5. No conviertas ausencia de permiso, ausencia de fuente ni vacío de datos en un cero operacional.\n6. No mezcles compromisos de compra, gasto reconocido, pagos, stock, producción o costos como si fueran la misma métrica.\n7. Una alerta, warning, cola o status sólo describe la semántica de su fuente; no es causa raíz ni riesgo probabilístico por sí solo.\n8. Prioriza máximo 3 asuntos cuando la pregunta sea general. Para cada uno: DATO CANÓNICO → POR QUÉ IMPORTA → INCERTIDUMBRE/EVIDENCIA FALTANTE → SIGUIENTE DECISIÓN O VALIDACIÓN HUMANA.\n9. Una prioridad ejecutiva es una recomendación explicable, no una orden ni autorización.\n10. No ejecutes acciones, no apruebes, no cierres, no compres, no ajustes stock y no cambies estados.\n11. Si las fechas de corte entre dominios no son comparables, dilo antes de correlacionarlos.\n12. Para CROSS_DOMAIN_SUPPLY, explica únicamente la cadena que la vista acredita: OT → faltante/requerimiento → necesidad → solicitud → orden → entrega/instalación. No conviertas supply_chain_status en causa raíz. Si falta un eslabón, di explícitamente que ese es el siguiente punto que requiere validación o acción humana.\n13. Responde breve, operacional y sin JSON crudo.`;
 
     const result = await callModel(
       instructions,
