@@ -8,6 +8,7 @@ import { DailyManagementContextNav } from '@/components/layout/daily-management-
 import { DocumentationContextNav } from '@/components/layout/documentation-context-nav';
 import { OperationalAttentionContextNav } from '@/components/layout/operational-attention-context-nav';
 import { SeniorAssistantWidget } from '@/components/intelligence/senior-assistant-widget';
+import { HomeDecisionPriorities } from '@/components/dashboard/home-decision-priorities';
 import { cn } from '@/lib/utils';
 import { DashboardPeriodProvider } from '@/components/dashboard/dashboard-period-provider';
 import { useAuth } from '@/hooks/use-auth';
@@ -60,7 +61,10 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         <OperationalAttentionContextNav />
         <DashboardPeriodProvider>
           <main className="flex-1 overflow-x-hidden bg-muted/20 px-4 py-5 md:px-6 md:py-6 xl:px-8 xl:py-7">
-            <div className="motil-page">{children}</div>
+            <div className="motil-page space-y-6">
+              {children}
+              {pathname === '/dashboard' ? <HomeDecisionPriorities /> : null}
+            </div>
           </main>
         </DashboardPeriodProvider>
       </div>
