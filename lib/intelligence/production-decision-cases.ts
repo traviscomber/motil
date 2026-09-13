@@ -12,102 +12,158 @@ export type ProductionDecisionCandidate = {
 
 const CURRENT_WINDOW_DAYS = 31;
 
+type FidelitySpec = {
+  domain: string;
+  exceptionType: string;
+  title: string;
+  sourceTable: string;
+  sourceDateColumn: string;
+  sourceFilters?: Array<[string, string]>;
+  recommendedHumanAction: string;
+};
+
+const FIDELITY_SPECS: FidelitySpec[] = [
+  {
+    domain: 'drilling',
+    exceptionType: 'missing_hole_code',
+    title: 'Perforación · registros sin código de sondaje',
+    sourceTable: 'production_drilling_source_reports',
+    sourceDateColumn: 'operation_date',
+    recommendedHumanAction: 'Revisar los registros fuente sin código de sondaje y completar o reconciliar el identificador antes de atribuirlos a un sondaje canónico.',
+  },
+  {
+    domain: 'drilling',
+    exceptionType: 'hole_without_valid_mine',
+    title: 'Perforación · sondajes sin mina válida',
+    sourceTable: 'production_drill_holes',
+    sourceDateColumn: 'start_at',
+    sourceFilters: [['source_type', 'source_report']],
+    recommendedHumanAction: 'Revisar la referencia de mina en la fuente de perforación y resolver el vínculo canónico antes de usar esos registros para lectura operacional por mina.',
+  },
+  {
+    domain: 'fine_copper',
+    exceptionType: 'no_assay',
+    title: 'Cobre fino · registros sin assay',
+    sourceTable: 'production_fine_copper_v1',
+    sourceDateColumn: 'operation_date',
+    recommendedHumanAction: 'Validar si existe ensayo/ley fuente para esos registros; mantener la cobertura de cobre fino como incompleta mientras falte esa evidencia.',
+  },
+  {
+    domain: 'concentrate_dispatch',
+    exceptionType: 'shipment_review',
+    title: 'Despacho de concentrado · revisión pendiente',
+    sourceTable: 'production_concentrate_shipments',
+    sourceDateColumn: 'shipment_date',
+    recommendedHumanAction: 'Revisar el despacho marcado para validación y confirmar su evidencia fuente antes de tratarlo como despacho reconciliado.',
+  },
+];
+
 function windowStart(latestDate: string) {
-  const date = new Date(`${latestDate}T00:00:00.000Z`);
+  const date = new Date(`${latestDate.slice(0, 10)}T00:00:00.000Z`);
   date.setUTCDate(date.getUTCDate() - (CURRENT_WINDOW_DAYS - 1));
   return date.toISOString().slice(0, 10);
 }
 
-function label(domain: string, exceptionType: string) {
-  const known: Record<string, string> = {
-    'drilling:hole_without_valid_mine': 'Perforación · sondajes sin mina válida',
-    'drilling:missing_hole_code': 'Perforación · registros sin código de sondaje',
-    'fine_copper:no_assay': 'Cobre fino · registros sin assay',
-    'concentrate_dispatch:shipment_review': 'Despacho de concentrado · revisión pendiente',
-  };
-  return known[`${domain}:${exceptionType}`] || `${domain} · ${exceptionType}`;
+function specKey(domain: string, exceptionType: string) {
+  return `${domain}:${exceptionType}`;
 }
 
-function action(domain: string, exceptionType: string) {
-  if (domain === 'drilling' && exceptionType === 'hole_without_valid_mine') {
-    return 'Revisar la referencia de mina en la fuente de perforación y resolver el vínculo canónico antes de usar esos registros para lectura operacional por mina.';
-  }
-  if (domain === 'drilling' && exceptionType === 'missing_hole_code') {
-    return 'Revisar los registros fuente sin código de sondaje y completar o reconciliar el identificador antes de atribuirlos a un sondaje canónico.';
-  }
-  if (domain === 'fine_copper' && exceptionType === 'no_assay') {
-    return 'Validar si existe ensayo/ley fuente para esos registros; mantener la cobertura de cobre fino como incompleta mientras falte esa evidencia.';
-  }
-  if (domain === 'concentrate_dispatch' && exceptionType === 'shipment_review') {
-    return 'Revisar el despacho marcado para validación y confirmar su evidencia fuente antes de tratarlo como despacho reconciliado.';
-  }
-  return 'Revisar la excepción en su fuente, completar o reconciliar la evidencia faltante y revalidar el dominio antes de usarla para una decisión operacional.';
+function specFor(domain: string, exceptionType: string) {
+  return FIDELITY_SPECS.find((spec) => spec.domain === domain && spec.exceptionType === exceptionType) || null;
 }
 
-async function latestFidelityDate(db: any, organizationId: string): Promise<string | null> {
-  const { data, error } = await db
+function applySourceFilters(query: any, spec: FidelitySpec) {
+  let scoped = query;
+  for (const [column, value] of spec.sourceFilters || []) scoped = scoped.eq(column, value);
+  return scoped;
+}
+
+async function sourceCutoff(db: any, organizationId: string, spec: FidelitySpec): Promise<string | null> {
+  let query = db
+    .from(spec.sourceTable)
+    .select(spec.sourceDateColumn)
+    .eq('organization_id', organizationId)
+    .not(spec.sourceDateColumn, 'is', null);
+  query = applySourceFilters(query, spec);
+  const { data, error } = await query.order(spec.sourceDateColumn, { ascending: false }).limit(1);
+  if (error) throw error;
+  const raw = data?.[0]?.[spec.sourceDateColumn];
+  return raw ? String(raw).slice(0, 10) : null;
+}
+
+async function exceptionWindow(
+  db: any,
+  organizationId: string,
+  spec: FidelitySpec,
+): Promise<{ cutoff: string; sourceCutoff: string; latestExceptionDate: string | null; count: number } | null> {
+  const latestSourceDate = await sourceCutoff(db, organizationId, spec);
+  if (!latestSourceDate) return null;
+  const cutoff = windowStart(latestSourceDate);
+
+  const countResult = await db
+    .from('production_source_fidelity_exceptions_v1')
+    .select('event_date', { count: 'exact', head: true })
+    .eq('organization_id', organizationId)
+    .eq('domain', spec.domain)
+    .eq('exception_type', spec.exceptionType)
+    .gte('event_date', cutoff)
+    .lte('event_date', latestSourceDate);
+  if (countResult.error) throw countResult.error;
+
+  const latestResult = await db
     .from('production_source_fidelity_exceptions_v1')
     .select('event_date')
     .eq('organization_id', organizationId)
-    .not('event_date', 'is', null)
+    .eq('domain', spec.domain)
+    .eq('exception_type', spec.exceptionType)
+    .gte('event_date', cutoff)
+    .lte('event_date', latestSourceDate)
     .order('event_date', { ascending: false })
     .limit(1);
-  if (error) throw error;
-  return data?.[0]?.event_date || null;
+  if (latestResult.error) throw latestResult.error;
+
+  return {
+    cutoff,
+    sourceCutoff: latestSourceDate,
+    latestExceptionDate: latestResult.data?.[0]?.event_date || null,
+    count: Number(countResult.count || 0),
+  };
 }
 
 export async function productionDecisionCandidates(db: any, organizationId: string): Promise<ProductionDecisionCandidate[]> {
-  const latestDate = await latestFidelityDate(db, organizationId);
-  if (!latestDate) return [];
-  const cutoff = windowStart(latestDate);
+  const evaluated = await Promise.all(
+    FIDELITY_SPECS.map(async (spec) => ({ spec, window: await exceptionWindow(db, organizationId, spec) })),
+  );
 
-  const { data, error } = await db
-    .from('production_source_fidelity_exceptions_v1')
-    .select('domain,exception_type,event_date,reference_code,description,source_file,source_sheet,source_row')
-    .eq('organization_id', organizationId)
-    .gte('event_date', cutoff)
-    .lte('event_date', latestDate)
-    .order('event_date', { ascending: false })
-    .limit(500);
-  if (error) throw error;
-
-  const groups = new Map<string, { domain: string; exceptionType: string; rows: any[] }>();
-  for (const row of data || []) {
-    const domain = String(row.domain || 'unknown');
-    const exceptionType = String(row.exception_type || 'unknown');
-    const key = `${domain}:${exceptionType}`;
-    const group = groups.get(key) || { domain, exceptionType, rows: [] };
-    group.rows.push(row);
-    groups.set(key, group);
-  }
-
-  return Array.from(groups.values())
-    .sort((a, b) => b.rows.length - a.rows.length)
-    .slice(0, 20)
-    .map(({ domain, exceptionType, rows }) => {
-      const latest = rows[0]?.event_date || latestDate;
-      const decisionKey = `operational:production:fidelity:${domain}:${exceptionType}`;
+  return evaluated
+    .filter((entry) => entry.window && entry.window.count > 0)
+    .sort((a, b) => (b.window?.count || 0) - (a.window?.count || 0))
+    .map(({ spec, window }) => {
+      const state = window!;
+      const decisionKey = `operational:production:fidelity:${specKey(spec.domain, spec.exceptionType)}`;
       return {
         decisionKey,
         targetDomain: 'production' as const,
-        title: label(domain, exceptionType),
-        summary: `La fuente de Producción registra ${rows.length} excepción(es) de fidelidad de tipo ${exceptionType} para ${domain} dentro de la ventana ${cutoff} → ${latestDate}. Última evidencia: ${latest}.`,
+        title: spec.title,
+        summary: `La fuente de Producción registra ${state.count} excepción(es) de fidelidad de tipo ${spec.exceptionType} para ${spec.domain} dentro de la ventana ${state.cutoff} → ${state.sourceCutoff}. Última excepción visible: ${state.latestExceptionDate || 'sin fecha visible'}.`,
         evidenceRefs: [
           {
             source: 'production_source_fidelity_exceptions_v1',
+            sourceCutoffTable: spec.sourceTable,
             decisionKey,
-            domain,
-            exceptionType,
-            count: rows.length,
-            cutoff,
-            latestEventDate: latest,
+            domain: spec.domain,
+            exceptionType: spec.exceptionType,
+            count: state.count,
+            cutoff: state.cutoff,
+            sourceCutoff: state.sourceCutoff,
+            latestExceptionDate: state.latestExceptionDate,
             mode: 'read',
           },
         ],
         uncertainty: 'La excepción describe calidad, vínculo o cobertura de la fuente; no demuestra por sí sola una falla física, incumplimiento productivo, causa raíz ni impacto económico.',
         contradictions: [],
-        missingEvidence: [`La excepción debe resolverse o dejar de aparecer en la ventana vigente de la fuente antes de tratar el dato como reconciliado para este uso.`],
-        recommendedHumanAction: action(domain, exceptionType),
+        missingEvidence: ['La excepción debe resolverse o dejar de aparecer dentro de la ventana vigente de su propia fuente antes de tratar el dato como reconciliado para este uso.'],
+        recommendedHumanAction: spec.recommendedHumanAction,
       };
     });
 }
@@ -120,19 +176,10 @@ export async function isProductionDecisionResolved(db: any, organizationId: stri
   if (splitAt < 1) return false;
   const domain = remainder.slice(0, splitAt);
   const exceptionType = remainder.slice(splitAt + 1);
+  const spec = specFor(domain, exceptionType);
+  if (!spec) return false;
 
-  const latestDate = await latestFidelityDate(db, organizationId);
-  if (!latestDate) return true;
-  const cutoff = windowStart(latestDate);
-  const { data, error } = await db
-    .from('production_source_fidelity_exceptions_v1')
-    .select('event_date')
-    .eq('organization_id', organizationId)
-    .eq('domain', domain)
-    .eq('exception_type', exceptionType)
-    .gte('event_date', cutoff)
-    .lte('event_date', latestDate)
-    .limit(1);
-  if (error) throw error;
-  return !data?.length;
+  const window = await exceptionWindow(db, organizationId, spec);
+  if (!window) return false;
+  return window.count === 0;
 }
