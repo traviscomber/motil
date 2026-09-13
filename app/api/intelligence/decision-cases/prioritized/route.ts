@@ -9,6 +9,9 @@ export async function GET(request: NextRequest) {
   const context = await getOrganizationContext(request);
   if (!context.ok) return context.response;
 
+  const requestedLimit = Number.parseInt(request.nextUrl.searchParams.get('limit') || '7', 10);
+  const limit = Number.isFinite(requestedLimit) ? Math.min(20, Math.max(1, requestedLimit)) : 7;
+
   const { data, error } = await context.supabase
     .from('motil_ai_decision_cases')
     .select('id,source_domain,target_domain,title,summary,evidence_refs,uncertainty,contradictions,missing_evidence,recommended_human_action,authority,status,acknowledged_at,last_revalidated_at,created_at,updated_at')
@@ -32,7 +35,8 @@ export async function GET(request: NextRequest) {
       const aTime = new Date(a.last_revalidated_at || a.created_at || 0).getTime();
       const bTime = new Date(b.last_revalidated_at || b.created_at || 0).getTime();
       return bTime - aTime;
-    });
+    })
+    .slice(0, limit);
 
   return NextResponse.json({
     cases,
