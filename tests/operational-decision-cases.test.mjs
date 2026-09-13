@@ -20,7 +20,7 @@ test('operational cases remain advisory and do not mutate operational truth', ()
   assert.doesNotMatch(source, /from\('maintenance_work_orders'\)\s*\.update/);
   assert.doesNotMatch(source, /from\('preventive_maintenance_schedules'\)\s*\.update/);
   assert.doesNotMatch(source, /from\('production_geology_[^']+'\)\s*\.update/);
-  assert.match(source, /no crea\/cierra OT, no cambia activos y no escribe hechos geológicos/);
+  assert.match(source, /no crea\/cierra OT, no cambia activos y no escribe hechos geológicos/i);
 });
 
 test('decision sync consolidates geology by drill hole and maintenance by canonical process id', () => {
