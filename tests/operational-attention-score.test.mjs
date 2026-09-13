@@ -36,7 +36,7 @@ test('prioritized endpoint remains tenant user and permission scoped', () => {
   assert.match(route, /filterAccessibleDecisionCaseDomains/);
   assert.match(route, /\.eq\('organization_id', context\.organizationId\)/);
   assert.match(route, /\.eq\('created_by_user_id', context\.userId\)/);
-  assert.match(route, /\.in\('target_domain', Array\.from\(visibleDomains\)\)/);
+  assert.match(route, /accessible\.has\(row\.source_domain\) && accessible\.has\(row\.target_domain\)/);
   assert.doesNotMatch(route, /\.(insert|update|delete|upsert)\(/);
 });
 
@@ -44,6 +44,7 @@ test('prioritized endpoint ranks by derived score and caps the requested surface
   assert.match(route, /deriveDecisionAttention/);
   assert.match(route, /b\.attention\.score - a\.attention\.score/);
   assert.match(route, /Math\.min\(20, Math\.max\(1/);
+  assert.match(route, /\.slice\(0, limit\)/);
 });
 
 test('home consumes the top three prioritized cases across authorized domains', () => {
