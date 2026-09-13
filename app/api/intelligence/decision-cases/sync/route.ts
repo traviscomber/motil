@@ -4,9 +4,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getOrganizationContext } from '@/lib/api/organization-context';
 import { canAccessDecisionCaseDomain } from '@/lib/intelligence/decision-case-access';
 
+type DecisionDomain = 'maintenance' | 'geology' | 'inventory' | 'procurement';
+
 type Candidate = {
   decisionKey: string;
-  targetDomain: 'maintenance' | 'geology';
+  targetDomain: DecisionDomain;
   title: string;
   summary: string;
   evidenceRefs: Record<string, unknown>[];
@@ -19,7 +21,7 @@ type Candidate = {
 type ExistingCase = {
   id: string;
   status: 'open' | 'acknowledged';
-  target_domain: 'maintenance' | 'geology';
+  target_domain: DecisionDomain;
   evidence_refs: unknown;
 };
 
@@ -152,6 +154,68 @@ async function geologyCandidates(db: any, organizationId: string): Promise<Candi
   });
 }
 
+async function supplyChainRows(db: any, organizationId: string) {
+  const { data, error } = await db
+    .from('work_order_supply_chain_v1')
+    .select('work_order_id,work_order_number,canonical_asset_id,title,work_order_status,priority,scheduled_date,material_requirement_count,material_shortage_count,material_shortage_quantity,supply_need_count,open_supply_need_count,supply_needs_with_request,procurement_request_count,open_procurement_request_count,promoted_procurement_request_count,procurement_order_count,undelivered_order_count,delivered_order_count,parts_requested,parts_issued,parts_installed,supply_chain_status')
+    .eq('organization_id', organizationId)
+    .in('supply_chain_status', ['shortage_without_request', 'waiting_procurement', 'waiting_delivery'])
+    .order('scheduled_date', { ascending: true, nullsFirst: false })
+    .limit(50);
+  if (error) throw error;
+  return data || [];
+}
+
+function inventoryCandidates(rows: any[]): Candidate[] {
+  return rows
+    .filter((row) => Number(row.material_shortage_count || 0) > 0)
+    .map((row) => ({
+      decisionKey: `operational:inventory:work-order-shortage:${row.work_order_id}`,
+      targetDomain: 'inventory',
+      title: `${row.work_order_number || 'OT'} · material insuficiente`,
+      summary: `${row.title || 'Orden de trabajo'} tiene ${Number(row.material_shortage_count || 0)} requerimiento(s) con faltante y una brecha total registrada de ${Number(row.material_shortage_quantity || 0).toLocaleString('es-CL')}. Estado de abastecimiento: ${row.supply_chain_status}.`,
+      evidenceRefs: [
+        { source: 'work_order_supply_chain_v1', decisionKey: `operational:inventory:work-order-shortage:${row.work_order_id}`, workOrderId: row.work_order_id, assetId: row.canonical_asset_id, mode: 'read' },
+      ],
+      uncertainty: 'El caso acredita faltante contra requerimientos de la OT. No supone que todo stock físico de bodega esté reconciliado fuera del modelo canónico.',
+      contradictions: [],
+      missingEvidence: compact([
+        Number(row.open_supply_need_count || 0) === 0 ? 'El faltante no tiene una necesidad de abastecimiento abierta visible.' : null,
+      ]),
+      recommendedHumanAction: 'Revisar los requerimientos de material de la OT, validar cobertura/reserva en Bodega y derivar a Compras sólo la brecha que siga sin cobertura.',
+    }));
+}
+
+function procurementCandidates(rows: any[]): Candidate[] {
+  return rows.map((row) => {
+    const status = String(row.supply_chain_status || '');
+    const missing = compact([
+      status === 'shortage_without_request' ? 'Existe faltante de material sin solicitud de compra asociada.' : null,
+      status === 'waiting_procurement' ? 'Existe solicitud de abastecimiento abierta sin orden de compra materializada.' : null,
+      status === 'waiting_delivery' ? 'Existe orden de compra aún no entregada para la OT.' : null,
+    ]);
+    const action = status === 'shortage_without_request'
+      ? 'Validar el faltante y crear/promover la solicitud de compra desde el flujo de abastecimiento si corresponde.'
+      : status === 'waiting_procurement'
+        ? 'Revisar la solicitud abierta y completar el proceso de compra o registrar su resolución.'
+        : 'Revisar la orden pendiente, fecha/recepción y actualizar el flujo cuando exista evidencia de entrega.';
+
+    return {
+      decisionKey: `operational:procurement:work-order-supply:${row.work_order_id}`,
+      targetDomain: 'procurement' as const,
+      title: `${row.work_order_number || 'OT'} · abastecimiento bloqueado`,
+      summary: `${row.title || 'Orden de trabajo'} está en estado ${status}. Faltantes: ${Number(row.material_shortage_count || 0)}; solicitudes abiertas: ${Number(row.open_procurement_request_count || 0)}; órdenes sin entregar: ${Number(row.undelivered_order_count || 0)}.`,
+      evidenceRefs: [
+        { source: 'work_order_supply_chain_v1', decisionKey: `operational:procurement:work-order-supply:${row.work_order_id}`, workOrderId: row.work_order_id, assetId: row.canonical_asset_id, mode: 'read' },
+      ],
+      uncertainty: 'El caso refleja la cadena documental y de abastecimiento visible para la OT; no infiere fechas de entrega ni disponibilidad futura no registrada.',
+      contradictions: [],
+      missingEvidence: missing,
+      recommendedHumanAction: action,
+    };
+  });
+}
+
 async function isResolved(db: any, organizationId: string, decisionKey: string): Promise<boolean> {
   if (decisionKey.startsWith('operational:maintenance:preventive:')) {
     const scheduleId = decisionKey.replace('operational:maintenance:preventive:', '');
@@ -189,6 +253,30 @@ async function isResolved(db: any, organizationId: string, decisionKey: string):
     return !data || data.readiness_state === 'operational_geology_available';
   }
 
+  if (decisionKey.startsWith('operational:inventory:work-order-shortage:')) {
+    const workOrderId = decisionKey.replace('operational:inventory:work-order-shortage:', '');
+    const { data, error } = await db
+      .from('work_order_supply_chain_v1')
+      .select('material_shortage_count')
+      .eq('organization_id', organizationId)
+      .eq('work_order_id', workOrderId)
+      .maybeSingle();
+    if (error) throw error;
+    return !data || Number(data.material_shortage_count || 0) === 0;
+  }
+
+  if (decisionKey.startsWith('operational:procurement:work-order-supply:')) {
+    const workOrderId = decisionKey.replace('operational:procurement:work-order-supply:', '');
+    const { data, error } = await db
+      .from('work_order_supply_chain_v1')
+      .select('supply_chain_status')
+      .eq('organization_id', organizationId)
+      .eq('work_order_id', workOrderId)
+      .maybeSingle();
+    if (error) throw error;
+    return !data || !['shortage_without_request', 'waiting_procurement', 'waiting_delivery'].includes(String(data.supply_chain_status || ''));
+  }
+
   return false;
 }
 
@@ -199,21 +287,30 @@ export async function POST(request: NextRequest) {
   const sourceAllowed = await canAccessDecisionCaseDomain(request, 'executive');
   if (!sourceAllowed) return NextResponse.json({ error: 'No tienes acceso al contexto ejecutivo requerido para sincronizar casos.' }, { status: 403 });
 
-  const [maintenanceAllowed, geologyAllowed] = await Promise.all([
+  const [maintenanceAllowed, geologyAllowed, inventoryAllowed, procurementAllowed] = await Promise.all([
     canAccessDecisionCaseDomain(request, 'maintenance'),
     canAccessDecisionCaseDomain(request, 'geology'),
+    canAccessDecisionCaseDomain(request, 'inventory'),
+    canAccessDecisionCaseDomain(request, 'procurement'),
   ]);
 
   try {
+    const supplyRows = inventoryAllowed || procurementAllowed
+      ? await supplyChainRows(context.supabase, context.organizationId)
+      : [];
     const candidateGroups = await Promise.all([
       maintenanceAllowed ? maintenanceCandidates(context.supabase, context.organizationId) : Promise.resolve([]),
       geologyAllowed ? geologyCandidates(context.supabase, context.organizationId) : Promise.resolve([]),
+      Promise.resolve(inventoryAllowed ? inventoryCandidates(supplyRows) : []),
+      Promise.resolve(procurementAllowed ? procurementCandidates(supplyRows) : []),
     ]);
     const candidates = candidateGroups.flat();
     const now = new Date().toISOString();
     const authorizedDomains = compact([
       maintenanceAllowed ? 'maintenance' : null,
       geologyAllowed ? 'geology' : null,
+      inventoryAllowed ? 'inventory' : null,
+      procurementAllowed ? 'procurement' : null,
     ]);
 
     const { data: existing, error: existingError } = authorizedDomains.length
@@ -301,9 +398,14 @@ export async function POST(request: NextRequest) {
       revalidated,
       archived,
       active: candidates.length,
-      coverage: { maintenance: maintenanceAllowed, geology: geologyAllowed },
+      coverage: {
+        maintenance: maintenanceAllowed,
+        geology: geologyAllowed,
+        inventory: inventoryAllowed,
+        procurement: procurementAllowed,
+      },
       authority: 'advisory_only',
-      policy: 'La sincronización sólo materializa y revalida casos advisory. No crea/cierra OT, no cambia activos y no escribe hechos geológicos. Un caso sólo se archiva tras comprobar su fuente canónica exacta.',
+      policy: 'La sincronización sólo materializa y revalida casos advisory. No crea/cierra OT, no cambia activos, no modifica stock ni órdenes de compra y no escribe hechos geológicos. Un caso sólo se archiva tras comprobar su fuente canónica exacta.',
     });
   } catch (error) {
     console.error('[decision-cases-sync] failed', { detail: error instanceof Error ? error.message : String(error ?? 'unknown') });
