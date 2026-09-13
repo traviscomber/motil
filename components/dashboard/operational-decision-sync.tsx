@@ -11,6 +11,17 @@ type SyncResult = {
   active?: number;
 };
 
+async function runSync(url: string): Promise<SyncResult> {
+  const response = await fetch(url, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  const payload = (await response.json().catch(() => null)) as (SyncResult & { error?: string }) | null;
+  if (!response.ok) throw new Error(payload?.error || 'No fue posible sincronizar los casos operacionales.');
+  return payload || {};
+}
+
 export function OperationalDecisionSync() {
   const [syncing, setSyncing] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -22,14 +33,20 @@ export function OperationalDecisionSync() {
     setNotice(null);
     setError(null);
     try {
-      const response = await fetch('/api/intelligence/decision-cases/sync', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      const payload = (await response.json().catch(() => null)) as (SyncResult & { error?: string }) | null;
-      if (!response.ok) throw new Error(payload?.error || 'No fue posible sincronizar los casos operacionales.');
-      setNotice(`${payload?.active ?? 0} caso(s) vigentes · ${payload?.created ?? 0} nuevo(s) · ${payload?.revalidated ?? 0} revalidado(s) · ${payload?.archived ?? 0} resuelto(s)/archivado(s).`);
+      const results = await Promise.all([
+        runSync('/api/intelligence/decision-cases/sync'),
+        runSync('/api/intelligence/decision-cases/sync-production'),
+      ]);
+      const totals = results.reduce(
+        (acc, result) => ({
+          active: acc.active + (result.active ?? 0),
+          created: acc.created + (result.created ?? 0),
+          revalidated: acc.revalidated + (result.revalidated ?? 0),
+          archived: acc.archived + (result.archived ?? 0),
+        }),
+        { active: 0, created: 0, revalidated: 0, archived: 0 },
+      );
+      setNotice(`${totals.active} caso(s) vigentes · ${totals.created} nuevo(s) · ${totals.revalidated} revalidado(s) · ${totals.archived} resuelto(s)/archivado(s).`);
       window.dispatchEvent(new Event('motil:decision-cases-synced'));
       window.location.reload();
     } catch (cause) {
@@ -44,7 +61,7 @@ export function OperationalDecisionSync() {
       <div>
         <p className="text-sm font-medium">Prioridades operacionales persistentes</p>
         <p className="mt-1 max-w-3xl text-xs leading-5 text-muted-foreground">
-          Revalida preventiva por horómetro, bloqueos de cierre de OT y brechas geológicas contra evidencia canónica. Sólo crea casos advisory; no ejecuta cambios operacionales.
+          Revalida Mantención, Geología, Abastecimiento y fidelidad de Producción contra evidencia canónica. Sólo crea casos advisory; no ejecuta cambios operacionales ni estima datos faltantes.
         </p>
         {notice ? <p className="mt-1 text-xs text-muted-foreground">{notice}</p> : null}
         {error ? <p className="mt-1 text-xs text-destructive">{error}</p> : null}
