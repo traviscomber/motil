@@ -10,6 +10,7 @@ export type DecisionCaseDomain =
   | 'procurement'
   | 'production'
   | 'finance'
+  | 'hse'
   | 'documents'
   | 'data_health'
   | 'maintenance'
@@ -20,6 +21,7 @@ const DIRECT_MODULES = {
   procurement: MODULE_KEYS.FIN_COMPRAS,
   production: MODULE_KEYS.PROD_OPERACIONES,
   finance: MODULE_KEYS.FIN_FINANZAS,
+  hse: MODULE_KEYS.HSE_TABLERO,
   maintenance: MODULE_KEYS.MANT_OPERACIONES,
   geology: MODULE_KEYS.PROD_GEOLOGIA,
 } as const;
@@ -31,6 +33,7 @@ export function isDecisionCaseDomain(value: unknown): value is DecisionCaseDomai
     'procurement',
     'production',
     'finance',
+    'hse',
     'documents',
     'data_health',
     'maintenance',
