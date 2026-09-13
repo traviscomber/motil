@@ -16,6 +16,13 @@ type Candidate = {
   recommendedHumanAction: string;
 };
 
+type ExistingCase = {
+  id: string;
+  status: 'open' | 'acknowledged';
+  target_domain: 'maintenance' | 'geology';
+  evidence_refs: unknown;
+};
+
 const keyFromRefs = (refs: unknown): string | null => {
   if (!Array.isArray(refs)) return null;
   for (const ref of refs) {
@@ -32,18 +39,18 @@ async function maintenanceCandidates(db: any, organizationId: string): Promise<C
   const [preventive, closeReadiness] = await Promise.all([
     db
       .from('preventive_maintenance_hour_status_v1')
-      .select('schedule_id,canonical_asset_id,asset_code,asset_name,task_name,priority,frequency_hours,effective_current_meter,due_meter,remaining_hours,hour_status,meter_basis_conflict,meter_evidence_source,generated_work_order_id')
+      .select('schedule_id,canonical_asset_id,asset_code,asset_name,task_name,effective_current_meter,remaining_hours,hour_status,meter_basis_conflict,generated_work_order_id')
       .eq('organization_id', organizationId)
       .eq('enabled', true)
       .eq('alert_due', true)
       .order('remaining_hours', { ascending: true })
-      .limit(20),
+      .limit(50),
     db
       .from('work_order_close_readiness_v2')
-      .select('work_order_id,work_order_number,title,status,priority,canonical_asset_id,missing_asset,missing_root_cause,missing_preventive_actions,missing_actual_hours,missing_runtime_evidence,runtime_evidence_status,open_procurement_orders,pending_parts,unmet_material_requirements,pending_external_services,open_labor_entries,standard_plan_steps_pending,next_action')
+      .select('work_order_id,work_order_number,title,status,canonical_asset_id,missing_asset,missing_root_cause,missing_preventive_actions,missing_actual_hours,missing_runtime_evidence,open_procurement_orders,pending_parts,unmet_material_requirements,pending_external_services,open_labor_entries,standard_plan_steps_pending,next_action')
       .eq('organization_id', organizationId)
       .eq('ready_to_close', false)
-      .limit(30),
+      .limit(50),
   ]);
 
   if (preventive.error) throw preventive.error;
@@ -107,41 +114,82 @@ async function maintenanceCandidates(db: any, organizationId: string): Promise<C
 
 async function geologyCandidates(db: any, organizationId: string): Promise<Candidate[]> {
   const { data, error } = await db
-    .from('production_geology_geologist_queue_v3')
-    .select('drill_hole_id,hole_code,mine_name,sector_name,status,drilled_depth_m,orientation_confidence,interval_count,mineralization_interval_count,structural_interval_count,operational_geology_evidence_count,visual_mineral_evidence_count,structural_evidence_count,lithology_evidence_count,recovery_evidence_count,topography_evidence_count,survey_evidence_count,deterministic_gap_count,mineralization_conflict_count,severe_chronology_count,material_chronology_count,effective_priority_rank,effective_attention_reason,recommended_action,source_reference')
+    .from('production_geology_2026_readiness_v1')
+    .select('drill_hole_id,hole_code,mine_name,sector_name,status,drilled_depth_m,orientation_confidence,interval_count,point_observation_count,transition_count,daily_span_count,topography_evidence_count,survey_evidence_count,mineralization_conflict_count,blocked_2026,review_2026,mine_missing,sector_missing,orientation_missing,readiness_state,readiness_reason,source_reference')
     .eq('organization_id', organizationId)
-    .gt('deterministic_gap_count', 0)
-    .order('effective_priority_rank', { ascending: true })
-    .limit(12);
+    .neq('readiness_state', 'operational_geology_available')
+    .order('blocked_2026', { ascending: false })
+    .order('review_2026', { ascending: false })
+    .limit(30);
   if (error) throw error;
 
   return (data || []).map((row: any) => {
     const missing = compact([
-      Number(row.lithology_evidence_count || 0) === 0 ? 'No hay evidencia de litología estructurada en la cobertura consultada.' : null,
-      Number(row.recovery_evidence_count || 0) === 0 ? 'No hay evidencia de recuperación estructurada en la cobertura consultada.' : null,
+      row.mine_missing ? 'Falta mina asociada al sondaje.' : null,
+      row.sector_missing ? 'Falta sector asociado al sondaje.' : null,
+      row.orientation_missing ? 'Falta orientación suficiente para usar geometría con confianza.' : null,
       Number(row.topography_evidence_count || 0) === 0 ? 'No hay evidencia topográfica explícita en la cobertura consultada.' : null,
       Number(row.survey_evidence_count || 0) === 0 ? 'No hay evidencia de survey downhole estructurada en la cobertura consultada.' : null,
-      !row.orientation_confidence || String(row.orientation_confidence).toLowerCase() === 'low' ? 'Orientación ausente o de baja confianza.' : null,
     ]);
     const contradictions = compact([
       Number(row.mineralization_conflict_count || 0) > 0 ? `${row.mineralization_conflict_count} conflicto(s) de mineralización detectados.` : null,
-      Number(row.severe_chronology_count || 0) > 0 ? `${row.severe_chronology_count} conflicto(s) severos de cronología.` : null,
-      Number(row.material_chronology_count || 0) > 0 ? `${row.material_chronology_count} conflicto(s) materiales de cronología.` : null,
     ]);
+    const blockers = Number(row.blocked_2026 || 0);
+    const reviews = Number(row.review_2026 || 0);
     return {
       decisionKey: `operational:geology:readiness:${row.drill_hole_id}`,
       targetDomain: 'geology',
-      title: `${row.hole_code || 'Sondaje'} · revisión geológica prioritaria`,
-      summary: `${row.mine_name || 'Mina sin identificar'}${row.sector_name ? ` · ${row.sector_name}` : ''}. La cola geológica registra ${row.deterministic_gap_count} brecha(s) determinísticas y prioridad ${row.effective_priority_rank ?? 'sin ranking'}. ${row.effective_attention_reason || 'Requiere revisión profesional antes de usar la evidencia para decisiones geológicas.'}`,
+      title: `${row.hole_code || 'Sondaje'} · geometría/evidencia a validar`,
+      summary: `${row.mine_name || 'Mina sin identificar'}${row.sector_name ? ` · ${row.sector_name}` : ''}. Estado: ${row.readiness_state || 'sin estado'}. ${row.readiness_reason || 'La evidencia requiere validación profesional.'} Bloqueos 2026: ${blockers}; revisiones: ${reviews}.`,
       evidenceRefs: [
-        { source: 'production_geology_geologist_queue_v3', decisionKey: `operational:geology:readiness:${row.drill_hole_id}`, drillHoleId: row.drill_hole_id, sourceReference: row.source_reference, mode: 'read' },
+        { source: 'production_geology_2026_readiness_v1', decisionKey: `operational:geology:readiness:${row.drill_hole_id}`, drillHoleId: row.drill_hole_id, sourceReference: row.source_reference, mode: 'read' },
       ],
-      uncertainty: 'Este caso identifica deuda o conflicto de evidencia. No infiere continuidad mineralizada, ley, reservas, estructura ni interpretación geológica no registrada.',
+      uncertainty: 'El readiness identifica limitaciones de evidencia y geometría. No infiere continuidad mineralizada, ley, reservas, estructura ni interpretación geológica no registrada.',
       contradictions,
       missingEvidence: missing,
-      recommendedHumanAction: row.recommended_action || 'Revisar la evidencia fuente, completar la brecha prioritaria y revalidar el sondaje antes de promover una interpretación.',
+      recommendedHumanAction: 'Revisar la evidencia fuente, completar geometría o evidencia faltante y revalidar el sondaje antes de usarlo para una interpretación espacial de mayor confianza.',
     };
   });
+}
+
+async function isResolved(db: any, organizationId: string, decisionKey: string): Promise<boolean> {
+  if (decisionKey.startsWith('operational:maintenance:preventive:')) {
+    const scheduleId = decisionKey.replace('operational:maintenance:preventive:', '');
+    const { data, error } = await db
+      .from('preventive_maintenance_hour_status_v1')
+      .select('alert_due,enabled')
+      .eq('organization_id', organizationId)
+      .eq('schedule_id', scheduleId)
+      .maybeSingle();
+    if (error) throw error;
+    return !data || !data.enabled || !data.alert_due;
+  }
+
+  if (decisionKey.startsWith('operational:maintenance:closure:')) {
+    const workOrderId = decisionKey.replace('operational:maintenance:closure:', '');
+    const { data, error } = await db
+      .from('work_order_close_readiness_v2')
+      .select('ready_to_close')
+      .eq('organization_id', organizationId)
+      .eq('work_order_id', workOrderId)
+      .maybeSingle();
+    if (error) throw error;
+    return !data || Boolean(data.ready_to_close);
+  }
+
+  if (decisionKey.startsWith('operational:geology:readiness:')) {
+    const drillHoleId = decisionKey.replace('operational:geology:readiness:', '');
+    const { data, error } = await db
+      .from('production_geology_2026_readiness_v1')
+      .select('readiness_state')
+      .eq('organization_id', organizationId)
+      .eq('drill_hole_id', drillHoleId)
+      .maybeSingle();
+    if (error) throw error;
+    return !data || data.readiness_state === 'operational_geology_available';
+  }
+
+  return false;
 }
 
 export async function POST(request: NextRequest) {
@@ -163,19 +211,25 @@ export async function POST(request: NextRequest) {
     ]);
     const candidates = candidateGroups.flat();
     const now = new Date().toISOString();
+    const authorizedDomains = compact([
+      maintenanceAllowed ? 'maintenance' : null,
+      geologyAllowed ? 'geology' : null,
+    ]);
 
-    const { data: existing, error: existingError } = await context.supabase
-      .from('motil_ai_decision_cases')
-      .select('id,status,target_domain,evidence_refs')
-      .eq('organization_id', context.organizationId)
-      .eq('created_by_user_id', context.userId)
-      .eq('source_domain', 'executive')
-      .in('target_domain', ['maintenance', 'geology'])
-      .in('status', ['open', 'acknowledged']);
+    const { data: existing, error: existingError } = authorizedDomains.length
+      ? await context.supabase
+          .from('motil_ai_decision_cases')
+          .select('id,status,target_domain,evidence_refs')
+          .eq('organization_id', context.organizationId)
+          .eq('created_by_user_id', context.userId)
+          .eq('source_domain', 'executive')
+          .in('target_domain', authorizedDomains)
+          .in('status', ['open', 'acknowledged'])
+      : { data: [], error: null };
     if (existingError) throw existingError;
 
-    const existingByKey = new Map<string, any>();
-    for (const row of existing || []) {
+    const existingByKey = new Map<string, ExistingCase>();
+    for (const row of (existing || []) as ExistingCase[]) {
       const key = keyFromRefs(row.evidence_refs);
       if (key?.startsWith('operational:')) existingByKey.set(key, row);
     }
@@ -230,6 +284,7 @@ export async function POST(request: NextRequest) {
 
     for (const [decisionKey, row] of existingByKey.entries()) {
       if (activeKeys.has(decisionKey)) continue;
+      if (!(await isResolved(context.supabase, context.organizationId, decisionKey))) continue;
       const { error } = await context.supabase
         .from('motil_ai_decision_cases')
         .update({ status: 'archived', updated_at: now, last_revalidated_at: now, last_revalidated_by_user_id: context.userId })
@@ -246,12 +301,9 @@ export async function POST(request: NextRequest) {
       revalidated,
       archived,
       active: candidates.length,
-      coverage: {
-        maintenance: maintenanceAllowed,
-        geology: geologyAllowed,
-      },
+      coverage: { maintenance: maintenanceAllowed, geology: geologyAllowed },
       authority: 'advisory_only',
-      policy: 'La sincronización sólo materializa y revalida casos advisory. No crea/cierra OT, no cambia activos y no escribe hechos geológicos.',
+      policy: 'La sincronización sólo materializa y revalida casos advisory. No crea/cierra OT, no cambia activos y no escribe hechos geológicos. Un caso sólo se archiva tras comprobar su fuente canónica exacta.',
     });
   } catch (error) {
     console.error('[decision-cases-sync] failed', { detail: error instanceof Error ? error.message : String(error ?? 'unknown') });
