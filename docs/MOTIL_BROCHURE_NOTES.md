@@ -1,0 +1,108 @@
+# MOTIL — Brochure Evidence Notes
+
+Purpose: preserve product evidence while MOTIL evolves so future commercial material can be written without overclaiming.
+
+Rule: every capability is marked **Implemented**, **In progress**, or **Planned**. Only **Implemented** items may be stated as current product functionality without qualification.
+
+## Product narrative
+
+MOTIL is an operational intelligence platform for mining that connects operational evidence, role-based access, persistent Decision Cases and human decision workflows. Its Intelligence Core is designed to reduce cognitive load: surface what requires attention, explain why it matters, show uncertainty and route the user back to the authorized operational context.
+
+## Implemented
+
+### Intelligence Core
+
+- One executive conversational layer grounded in authorized MOTIL evidence.
+- Read-only conversational policy for executive synthesis: no approvals, purchases, closures, stock adjustments or other operational mutations from the assistant.
+- Permission-aware evidence gathering across authorized domains.
+- Conversation history is explicitly treated as non-canonical context.
+
+### Decision Cases
+
+- Persistent advisory Decision Cases separated from canonical operational truth.
+- Revalidation against current evidence instead of preserving old recommendations as facts.
+- Deterministic Operational Attention scoring with P1/P2/P3 levels.
+- Executive Home surfaces a maximum of three prioritized Decision Cases.
+- Attention logic is explainable and does not use an LLM to invent priority.
+
+### Cross-domain operational reasoning
+
+Current executive evidence coverage includes:
+
+- Production;
+- Maintenance;
+- Inventory / warehouse;
+- Procurement;
+- Finance;
+- Geology through the broader Intelligence architecture;
+- HSE / sustainability through Decision Cases.
+
+MOTIL also has an explicit Maintenance → Inventory → Procurement read model for observable supply-chain dependencies. Status describes the visible chain; it is not automatically interpreted as root cause.
+
+### Human control and governance
+
+- Recommendations are advisory.
+- Permissions remain authoritative.
+- Missing access or missing data is not converted into an operational zero.
+- Alerts and statuses are not automatically promoted to causal conclusions.
+- Canonical evidence remains separate from conversation history and Decision Cases.
+
+## In progress
+
+### Governed Memory
+
+Branch: `feat/governed-intelligence-memory`.
+
+Implemented in the current development branch, pending merge:
+
+- allow-listed stable working context: role, responsibilities, terminology, preferences and work scope;
+- explicit exclusion of volatile operational facts, metrics, alerts, statuses, priorities and conclusions;
+- tenant + user scoped read-only governed-memory context;
+- prompt-safe non-canonical representation;
+- regression checks that the context endpoint performs no writes.
+
+Do not yet claim that the Executive Assistant automatically consumes Governed Memory until Stage 2 is merged and validated.
+
+## Planned
+
+### Governed Memory Stage 2
+
+The Intelligence Core will consume eligible stable user context in a prompt section physically and semantically separated from canonical evidence, conversation history and Decision Cases.
+
+### Controlled memory capture
+
+Stable working preferences/context will be captured with provenance and user control. MOTIL will not automatically memorize operational claims.
+
+### Invisible specialists
+
+Target experience: one MOTIL Intelligence Core for the user, with permission-scoped domain specialists operating behind it. The user should not need to choose among multiple AI chats.
+
+Target architecture:
+
+`User → Intelligence Core → Governed Memory → Decision Case → Specialist → Canonical Evidence → Recommendation → Human Decision → Traceability`
+
+## Commercial language candidates
+
+Use after verifying status at brochure-production time:
+
+**Operational Intelligence, not another dashboard.** MOTIL connects current evidence across the operation and turns it into a short list of explainable decisions and validations.
+
+**AI with operational guardrails.** MOTIL separates canonical evidence from conversational context, respects user permissions and keeps final operational authority with people.
+
+**From fragmented signals to a decision trail.** Persistent Decision Cases preserve the reasoning context while revalidating recommendations against current operational evidence.
+
+**Less noise for management.** The executive experience is designed around a maximum of three evidence-backed priorities rather than another wall of alerts.
+
+## Evidence register
+
+- PR #199: Consolidate Operational Attention into executive home.
+- Merge commit: `852beafc29315eae986faca2bec2023333b1858b`.
+- Prioritized endpoint: `app/api/intelligence/decision-cases/prioritized/route.ts`.
+- Executive priority UI: `components/dashboard/home-decision-priorities.tsx`.
+- Executive assistant: `app/api/intelligence/executive-assistant/route.ts`.
+- Existing memory bridge: `app/api/intelligence/memory/route.ts`.
+- Governed memory contract: `lib/intelligence/governed-memory.ts`.
+- Governed memory read model: `app/api/intelligence/memory/context/route.ts`.
+- Governed memory architecture: `docs/INTELLIGENCE_GOVERNED_MEMORY.md`.
+
+Update this register whenever a roadmap capability moves from Planned → In progress → Implemented.
