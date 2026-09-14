@@ -20,9 +20,10 @@ test('recurrence intelligence stays evidence-backed and advisory', () => {
 });
 
 test('decision timeline separates advisory events from human actions', () => {
-  assert.match(timelineHelper, /'detected' \| 'reviewed' \| 'revalidated' \| 'resolved' \| 'updated'/);
+  assert.match(timelineHelper, /'detected' \| 'reviewed' \| 'revalidated' \| 'resolved' \| 'archived' \| 'updated'/);
   assert.match(timelineHelper, /authority: 'advisory_only' \| 'human_action'/);
-  assert.match(timelineHelper, /missing actor or comment is not invented/);
+  assert.match(timelineHelper, /missing legacy actor\/comment is never invented/);
+  assert.match(timelineHelper, /source: 'case_lifecycle' \| 'human_action_log'/);
   assert.match(timelineRoute, /\.eq\('organization_id', context\.organizationId\)/);
   assert.match(timelineRoute, /\.eq\('created_by_user_id', context\.userId\)/);
   assert.match(timelineRoute, /filterAccessibleDecisionCaseDomains/);
