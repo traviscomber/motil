@@ -41,11 +41,14 @@ test('evaluation scenarios cover roadmap canonical questions without pretending 
   assert.match(evaluation, /neverTreatTelemetryAsAnswerCorrectness: true/);
 });
 
-test('observability endpoint remains tenant and user scoped and read-only', () => {
+test('observability endpoint remains tenant and user scoped and read-only while exposing grounded metadata', () => {
   assert.match(route, /resolveExecutiveAccess/);
   assert.match(route, /\.eq\('organization_id', context\.organizationId\)/);
   assert.match(route, /\.eq\('user_id', context\.userId\)/);
+  assert.match(route, /evaluation_detail/);
+  assert.match(route, /evaluator_version/);
+  assert.match(route, /evaluated_at/);
   assert.match(route, /operationalMutationExecuted: false/);
-  assert.match(route, /structural_observability_only/);
+  assert.match(route, /structural_observability_plus_grounded_guard/);
   assert.doesNotMatch(route, /export async function (POST|PUT|PATCH|DELETE)/);
 });
