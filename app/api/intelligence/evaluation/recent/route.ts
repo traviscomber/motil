@@ -4,6 +4,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getOrganizationContext } from '@/lib/api/organization-context';
 import { resolveExecutiveAccess } from '@/lib/intelligence/executive-access';
 import { CORE_EVALUATION_POLICY, CORE_EVALUATION_SCENARIOS } from '@/lib/intelligence/core-evaluation';
+import {
+  aggregateObservedSpecialists,
+  deriveObservedSpecialists,
+} from '@/lib/intelligence/specialist-observability';
 
 function median(values: number[]) {
   if (!values.length) return null;
@@ -25,7 +29,7 @@ export async function GET(request: NextRequest) {
 
   const result = await context.supabase
     .from('motil_ai_core_runs')
-    .select('id,domain,specialist,source_count,tool_count,latency_ms,model,response_char_count,evaluation_state,evaluation_detail,evaluator_version,evaluated_at,created_at')
+    .select('id,domain,specialist,source_refs,source_count,tool_count,latency_ms,model,response_char_count,evaluation_state,evaluation_detail,evaluator_version,evaluated_at,created_at')
     .eq('organization_id', context.organizationId)
     .eq('user_id', context.userId)
     .gte('created_at', since)
@@ -37,6 +41,10 @@ export async function GET(request: NextRequest) {
   }
 
   const runs = result.data || [];
+  const enrichedRuns = runs.map((run) => ({
+    ...run,
+    observedSpecialists: deriveObservedSpecialists(run.source_refs as Array<Record<string, unknown>> | null),
+  }));
   const latencies = runs.map((run) => Number(run.latency_ms)).filter(Number.isFinite);
   const withSources = runs.filter((run) => Number(run.source_count || 0) > 0).length;
   const withTools = runs.filter((run) => Number(run.tool_count || 0) > 0).length;
@@ -47,6 +55,9 @@ export async function GET(request: NextRequest) {
     acc[key] = (acc[key] || 0) + 1;
     return acc;
   }, {});
+  const observedSpecialistSummary = aggregateObservedSpecialists(
+    runs as Array<{ source_refs?: Array<Record<string, unknown>> | null }>,
+  );
   const evaluationStates = runs.reduce<Record<string, number>>((acc, run) => {
     const key = String(run.evaluation_state || 'not_evaluated');
     acc[key] = (acc[key] || 0) + 1;
@@ -62,6 +73,8 @@ export async function GET(request: NextRequest) {
       medianLatencyMs: median(latencies),
       latencySampleCount: latencies.length,
       specialists,
+      observedSpecialists: observedSpecialistSummary,
+      specialistAttributionCoverage: runs.length ? observedSpecialistSummary.attributedRuns / runs.length : null,
       evaluationStates,
     },
     groundedEvaluation: {
@@ -73,7 +86,7 @@ export async function GET(request: NextRequest) {
     },
     scenarios: CORE_EVALUATION_SCENARIOS,
     policy: CORE_EVALUATION_POLICY,
-    runs,
+    runs: enrichedRuns,
     operationalMutationExecuted: false,
     authority: 'structural_observability_plus_grounded_guard',
   });
