@@ -6,7 +6,7 @@ const library = fs.readFileSync('lib/intelligence/regulatory-evidence-link.ts', 
 const canonical = fs.readFileSync('lib/intelligence/regulatory-canonical-evidence.ts', 'utf8');
 const route = fs.readFileSync('app/api/intelligence/regulatory/evidence-linking/route.ts', 'utf8');
 const context = fs.readFileSync('lib/intelligence/regulatory-intelligence-context.ts', 'utf8');
-const migration = fs.readFileSync('supabase/migrations/20260914123000_add_tenant_safe_hse_inspection_mapping.sql', 'utf8');
+const migration = fs.readFileSync('supabase/migrations/20260914124500_add_tenant_safe_hse_inspection_mapping.sql', 'utf8');
 
 test('regulatory evidence linking never declares compliance', () => {
   assert.match(library, /evidence_linking_never_declares_legal_compliance/);
