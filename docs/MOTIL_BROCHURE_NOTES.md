@@ -65,22 +65,24 @@ Do not yet claim that the Executive Assistant automatically consumes Governed Me
 
 ### SERNAGEOMIN Regulatory Knowledge Pack v1
 
-Documentation and source model are now being defined in `docs/SERNAGEOMIN_KNOWLEDGE_PACK_V1.md`.
+Documentation and first executable source-registry layer are now implemented in the current development branch, pending merge.
 
-Current scope under development:
+Current branch evidence:
 
-- RES N°0886 installation structure as a reference taxonomy;
-- DS 132 mining-safety regulatory context;
-- SERNAGEOMIN / SIMIN reporting structures including E-100, E-200 and E-300 context;
-- serious, fatal and high-potential accident reporting structure;
-- DS 248 and E-700 tailings monitoring context;
-- closure-plan presentation and technical guides;
-- PAS 135 / 136 / 137 context;
-- Declaración Minera 2025 as a compact mining-operation context model.
+- versioned SERNAGEOMIN source registry in `lib/intelligence/regulatory-sources.ts`;
+- read-only endpoint `GET /api/intelligence/regulatory/sources`;
+- explicit separation between `regulatory_knowledge` and operational truth;
+- source provenance fields including authority, canonical URL, resolution/version, review date and domain tags;
+- zero operational writes from the regulatory-source endpoint;
+- RES N°0886 taxonomy envelope with `reference_only`, `never_overwrite_company_identifiers` and `human_review_required` boundaries;
+- exact RES N°0886 taxonomy values intentionally remain `pending_exact_extraction` until they are extracted from the official resolution and reviewed;
+- regression coverage protecting the no-compliance-claim and no-operational-mutation boundaries.
 
-Product rule: regulatory knowledge describes expectations and evidence requirements. It never proves operational compliance by itself.
+Current registered context includes RES N°0886, DS 132, SIMIN / safety forms, DS 248 + E-700, closure guides and Declaración Minera 2025.
 
-Do not yet claim automated regulatory compliance, legal certification or automatic determination of reportability.
+Product rule: regulatory knowledge describes expectations, structures and evidence requirements. It never proves operational compliance by itself.
+
+Do not yet claim automated regulatory compliance, legal certification, automatic reportability or completed RES N°0886 taxonomy mapping.
 
 ## Planned
 
@@ -96,14 +98,14 @@ Stable working preferences/context will be captured with provenance and user con
 
 Target experience: one MOTIL Intelligence Core for the user, with permission-scoped domain specialists operating behind it. The user should not need to choose among multiple AI chats.
 
-### Regulatory Knowledge Stage 1 — source registry and taxonomy
+### RES N°0886 exact taxonomy extraction
 
-Planned implementation after the documentation contract is reviewed:
+Next regulatory step:
 
-- versioned registry of official regulatory sources;
-- RES 0886 taxonomy mapping without overwriting canonical company identifiers;
-- source hash, effective date and retrieval provenance;
-- zero operational writes.
+- extract exact installation codes/labels from the official resolution;
+- retain source anchor/version metadata;
+- require human review before approving taxonomy records;
+- map reference taxonomy to MOTIL entities without replacing canonical company identifiers.
 
 ### Regulatory Evidence Linking
 
@@ -139,9 +141,9 @@ Use after verifying status at brochure-production time:
 
 **Less noise for management.** The executive experience is designed around a maximum of three evidence-backed priorities rather than another wall of alerts.
 
-Candidate once the regulatory source registry is actually implemented:
+Candidate once the current branch is merged and validated:
 
-**Mining context without pretending compliance.** MOTIL is designed to connect operational evidence with structured SERNAGEOMIN context while keeping regulatory expectations separate from proof of compliance.
+**Mining context without pretending compliance.** MOTIL connects operational evidence with structured SERNAGEOMIN context while keeping regulatory expectations separate from proof of compliance.
 
 ## Evidence register
 
@@ -155,5 +157,8 @@ Candidate once the regulatory source registry is actually implemented:
 - Governed memory read model: `app/api/intelligence/memory/context/route.ts`.
 - Governed memory architecture: `docs/INTELLIGENCE_GOVERNED_MEMORY.md`.
 - SERNAGEOMIN regulatory architecture/source register: `docs/SERNAGEOMIN_KNOWLEDGE_PACK_V1.md`.
+- Regulatory source registry: `lib/intelligence/regulatory-sources.ts`.
+- Regulatory source endpoint: `app/api/intelligence/regulatory/sources/route.ts`.
+- Regulatory boundary tests: `tests/regulatory-source-registry.test.mjs`.
 
 Update this register whenever a roadmap capability moves from Planned → In progress → Implemented.
