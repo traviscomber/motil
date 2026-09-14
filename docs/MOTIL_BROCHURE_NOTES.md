@@ -45,7 +45,7 @@ MOTIL also has an explicit Maintenance → Inventory → Procurement read model 
 
 Branch: `feat/governed-intelligence-memory`.
 
-Implemented in the current development branch, pending merge:
+Implemented in the current development branch, pending merge/release verification:
 
 - allow-listed stable working context: role, responsibilities, terminology, preferences and work scope;
 - explicit exclusion of volatile operational facts, metrics, alerts, statuses, priorities and conclusions;
@@ -54,11 +54,11 @@ Implemented in the current development branch, pending merge:
 - fail-open behavior: memory failure does not block canonical evidence reasoning;
 - response metadata exposes availability, count, domains, authority and error state for auditability.
 
-Do not claim this as production functionality until the branch passes the full release gate and is merged/deployed.
+Do not claim this as production functionality until the merged SHA passes the production release gate.
 
 ### SERNAGEOMIN Regulatory Knowledge Pack v1
 
-Documentation and the first executable regulatory-context layer are implemented in the current development branch, pending merge.
+Documentation and the first executable regulatory-context layer are implemented in the current development branch, pending merge/release verification.
 
 Current branch evidence:
 
@@ -75,9 +75,9 @@ Current registered context includes RES N°0886, DS 132, SIMIN / safety forms, D
 
 Product rule: regulatory knowledge describes expectations, structures and evidence requirements. It never proves operational compliance by itself.
 
-### Regulatory Evidence Linking — Stage 1
+### Regulatory Evidence Linking — Stages 1 + 2
 
-The deterministic contract is now implemented in the development branch, pending merge.
+The deterministic contract and canonical evidence inventory are implemented in the development branch, pending merge/release verification.
 
 Architecture:
 
@@ -92,9 +92,13 @@ Current behavior:
 - `requires_review` cannot become a legal conclusion automatically;
 - canonical operational sources remain authoritative;
 - no LLM is used to assign evidence status;
-- endpoint `GET /api/intelligence/regulatory/evidence-linking` exposes policy/status contract only and performs no operational writes.
+- endpoint `GET /api/intelligence/regulatory/evidence-linking` is read-only and returns policy, coverage and tenant-scoped canonical evidence inventory;
+- tenant-scoped evidence currently comes from `canonical_assets_current`, `documents`, `hse_commitments` and `hse_facilities`;
+- provenance is preserved from source metadata where available;
+- `hse_inspections` is intentionally blocked because its current schema exposes no `organization_id` or equivalent tenant key;
+- `complianceVerdictCalculated` remains `false`.
 
-Do not yet claim automated regulatory compliance, automatic reportability, legal certification or completed evidence linkage across the operation.
+Do not yet claim automated regulatory compliance, automatic reportability, legal certification, complete RES N°0886 mapping or tenant-safe inspection linkage.
 
 ## Planned
 
@@ -115,14 +119,15 @@ Next regulatory step:
 - require human review before promotion to approved reference;
 - map reference taxonomy to MOTIL entities without replacing canonical company identifiers.
 
-### Regulatory Evidence Linking — Stage 2
+### Regulatory Evidence Linking — Stage 3
 
 Next implementation step:
 
-- connect real canonical evidence references from assets, documents, HSE and inspections;
+- create a tenant-safe inspection source or deterministic proven join;
+- connect approved regulatory anchors to canonical evidence references;
+- add explicit human accept/reject/review traceability;
 - preserve source freshness and provenance;
-- surface `observed`, `missing`, `not_applicable` or `requires_review` without calculating a compliance verdict;
-- keep human validation explicit and auditable.
+- keep `observed`, `missing`, `not_applicable` and `requires_review` separate from any legal verdict.
 
 ### Regulatory-aware Intelligence Core
 
@@ -171,7 +176,9 @@ Candidate once the current branch is merged and validated:
 - Regulatory source registry: `lib/intelligence/regulatory-sources.ts`.
 - Regulatory installation contract: `lib/intelligence/regulatory-installation-context.ts`.
 - Regulatory evidence linking contract: `lib/intelligence/regulatory-evidence-link.ts`.
+- Regulatory canonical evidence loader: `lib/intelligence/regulatory-canonical-evidence.ts`.
 - Regulatory evidence linking endpoint: `app/api/intelligence/regulatory/evidence-linking/route.ts`.
+- Regulatory Stage 2 documentation: `docs/REGULATORY_EVIDENCE_LINKING_STAGE2.md`.
 - Regulatory boundary tests: `tests/regulatory-source-registry.test.mjs`, `tests/regulatory-installation-context.test.mjs`, `tests/regulatory-evidence-linking.test.mjs`.
 
 Update this register whenever a roadmap capability moves from Planned → In progress → Implemented.
