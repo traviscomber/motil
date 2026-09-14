@@ -12,6 +12,7 @@ test('equipment context is tenant scoped and uses canonical maintenance evidence
   assert.match(helper, /asset_runtime_summary_v1/);
   assert.match(helper, /maintenance_reliability_by_asset_v1/);
   assert.match(helper, /maintenance_runtime_reliability_by_asset_v1/);
+  assert.match(helper, /maintenance_work_orders/);
   assert.match(helper, /work_order_parts/);
   assert.match(helper, /\.eq\('organization_id', org\)/);
 });
@@ -36,6 +37,19 @@ test('equipment context exposes evidence coverage and never turns missing source
   assert.match(helper, /reliability: Boolean\(reliabilityResult\.data\)/);
   assert.match(helper, /runtimeReliability: Boolean\(runtimeReliabilityResult\.data\)/);
   assert.match(helper, /declarar la ausencia de evidencia y no convertirla en un cero operacional/);
+});
+
+test('reliability readiness explains empty metrics from observed work-order history without inventing thresholds', () => {
+  assert.match(helper, /const reliabilityReadiness =/);
+  assert.match(helper, /no_closed_history/);
+  assert.match(helper, /closed_history_without_corrective_events/);
+  assert.match(helper, /closed_corrective_history_present_but_audited_metrics_unavailable/);
+  assert.match(helper, /audited_reliability_available/);
+  assert.match(helper, /closedOrdersObserved/);
+  assert.match(helper, /closedCorrectiveOrdersObserved/);
+  assert.match(helper, /closedCorrectiveWithRootCauseObserved/);
+  assert.match(helper, /Readiness describes observed evidence coverage only/);
+  assert.doesNotMatch(helper, /reliabilityReadiness[\s\S]*score:\s*\d/);
 });
 
 test('equipment context remains read-only and permission guarded', () => {
