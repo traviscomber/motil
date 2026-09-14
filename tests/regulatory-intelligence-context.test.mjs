@@ -52,5 +52,5 @@ test('executive assistant exposes regulatory audit metadata without merging it i
   assert.match(executive, /complianceVerdictCalculated: regulatoryContext\.complianceVerdictCalculated/);
   assert.match(executive, /coverage: regulatoryContext\.canonicalEvidence\?\.coverage \?\? \[\]/);
   assert.doesNotMatch(executive, /evidence\.regulatory/);
-  assert.match(executive, /evidencia operacional canónica separada de contexto regulatorio advisory/);
+  assert.match(executive, /contexto regulatorio, memoria, historial y Decision Cases conservan sus fronteras/);
 });
