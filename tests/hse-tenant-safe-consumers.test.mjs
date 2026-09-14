@@ -21,6 +21,14 @@ test('user inbox consumes the tenant-safe cargo task feed', () => {
   assert.doesNotMatch(migration, /join public\.operational_tasks_by_cargo_v3\b/);
 });
 
+test('user inbox preserves the deployed view contract while extending evidence', () => {
+  assert.match(migration, /select l\.auth_user_id as user_id,/);
+  assert.match(migration, /p\.id as profile_id,/);
+  assert.match(migration, /as visible_now,/);
+  assert.match(migration, /as user_state_updated_at/);
+  assert.doesNotMatch(migration, /select l\.auth_user_id,\s*\n\s*p\.id as profile_id/);
+});
+
 test('cargo summary consumes the tenant-safe cargo task feed', () => {
   assert.match(migration, /operational_tasks_by_cargo_summary_v4/);
   assert.match(migration, /from public\.operational_tasks_by_cargo_v4/);
