@@ -30,6 +30,14 @@ test('equipment intelligence keeps runtime reliability and parts semantics hones
   assert.match(route, /no equivale a stock disponible/);
 });
 
+test('equipment context exposes evidence coverage and never turns missing sources into zero truth', () => {
+  assert.match(helper, /const coverage =/);
+  assert.match(helper, /runtime: Boolean\(runtimeResult\.data\)/);
+  assert.match(helper, /reliability: Boolean\(reliabilityResult\.data\)/);
+  assert.match(helper, /runtimeReliability: Boolean\(runtimeReliabilityResult\.data\)/);
+  assert.match(helper, /declarar la ausencia de evidencia y no convertirla en un cero operacional/);
+});
+
 test('equipment context remains read-only and permission guarded', () => {
   assert.match(route, /MODULE_KEYS\.MANT_OPERACIONES/);
   assert.match(route, /operationalMutationExecuted: false/);
