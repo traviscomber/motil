@@ -89,7 +89,7 @@ function normalize(value: string | null | undefined) {
 
 function resolveMode(cargoName: string | null | undefined): HomeMode {
   const cargo = normalize(cargoName);
-  if (/gerenc|director|administrador|admin|jefatura general/.test(cargo)) return 'management';
+  if (/todos los cargos|superadmin|gerenc|director|administrador|admin|jefatura general/.test(cargo)) return 'management';
   if (/sostenibilidad|prevencion|hse|medio ambiente/.test(cargo)) return 'sustainability';
   if (/jefe adm|administracion|finanzas|financiero/.test(cargo)) return 'finance';
   if (/mantencion|mantenimiento|mecan|taller|jefe man\.? eq|jefe mant|planificador.*mant/.test(cargo)) return 'maintenance';
@@ -201,7 +201,7 @@ function configFor(
   };
 
   if (mode === 'management') return {
-    eyebrow: 'Gerencia · excepciones', title: 'Resumen ejecutivo', description: 'Sólo indicadores ejecutivos, decisiones y escalaciones que requieren intervención.',
+    eyebrow: 'Gerencia · foco operacional', title: 'Qué importa ahora', description: 'Excepciones, decisiones y cambios materiales. El resto de la operación sigue disponible sin competir por atención.',
     metrics: [
       { label: 'Acciones críticas', value: roleValue(summary, 'critical'), detail: overdueDetail(summary) },
       { label: 'Escalaciones', value: roleValue(summary, 'escalations'), detail: 'Requieren decisión superior' },
@@ -209,9 +209,9 @@ function configFor(
       { label: 'Calidad Producción', value: production?.quality?.status ?? '—', detail: production?.quality ? `${production.quality.hold ?? 0} fuentes HOLD` : 'Fuente de Producción no disponible' },
     ],
     shortcuts: [
-      { label: 'Centro Ejecutivo', href: '/dashboard/decisiones', detail: 'Top decisiones, causa raíz y escalaciones' },
-      { label: 'Data Health', href: '/dashboard/calidad-datos/salud', detail: 'Confianza y frescura por dominio' },
-      { label: 'Mis acciones', href: '/dashboard/acciones', detail: 'Tareas y escalaciones visibles para Gerencia' },
+      { label: 'Centro Ejecutivo', href: '/dashboard/decisiones', detail: 'Top decisiones, evidencia y siguiente acción' },
+      { label: 'Revisión diaria', href: '/dashboard/daily-management', detail: 'Sólo excepciones y compromisos que requieren seguimiento' },
+      { label: 'Mis acciones', href: '/dashboard/acciones', detail: 'Tareas y escalaciones asignadas directamente' },
     ],
   };
 
