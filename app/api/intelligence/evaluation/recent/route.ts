@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
 
   const result = await context.supabase
     .from('motil_ai_core_runs')
-    .select('id,domain,specialist,source_count,tool_count,latency_ms,model,response_char_count,evaluation_state,created_at')
+    .select('id,domain,specialist,source_count,tool_count,latency_ms,model,response_char_count,evaluation_state,evaluation_detail,evaluator_version,evaluated_at,created_at')
     .eq('organization_id', context.organizationId)
     .eq('user_id', context.userId)
     .gte('created_at', since)
@@ -40,6 +40,8 @@ export async function GET(request: NextRequest) {
   const latencies = runs.map((run) => Number(run.latency_ms)).filter(Number.isFinite);
   const withSources = runs.filter((run) => Number(run.source_count || 0) > 0).length;
   const withTools = runs.filter((run) => Number(run.tool_count || 0) > 0).length;
+  const evaluated = runs.filter((run) => Boolean(run.evaluated_at)).length;
+  const groundedReviewRequired = runs.filter((run) => run.evaluation_state === 'needs_review').length;
   const specialists = runs.reduce<Record<string, number>>((acc, run) => {
     const key = String(run.specialist || 'unknown');
     acc[key] = (acc[key] || 0) + 1;
@@ -62,10 +64,17 @@ export async function GET(request: NextRequest) {
       specialists,
       evaluationStates,
     },
+    groundedEvaluation: {
+      evaluatedRunCount: evaluated,
+      coverage: runs.length ? evaluated / runs.length : null,
+      needsReviewCount: groundedReviewRequired,
+      authority: 'deterministic_grounding_guard',
+      passDoesNotProveSemanticCorrectness: true,
+    },
     scenarios: CORE_EVALUATION_SCENARIOS,
     policy: CORE_EVALUATION_POLICY,
     runs,
     operationalMutationExecuted: false,
-    authority: 'structural_observability_only',
+    authority: 'structural_observability_plus_grounded_guard',
   });
 }
