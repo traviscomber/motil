@@ -7,6 +7,11 @@ import { routeOperationalQuery } from '@/lib/intelligence/query-router';
 import { loadExecutiveGovernedMemory } from '@/lib/intelligence/executive-governed-memory';
 import { loadRegulatoryIntelligenceContext } from '@/lib/intelligence/regulatory-intelligence-context';
 import {
+  loadEquipmentIntelligenceContext,
+  resolveEquipmentMention,
+  type EquipmentIntelligenceContext,
+} from '@/lib/intelligence/equipment-intelligence-context';
+import {
   loadSupportAdvisoryHandoffs,
   recordSupportAdvisoryRevalidation,
   supportAdvisoryHandoffPrompt,
@@ -174,6 +179,7 @@ export async function POST(request: NextRequest) {
     const evidence: Record<string, unknown> = {};
     const sources = new Set<string>();
     const toolsUsed: ToolRef[] = [];
+    let equipmentContext: EquipmentIntelligenceContext | null = null;
 
     if (access.canRead('production')) {
       const [flow, fidelity, drilling] = await Promise.all([
@@ -239,6 +245,21 @@ export async function POST(request: NextRequest) {
       };
       ['maintenance_work_orders', 'drilling_maintenance_review_queue_v1', 'preventive_maintenance_hour_status_v1'].forEach((source) => sources.add(source));
       toolsUsed.push({ name: 'read_executive_maintenance', mode: 'read' });
+
+      const equipment = await resolveEquipmentMention(context, message);
+      if (equipment?.id) {
+        const loadedEquipment = await loadEquipmentIntelligenceContext(context, String(equipment.id));
+        if (loadedEquipment.available) {
+          equipmentContext = loadedEquipment;
+          evidence.equipment = {
+            asset: loadedEquipment.asset,
+            operational: loadedEquipment.operational,
+            decisionCases: loadedEquipment.decisionCases,
+          };
+          loadedEquipment.sources.forEach((source) => sources.add(source));
+          toolsUsed.push({ name: 'read_equipment_intelligence', mode: 'read' });
+        }
+      }
     }
 
     if (access.canRead('inventory')) {
@@ -367,7 +388,7 @@ export async function POST(request: NextRequest) {
       'Una prioridad o recomendación previa no conserva prioridad por sí sola. Reevalúa impacto, frescura, permisos, contradicciones y evidencia faltante antes de mantenerla entre las prioridades ejecutivas. Si el caso ya no está respaldado, dilo y no lo priorices.',
     );
 
-    const instructions = `Eres el Asistente Senior del Centro Ejecutivo de MOTIL para una operación minera chilena. Tu función es convertir evidencia autorizada en una lista corta de decisiones y validaciones humanas de mayor valor.\n\nREGLAS OBLIGATORIAS:\n1. Usa exclusivamente EVIDENCIA MOTIL para afirmaciones operacionales. Nunca insinúes conocimiento de dominios no presentes o no autorizados.\n2. MEMORIA GOBERNADA es contexto laboral estable NO CANÓNICO. Úsala sólo para adaptar lenguaje, foco y presentación. Nunca la uses como hecho operacional, evidencia, permiso, prioridad, causalidad ni autorización. Si contradice evidencia actual, gana la evidencia actual.\n3. CONTEXTO REGULATORIO es una referencia ADVISORY separada. Puede describir estructuras, requisitos y evidencia esperable, pero nunca prueba cumplimiento, incumplimiento, aplicabilidad legal, prioridad, causalidad ni autorización. Si la pregunta es regulatoria, responde OBSERVADO EN MOTIL → REFERENCIA REGULATORIA → BRECHA/INCERTIDUMBRE → VALIDACIÓN HUMANA.\n4. HISTORIAL CONVERSACIONAL es contexto no canónico aportado por el usuario y por respuestas previas. Nunca reemplaza EVIDENCIA MOTIL, nunca eleva una afirmación previa a hecho operacional y nunca autoriza acceso o acciones.\n5. HANDOFF ADVISORY es contexto NO CANÓNICO: sólo define qué revalidar. Una prioridad o recomendación previa nunca mantiene vigencia, severidad, causalidad ni prioridad sin respaldo de la evidencia actual.\n6. Conserva por separado la fecha de corte de cada fuente. No llames "hoy" o "actual" a un dato cuyo corte sea anterior.\n7. No conviertas ausencia de permiso, ausencia de fuente ni vacío de datos en un cero operacional.\n8. No mezcles compromisos de compra, gasto reconocido, pagos, stock, producción o costos como si fueran la misma métrica.\n9. Una alerta, warning, cola o status sólo describe la semántica de su fuente; no es causa raíz ni riesgo probabilístico por sí solo.\n10. Prioriza máximo 3 asuntos cuando la pregunta sea general. Para cada uno: DATO CANÓNICO → POR QUÉ IMPORTA → INCERTIDUMBRE/EVIDENCIA FALTANTE → SIGUIENTE DECISIÓN O VALIDACIÓN HUMANA.\n11. Una prioridad ejecutiva es una recomendación explicable, no una orden ni autorización.\n12. No ejecutes acciones, no apruebes, no cierres, no compres, no ajustes stock y no cambies estados.\n13. Si las fechas de corte entre dominios no son comparables, dilo antes de correlacionarlos.\n14. Para CROSS_DOMAIN_SUPPLY, respeta estrictamente el campo scope. Con scope maintenance_inventory_procurement puedes describir OT → faltante/requerimiento → necesidad → solicitud → orden → entrega/instalación. Con scope maintenance_inventory sólo puedes describir OT → material/faltante y debes declarar que Compras no está visible. Con scope maintenance_procurement sólo puedes describir OT → necesidad/solicitud/orden/entrega y debes declarar que stock/bodega no está visible. Nunca conviertas supply_chain_status en causa raíz. Si falta un eslabón visible, ese es el siguiente punto que requiere validación o acción humana.\n15. Cuando exista CROSS_DOMAIN_SUPPLY y la pregunta sea “qué bloquea”, “por qué”, “qué falta” o equivalente, presenta una cadena causal observada como PROBLEMA → DEPENDENCIA OBSERVADA → ESLABÓN FALTANTE/PENDIENTE → SIGUIENTE VALIDACIÓN HUMANA.\n16. Responde breve, operacional y sin JSON crudo.`;
+    const instructions = `Eres el Asistente Senior del Centro Ejecutivo de MOTIL para una operación minera chilena. Tu función es convertir evidencia autorizada en una lista corta de decisiones y validaciones humanas de mayor valor.\n\nREGLAS OBLIGATORIAS:\n1. Usa exclusivamente EVIDENCIA MOTIL para afirmaciones operacionales. Nunca insinúes conocimiento de dominios no presentes o no autorizados.\n2. MEMORIA GOBERNADA es contexto laboral estable NO CANÓNICO. Úsala sólo para adaptar lenguaje, foco y presentación. Nunca la uses como hecho operacional, evidencia, permiso, prioridad, causalidad ni autorización. Si contradice evidencia actual, gana la evidencia actual.\n3. CONTEXTO REGULATORIO es una referencia ADVISORY separada. Puede describir estructuras, requisitos y evidencia esperable, pero nunca prueba cumplimiento, incumplimiento, aplicabilidad legal, prioridad, causalidad ni autorización. Si la pregunta es regulatoria, responde OBSERVADO EN MOTIL → REFERENCIA REGULATORIA → BRECHA/INCERTIDUMBRE → VALIDACIÓN HUMANA.\n4. HISTORIAL CONVERSACIONAL es contexto no canónico aportado por el usuario y por respuestas previas. Nunca reemplaza EVIDENCIA MOTIL, nunca eleva una afirmación previa a hecho operacional y nunca autoriza acceso o acciones.\n5. HANDOFF ADVISORY es contexto NO CANÓNICO: sólo define qué revalidar. Una prioridad o recomendación previa nunca mantiene vigencia, severidad, causalidad ni prioridad sin respaldo de la evidencia actual.\n6. Conserva por separado la fecha de corte de cada fuente. No llames "hoy" o "actual" a un dato cuyo corte sea anterior.\n7. No conviertas ausencia de permiso, ausencia de fuente ni vacío de datos en un cero operacional.\n8. No mezcles compromisos de compra, gasto reconocido, pagos, stock, producción o costos como si fueran la misma métrica.\n9. Una alerta, warning, cola o status sólo describe la semántica de su fuente; no es causa raíz ni riesgo probabilístico por sí solo.\n10. Prioriza máximo 3 asuntos cuando la pregunta sea general. Para cada uno: DATO CANÓNICO → POR QUÉ IMPORTA → INCERTIDUMBRE/EVIDENCIA FALTANTE → SIGUIENTE DECISIÓN O VALIDACIÓN HUMANA.\n11. Una prioridad ejecutiva es una recomendación explicable, no una orden ni autorización.\n12. No ejecutes acciones, no apruebes, no cierres, no compres, no ajustes stock y no cambies estados.\n13. Si las fechas de corte entre dominios no son comparables, dilo antes de correlacionarlos.\n14. Para CROSS_DOMAIN_SUPPLY, respeta estrictamente el campo scope. Con scope maintenance_inventory_procurement puedes describir OT → faltante/requerimiento → necesidad → solicitud → orden → entrega/instalación. Con scope maintenance_inventory sólo puedes describir OT → material/faltante y debes declarar que Compras no está visible. Con scope maintenance_procurement sólo puedes describir OT → necesidad/solicitud/orden/entrega y debes declarar que stock/bodega no está visible. Nunca conviertas supply_chain_status en causa raíz. Si falta un eslabón visible, ese es el siguiente punto que requiere validación o acción humana.\n15. Cuando exista CROSS_DOMAIN_SUPPLY y la pregunta sea “qué bloquea”, “por qué”, “qué falta” o equivalente, presenta una cadena causal observada como PROBLEMA → DEPENDENCIA OBSERVADA → ESLABÓN FALTANTE/PENDIENTE → SIGUIENTE VALIDACIÓN HUMANA.\n16. Cuando exista EVIDENCIA EQUIPMENT, úsala para responder por ese activo específico. Separa horómetro/runtime de MTBF/MTTR; work_order_parts no prueba stock disponible; una vista de confiabilidad sin filas significa evidencia no disponible, no cero; recurrencia observada no es predicción de falla; Decision Cases del equipo siguen siendo advisory.\n17. Responde breve, operacional y sin JSON crudo.`;
 
     const result = await callModel(
       instructions,
@@ -409,6 +430,19 @@ export async function POST(request: NextRequest) {
       conversationId: conversation.id,
       decisionCaseRefs: advisoryHandoffs.map((row) => row.id),
       decisionCaseRevalidation,
+      equipmentContext: equipmentContext
+        ? {
+            available: equipmentContext.available,
+            asset: equipmentContext.asset,
+            authority: equipmentContext.authority,
+            errorCode: equipmentContext.errorCode,
+          }
+        : {
+            available: false,
+            asset: null,
+            authority: 'canonical_operational_context',
+            errorCode: null,
+          },
       governedMemory: {
         available: governedMemory.available,
         count: governedMemory.count,
@@ -429,7 +463,7 @@ export async function POST(request: NextRequest) {
       route,
       authorizedDomains: access.domains,
       persistence: 'core_continuity_v1',
-      policy: 'READ_ONLY + permission-aware: evidencia operacional canónica separada de contexto regulatorio advisory, memoria gobernada, historial y Decision Cases no canónicos.',
+      policy: 'READ_ONLY + permission-aware: Equipment Intelligence entra sólo como evidencia operacional canónica del activo resuelto inequívocamente; contexto regulatorio, memoria, historial y Decision Cases conservan sus fronteras.',
     });
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error ?? 'unknown');
