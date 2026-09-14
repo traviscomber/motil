@@ -49,8 +49,6 @@ Instalaciones auxiliares observadas, geometría `PUNTO`:
 - `SALA DE CONTROL PLANTA CONCENTRACION`
 - `LABORATORIO PLANTA CONCENTRACION`
 
-Todos permanecen `page_anchor_pending`.
-
 ### CLASIFICACIÓN PLANTA RECUPERACIÓN MAGNÉTICA
 
 Instalación principal observada:
@@ -64,7 +62,29 @@ Instalaciones auxiliares visibles en el fragmento oficial indexado:
 - `PLANTA FLOTACION PLANTA RECUPERACION MAGNETICA` — `PUNTO`
 - `CONCENTRACION MAGNETICA SECO` — `PUNTO`
 
-El snippet indexado puede estar truncado; por tanto esta lista **no se considera exhaustiva** y permanece fuera de la taxonomía aprobada.
+### CLASIFICACIÓN PUERTO EMBARQUE MINERO
+
+Instalación principal observada:
+
+- `PUERTO DE EMBARQUE MINERO` — `PUNTO`.
+
+Auxiliares observados, `PUNTO`:
+
+- `OFICINA Y ADMINISTRACION PUERTO EMBARQUE MINERO`
+- `BODEGA PUERTO EMBARQUE MINERO`
+- `CASINO PUERTO EMBARQUE MINERO`
+- `POLICLINICO PUERTO EMBARQUE MINERO`
+
+### CLASIFICACIÓN DE INSTALACIONES ASOCIADAS A LA FAENA
+
+Instalaciones principales visibles en el fragmento oficial indexado, todas `PUNTO` y mostradas sin instalación auxiliar:
+
+- `RELLENO SANITARIO`
+- `PLANTA TRATAMIENTO AGUA POTABLE`
+- `PLANTA TRATAMIENTO AGUA SERVIDAS`
+- `PLANTA DE REFINACION ELECTROLITICA`
+
+Los snippets indexados pueden estar truncados; por tanto estas listas **no se consideran exhaustivas** y permanecen fuera de la taxonomía aprobada.
 
 ## Qué NO cambia
 
