@@ -11,7 +11,7 @@ const priorities = await readFile(prioritiesUrl, 'utf8');
 test('Inicio surfaces prioritized Decision Cases without creating another module', () => {
   assert.match(shell, /pathname === '\/dashboard' \? <HomeDecisionPriorities \/>/);
   assert.match(priorities, /\/api\/intelligence\/decision-cases\/prioritized\?limit=3/);
-  assert.match(priorities, /const cases = state\.data\?\.cases \|\| \[\]/);
+  assert.match(priorities, /const cases = priorities\.data\?\.cases \|\| \[\]/);
 });
 
 test('home priorities remain advisory and route back to authorized operational context', () => {
