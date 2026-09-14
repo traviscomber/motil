@@ -7,6 +7,7 @@ import { routeOperationalQuery } from '@/lib/intelligence/query-router';
 import { loadExecutiveGovernedMemory } from '@/lib/intelligence/executive-governed-memory';
 import { loadRegulatoryIntelligenceContext } from '@/lib/intelligence/regulatory-intelligence-context';
 import { evaluateGroundedCoreResponse } from '@/lib/intelligence/core-grounded-evaluation';
+import { recordCoreRuntimeError } from '@/lib/intelligence/core-error-observability';
 import {
   loadEquipmentIntelligenceContext,
   resolveEquipmentMention,
@@ -505,9 +506,20 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error ?? 'unknown');
     const configurationError = detail.includes('OPENAI_API_KEY');
+    const httpStatus = configurationError ? 503 : 500;
+    await recordCoreRuntimeError({
+      db: context.supabase,
+      organizationId: context.organizationId,
+      userId: context.userId,
+      domain: 'executive',
+      route,
+      phase: 'executive_request',
+      error,
+      httpStatus,
+    });
     console.error('[executive-assistant] request failed', { detail });
     return NextResponse.json({
       error: configurationError ? 'El servicio de IA no está configurado en este entorno.' : 'No fue posible construir la síntesis ejecutiva.',
-    }, { status: configurationError ? 503 : 500 });
+    }, { status: httpStatus });
   }
 }
