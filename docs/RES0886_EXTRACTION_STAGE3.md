@@ -25,6 +25,38 @@ No se inventan códigos. Un heading o snippet indexado sólo permite `pending_hu
 
 ## Nuevos candidatos observados
 
+### CLASIFICACIÓN MINAS RAJO ABIERTO
+
+Instalación principal observada:
+
+- `MINA RAJO ABIERTO` — geometría `POLÍGONO`.
+
+Auxiliares observados, geometría `PUNTO`:
+
+- `POLVORIN MINA RAJO ABIERTO`
+- `CHANCADO MINA RAJO ABIERTO`
+- `TALLER MINA RAJO ABIERTO`
+- `LUBRICANTERA MINA RAJO ABIERTO`
+- `SURTIDOR DE COMBUSTIBLE MINA RAJO ABIERTO`
+- `OFICINA Y ADMINISTRACION MINA RAJO ABIERTO`
+- `BODEGA MINA RAJO ABIERTO`
+- `CASINO MINA RAJO ABIERTO`
+- `POLICLINICO MINA RAJO ABIERTO`
+- `SALA DE CONTROL MINA RAJO ABIERTO`
+- `LABORATORIO MINA RAJO ABIERTO`
+
+### CLASIFICACIÓN MINA SUBTERRANEA — extensión
+
+El Stage anterior ya contenía la instalación principal y los primeros auxiliares. El índice oficial muestra además:
+
+- `BODEGA MINA SUBTERRANEA`
+- `CASINO MINA SUBTERRANEA`
+- `POLICLINICO MINA SUBTERRANEA`
+- `SALA DE CONTROL MINA SUBTERRANEA`
+- `LABORATORIO MINA SUBTERRANEA`
+
+Todos se mantienen como candidatos separados de la lista aprobada.
+
 ### CLASIFICACIÓN PLANTAS DE CONCENTRACIÓN
 
 Instalación principal observada:
@@ -83,6 +115,10 @@ Instalaciones principales visibles en el fragmento oficial indexado, todas `PUNT
 - `PLANTA TRATAMIENTO AGUA POTABLE`
 - `PLANTA TRATAMIENTO AGUA SERVIDAS`
 - `PLANTA DE REFINACION ELECTROLITICA`
+
+### CLASIFICACIÓN LAVADEROS
+
+- `LAVADERO` — `PUNTO`, observado sin instalación auxiliar en el fragmento indexado.
 
 Los snippets indexados pueden estar truncados; por tanto estas listas **no se consideran exhaustivas** y permanecen fuera de la taxonomía aprobada.
 
