@@ -15,17 +15,21 @@ test('stage3 RES 0886 candidates remain reference-only and cannot be promoted wi
   assert.match(candidates, /sourceMayBeTreatedAsExhaustive: false/);
 });
 
-test('stage3 includes concentration and magnetic recovery candidates observed in the official indexed document', () => {
+test('stage3 includes the expanded installation set observed in the official indexed document', () => {
   for (const label of [
+    'MINA RAJO ABIERTO',
+    'POLVORIN MINA RAJO ABIERTO',
+    'LABORATORIO MINA RAJO ABIERTO',
+    'BODEGA MINA SUBTERRANEA',
+    'LABORATORIO MINA SUBTERRANEA',
     'PLANTA CONCENTRACION',
     'CHANCADO PLANTA DE CONCENTRACION',
-    'PLANTA MOLIENDA PLANTA CONCENTRACION',
-    'PLANTA FLOTACION PLANTA CONCENTRACION',
-    'ESPESADORES PLANTA CONCENTRACION',
-    'PLANTA DE FILTROS PLANTA CONCENTRACION',
     'PLANTA RECUPERACION MAGNETICA',
-    'CHANCADO PLANTA RECUPERACIÓN MAGNETICA',
     'CONCENTRACION MAGNETICA SECO',
+    'PUERTO DE EMBARQUE MINERO',
+    'RELLENO SANITARIO',
+    'PLANTA TRATAMIENTO AGUA POTABLE',
+    'LAVADERO',
   ]) assert.match(candidates, new RegExp(label));
 });
 
