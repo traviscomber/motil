@@ -59,7 +59,8 @@ type WorkOrderAlertRow = {
   status?: string | null;
   created_at?: string | null;
   scheduled_date?: string | null;
-  asset?: { asset_name?: string | null } | null;
+  canonical_asset_id?: string | null;
+  assetName?: string | null;
 };
 
 type OverdueNCRow = {
@@ -195,13 +196,29 @@ export async function GET(request: NextRequest) {
           async () => {
             const { data, error } = await context.supabase
               .from('maintenance_work_orders')
-              .select('id, work_order_number, title, description, priority, status, created_at, scheduled_date, asset:maintenance_assets(asset_name)')
+              .select('id, work_order_number, title, description, priority, status, created_at, scheduled_date, canonical_asset_id')
               .eq('organization_id', context.organizationId)
               .in('status', ['open', 'in_progress'])
               .order('created_at', { ascending: false })
               .limit(20);
             if (error) throw error;
-            return (data || []) as WorkOrderAlertRow[];
+
+            const rows = (data || []) as WorkOrderAlertRow[];
+            const assetIds = Array.from(new Set(rows.map((row) => row.canonical_asset_id).filter(Boolean))) as string[];
+            if (!assetIds.length) return rows;
+
+            const assetResult = await context.supabase
+              .from('maintenance_canonical_assets_v1')
+              .select('id,name')
+              .eq('organization_id', context.organizationId)
+              .in('id', assetIds);
+            if (assetResult.error) throw assetResult.error;
+
+            const assetNames = new Map((assetResult.data || []).map((asset) => [asset.id, asset.name]));
+            return rows.map((row) => ({
+              ...row,
+              assetName: row.canonical_asset_id ? assetNames.get(row.canonical_asset_id) || null : null,
+            }));
           },
           [] as WorkOrderAlertRow[],
         ),
@@ -310,7 +327,7 @@ export async function GET(request: NextRequest) {
       alerts.push({
         id: `wo-${workOrder.id}`,
         title: `${severity === 'critica' ? 'Orden crítica' : 'Orden prioritaria'} - ${workOrder.title}`,
-        description: workOrder.description || `OT ${workOrder.work_order_number || ''} asociada a ${workOrder.asset?.asset_name || 'equipo operativo'}.`,
+        description: workOrder.description || `OT ${workOrder.work_order_number || ''} asociada a ${workOrder.assetName || 'equipo operativo'}.`,
         severity,
         type: 'mantenimiento',
         timestamp: sourceDate(workOrder.created_at || workOrder.scheduled_date),
