@@ -10,7 +10,7 @@ test('executive assistant consumes governed memory without changing authority', 
   assert.match(route, /governedMemory\.promptContext/);
   assert.match(route, /authority: governedMemory\.authority/);
   assert.match(route, /errorCode: governedMemory\.errorCode/);
-  assert.match(route, /evidencia operacional canónica separada de contexto regulatorio advisory, memoria gobernada, historial y Decision Cases no canónicos/);
+  assert.match(route, /contexto regulatorio, memoria, historial y Decision Cases conservan sus fronteras/);
 });
 
 test('governed memory stays separate from canonical evidence', () => {
