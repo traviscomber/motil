@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
     context.supabase.from('admin_finance_role_kpi_snapshot_v1').select('*').eq('organization_id', context.organizationId),
     context.supabase.from('contract_document_role_kpi_snapshot_v1').select('*').eq('organization_id', context.organizationId),
     context.supabase.from('drilling_role_kpi_snapshot_v1').select('*').eq('organization_id', context.organizationId),
-    context.supabase.from('executive_operational_scorecard_v2').select('*').eq('organization_id', context.organizationId),
+    context.supabase.from('executive_operational_scorecard_v3').select('*').eq('organization_id', context.organizationId),
     context.supabase.from('profiles').select('id,full_name,email,role,status,cargo_id,organization_id,cargos(name)').eq('organization_id', context.organizationId).eq('status', 'active'),
   ]);
 
