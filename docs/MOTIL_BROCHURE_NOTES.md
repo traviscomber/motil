@@ -27,15 +27,7 @@ MOTIL is an operational intelligence platform for mining that connects operation
 
 ### Cross-domain operational reasoning
 
-Current executive evidence coverage includes:
-
-- Production;
-- Maintenance;
-- Inventory / warehouse;
-- Procurement;
-- Finance;
-- Geology through the broader Intelligence architecture;
-- HSE / sustainability through Decision Cases.
+Current executive evidence coverage includes Production, Maintenance, Inventory / warehouse, Procurement and Finance, with Geology and HSE integrated through the broader Intelligence architecture and Decision Cases.
 
 MOTIL also has an explicit Maintenance → Inventory → Procurement read model for observable supply-chain dependencies. Status describes the visible chain; it is not automatically interpreted as root cause.
 
@@ -58,10 +50,11 @@ Implemented in the current development branch, pending merge:
 - allow-listed stable working context: role, responsibilities, terminology, preferences and work scope;
 - explicit exclusion of volatile operational facts, metrics, alerts, statuses, priorities and conclusions;
 - tenant + user scoped read-only governed-memory context;
-- prompt-safe non-canonical representation;
-- regression checks that the context endpoint performs no writes.
+- Executive Assistant consumes the governed-memory loader in a physically separate prompt section;
+- fail-open behavior: memory failure does not block canonical evidence reasoning;
+- response metadata exposes availability, count, domains, authority and error state for auditability.
 
-Do not yet claim that the Executive Assistant automatically consumes Governed Memory until Stage 2 is merged and validated.
+Do not claim this as production functionality until the branch passes the full release gate and is merged/deployed.
 
 ### SERNAGEOMIN Regulatory Knowledge Pack v1
 
@@ -73,24 +66,37 @@ Current branch evidence:
 - read-only endpoint `GET /api/intelligence/regulatory/sources`;
 - explicit separation between `regulatory_knowledge` and operational truth;
 - source provenance fields including authority, canonical URL, resolution/version, review date and domain tags;
-- zero operational writes from the regulatory-source endpoint;
-- RES N°0886 taxonomy envelope with `reference_only`, `never_overwrite_company_identifiers` and `human_review_required` boundaries;
-- dedicated installation-taxonomy contract in `lib/intelligence/regulatory-installation-context.ts`;
-- read-only endpoint `GET /api/intelligence/regulatory/installations`;
-- approved RES N°0886 node list intentionally remains empty until exact official extraction + source anchors + human review;
-- regression coverage protecting the no-compliance-claim, no-operational-mutation and no-partial-taxonomy-promotion boundaries.
+- RES N°0886 installation-taxonomy contract and read-only endpoint;
+- approved RES N°0886 node list remains empty until exact official extraction + stable source/page anchors + human review;
+- partial candidates are kept outside the approved reference set;
+- `docs/RES0886_EXTRACTION_LOG.md` records extraction evidence and promotion gates.
 
 Current registered context includes RES N°0886, DS 132, SIMIN / safety forms, DS 248 + E-700, closure guides and Declaración Minera 2025.
 
 Product rule: regulatory knowledge describes expectations, structures and evidence requirements. It never proves operational compliance by itself.
 
-Do not yet claim automated regulatory compliance, legal certification, automatic reportability or completed RES N°0886 taxonomy mapping.
+### Regulatory Evidence Linking — Stage 1
+
+The deterministic contract is now implemented in the development branch, pending merge.
+
+Architecture:
+
+`Installation / process → regulatory requirement → expected evidence → canonical evidence reference → human validation`
+
+Current behavior:
+
+- statuses are deterministic: `observed`, `missing`, `not_applicable`, `requires_review`;
+- `observed` means a canonical evidence reference is visible, not that compliance is proven;
+- `missing` means a validation/evidence gap, not proof of non-compliance;
+- `not_applicable` requires human validation;
+- `requires_review` cannot become a legal conclusion automatically;
+- canonical operational sources remain authoritative;
+- no LLM is used to assign evidence status;
+- endpoint `GET /api/intelligence/regulatory/evidence-linking` exposes policy/status contract only and performs no operational writes.
+
+Do not yet claim automated regulatory compliance, automatic reportability, legal certification or completed evidence linkage across the operation.
 
 ## Planned
-
-### Governed Memory Stage 2
-
-The Intelligence Core will consume eligible stable user context in a prompt section physically and semantically separated from canonical evidence, conversation history and Decision Cases.
 
 ### Controlled memory capture
 
@@ -100,22 +106,23 @@ Stable working preferences/context will be captured with provenance and user con
 
 Target experience: one MOTIL Intelligence Core for the user, with permission-scoped domain specialists operating behind it. The user should not need to choose among multiple AI chats.
 
-### RES N°0886 exact taxonomy extraction
+### RES N°0886 exact taxonomy completion
 
 Next regulatory step:
 
-- extract exact installation codes/labels from the official resolution;
-- retain source anchor/version metadata;
-- require human review before approving taxonomy records;
+- complete extraction of installation codes/labels from the official resolution;
+- retain stable source/page anchors and version metadata;
+- require human review before promotion to approved reference;
 - map reference taxonomy to MOTIL entities without replacing canonical company identifiers.
 
-### Regulatory Evidence Linking
+### Regulatory Evidence Linking — Stage 2
 
-Planned architecture:
+Next implementation step:
 
-`Installation / process → regulatory requirement → expected evidence → canonical evidence reference → human validation`
-
-This layer should surface `evidence observed`, `evidence missing`, `not applicable` or `requires review`. It must not autonomously declare legal compliance.
+- connect real canonical evidence references from assets, documents, HSE and inspections;
+- preserve source freshness and provenance;
+- surface `observed`, `missing`, `not_applicable` or `requires_review` without calculating a compliance verdict;
+- keep human validation explicit and auditable.
 
 ### Regulatory-aware Intelligence Core
 
@@ -147,6 +154,8 @@ Candidate once the current branch is merged and validated:
 
 **Mining context without pretending compliance.** MOTIL connects operational evidence with structured SERNAGEOMIN context while keeping regulatory expectations separate from proof of compliance.
 
+**Evidence before compliance claims.** MOTIL can distinguish evidence observed, evidence missing and cases requiring human review without automatically issuing legal conclusions.
+
 ## Evidence register
 
 - PR #199: Consolidate Operational Attention into executive home.
@@ -154,15 +163,15 @@ Candidate once the current branch is merged and validated:
 - Prioritized endpoint: `app/api/intelligence/decision-cases/prioritized/route.ts`.
 - Executive priority UI: `components/dashboard/home-decision-priorities.tsx`.
 - Executive assistant: `app/api/intelligence/executive-assistant/route.ts`.
-- Existing memory bridge: `app/api/intelligence/memory/route.ts`.
 - Governed memory contract: `lib/intelligence/governed-memory.ts`.
-- Governed memory read model: `app/api/intelligence/memory/context/route.ts`.
+- Executive governed-memory loader: `lib/intelligence/executive-governed-memory.ts`.
 - Governed memory architecture: `docs/INTELLIGENCE_GOVERNED_MEMORY.md`.
 - SERNAGEOMIN regulatory architecture/source register: `docs/SERNAGEOMIN_KNOWLEDGE_PACK_V1.md`.
+- RES 0886 extraction evidence: `docs/RES0886_EXTRACTION_LOG.md`.
 - Regulatory source registry: `lib/intelligence/regulatory-sources.ts`.
-- Regulatory source endpoint: `app/api/intelligence/regulatory/sources/route.ts`.
 - Regulatory installation contract: `lib/intelligence/regulatory-installation-context.ts`.
-- Regulatory installation endpoint: `app/api/intelligence/regulatory/installations/route.ts`.
-- Regulatory boundary tests: `tests/regulatory-source-registry.test.mjs` and `tests/regulatory-installation-context.test.mjs`.
+- Regulatory evidence linking contract: `lib/intelligence/regulatory-evidence-link.ts`.
+- Regulatory evidence linking endpoint: `app/api/intelligence/regulatory/evidence-linking/route.ts`.
+- Regulatory boundary tests: `tests/regulatory-source-registry.test.mjs`, `tests/regulatory-installation-context.test.mjs`, `tests/regulatory-evidence-linking.test.mjs`.
 
 Update this register whenever a roadmap capability moves from Planned → In progress → Implemented.
