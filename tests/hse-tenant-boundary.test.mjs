@@ -55,7 +55,7 @@ test('operational task v4 joins canonical HSE rows to the same organization', ()
   assert.match(aggregates, /c\.organization_id=i\.organization_id/);
   assert.match(aggregates, /c\.organization_id=h\.organization_id/);
   assert.match(aggregates, /c\.organization_id=r\.organization_id/);
-  assert.match(aggregates, /Unmapped legacy HSE rows are excluded/);
+  assert.match(aggregates, /(?:Unmapped legacy|Legacy unmapped) HSE rows are excluded/);
 });
 
 test('tenant-safe HSE aggregate views are backend only', () => {
