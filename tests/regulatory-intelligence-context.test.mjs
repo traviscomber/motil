@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 
 const loader = fs.readFileSync('lib/intelligence/regulatory-intelligence-context.ts', 'utf8');
 const route = fs.readFileSync('app/api/intelligence/regulatory/context/route.ts', 'utf8');
+const executive = fs.readFileSync('app/api/intelligence/executive-assistant/route.ts', 'utf8');
 
 test('regulatory intelligence context is advisory and never declares compliance', () => {
   assert.match(loader, /advisory_reference_only/);
@@ -36,4 +37,20 @@ test('regulatory context endpoint is read-only', () => {
   assert.doesNotMatch(route, /export async function (POST|PUT|PATCH|DELETE)/);
   assert.match(route, /operationalMutationExecuted: false/);
   assert.match(route, /regulatory_intelligence_context_v1/);
+});
+
+test('executive assistant consumes regulatory context as a separate advisory section', () => {
+  assert.match(executive, /loadRegulatoryIntelligenceContext/);
+  assert.match(executive, /const regulatoryContext = await loadRegulatoryIntelligenceContext\(context, 20\)/);
+  assert.match(executive, /\$\{regulatoryContext\.promptContext\}/);
+  assert.match(executive, /CONTEXTO REGULATORIO es una referencia ADVISORY separada/);
+  assert.match(executive, /OBSERVADO EN MOTIL → REFERENCIA REGULATORIA → BRECHA\/INCERTIDUMBRE → VALIDACIÓN HUMANA/);
+});
+
+test('executive assistant exposes regulatory audit metadata without merging it into canonical evidence', () => {
+  assert.match(executive, /regulatoryContext: \{/);
+  assert.match(executive, /complianceVerdictCalculated: regulatoryContext\.complianceVerdictCalculated/);
+  assert.match(executive, /coverage: regulatoryContext\.canonicalEvidence\?\.coverage \?\? \[\]/);
+  assert.doesNotMatch(executive, /evidence\.regulatory/);
+  assert.match(executive, /evidencia operacional canónica separada de contexto regulatorio advisory/);
 });
