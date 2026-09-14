@@ -1,14 +1,14 @@
 export type RegulatoryCanonicalEvidenceScope = 'assets' | 'documents' | 'hse' | 'inspections';
 
 export type RegulatoryCanonicalEvidenceItem = {
-  scope: Exclude<RegulatoryCanonicalEvidenceScope, 'inspections'>;
-  source: 'canonical_assets_current' | 'documents' | 'hse_commitments' | 'hse_facilities';
-  entityType: 'asset' | 'document' | 'hse_commitment' | 'hse_facility';
+  scope: RegulatoryCanonicalEvidenceScope;
+  source: 'canonical_assets_current' | 'documents' | 'hse_commitments' | 'hse_facilities' | 'canonical_hse_inspections_v1';
+  entityType: 'asset' | 'document' | 'hse_commitment' | 'hse_facility' | 'hse_inspection';
   entityId: string;
   label: string;
   canonicalRef: string;
   freshnessAt: string | null;
-  provenance: Record<string, string | number | null>;
+  provenance: Record<string, string | number | boolean | null>;
 };
 
 export type RegulatoryCanonicalEvidenceCoverage = {
@@ -157,12 +157,49 @@ export async function loadRegulatoryCanonicalEvidence(
     coverage.push({ scope: 'hse', status: 'permission_denied', source: 'hse_commitments+hse_facilities', reason: 'No authorized HSE module for this user.' });
   }
 
-  coverage.push({
-    scope: 'inspections',
-    status: 'blocked_unscoped_source',
-    source: 'hse_inspections',
-    reason: 'Current hse_inspections schema has no organization_id or equivalent tenant key; it is excluded until tenant isolation can be proven.',
-  });
+  if (allowed.has('inspections')) {
+    const { data, error } = await context.supabase
+      .from('canonical_hse_inspections_v1')
+      .select('id,inspection_number,inspection_type,scope,scheduled_date,actual_date,findings_count,status,created_at,mapped_by_user_id,mapping_reason,mapped_at,mapping_updated_at')
+      .eq('organization_id', context.organizationId)
+      .order('scheduled_date', { ascending: false })
+      .limit(safeLimit);
+    if (error) throw error;
+    for (const row of data || []) {
+      items.push({
+        scope: 'inspections',
+        source: 'canonical_hse_inspections_v1',
+        entityType: 'hse_inspection',
+        entityId: String(row.id),
+        label: clean(row.inspection_number) || clean(row.inspection_type) || String(row.id),
+        canonicalRef: canonicalRef('canonical_hse_inspections_v1', row.id),
+        freshnessAt: row.actual_date || row.mapping_updated_at || row.created_at || null,
+        provenance: {
+          tenant_mapping_verified: true,
+          mapped_by_user_id: row.mapped_by_user_id || null,
+          mapping_reason: row.mapping_reason || null,
+          mapped_at: row.mapped_at || null,
+          inspection_type: row.inspection_type || null,
+          status: row.status || null,
+          scheduled_date: row.scheduled_date || null,
+          findings_count: row.findings_count ?? null,
+        },
+      });
+    }
+    coverage.push({
+      scope: 'inspections',
+      status: 'available',
+      source: 'canonical_hse_inspections_v1',
+      reason: 'Only explicitly tenant-mapped legacy inspections are exposed; unmapped hse_inspections rows remain excluded.',
+    });
+  } else {
+    coverage.push({
+      scope: 'inspections',
+      status: 'permission_denied',
+      source: 'canonical_hse_inspections_v1',
+      reason: 'No authorized HSE module for this user.',
+    });
+  }
 
   return {
     items,
