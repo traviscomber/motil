@@ -123,7 +123,17 @@ export async function loadEquipmentIntelligenceContext(
     const parts = partsResult.data || [];
     const pendingParts = parts.filter((row: any) => Math.max(Number(row.quantity_requested || 0) - Number(row.quantity_installed || 0) - Number(row.quantity_returned || 0), 0) > 0);
     const installedParts = parts.filter((row: any) => Number(row.quantity_installed || 0) > 0);
+    const coverage = {
+      runtime: Boolean(runtimeResult.data),
+      reliability: Boolean(reliabilityResult.data),
+      runtimeReliability: Boolean(runtimeReliabilityResult.data),
+      openWorkOrders: (ordersResult.data || []).length,
+      preventives: (preventiveResult.data || []).length,
+      observedPartLines: parts.length,
+      decisionCases: decisionCases.length,
+    };
     const operational = {
+      coverage,
       openWorkOrders: ordersResult.data || [],
       preventives: preventiveResult.data || [],
       runtime: runtimeResult.data || null,
@@ -146,7 +156,7 @@ export async function loadEquipmentIntelligenceContext(
       'work_order_parts',
       'motil_ai_decision_cases',
     ];
-    const promptContext = `EQUIPMENT INTELLIGENCE — EVIDENCIA OPERACIONAL CANÓNICA\n${JSON.stringify({ asset: assetResult.data, operational, decisionCases })}\nREGLAS: no inferir stock disponible desde work_order_parts; no llamar MTBF a horómetro; recurrencia observada no es predicción de falla; costos provienen sólo de fuentes auditadas cuando la vista lo indica; Decision Cases son advisory y deben revalidarse contra evidencia actual.`;
+    const promptContext = `EQUIPMENT INTELLIGENCE — EVIDENCIA OPERACIONAL CANÓNICA\n${JSON.stringify({ asset: assetResult.data, operational, decisionCases })}\nREGLAS: si coverage indica false o 0, declarar la ausencia de evidencia y no convertirla en un cero operacional; no inferir stock disponible desde work_order_parts; no llamar MTBF a horómetro; recurrencia observada no es predicción de falla; costos provienen sólo de fuentes auditadas cuando la vista lo indica; Decision Cases son advisory y deben revalidarse contra evidencia actual.`;
 
     return {
       available: true,
