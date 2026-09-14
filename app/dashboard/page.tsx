@@ -89,7 +89,7 @@ function normalize(value: string | null | undefined) {
 
 function resolveMode(cargoName: string | null | undefined): HomeMode {
   const cargo = normalize(cargoName);
-  if (/gerenc|director|administrador|admin|jefatura general/.test(cargo)) return 'management';
+  if (/todos los cargos|gerenc|director|administrador|admin|jefatura general/.test(cargo)) return 'management';
   if (/sostenibilidad|prevencion|hse|medio ambiente/.test(cargo)) return 'sustainability';
   if (/jefe adm|administracion|finanzas|financiero/.test(cargo)) return 'finance';
   if (/mantencion|mantenimiento|mecan|taller|jefe man\.? eq|jefe mant|planificador.*mant/.test(cargo)) return 'maintenance';
@@ -204,7 +204,7 @@ function configFor(
     eyebrow: 'Gerencia · excepciones', title: 'Resumen ejecutivo', description: 'Sólo indicadores ejecutivos, decisiones y escalaciones que requieren intervención.',
     metrics: [
       { label: 'Acciones críticas', value: roleValue(summary, 'critical'), detail: overdueDetail(summary) },
-      { label: 'Escalaciones', value: roleValue(summary, 'escalations'), detail: 'Requieren decisión superior' },
+      { label: 'Escalaciones', value: roleValue(summary, 'esalations'), detail: 'Requieren decisión superior' },
       { label: 'Excepciones importación', value: queue?.importExceptions ?? '—', detail: 'Deuda de datos de Producción' },
       { label: 'Calidad Producción', value: production?.quality?.status ?? '—', detail: production?.quality ? `${production.quality.hold ?? 0} fuentes HOLD` : 'Fuente de Producción no disponible' },
     ],
