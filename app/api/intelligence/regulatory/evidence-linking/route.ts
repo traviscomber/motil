@@ -51,7 +51,10 @@ export async function GET(request: NextRequest) {
     const allowedScopes: RegulatoryCanonicalEvidenceScope[] = [];
     if ([mantOps, mantExec, prodOps].some(canRead)) allowedScopes.push('assets');
     if ([hseDocs, mantDocs, warehouseDocs, sosDocs, legal].some(canRead)) allowedScopes.push('documents');
-    if ([hseDocs, hseBoard, hseRisks].some(canRead)) allowedScopes.push('hse');
+    if ([hseDocs, hseBoard, hseRisks].some(canRead)) {
+      allowedScopes.push('hse');
+      allowedScopes.push('inspections');
+    }
 
     const canonicalEvidence = await loadRegulatoryCanonicalEvidence(context, allowedScopes, limit);
 

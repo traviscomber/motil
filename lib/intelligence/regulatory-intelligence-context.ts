@@ -45,7 +45,10 @@ async function resolveAllowedScopes(context: RegulatoryContext): Promise<Regulat
   const scopes: RegulatoryCanonicalEvidenceScope[] = [];
   if ([mantOps, mantExec, prodOps].some(canRead)) scopes.push('assets');
   if ([hseDocs, mantDocs, warehouseDocs, sosDocs, legal].some(canRead)) scopes.push('documents');
-  if ([hseDocs, hseBoard, hseRisks].some(canRead)) scopes.push('hse');
+  if ([hseDocs, hseBoard, hseRisks].some(canRead)) {
+    scopes.push('hse');
+    scopes.push('inspections');
+  }
   return scopes;
 }
 
