@@ -1,6 +1,26 @@
--- Keep legacy HSE-derived read models available only for controlled backend compatibility.
--- New consumers must use the tenant-safe replacements introduced in the v2/v4 chain.
+-- Keep HSE-derived read models backend-only and SELECT-only.
+-- Legacy views remain available for controlled compatibility; new consumers use the tenant-safe v2/v4 chain.
 
+-- Tenant-safe current read models.
+revoke all on public.hse_role_kpi_snapshot_v2 from anon, authenticated, service_role;
+grant select on public.hse_role_kpi_snapshot_v2 to service_role;
+
+revoke all on public.executive_operational_scorecard_v2 from anon, authenticated, service_role;
+grant select on public.executive_operational_scorecard_v2 to service_role;
+
+revoke all on public.operational_tasks_by_cargo_v4 from anon, authenticated, service_role;
+grant select on public.operational_tasks_by_cargo_v4 to service_role;
+
+revoke all on public.operational_tasks_by_cargo_summary_v4 from anon, authenticated, service_role;
+grant select on public.operational_tasks_by_cargo_summary_v4 to service_role;
+
+revoke all on public.operational_task_inbox_by_user_v2 from anon, authenticated, service_role;
+grant select on public.operational_task_inbox_by_user_v2 to service_role;
+
+revoke all on public.operational_task_inbox_summary_by_user_v2 from anon, authenticated, service_role;
+grant select on public.operational_task_inbox_summary_by_user_v2 to service_role;
+
+-- Legacy compatibility read models.
 revoke all on public.hse_role_kpi_snapshot_v1 from anon, authenticated, service_role;
 grant select on public.hse_role_kpi_snapshot_v1 to service_role;
 
