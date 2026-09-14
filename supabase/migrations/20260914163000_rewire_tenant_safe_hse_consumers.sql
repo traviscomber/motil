@@ -132,8 +132,7 @@ grant select on public.executive_operational_scorecard_v2 to service_role;
 create or replace view public.operational_task_inbox_by_user_v2
 with (security_invoker = true)
 as
-select l.auth_user_id,
-       p.id as profile_id,
+select l.auth_user_id as user_id,
        p.email,
        p.full_name,
        p.organization_id,
@@ -153,6 +152,7 @@ select l.auth_user_id,
        t.role_action,
        coalesce(s.status,'pending') as user_state,
        s.snoozed_until,
+       p.id as profile_id,
        case when s.status='snoozed' and s.snoozed_until>now() then false else true end as visible_now,
        s.updated_at as user_state_updated_at
 from public.auth_profile_identity_links l
@@ -184,6 +184,6 @@ grant select on public.operational_tasks_by_cargo_summary_v4 to service_role;
 comment on view public.executive_operational_scorecard_v2 is
   'Executive operational baseline with HSE metrics sourced only from tenant-scoped canonical HSE views. No legal/compliance verdict.';
 comment on view public.operational_task_inbox_by_user_v2 is
-  'Backend-only tenant-safe user task inbox sourced from operational_tasks_by_cargo_v4.';
+  'Backend-only tenant-safe user task inbox sourced from operational_tasks_by_cargo_v4; existing user_id column contract preserved.';
 comment on view public.operational_tasks_by_cargo_summary_v4 is
   'Backend-only tenant-safe cargo summary sourced from operational_tasks_by_cargo_v4.';
