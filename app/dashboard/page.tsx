@@ -14,6 +14,7 @@ import {
   PageHeaderTitle,
 } from '@/components/ui/page-header';
 import { StatePanel } from '@/components/ui/state-panel';
+import { HomeDecisionPriorities } from '@/components/dashboard/home-decision-priorities';
 
 type RoleTask = {
   task_key: string;
@@ -268,9 +269,11 @@ export default function DashboardPage() {
         ))}
       </section>
 
+      {mode === 'management' ? <HomeDecisionPriorities /> : null}
+
       <section className="space-y-3">
         <div className="flex items-end justify-between gap-4">
-          <div><h2 className="text-lg font-semibold">Lo que requiere atención</h2><p className="text-sm text-muted-foreground">Sólo trabajo visible para tu cargo.</p></div>
+          <div><h2 className="text-lg font-semibold">{mode === 'management' ? 'Acciones pendientes' : 'Lo que requiere atención'}</h2><p className="text-sm text-muted-foreground">{mode === 'management' ? 'Trabajo operacional visible para tu cargo, separado de las decisiones priorizadas.' : 'Sólo trabajo visible para tu cargo.'}</p></div>
           {!inboxUnavailable && (inbox.data?.summary?.critical || 0) > 0 ? <Badge variant="destructive">{inbox.data?.summary?.critical} críticas</Badge> : null}
         </div>
 
