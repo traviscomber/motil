@@ -65,7 +65,7 @@ Do not yet claim that the Executive Assistant automatically consumes Governed Me
 
 ### SERNAGEOMIN Regulatory Knowledge Pack v1
 
-Documentation and first executable source-registry layer are now implemented in the current development branch, pending merge.
+Documentation and the first executable regulatory-context layer are implemented in the current development branch, pending merge.
 
 Current branch evidence:
 
@@ -75,8 +75,10 @@ Current branch evidence:
 - source provenance fields including authority, canonical URL, resolution/version, review date and domain tags;
 - zero operational writes from the regulatory-source endpoint;
 - RES N°0886 taxonomy envelope with `reference_only`, `never_overwrite_company_identifiers` and `human_review_required` boundaries;
-- exact RES N°0886 taxonomy values intentionally remain `pending_exact_extraction` until they are extracted from the official resolution and reviewed;
-- regression coverage protecting the no-compliance-claim and no-operational-mutation boundaries.
+- dedicated installation-taxonomy contract in `lib/intelligence/regulatory-installation-context.ts`;
+- read-only endpoint `GET /api/intelligence/regulatory/installations`;
+- approved RES N°0886 node list intentionally remains empty until exact official extraction + source anchors + human review;
+- regression coverage protecting the no-compliance-claim, no-operational-mutation and no-partial-taxonomy-promotion boundaries.
 
 Current registered context includes RES N°0886, DS 132, SIMIN / safety forms, DS 248 + E-700, closure guides and Declaración Minera 2025.
 
@@ -159,6 +161,8 @@ Candidate once the current branch is merged and validated:
 - SERNAGEOMIN regulatory architecture/source register: `docs/SERNAGEOMIN_KNOWLEDGE_PACK_V1.md`.
 - Regulatory source registry: `lib/intelligence/regulatory-sources.ts`.
 - Regulatory source endpoint: `app/api/intelligence/regulatory/sources/route.ts`.
-- Regulatory boundary tests: `tests/regulatory-source-registry.test.mjs`.
+- Regulatory installation contract: `lib/intelligence/regulatory-installation-context.ts`.
+- Regulatory installation endpoint: `app/api/intelligence/regulatory/installations/route.ts`.
+- Regulatory boundary tests: `tests/regulatory-source-registry.test.mjs` and `tests/regulatory-installation-context.test.mjs`.
 
 Update this register whenever a roadmap capability moves from Planned → In progress → Implemented.
