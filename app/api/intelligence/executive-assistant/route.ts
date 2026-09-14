@@ -6,6 +6,7 @@ import { resolveExecutiveAccess } from '@/lib/intelligence/executive-access';
 import { routeOperationalQuery } from '@/lib/intelligence/query-router';
 import { loadExecutiveGovernedMemory } from '@/lib/intelligence/executive-governed-memory';
 import { loadRegulatoryIntelligenceContext } from '@/lib/intelligence/regulatory-intelligence-context';
+import { evaluateGroundedCoreResponse } from '@/lib/intelligence/core-grounded-evaluation';
 import {
   loadEquipmentIntelligenceContext,
   resolveEquipmentMention,
@@ -404,6 +405,35 @@ export async function POST(request: NextRequest) {
       model: result.model,
     });
 
+    const groundedEvaluation = evaluateGroundedCoreResponse({
+      answer: result.text,
+      evidence,
+      sourceRefs: refs as Array<Record<string, unknown>>,
+      route,
+    });
+    let groundedEvaluationPersisted = false;
+    if (persisted?.id) {
+      const evaluationUpdate = await context.supabase
+        .from('motil_ai_core_runs')
+        .update({
+          evaluation_state: groundedEvaluation.state,
+          evaluation_detail: groundedEvaluation,
+          evaluator_version: groundedEvaluation.version,
+          evaluated_at: new Date().toISOString(),
+        })
+        .eq('organization_id', org)
+        .eq('user_id', context.userId)
+        .eq('response_message_id', persisted.id);
+      if (evaluationUpdate.error) {
+        console.warn('[executive-assistant] grounded evaluation persistence skipped', {
+          detail: evaluationUpdate.error.message,
+          responseMessageId: persisted.id,
+        });
+      } else {
+        groundedEvaluationPersisted = true;
+      }
+    }
+
     let decisionCaseRevalidation = { updated: 0, at: null as string | null };
     if (persisted && advisoryHandoffs.length && refs.length) {
       try {
@@ -430,6 +460,13 @@ export async function POST(request: NextRequest) {
       conversationId: conversation.id,
       decisionCaseRefs: advisoryHandoffs.map((row) => row.id),
       decisionCaseRevalidation,
+      groundedEvaluation: {
+        state: groundedEvaluation.state,
+        version: groundedEvaluation.version,
+        persisted: groundedEvaluationPersisted,
+        failedChecks: groundedEvaluation.checks.filter((check) => !check.pass).map((check) => check.key),
+        authority: groundedEvaluation.authority,
+      },
       equipmentContext: equipmentContext
         ? {
             available: equipmentContext.available,
