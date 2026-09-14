@@ -3,7 +3,11 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getOrganizationContext } from '@/lib/api/organization-context';
 import { filterAccessibleDecisionCaseDomains, isDecisionCaseDomain } from '@/lib/intelligence/decision-case-access';
-import { DECISION_TIMELINE_POLICY, deriveDecisionCaseTimeline } from '@/lib/intelligence/decision-case-timeline';
+import {
+  DECISION_TIMELINE_POLICY,
+  deriveDecisionCaseTimeline,
+  type DecisionHumanActionRow,
+} from '@/lib/intelligence/decision-case-timeline';
 
 export async function GET(request: NextRequest) {
   const context = await getOrganizationContext(request);
@@ -28,9 +32,21 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Sin acceso al dominio del caso.' }, { status: 403 });
   }
 
+  const actionsResult = await context.supabase
+    .from('motil_ai_decision_human_actions')
+    .select('id,actor_user_id,action_kind,from_status,to_status,comment,recommendation_snapshot,evidence_refs_snapshot,missing_evidence_snapshot,contradictions_snapshot,created_at')
+    .eq('organization_id', context.organizationId)
+    .eq('decision_case_id', caseId)
+    .order('created_at', { ascending: true });
+  if (actionsResult.error) {
+    return NextResponse.json({ error: 'No fue posible cargar el historial humano del caso.' }, { status: 500 });
+  }
+
+  const humanActions = (actionsResult.data || []) as DecisionHumanActionRow[];
   return NextResponse.json({
     case: { id: data.id, title: data.title, status: data.status, recommendedHumanAction: data.recommended_human_action },
-    timeline: deriveDecisionCaseTimeline(data as any),
+    timeline: deriveDecisionCaseTimeline(data as any, humanActions),
+    humanActionCount: humanActions.length,
     policy: DECISION_TIMELINE_POLICY,
     operationalMutationExecuted: false,
   });
