@@ -63,6 +63,25 @@ Implemented in the current development branch, pending merge:
 
 Do not yet claim that the Executive Assistant automatically consumes Governed Memory until Stage 2 is merged and validated.
 
+### SERNAGEOMIN Regulatory Knowledge Pack v1
+
+Documentation and source model are now being defined in `docs/SERNAGEOMIN_KNOWLEDGE_PACK_V1.md`.
+
+Current scope under development:
+
+- RES N°0886 installation structure as a reference taxonomy;
+- DS 132 mining-safety regulatory context;
+- SERNAGEOMIN / SIMIN reporting structures including E-100, E-200 and E-300 context;
+- serious, fatal and high-potential accident reporting structure;
+- DS 248 and E-700 tailings monitoring context;
+- closure-plan presentation and technical guides;
+- PAS 135 / 136 / 137 context;
+- Declaración Minera 2025 as a compact mining-operation context model.
+
+Product rule: regulatory knowledge describes expectations and evidence requirements. It never proves operational compliance by itself.
+
+Do not yet claim automated regulatory compliance, legal certification or automatic determination of reportability.
+
 ## Planned
 
 ### Governed Memory Stage 2
@@ -77,9 +96,36 @@ Stable working preferences/context will be captured with provenance and user con
 
 Target experience: one MOTIL Intelligence Core for the user, with permission-scoped domain specialists operating behind it. The user should not need to choose among multiple AI chats.
 
+### Regulatory Knowledge Stage 1 — source registry and taxonomy
+
+Planned implementation after the documentation contract is reviewed:
+
+- versioned registry of official regulatory sources;
+- RES 0886 taxonomy mapping without overwriting canonical company identifiers;
+- source hash, effective date and retrieval provenance;
+- zero operational writes.
+
+### Regulatory Evidence Linking
+
+Planned architecture:
+
+`Installation / process → regulatory requirement → expected evidence → canonical evidence reference → human validation`
+
+This layer should surface `evidence observed`, `evidence missing`, `not applicable` or `requires review`. It must not autonomously declare legal compliance.
+
+### Regulatory-aware Intelligence Core
+
+Planned prompt separation:
+
+`Canonical Operational Evidence ≠ Regulatory Context ≠ Governed Memory ≠ Conversation History ≠ Decision Cases`
+
+For regulatory questions the target answer pattern is:
+
+`Observed in MOTIL → Regulatory expectation → Evidence gap → Human validation`
+
 Target architecture:
 
-`User → Intelligence Core → Governed Memory → Decision Case → Specialist → Canonical Evidence → Recommendation → Human Decision → Traceability`
+`User → Intelligence Core → Governed Memory → Decision Case → Specialist → Canonical Evidence → Regulatory Context → Recommendation → Human Decision → Traceability`
 
 ## Commercial language candidates
 
@@ -93,6 +139,10 @@ Use after verifying status at brochure-production time:
 
 **Less noise for management.** The executive experience is designed around a maximum of three evidence-backed priorities rather than another wall of alerts.
 
+Candidate once the regulatory source registry is actually implemented:
+
+**Mining context without pretending compliance.** MOTIL is designed to connect operational evidence with structured SERNAGEOMIN context while keeping regulatory expectations separate from proof of compliance.
+
 ## Evidence register
 
 - PR #199: Consolidate Operational Attention into executive home.
@@ -104,5 +154,6 @@ Use after verifying status at brochure-production time:
 - Governed memory contract: `lib/intelligence/governed-memory.ts`.
 - Governed memory read model: `app/api/intelligence/memory/context/route.ts`.
 - Governed memory architecture: `docs/INTELLIGENCE_GOVERNED_MEMORY.md`.
+- SERNAGEOMIN regulatory architecture/source register: `docs/SERNAGEOMIN_KNOWLEDGE_PACK_V1.md`.
 
 Update this register whenever a roadmap capability moves from Planned → In progress → Implemented.
