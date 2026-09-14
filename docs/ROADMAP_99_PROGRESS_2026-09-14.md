@@ -1,73 +1,88 @@
 # MOTIL — progreso hacia Gate 9.9 · 2026-09-14
 
-Estado: **In progress — PR #203, pendiente release gate**.
+Estado: **Gate 9.9 en cierre progresivo**.
 
-Este documento registra el avance ejecutable de los cinco bloques atacados en paralelo sin convertir nombres de roadmap en verdad operacional.
+Este documento registra sólo capacidades implementadas/verificadas y los gaps reales restantes. Los nombres de roadmap no sustituyen evidencia operacional.
 
-## 1. Temporal Intelligence + Inicio
+## Capacidades ya cerradas
 
-Implementado en PR #203:
-- lifecycle determinístico de Decision Cases: `appeared`, `acknowledged`, `revalidated`, `resolved`, `changed`;
-- endpoint read-only `/api/intelligence/decision-cases/changes`;
-- ventana hasta 30 días, con aislamiento por organización, usuario y permisos;
-- Inicio muestra `Cambió desde ayer` separado de `Qué requiere atención`;
-- ambos límites son máximos 3 elementos;
-- cambio temporal no eleva prioridad ni implica impacto o causalidad.
+### Temporal Intelligence
+- lifecycle de Decision Cases: `appeared`, `acknowledged`, `revalidated`, `resolved`, `changed`;
+- Temporal Intelligence v2 persistente: `appeared`, `improved`, `worsened`, `unchanged`, `recurred`, `resolved`, `changed`;
+- ledger `motil_ai_decision_case_events` append-only;
+- endpoints read-only de cambios y tendencias;
+- Inicio separa `Cambió desde ayer` de `Qué requiere atención`.
 
-Roadmap cubierto: Fase E v1 + C3.
+Roadmap cubierto: C3 + E.
 
-## 2. Recurrence / Reliability por activo
+### Recurrence / Reliability
+- recurrencia sólo desde causa raíz auditada repetida para el mismo activo;
+- MTBF/MTTR sólo con evidencia válida de cierres/horómetro;
+- ausencia de datos de confiabilidad se presenta como `sin evidencia`, nunca cero ni predicción.
 
-Implementado en PR #203 sobre read models ya auditados:
-- `maintenance_reliability_by_root_cause_v1`;
-- `maintenance_runtime_reliability_by_asset_v1`;
-- recurrencia sólo cuando la fuente canónica ya marca la misma causa raíz auditada como recurrente para el mismo activo;
-- MTBF/MTTR sólo se exponen según los gates de evidencia existentes;
-- salida `advisory_only`; no se calcula probabilidad futura ni causa raíz definitiva.
+Roadmap cubierto: F v1.
 
-Roadmap cubierto: Fase F v1, reutilizando la base de F/G/H ya existente.
+### Decision History
+- timeline persistente/derivado: detectado, revisado, revalidado, resuelto;
+- separación entre advisory y decisión humana;
+- actor/comentario no se inventan cuando el schema no los preserva.
 
-## 3. Decision History
+Roadmap cubierto: O v1.
 
-Implementado en PR #203:
-- timeline derivado exclusivamente de campos persistidos del Decision Case;
-- eventos: detectado, revisado, revalidado, resuelto y actualización;
-- separación de autoridad advisory vs acción humana;
-- actor no disponible no se inventa;
-- endpoint read-only `/api/intelligence/decision-cases/timeline?caseId=...`.
+### Source confidence / freshness
+- salud determinística de fuentes para Producción, Mantención, Inventario, Compras y Finanzas;
+- `fresh / aging / stale / unknown`;
+- `high / medium / low / unknown` como etiqueta de evidencia, no probabilidad.
 
-Roadmap cubierto: Fase O v1.
+Roadmap cubierto: M v1.
 
-## 4. Source confidence / freshness
+### Equipment Intelligence
+- contexto canónico por activo con resolución conservadora por código, serial, patente o nombre inequívoco;
+- OT abiertas, preventiva, runtime/horómetro, confiabilidad cuando existe, repuestos observados y Decision Cases;
+- integrado al Executive Intelligence Core sin crear otro chat ni módulo;
+- `work_order_parts != stock`, `horómetro != MTBF`, recurrencia observada != predicción.
 
-Implementado en PR #203:
-- salud de fuente determinística para Producción, Mantención, Inventario, Compras y Finanzas;
-- estados de frescura: `fresh`, `aging`, `stale`, `unknown`;
-- confianza: `high`, `medium`, `low`, `unknown`;
-- `unknown` cuando falta fuente o timestamp; nunca se convierte a cero ni alta confianza;
-- HOLD explícito o fuente stale degrada confianza;
-- confidence es etiqueta de presentación basada en evidencia, **no probabilidad de exactitud**;
-- endpoint permission-aware `/api/intelligence/source-health`.
+Roadmap cubierto: G conversacional v1.
 
-Roadmap cubierto: Fase M v1.
+### Regulatory Intelligence / SERNAGEOMIN
+- Regulatory Context separado de Operational Truth;
+- RES 0886 con candidatos pendientes de anchors oficiales/human review;
+- knowledge packs oficiales 2025 para LIX–SX–EW, relaves, Trolley Assist, descarbonización y cierre;
+- Regulatory Evidence Linking tenant-scoped;
+- mappings regulatorios con revisión humana persistente;
+- compliance verdict automático prohibido.
 
-## 5. SERNAGEOMIN technical knowledge packs
+### Intelligence Core observability — Stage 1
+- ledger backend-only `motil_ai_core_runs`;
+- captura automática de organización, usuario, conversación, especialista observado, fuentes, tools, latencia, modelo y tamaño de respuesta;
+- endpoint read-only `/api/intelligence/evaluation/recent`;
+- escenarios permanentes de evaluación del Core;
+- telemetría estructural no se confunde con precisión semántica.
 
-Agregados al registry regulatorio, manteniendo `Regulatory Context != Operational Truth`:
-- Guía 2025 de plantas hidrometalúrgicas LIX–SX–EW;
-- Guía 2025 de proyectos de depósitos de relaves;
-- Guía 2025 Trolley Assist;
-- Guía 2025 de tecnologías para descarbonización minera;
-- Guías técnicas de Planes de Cierre: riesgo, estabilidad física/química, vida útil y garantías.
+Roadmap cubierto: T v1.
 
-Todos son `reference_only`: describen criterios, antecedentes o evidencia esperada, pero no prueban aprobación, condición operacional ni compliance de una faena.
+### Runtime hardening
+- corregido `/api/alertas`: eliminada relación PostgREST obsoleta `maintenance_work_orders -> maintenance_assets`;
+- resolución de activos de OT ahora usa `canonical_asset_id` + `maintenance_canonical_assets_v1` tenant-scoped;
+- no se inventa alerta cuando no existen OT abiertas/en progreso.
 
-## Qué sigue después del release gate
+## Gaps reales restantes hacia 9.9+
 
-Los gaps principales hacia 9.9 quedan en:
-- temporal reasoning v2: `mejoró / empeoró / sigue igual / volvió a ocurrir` comparando estados explícitos;
-- Equipment Intelligence conversacional por activo;
-- historia humana más rica cuando el schema preserve comentario/actor por cada transición;
-- evaluación automática permanente del Intelligence Core;
-- especialistas invisibles más explícitos en observabilidad;
-- QA visual desktop + móvil de las nuevas superficies.
+1. **Core Evaluation Stage 2** — grounded evaluation de respuesta contra la evidencia exacta usada en cada run; no sólo telemetría estructural.
+2. **Error observability** — persistir fallos del Core con ruta/contexto permitido sin duplicar secretos ni conversación.
+3. **Permission regression suite** — roles críticos contra rutas, endpoints, datos, mutaciones, Core y Decision Cases.
+4. **Human Decision History v2** — actor/comentario/acción más ricos cuando el schema los preserve.
+5. **Specialist observability** — hacer explícito qué especialista invisible fue realmente invocado, sin convertirlo en UI de agentes.
+6. **QA visual desktop + móvil** — nuevas superficies de Inicio, Assistant, Equipment Intelligence y flows operativos.
+7. **RES 0886 exact anchors** — completar extracción oficial estable antes de aprobar taxonomy/mappings.
+8. **Tenant-safe HSE inspections** — `hse_inspections` sigue excluida mientras no tenga aislamiento tenant demostrable.
+
+## Orden de ataque actual
+
+1. Core Evaluation Stage 2.
+2. Permission regression suite.
+3. Error observability + runtime hardening.
+4. QA desktop/móvil.
+5. RES 0886 anchors + HSE inspection tenancy.
+
+Gate 9.9 no se declara completo hasta verificar deployment productivo, runtime limpio y QA de roles/superficies críticas.
