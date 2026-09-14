@@ -9,6 +9,15 @@ const migrationPath = new URL(
 
 const sql = (await readFile(migrationPath, 'utf8')).toLowerCase()
 
+const currentViews = [
+  'hse_role_kpi_snapshot_v2',
+  'executive_operational_scorecard_v2',
+  'operational_tasks_by_cargo_v4',
+  'operational_tasks_by_cargo_summary_v4',
+  'operational_task_inbox_by_user_v2',
+  'operational_task_inbox_summary_by_user_v2',
+]
+
 const legacyViews = [
   'hse_role_kpi_snapshot_v1',
   'executive_operational_scorecard_v1',
@@ -18,8 +27,8 @@ const legacyViews = [
   'operational_task_inbox_summary_by_user_v1',
 ]
 
-test('legacy HSE read models are backend select-only', () => {
-  for (const view of legacyViews) {
+test('current and legacy HSE read models are backend select-only', () => {
+  for (const view of [...currentViews, ...legacyViews]) {
     assert.match(
       sql,
       new RegExp(`revoke all on public\\.${view} from anon, authenticated, service_role;`),
