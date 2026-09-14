@@ -19,7 +19,7 @@ test('executive assistant scopes each domain through module access', async () =>
   assert.match(access, /effectiveDomains/);
 });
 
-test('executive assistant is read only and does not bypass unauthorized domains', async () => {
+test('executive assistant is operationally read only and does not bypass unauthorized domains', async () => {
   const route = await read(routeUrl);
   assert.match(route, /resolveExecutiveAccess/);
   assert.match(route, /routeOperationalQuery\(message, \{ domain: 'executive' \}\)/);
@@ -31,8 +31,9 @@ test('executive assistant is read only and does not bypass unauthorized domains'
   assert.match(route, /access\.canRead\('procurement'\)/);
   assert.match(route, /access\.canRead\('finance'\)/);
   assert.doesNotMatch(route, /\.insert\(/);
-  assert.doesNotMatch(route, /\.update\(/);
   assert.doesNotMatch(route, /\.delete\(/);
+  assert.match(route, /\.from\('motil_ai_core_runs'\)[\s\S]*?\.update\(\{/);
+  assert.doesNotMatch(route, /\.from\('(maintenance_work_orders|canonical_inventory_current|canonical_purchase_orders_current|canonical_finance_cost_centers)'\)[\s\S]{0,180}?\.update\(/);
 });
 
 test('executive synthesis preserves source freshness and is exposed through the shared launcher', async () => {
