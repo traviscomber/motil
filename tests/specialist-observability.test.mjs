@@ -10,7 +10,8 @@ test('specialist observability is derived only from observed tool traces', () =>
   assert.match(helper, /inferredFromPrompt: false/);
   assert.match(helper, /noPromptInference: true/);
   assert.match(helper, /noUiAgentSelection: true/);
-  assert.doesNotMatch(helper, /prompt|message|question/i);
+  assert.match(helper, /for \(const ref of Array\.isArray\(sourceRefs\) \? sourceRefs : \[\]\)/);
+  assert.doesNotMatch(helper, /callModel|OPENAI|responses\.create|chat\.completions/i);
 });
 
 test('known Executive Core tools map to the specialists they actually read', () => {
