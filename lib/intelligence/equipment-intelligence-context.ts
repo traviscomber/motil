@@ -55,7 +55,7 @@ export async function loadEquipmentIntelligenceContext(
 ): Promise<EquipmentIntelligenceContext> {
   try {
     const org = context.organizationId;
-    const [assetResult, ordersResult, preventiveResult, runtimeResult, reliabilityResult, runtimeReliabilityResult, partsResult, casesResult] = await Promise.all([
+    const [assetResult, ordersResult, preventiveResult, runtimeResult, reliabilityResult, runtimeReliabilityResult, closedHistoryResult, partsResult, casesResult] = await Promise.all([
       context.supabase
         .from('maintenance_canonical_assets_v1')
         .select('id,asset_code,name,asset_type,category,manufacturer,model,serial_number,license_plate,cost_center_code,is_active,validation_status')
@@ -96,6 +96,14 @@ export async function loadEquipmentIntelligenceContext(
         .eq('canonical_asset_id', assetId)
         .maybeSingle(),
       context.supabase
+        .from('maintenance_work_orders')
+        .select('id,status,work_type,root_cause,completion_date,closed_at,actual_duration_hours,down_time_hours')
+        .eq('organization_id', org)
+        .eq('canonical_asset_id', assetId)
+        .in('status', ['completed', 'closed'])
+        .order('closed_at', { ascending: false, nullsFirst: false })
+        .limit(100),
+      context.supabase
         .from('work_order_parts')
         .select('id,work_order_id,canonical_product_id,quantity_requested,quantity_reserved,quantity_issued,quantity_installed,quantity_returned,status,installed_at')
         .eq('organization_id', org)
@@ -113,7 +121,7 @@ export async function loadEquipmentIntelligenceContext(
         .limit(80),
     ]);
 
-    const failed = [assetResult, ordersResult, preventiveResult, runtimeResult, reliabilityResult, runtimeReliabilityResult, partsResult, casesResult].find((result) => result.error);
+    const failed = [assetResult, ordersResult, preventiveResult, runtimeResult, reliabilityResult, runtimeReliabilityResult, closedHistoryResult, partsResult, casesResult].find((result) => result.error);
     if (failed?.error) throw failed.error;
     if (!assetResult.data) {
       return { available: false, asset: null, operational: {}, decisionCases: [], sources: [], promptContext: '', authority: 'canonical_operational_context', errorCode: 'asset_not_found' };
@@ -123,6 +131,27 @@ export async function loadEquipmentIntelligenceContext(
     const parts = partsResult.data || [];
     const pendingParts = parts.filter((row: any) => Math.max(Number(row.quantity_requested || 0) - Number(row.quantity_installed || 0) - Number(row.quantity_returned || 0), 0) > 0);
     const installedParts = parts.filter((row: any) => Number(row.quantity_installed || 0) > 0);
+    const closedHistory = closedHistoryResult.data || [];
+    const closedCorrective = closedHistory.filter((row: any) => {
+      const workType = normalized(row.work_type);
+      return workType.includes('corrective') || workType.includes('correctivo');
+    });
+    const closedCorrectiveWithRootCause = closedCorrective.filter((row: any) => normalized(row.root_cause).length > 0);
+    const auditedReliabilityAvailable = Boolean(reliabilityResult.data) || Boolean(runtimeReliabilityResult.data);
+    const reliabilityReadiness = {
+      state: auditedReliabilityAvailable
+        ? 'audited_reliability_available'
+        : closedHistory.length === 0
+          ? 'no_closed_history'
+          : closedCorrective.length === 0
+            ? 'closed_history_without_corrective_events'
+            : 'closed_corrective_history_present_but_audited_metrics_unavailable',
+      closedOrdersObserved: closedHistory.length,
+      closedCorrectiveOrdersObserved: closedCorrective.length,
+      closedCorrectiveWithRootCauseObserved: closedCorrectiveWithRootCause.length,
+      auditedReliabilityAvailable,
+      note: 'Readiness describes observed evidence coverage only; it is not a reliability score and does not create MTBF/MTTR.',
+    };
     const coverage = {
       runtime: Boolean(runtimeResult.data),
       reliability: Boolean(reliabilityResult.data),
@@ -134,6 +163,7 @@ export async function loadEquipmentIntelligenceContext(
     };
     const operational = {
       coverage,
+      reliabilityReadiness,
       openWorkOrders: ordersResult.data || [],
       preventives: preventiveResult.data || [],
       runtime: runtimeResult.data || null,
@@ -153,10 +183,11 @@ export async function loadEquipmentIntelligenceContext(
       'asset_runtime_summary_v1',
       'maintenance_reliability_by_asset_v1',
       'maintenance_runtime_reliability_by_asset_v1',
+      'maintenance_work_orders',
       'work_order_parts',
       'motil_ai_decision_cases',
     ];
-    const promptContext = `EQUIPMENT INTELLIGENCE — EVIDENCIA OPERACIONAL CANÓNICA\n${JSON.stringify({ asset: assetResult.data, operational, decisionCases })}\nREGLAS: si coverage indica false o 0, declarar la ausencia de evidencia y no convertirla en un cero operacional; no inferir stock disponible desde work_order_parts; no llamar MTBF a horómetro; recurrencia observada no es predicción de falla; costos provienen sólo de fuentes auditadas cuando la vista lo indica; Decision Cases son advisory y deben revalidarse contra evidencia actual.`;
+    const promptContext = `EQUIPMENT INTELLIGENCE — EVIDENCIA OPERACIONAL CANÓNICA\n${JSON.stringify({ asset: assetResult.data, operational, decisionCases })}\nREGLAS: si coverage indica false o 0, declarar la ausencia de evidencia y no convertirla en un cero operacional; reliabilityReadiness describe cobertura de historial observado y no es un score ni autoriza inferir MTBF/MTTR; no inferir stock disponible desde work_order_parts; no llamar MTBF a horómetro; recurrencia observada no es predicción de falla; costos provienen sólo de fuentes auditadas cuando la vista lo indica; Decision Cases son advisory y deben revalidarse contra evidencia actual.`;
 
     return {
       available: true,
