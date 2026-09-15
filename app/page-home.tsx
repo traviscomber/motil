@@ -22,18 +22,18 @@ const structuredData = {
       '@type': 'SoftwareApplication',
       name: 'MOTIL Mining OS',
       applicationCategory: 'BusinessApplication',
-      applicationSubCategory: 'Software de gestión minera',
+      applicationSubCategory: 'Sistema Operativo para Minería',
       operatingSystem: 'Web',
       url: 'https://www.motil.app',
-      description: 'Software de gestión minera en Chile y Mining Operating System para conectar producción, mantenimiento, inventario, compras, finanzas, RRHH, HSE y legal con trazabilidad operacional.',
+      description: 'Sistema Operativo para Minería en Chile que conecta producción, mantenimiento, inventario, compras, finanzas, RRHH, HSE y legal con trazabilidad operacional.',
       areaServed: { '@type': 'Country', name: 'Chile' },
-      provider: { '@type': 'Organization', name: 'N3uralia', url: 'https://www.n3uralia.com' },
+      provider: { '@type': 'Organization', name: 'Neuralia', url: 'https://www.n3uralia.com' },
     },
     {
       '@type': 'Organization',
-      name: 'MOTIL Mining OS',
-      url: 'https://www.motil.app',
-      description: 'Plataforma de gestión operacional minera desarrollada para conectar áreas críticas de una faena en un solo sistema.',
+      name: 'Neuralia',
+      url: 'https://www.n3uralia.com',
+      description: 'Empresa chilena de desarrollo de software e inteligencia artificial, creadora de MOTIL Mining OS.',
       areaServed: 'Chile',
     },
   ],
@@ -53,10 +53,10 @@ export default function HomePage() {
 
       <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 md:py-28">
         <div className="mx-auto max-w-4xl text-center">
-          <p className="mx-auto inline-flex rounded-md border border-primary/25 bg-primary/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-primary">Software de gestión minera · Chile</p>
-          <h1 className="mt-6 text-4xl font-bold leading-tight tracking-tight sm:text-5xl md:text-6xl">El sistema operativo para la gestión minera en Chile</h1>
+          <p className="mx-auto inline-flex rounded-md border border-primary/25 bg-primary/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-primary">Sistema Operativo para Minería · Chile</p>
+          <h1 className="mt-6 text-4xl font-bold leading-tight tracking-tight sm:text-5xl md:text-6xl">MOTIL. El sistema operativo para la minería.</h1>
           <p className="mx-auto mt-5 max-w-3xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-            MOTIL Mining OS conecta producción, mantenimiento, inventario, compras, finanzas, RRHH, sostenibilidad HSE y legal en una sola plataforma de gestión minera, con trazabilidad operacional y evidencia auditable.
+            MOTIL conecta producción, mantenimiento, inventario, compras, finanzas, RRHH, sostenibilidad HSE y legal en una sola capa operacional, con trazabilidad, evidencia y contexto compartido entre áreas.
           </p>
           <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
             <Button asChild size="lg" className="gap-2"><Link href="/auth/login">Ingresar a MOTIL <ArrowRight className="h-4 w-4" /></Link></Button>
@@ -68,7 +68,7 @@ export default function HomePage() {
       <section className="border-y border-border bg-muted/30">
         <div className="mx-auto grid max-w-7xl gap-6 px-4 py-12 sm:px-6 md:grid-cols-4">
           {[
-            ['Modular por área', 'Implementa sólo los módulos que necesita cada operación.'],
+            ['Una operación conectada', 'Mina, planta y áreas de soporte trabajan sobre un mismo contexto operacional.'],
             ['Trazabilidad operacional', 'Personas, activos, órdenes, documentos y decisiones quedan conectados.'],
             ['Datos canónicos', 'Una fuente de verdad por cada hecho operacional relevante.'],
             ['Diseñado para minería', 'Flujos orientados a mina, planta, mantenimiento, HSE y gestión de faena.'],
@@ -78,9 +78,9 @@ export default function HomePage() {
 
       <section id="modulos" className="mx-auto max-w-7xl px-4 py-16 sm:px-6 md:py-20">
         <div className="max-w-3xl">
-          <p className="text-sm font-semibold text-primary">Software minero modular</p>
-          <h2 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">Ocho áreas, una misma operación minera</h2>
-          <p className="mt-3 text-muted-foreground">Cada módulo mantiene su responsabilidad, permisos y flujos, pero comparte evidencia y contexto con el resto del Mining Operating System.</p>
+          <p className="text-sm font-semibold text-primary">Capas operacionales</p>
+          <h2 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">Ocho áreas, un solo sistema operativo</h2>
+          <p className="mt-3 text-muted-foreground">Cada área mantiene su responsabilidad, permisos y flujos, pero comparte evidencia y contexto con el resto de MOTIL.</p>
         </div>
         <div className="mt-10 overflow-hidden rounded-lg border bg-card">
           {modules.map((item) => (
@@ -116,21 +116,21 @@ export default function HomePage() {
       <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 md:py-20">
         <div className="max-w-3xl">
           <p className="text-sm font-semibold text-primary">Software de gestión minera en Chile</p>
-          <h2 className="mt-2 text-3xl font-bold tracking-tight">Un Mining Operating System para conectar la faena completa</h2>
-          <p className="mt-3 leading-relaxed text-muted-foreground">MOTIL está orientado a operaciones mineras que necesitan ordenar información de mina y planta, mantenimiento, personas, seguridad, abastecimiento y control financiero en un entorno único y auditable. No busca ser sólo otro ERP minero: conecta la operación, la evidencia y la decisión bajo una misma trazabilidad.</p>
-          <Link href="/mineria-chile" className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline">Ver software para minería en Chile <ArrowRight className="h-4 w-4" /></Link>
+          <h2 className="mt-2 text-3xl font-bold tracking-tight">Más arriba que un ERP minero</h2>
+          <p className="mt-3 leading-relaxed text-muted-foreground">MOTIL no se posiciona sólo como software de gestión o ERP. Es un Sistema Operativo para Minería: conecta la operación, las personas, los activos, la evidencia y la decisión bajo una misma arquitectura. Las categorías “software minero”, “software de gestión minera” y “ERP minero” describen partes del problema; MOTIL describe la capa completa.</p>
+          <Link href="/mineria-chile" className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline">Ver Sistemas Operativos para Minería en Chile <ArrowRight className="h-4 w-4" /></Link>
         </div>
       </section>
 
       <section className="border-t border-border bg-muted/30">
         <div className="mx-auto max-w-4xl px-4 py-16 text-center sm:px-6 md:py-20">
           <h2 className="text-3xl font-bold tracking-tight">MOTIL Mining OS</h2>
-          <p className="mx-auto mt-3 max-w-2xl text-muted-foreground">Sistema operativo para la gestión minera en Chile. Accede con las credenciales entregadas por el administrador de tu organización.</p>
+          <p className="mx-auto mt-3 max-w-2xl text-muted-foreground">Sistema Operativo para Minería desarrollado por Neuralia en Chile.</p>
           <Button asChild size="lg" className="mt-7 gap-2"><Link href="/auth/login">Ingresar a MOTIL <ArrowRight className="h-4 w-4" /></Link></Button>
         </div>
       </section>
 
-      <footer className="border-t border-border"><div className="mx-auto max-w-7xl px-4 py-8 text-center text-sm text-muted-foreground sm:px-6">MOTIL Mining OS 2026 · N3uralia · Chile</div></footer>
+      <footer className="border-t border-border"><div className="mx-auto max-w-7xl px-4 py-8 text-center text-sm text-muted-foreground sm:px-6">MOTIL Mining OS 2026 · Neuralia · Chile</div></footer>
     </main>
   );
 }
