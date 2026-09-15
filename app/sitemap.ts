@@ -1,18 +1,19 @@
 import type { MetadataRoute } from 'next';
 
+const baseUrl = 'https://www.motil.app';
+const moduleSlugs = ['produccion', 'mantenimiento', 'inventario', 'compras', 'finanzas', 'rrhh', 'sostenibilidad', 'legal'];
+
 export default function sitemap(): MetadataRoute.Sitemap {
-  const base = 'https://motil.app';
   const now = new Date();
-  const moduleSlugs = ['produccion', 'mantenimiento', 'inventario', 'compras', 'finanzas', 'rrhh', 'sostenibilidad', 'legal'];
 
   return [
-    { url: base, lastModified: now, changeFrequency: 'weekly', priority: 1 },
-    { url: `${base}/mineria-chile`, lastModified: now, changeFrequency: 'monthly', priority: 0.9 },
+    { url: baseUrl, lastModified: now, changeFrequency: 'weekly', priority: 1 },
+    { url: `${baseUrl}/mineria-chile`, lastModified: now, changeFrequency: 'weekly', priority: 0.9 },
     ...moduleSlugs.map((slug) => ({
-      url: `${base}/modulos/${slug}`,
+      url: `${baseUrl}/modulos/${slug}`,
       lastModified: now,
-      changeFrequency: 'monthly' as const,
-      priority: 0.8,
+      changeFrequency: 'weekly' as const,
+      priority: slug === 'produccion' || slug === 'mantenimiento' ? 0.85 : 0.75,
     })),
   ];
 }

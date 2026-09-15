@@ -11,7 +11,7 @@ const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono'
 const montserrat = Montserrat({ subsets: ['latin'], variable: '--font-montserrat', display: 'swap' });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://motil.app'),
+  metadataBase: new URL('https://www.motil.app'),
   title: {
     default: 'MOTIL Mining OS | Software de gestión minera en Chile',
     template: '%s | MOTIL Mining OS',
@@ -41,7 +41,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'es_CL',
-    url: 'https://motil.app',
+    url: 'https://www.motil.app',
     siteName: 'MOTIL Mining OS',
     title: 'MOTIL Mining OS | Sistema operativo para minería',
     description: 'Una plataforma modular para conectar la operación minera completa con trazabilidad, evidencia y control por área.',
