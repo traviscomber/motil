@@ -22,16 +22,17 @@ const structuredData = {
       '@type': 'SoftwareApplication',
       name: 'MOTIL Mining OS',
       applicationCategory: 'BusinessApplication',
+      applicationSubCategory: 'Software de gestión minera',
       operatingSystem: 'Web',
-      url: 'https://motil.app',
-      description: 'Sistema operativo modular para conectar y gestionar operaciones mineras con trazabilidad, evidencia y control por área.',
+      url: 'https://www.motil.app',
+      description: 'Software de gestión minera en Chile y Mining Operating System para conectar producción, mantenimiento, inventario, compras, finanzas, RRHH, HSE y legal con trazabilidad operacional.',
       areaServed: { '@type': 'Country', name: 'Chile' },
       provider: { '@type': 'Organization', name: 'N3uralia', url: 'https://www.n3uralia.com' },
     },
     {
       '@type': 'Organization',
       name: 'MOTIL Mining OS',
-      url: 'https://motil.app',
+      url: 'https://www.motil.app',
       description: 'Plataforma de gestión operacional minera desarrollada para conectar áreas críticas de una faena en un solo sistema.',
       areaServed: 'Chile',
     },
@@ -52,10 +53,10 @@ export default function HomePage() {
 
       <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 md:py-28">
         <div className="mx-auto max-w-4xl text-center">
-          <p className="mx-auto inline-flex rounded-md border border-primary/25 bg-primary/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-primary">Mining Operating System · Chile</p>
-          <h1 className="mt-6 text-4xl font-bold leading-tight tracking-tight sm:text-5xl md:text-6xl">El sistema operativo para conectar la operación minera</h1>
+          <p className="mx-auto inline-flex rounded-md border border-primary/25 bg-primary/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-primary">Software de gestión minera · Chile</p>
+          <h1 className="mt-6 text-4xl font-bold leading-tight tracking-tight sm:text-5xl md:text-6xl">El sistema operativo para la gestión minera en Chile</h1>
           <p className="mx-auto mt-5 max-w-3xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-            MOTIL conecta producción, mantenimiento, inventario, compras, finanzas, RRHH, sostenibilidad HSE y legal en una plataforma modular con trazabilidad operacional y evidencia auditable.
+            MOTIL Mining OS conecta producción, mantenimiento, inventario, compras, finanzas, RRHH, sostenibilidad HSE y legal en una sola plataforma de gestión minera, con trazabilidad operacional y evidencia auditable.
           </p>
           <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
             <Button asChild size="lg" className="gap-2"><Link href="/auth/login">Ingresar a MOTIL <ArrowRight className="h-4 w-4" /></Link></Button>
@@ -77,9 +78,9 @@ export default function HomePage() {
 
       <section id="modulos" className="mx-auto max-w-7xl px-4 py-16 sm:px-6 md:py-20">
         <div className="max-w-3xl">
-          <p className="text-sm font-semibold text-primary">Módulos comerciales</p>
-          <h2 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">Ocho áreas, una misma operación</h2>
-          <p className="mt-3 text-muted-foreground">Cada módulo mantiene su responsabilidad, permisos y flujos, pero comparte evidencia y contexto con el resto del Mining OS.</p>
+          <p className="text-sm font-semibold text-primary">Software minero modular</p>
+          <h2 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">Ocho áreas, una misma operación minera</h2>
+          <p className="mt-3 text-muted-foreground">Cada módulo mantiene su responsabilidad, permisos y flujos, pero comparte evidencia y contexto con el resto del Mining Operating System.</p>
         </div>
         <div className="mt-10 overflow-hidden rounded-lg border bg-card">
           {modules.map((item) => (
@@ -114,16 +115,17 @@ export default function HomePage() {
 
       <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 md:py-20">
         <div className="max-w-3xl">
-          <p className="text-sm font-semibold text-primary">Minería en Chile</p>
-          <h2 className="mt-2 text-3xl font-bold tracking-tight">Trazabilidad, continuidad operacional y evidencia</h2>
-          <p className="mt-3 leading-relaxed text-muted-foreground">MOTIL está orientado a operaciones mineras que necesitan ordenar información de mina y planta, mantenimiento, personas, seguridad, abastecimiento y control financiero en un entorno único y auditable.</p>
+          <p className="text-sm font-semibold text-primary">Software de gestión minera en Chile</p>
+          <h2 className="mt-2 text-3xl font-bold tracking-tight">Un Mining Operating System para conectar la faena completa</h2>
+          <p className="mt-3 leading-relaxed text-muted-foreground">MOTIL está orientado a operaciones mineras que necesitan ordenar información de mina y planta, mantenimiento, personas, seguridad, abastecimiento y control financiero en un entorno único y auditable. No busca ser sólo otro ERP minero: conecta la operación, la evidencia y la decisión bajo una misma trazabilidad.</p>
+          <Link href="/mineria-chile" className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline">Ver software para minería en Chile <ArrowRight className="h-4 w-4" /></Link>
         </div>
       </section>
 
       <section className="border-t border-border bg-muted/30">
         <div className="mx-auto max-w-4xl px-4 py-16 text-center sm:px-6 md:py-20">
           <h2 className="text-3xl font-bold tracking-tight">MOTIL Mining OS</h2>
-          <p className="mx-auto mt-3 max-w-2xl text-muted-foreground">Accede con las credenciales entregadas por el administrador de tu organización.</p>
+          <p className="mx-auto mt-3 max-w-2xl text-muted-foreground">Sistema operativo para la gestión minera en Chile. Accede con las credenciales entregadas por el administrador de tu organización.</p>
           <Button asChild size="lg" className="mt-7 gap-2"><Link href="/auth/login">Ingresar a MOTIL <ArrowRight className="h-4 w-4" /></Link></Button>
         </div>
       </section>
