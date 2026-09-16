@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import useSWR from 'swr';
-import { AlertTriangle, ArrowRight, CircleDollarSign, Gauge, RefreshCw, Repeat2, Wrench } from 'lucide-react';
+import { AlertTriangle, ArrowRight, CircleDollarSign, Gauge, History, RefreshCw, Repeat2, Wrench } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,6 +18,7 @@ const fetcher = async (url: string) => {
 
 const number = (value: unknown, digits = 1) => value == null ? '—' : new Intl.NumberFormat('es-CL', { maximumFractionDigits: digits }).format(Number(value));
 const money = (value: unknown) => value == null ? '—' : new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(Number(value));
+const year = (date: unknown) => typeof date === 'string' && date.length >= 4 ? date.slice(0, 4) : '—';
 
 export default function MaintenanceEconomicsPage() {
   const { data, error, isLoading, mutate } = useSWR('/api/maintenance/economics', fetcher, { revalidateOnFocus: false });
@@ -26,13 +27,15 @@ export default function MaintenanceEconomicsPage() {
   const topAssets = Array.isArray(data?.topAssets) ? data.topAssets : [];
   const rateAssets = Array.isArray(data?.costPerOperatingHour) ? data.costPerOperatingHour : [];
   const recurring = Array.isArray(data?.recurringCauses) ? data.recurringCauses : [];
+  const historicalAnnual = Array.isArray(data?.historicalAnnual) ? data.historicalAnnual : [];
+  const historicalAssets = Array.isArray(data?.historicalAssets) ? data.historicalAssets : [];
 
   return <div className="mx-auto w-full max-w-[1600px] space-y-6">
     <PageHeader>
       <PageHeaderContent>
         <PageHeaderEyebrow>Mantenimiento · economía y confiabilidad</PageHeaderEyebrow>
         <PageHeaderTitle>Maintenance Economics</PageHeaderTitle>
-        <PageHeaderDescription>Convierte OT, horómetros, causas y costos auditados en decisiones sobre disponibilidad y costo de mantener la operación. Si falta evidencia, MOTIL lo muestra como desconocido en vez de inventar un KPI.</PageHeaderDescription>
+        <PageHeaderDescription>Conecta la historia económica del equipo con OT, horómetros, causas y costos auditados para explicar cuánto cuesta mantener la operación y qué evidencia falta antes de decidir.</PageHeaderDescription>
       </PageHeaderContent>
       <PageHeaderActions>
         <Button variant="outline" onClick={() => void mutate()} disabled={isLoading}><RefreshCw className="h-4 w-4"/>Actualizar</Button>
@@ -45,7 +48,7 @@ export default function MaintenanceEconomicsPage() {
     <section aria-label="Economía de mantenimiento" className="grid gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-2 xl:grid-cols-4">
       <Metric label="OT abiertas" value={summary.open_work_orders} detail={`${summary.unassigned_open_work_orders ?? '—'} sin responsable canónico`}/>
       <Metric label="Bloqueos operacionales" value={summary.operational_blockers} detail="Sólo bloqueos técnicos/operacionales"/>
-      <Metric label="Costo auditado" value={money(summary.audited_total_cost)} detail={`${summary.audited_work_orders ?? '—'} cierres con snapshot`}/>
+      <Metric label="Costo auditado OT" value={money(summary.audited_total_cost)} detail={`${summary.audited_work_orders ?? '—'} cierres con snapshot`}/>
       <Metric label="Costo/hora disponible" value={summary.assets_with_cost_per_operating_hour} detail={`${summary.runtime_usable_assets ?? '—'}/${summary.runtime_assets ?? '—'} activos con runtime utilizable`}/>
     </section>
 
@@ -58,9 +61,45 @@ export default function MaintenanceEconomicsPage() {
       </Link>)}</div></CardContent>
     </Card> : null}
 
+    <Card className="shadow-none">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-lg"><History className="h-5 w-5"/>Historia económica canónica</CardTitle>
+        <CardDescription>Costos reales reconocidos por Finanzas y enlazados al maestro técnico del equipo. Esta historia no se suma ni se mezcla con el costo auditado de cierres de OT.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        {isLoading ? <StatePanel tone="loading" title="Cargando historia económica" className="min-h-40 border-0 bg-transparent"/> : historicalAnnual.length === 0 ? <StatePanel tone="neutral" title="Sin historia económica enlazada" description="MOTIL mantendrá este indicador desconocido hasta contar con evidencia financiera reconciliada por equipo." className="min-h-40 border-0 bg-transparent"/> : <>
+          <div className="grid gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-2 xl:grid-cols-4">
+            <Metric label="Costo histórico reconocido" value={money(summary.historical_actual_cost)} detail={`${number(summary.historical_movements, 0)} movimientos reales`}/>
+            <Metric label="Equipos con historia" value={summary.historical_assets} detail={`${summary.historical_active_assets ?? '—'} activos · ${summary.historical_inactive_assets ?? '—'} históricos`}/>
+            <Metric label="Cobertura temporal" value={`${year(summary.historical_first_date)}–${year(summary.historical_last_date)}`} detail="Fechas observadas en movimientos canónicos"/>
+            <Metric label="Último movimiento" value={summary.historical_last_date || '—'} detail="No implica actividad mecánica ni falla"/>
+          </div>
+
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(340px,0.85fr)]">
+            <div>
+              <p className="mb-3 text-sm font-medium">Evolución anual</p>
+              <div className="divide-y rounded-lg border">{historicalAnnual.map((row: any) => <div key={row.fiscal_year} className="grid grid-cols-[72px_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3">
+                <p className="font-medium tabular-nums">{row.fiscal_year}</p>
+                <p className="text-xs text-muted-foreground">{number(row.asset_count, 0)} equipos · {number(row.movement_count, 0)} movimientos</p>
+                <p className="font-semibold tabular-nums">{money(row.historical_total_cost)}</p>
+              </div>)}</div>
+            </div>
+
+            <div>
+              <p className="mb-3 text-sm font-medium">Mayor costo histórico acumulado</p>
+              <div className="divide-y rounded-lg border">{historicalAssets.map((row: any) => <Link key={row.canonical_asset_id} href={`/dashboard/mantenimiento/equipos/${row.canonical_asset_id}`} className="flex items-center justify-between gap-4 px-4 py-3 hover:bg-muted/40">
+                <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="truncate font-medium">{row.asset_code || row.asset_name || 'Equipo'}</p>{!row.is_active ? <Badge variant="outline">Histórico</Badge> : null}</div><p className="mt-1 text-xs text-muted-foreground">{number(row.movement_count, 0)} movimientos · {year(row.first_cost_date)}–{year(row.last_cost_date)}</p></div>
+                <p className="shrink-0 font-semibold tabular-nums">{money(row.historical_total_cost)}</p>
+              </Link>)}</div>
+            </div>
+          </div>
+        </>}
+      </CardContent>
+    </Card>
+
     <div className="grid gap-6 xl:grid-cols-2">
       <Card className="shadow-none">
-        <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><CircleDollarSign className="h-5 w-5"/>Equipos por costo auditado</CardTitle><CardDescription>Ranking sólo cuando existen cierres auditados. No mezcla OT históricas sin snapshot.</CardDescription></CardHeader>
+        <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><CircleDollarSign className="h-5 w-5"/>Equipos por costo auditado de OT</CardTitle><CardDescription>Ranking sólo cuando existen cierres auditados. No mezcla historia financiera previa sin snapshot de cierre.</CardDescription></CardHeader>
         <CardContent className="p-0">{isLoading ? <StatePanel tone="loading" title="Cargando costos" className="min-h-48 border-0 bg-transparent"/> : topAssets.length === 0 ? <StatePanel tone="neutral" title="Aún no hay base económica auditada" description="Cierra OT operacionales con costo trazable para habilitar ranking por equipo." className="min-h-48 border-0 bg-transparent"/> : <div className="divide-y">{topAssets.map((row: any) => <Link key={row.canonical_asset_id} href={`/dashboard/mantenimiento/equipos/${row.canonical_asset_id}`} className="flex items-center justify-between gap-4 p-4 hover:bg-muted/40"><div><p className="font-medium">{row.asset_code ? `${row.asset_code} · ` : ''}{row.asset_name || 'Equipo'}</p><p className="mt-1 text-xs text-muted-foreground">{row.audited_closures} cierres · detención {number(row.total_downtime_hours)} h</p></div><p className="font-semibold tabular-nums">{money(row.audited_total_cost)}</p></Link>)}</div>}</CardContent>
       </Card>
 
