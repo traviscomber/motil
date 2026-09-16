@@ -1,5 +1,6 @@
 import { Asset360Overview } from '@/components/maintenance/asset-360-overview';
 import { AssetEconomicOperationalHistory } from '@/components/maintenance/asset-economic-operational-history';
+import { AssetEconomicConditionTrend } from '@/components/maintenance/asset-economic-condition-trend';
 import { AssetRelatedOperations } from '@/components/maintenance/asset-related-operations';
 import { CertifiedFinancialSummary } from '@/components/finance/certified-financial-summary';
 import { EntityTimeline } from '@/components/shared/entity-timeline';
@@ -21,6 +22,7 @@ export default async function EquipmentFichaPage({ params }: EquipmentFichaPageP
     <div className="space-y-5">
       <Asset360Overview assetId={assetId} />
       <AssetEconomicOperationalHistory assetId={assetId} />
+      <AssetEconomicConditionTrend assetId={assetId} />
       <AssetRelatedOperations assetId={assetId} />
       <CertifiedFinancialSummary entity="asset" id={assetId} />
       <EntityTimeline entity="asset" id={assetId} />
