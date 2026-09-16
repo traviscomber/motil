@@ -21,17 +21,15 @@ test('controlled memory stays inside the Senior Assistant and uses reversible de
   assert.match(assistantWidget, /showsControlledMemory \? <ControlledMemoryPopover \/> : null/);
 });
 
-test('shared memory is limited to the canonical cross-domain intelligence capabilities', async () => {
+test('governed memory covers integrated and deep specialist domains', async () => {
   const assistantWidget = await readFile(assistantWidgetUrl, 'utf8');
   const memoryUi = await readFile(memoryUiUrl, 'utf8');
 
-  for (const domain of ['executive', 'inventory', 'procurement', 'production', 'finance', 'documents', 'data_health']) {
-    assert.match(assistantWidget, new RegExp(`'${domain}'`));
+  const controlledDomainsBlock = assistantWidget.match(/const controlledMemoryDomains = new Set<string>\(\[([\s\S]*?)\]\);/)?.[1] || '';
+  for (const domain of ['executive', 'inventory', 'procurement', 'production', 'finance', 'documents', 'data_health', 'maintenance', 'geology']) {
+    assert.match(controlledDomainsBlock, new RegExp(`'${domain}'`));
   }
 
-  const controlledDomainsBlock = assistantWidget.match(/const controlledMemoryDomains = new Set<string>\(\[([\s\S]*?)\]\);/)?.[1] || '';
-  assert.doesNotMatch(controlledDomainsBlock, /'maintenance'/);
-  assert.doesNotMatch(controlledDomainsBlock, /'geology'/);
-  assert.doesNotMatch(memoryUi, /maintenance:\s*'/);
-  assert.doesNotMatch(memoryUi, /geology:\s*'/);
+  assert.match(memoryUi, /maintenance:\s*'Mantención'/);
+  assert.match(memoryUi, /geology:\s*'Geología'/);
 });
