@@ -68,6 +68,7 @@ export default function CreateWorkOrderPage() {
   const [canonicalAssetId, setCanonicalAssetId] = useState(initialAssetId);
   const [title, setTitle] = useState(searchParams.get('title') || '');
   const [description, setDescription] = useState(searchParams.get('description') || '');
+  const [requestedMaterials, setRequestedMaterials] = useState('');
   const [workType, setWorkType] = useState(searchParams.get('workType') || 'preventive');
   const [priority, setPriority] = useState(searchParams.get('priority') || 'medium');
   const [scheduledDate, setScheduledDate] = useState(searchParams.get('scheduledDate') || new Date().toISOString().slice(0, 10));
@@ -132,6 +133,7 @@ export default function CreateWorkOrderPage() {
           reviewId: reviewId || null,
           title: title.trim(),
           description: description.trim() || null,
+          requestedMaterials: requestedMaterials.trim() || null,
           workType,
           priority,
           scheduledDate,
@@ -161,7 +163,7 @@ export default function CreateWorkOrderPage() {
           <PageHeaderDescription>
             {reviewId
               ? 'Convierte una condición crítica reportada por Sondaje en una OT trazable. Al crearla, la revisión quedará vinculada automáticamente.'
-              : 'Registra el equipo, el trabajo requerido y la planificación inicial. Los repuestos, horas y costos se agregan durante la ejecución.'}
+              : 'Registra el equipo, el trabajo requerido y la planificación inicial. Los repuestos solicitados quedan trazados sin bloquear la OT por stock durante la puesta en marcha.'}
           </PageHeaderDescription>
         </PageHeaderContent>
         <PageHeaderActions>
@@ -243,6 +245,12 @@ export default function CreateWorkOrderPage() {
           <div className="space-y-2 md:col-span-2">
             <Label htmlFor="description">Descripción y alcance</Label>
             <Textarea id="description" value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Condición observada, diagnóstico inicial y alcance esperado" rows={4} />
+          </div>
+
+          <div className="space-y-2 md:col-span-2">
+            <Label htmlFor="requested-materials">Materiales / insumos solicitados</Label>
+            <Textarea id="requested-materials" value={requestedMaterials} onChange={(event) => setRequestedMaterials(event.target.value)} placeholder="Ej. Filtro de aceite, filtro de combustible y aceite según vale de consumo" rows={3} />
+            <p className="text-xs text-muted-foreground">Queda registrado como evidencia de la OT. Durante la puesta en marcha, la falta de stock no bloquea el trabajo.</p>
           </div>
 
           <div className="space-y-2">

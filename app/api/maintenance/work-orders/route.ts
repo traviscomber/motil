@@ -40,6 +40,8 @@ type WorkOrderPayload = {
   assigned_person_id?: string | null;
   title?: string;
   description?: string | null;
+  requestedMaterials?: string | null;
+  requested_materials?: string | null;
   workType?: string;
   work_type?: string;
   priority?: string;
@@ -116,6 +118,34 @@ async function resolveExecutionPersonId(context: Awaited<ReturnType<typeof getOr
   return { execution: true, personId: person?.id || null };
 }
 
+async function recordRequestedMaterials(
+  context: Awaited<ReturnType<typeof getOrganizationContext>> & { ok: true },
+  workOrder: WorkOrderRow,
+  requestedMaterials: string | null,
+) {
+  const note = requestedMaterials?.trim();
+  if (!note) return;
+
+  const { error } = await context.supabase.from('work_order_events').insert({
+    organization_id: context.organizationId,
+    work_order_id: workOrder.id,
+    canonical_asset_id: workOrder.canonical_asset_id,
+    event_type: 'material_request_recorded',
+    event_at: new Date().toISOString(),
+    actor_id: context.authUserId,
+    source_table: 'maintenance_work_orders',
+    source_record_id: workOrder.id,
+    summary: 'Pedido de materiales registrado sin bloqueo de stock durante puesta en marcha',
+    payload: {
+      requested_materials_note: note,
+      stock_policy: 'informational_non_blocking',
+      quantity_status: 'operator_provided_or_unspecified',
+      sku_status: 'operator_provided_or_unspecified',
+    },
+  });
+  if (error) throw error;
+}
+
 export async function GET(request: NextRequest) {
   const context = await getOrganizationContext(request);
   if (!context.ok) return context.response;
@@ -161,6 +191,7 @@ export async function POST(request: NextRequest) {
     const canonicalAssetId = body.canonicalAssetId || body.canonical_asset_id;
     const reviewId = body.reviewId || body.review_id || null;
     const assignedPersonId = body.assignedPersonId || body.assigned_person_id || null;
+    const requestedMaterials = body.requestedMaterials || body.requested_materials || null;
     if (!canonicalAssetId) return NextResponse.json({ error: 'Selecciona un activo canónico' }, { status: 400 });
     if (!body.title?.trim()) return NextResponse.json({ error: 'Describe brevemente el trabajo a realizar' }, { status: 400 });
     if (!context.authUserId) {
@@ -217,6 +248,7 @@ export async function POST(request: NextRequest) {
         .eq('id', result.work_order_id)
         .single();
       if (linkedOrderError) throw linkedOrderError;
+      await recordRequestedMaterials(context, linkedOrder as WorkOrderRow, requestedMaterials);
 
       return NextResponse.json({
         data: mapWorkOrder(linkedOrder as WorkOrderRow, asset as CanonicalAssetRow),
@@ -261,6 +293,7 @@ export async function POST(request: NextRequest) {
       updated_at: new Date().toISOString(),
     }).select('*').single();
     if (error) throw error;
+    await recordRequestedMaterials(context, data as WorkOrderRow, requestedMaterials);
     return NextResponse.json({ data: mapWorkOrder(data as WorkOrderRow, asset as CanonicalAssetRow) }, { status: 201 });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'No se pudo crear la orden de trabajo';
