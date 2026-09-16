@@ -156,6 +156,8 @@ type SpecialistDomain = keyof typeof specialistConfig;
 
 const controlledMemoryDomains = new Set<string>([
   'executive',
+  'maintenance',
+  'geology',
   'inventory',
   'procurement',
   'production',

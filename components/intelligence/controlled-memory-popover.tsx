@@ -13,6 +13,8 @@ type ControlledMemory = {
 
 const domainCopy: Record<string, string> = {
   executive: 'Ejecutivo',
+  maintenance: 'Mantención',
+  geology: 'Geología',
   inventory: 'Inventario',
   procurement: 'Compras',
   production: 'Producción',
