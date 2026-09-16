@@ -5,6 +5,8 @@ import { getOrganizationContext } from '@/lib/api/organization-context';
 import { MODULE_KEYS, requireModuleAccess } from '@/lib/api/module-access';
 
 const closedStatuses = ['completed', 'closed', 'cancelled', 'canceled'];
+const REPORT_PAGE_SIZE = 1000;
+const MAX_REPORT_ROWS = 20000;
 
 const numeric = (value: unknown) => Number(value || 0);
 const text = (value: unknown) => String(value ?? '').trim();
@@ -12,6 +14,24 @@ const hasOperationalSignal = (value: unknown) => {
   const normalized = text(value).toLowerCase();
   return Boolean(normalized) && !['0', 'no', 'n/a', 'na', '-'].includes(normalized);
 };
+
+async function loadDrillingReports(supabase: any, organizationId: string) {
+  const rows: any[] = [];
+  for (let offset = 0; offset < MAX_REPORT_ROWS; offset += REPORT_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from('production_drilling_source_reports')
+      .select('canonical_asset_id,operation_date,drilled_meters,equipment_status_raw,equipment_without_crew_raw,power_outage_raw,water_shortage_raw')
+      .eq('organization_id', organizationId)
+      .not('canonical_asset_id', 'is', null)
+      .order('operation_date', { ascending: true })
+      .range(offset, offset + REPORT_PAGE_SIZE - 1);
+    if (error) throw error;
+    const page = data || [];
+    rows.push(...page);
+    if (page.length < REPORT_PAGE_SIZE) return { rows, truncated: false };
+  }
+  return { rows, truncated: true };
+}
 
 export async function GET(request: NextRequest) {
   const access = await requireModuleAccess(request, MODULE_KEYS.MANT_GERENCIAL);
@@ -58,16 +78,10 @@ export async function GET(request: NextRequest) {
         .select('canonical_asset_id,asset_code,asset_name,asset_category,is_active,fiscal_year,movement_count,historical_total_cost,first_cost_date,last_cost_date')
         .eq('organization_id', context.organizationId)
         .order('fiscal_year', { ascending: true }),
-      context.supabase
-        .from('production_drilling_source_reports')
-        .select('canonical_asset_id,operation_date,drilled_meters,equipment_status_raw,equipment_without_crew_raw,power_outage_raw,water_shortage_raw')
-        .eq('organization_id', context.organizationId)
-        .not('canonical_asset_id', 'is', null)
-        .order('operation_date', { ascending: true })
-        .limit(10000),
+      loadDrillingReports(context.supabase, context.organizationId),
     ]);
 
-    const error = costResult.error || reliabilityResult.error || openResult.error || runtimeResult.error || assetResult.error || recurrenceResult.error || historyResult.error || drillingResult.error;
+    const error = costResult.error || reliabilityResult.error || openResult.error || runtimeResult.error || assetResult.error || recurrenceResult.error || historyResult.error;
     if (error) throw error;
 
     const workOrders = openResult.data || [];
@@ -123,7 +137,7 @@ export async function GET(request: NextRequest) {
     let firstObservedAt: string | null = null;
     let lastObservedAt: string | null = null;
 
-    for (const row of drillingResult.data || []) {
+    for (const row of drillingResult.rows) {
       const assetId = String(row.canonical_asset_id || '');
       const operationDate = String(row.operation_date || '');
       const year = new Date(`${operationDate}T00:00:00Z`).getUTCFullYear();
@@ -224,15 +238,16 @@ export async function GET(request: NextRequest) {
       historical_inactive_assets: historicalAssets.filter((row) => !row.is_active).length,
       historical_first_date: historicalFirstDate,
       historical_last_date: historicalLastDate,
-      observed_condition_reports: (drillingResult.data || []).length,
+      observed_condition_reports: drillingResult.rows.length,
       observed_condition_assets: observedAssetMap.size,
       observed_condition_first_date: firstObservedAt,
       observed_condition_last_date: lastObservedAt,
+      observed_condition_truncated: drillingResult.truncated,
     };
 
     const readiness = {
       historical_economics_ready: summary.historical_movements > 0,
-      observed_condition_ready: summary.observed_condition_reports > 0,
+      observed_condition_ready: summary.observed_condition_reports > 0 && !summary.observed_condition_truncated,
       economics_ready: summary.audited_work_orders > 0,
       reliability_ready: summary.assets_with_audited_closures > 0,
       rate_metrics_ready: summary.assets_with_cost_per_operating_hour > 0,
@@ -242,6 +257,7 @@ export async function GET(request: NextRequest) {
     const actions = [] as Array<{ key: string; severity: 'critical' | 'warning' | 'info'; title: string; evidence: string; href: string }>;
     if (summary.operational_blockers > 0) actions.push({ key: 'blockers', severity: 'critical', title: 'Destrabar OT con bloqueo operacional', evidence: `${summary.operational_blockers} OT abiertas con bloqueo técnico u operacional`, href: '/dashboard/mantenimiento/ordenes-trabajo/cierre' });
     if (summary.unassigned_open_work_orders > 0) actions.push({ key: 'assignment', severity: 'warning', title: 'Asignar responsables canónicos', evidence: `${summary.unassigned_open_work_orders} OT abiertas sin persona canónica asignada`, href: '/dashboard/mantenimiento/ordenes-trabajo' });
+    if (summary.observed_condition_truncated) actions.push({ key: 'condition-coverage', severity: 'warning', title: 'Revisar cobertura de condición observada', evidence: `La lectura alcanzó el límite de ${MAX_REPORT_ROWS.toLocaleString('es-CL')} reportes; MOTIL no presenta esa cobertura como completa.`, href: '/dashboard/mantenimiento/economia' });
     if (!readiness.economics_ready) actions.push({ key: 'audit', severity: 'info', title: 'Crear la primera base económica auditada', evidence: 'Existe historia financiera, pero aún faltan cierres modernos con snapshot de costo para explicar causas y ejecución.', href: '/dashboard/mantenimiento/ordenes-trabajo/cierre' });
     if (!readiness.rate_metrics_ready) actions.push({ key: 'runtime', severity: 'info', title: 'Construir cobertura de horómetros', evidence: `${summary.runtime_usable_assets}/${summary.runtime_assets} activos tienen horas observadas utilizables; todavía no hay costo/hora defendible.`, href: '/dashboard/mantenimiento/horometros' });
 
@@ -257,6 +273,7 @@ export async function GET(request: NextRequest) {
         asset_count: summary.observed_condition_assets,
         first_report_at: firstObservedAt,
         last_report_at: lastObservedAt,
+        truncated: drillingResult.truncated,
         annual: fleetAnnual.filter((row) => row.observed_report_count > 0),
       },
       fleetAnnual,
