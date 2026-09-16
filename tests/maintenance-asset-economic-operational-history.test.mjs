@@ -37,9 +37,12 @@ test('asset history separates imported economics, observed use and audited cause
 
 test('observed condition is not promoted to mechanical diagnosis', () => {
   assert.match(api, /external_constraint_reports/);
-  assert.match(api, /agua, energía o falta de dotación/i);
+  assert.match(api, /equipment_without_crew_raw/);
+  assert.match(api, /power_outage_raw/);
+  assert.match(api, /water_shortage_raw/);
   assert.match(api, /sirven para priorizar revisión, no para afirmar causa mecánica/);
   assert.match(panel, /Restricciones externas/);
+  assert.match(panel, /Agua, energía o falta de dotación reportadas/);
   assert.match(panel, /no se clasifican automáticamente como falla mecánica/);
   assert.match(panel, /No usar todavía para costo\/hora o MTBF por horas/);
 });
