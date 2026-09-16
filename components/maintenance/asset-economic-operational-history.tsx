@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import useSWR from 'swr';
-import { AlertTriangle, ArrowRight, CircleDollarSign, RefreshCw, ShieldCheck, Wrench } from 'lucide-react';
+import { AlertTriangle, ArrowRight, CircleDollarSign, RefreshCw, ShieldCheck, Wrench, type LucideIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -69,6 +69,7 @@ export function AssetEconomicOperationalHistory({ assetId }: { assetId: string }
   const reliability = data.auditedReliability;
   const topYear = [...historical.annual].sort((a, b) => b.recognized_clp - a.recognized_clp)[0] || null;
   const signalCount = data.signals.length;
+  const annualMax = Math.max(...historical.annual.map((item) => item.recognized_clp), 1);
 
   return <Card className="shadow-none">
     <CardHeader className="gap-4 border-b sm:flex-row sm:items-start sm:justify-between">
@@ -97,8 +98,7 @@ export function AssetEconomicOperationalHistory({ assetId }: { assetId: string }
           </div>
           <div className="divide-y">
             {historical.annual.length === 0 ? <p className="p-4 text-sm text-muted-foreground">Este equipo todavía no tiene historia económica vinculada.</p> : historical.annual.map((row) => {
-              const max = Math.max(...historical.annual.map((item) => item.recognized_clp), 1);
-              const width = Math.max(3, Math.round((row.recognized_clp / max) * 100));
+              const width = Math.max(3, Math.round((row.recognized_clp / annualMax) * 100));
               return <div key={row.year} className="grid gap-3 px-4 py-3 md:grid-cols-[72px_minmax(0,1fr)_150px] md:items-center">
                 <div><p className="font-medium tabular-nums">{row.year}</p><p className="text-xs text-muted-foreground">{number(row.event_count)} eventos</p></div>
                 <div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full bg-foreground/70" style={{ width: `${width}%` }} /></div>
@@ -156,6 +156,6 @@ function EvidenceRow({ label, value }: { label: string; value: string }) {
   return <div className="flex items-center justify-between gap-4 border-b pb-3 last:border-0 last:pb-0"><span className="text-muted-foreground">{label}</span><span className="font-medium tabular-nums text-right">{value}</span></div>;
 }
 
-function TrustRule({ icon: Icon, title, text }: { icon: typeof ShieldCheck; title: string; text: string }) {
+function TrustRule({ icon: Icon, title, text }: { icon: LucideIcon; title: string; text: string }) {
   return <div><div className="flex items-center gap-2 font-medium text-foreground"><Icon className="h-4 w-4"/>{title}</div><p className="mt-1 leading-5">{text}</p></div>;
 }
