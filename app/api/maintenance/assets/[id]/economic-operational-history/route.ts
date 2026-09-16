@@ -182,7 +182,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const technicalIdentityFields = [assetResult.data.manufacturer, assetResult.data.model, assetResult.data.serial_number];
     const technicalIdentityKnown = technicalIdentityFields.filter(Boolean).length;
     const rootCauseCoverage = Number(reliability?.audited_closures || 0) > 0
-      ? Math.round((Number(reliability?.closures_with_root_cause || 0) / Number(reliability.audited_closures)) * 100)
+      ? Math.round((Number(reliability?.closures_with_root_cause || 0) / Number(reliability?.audited_closures || 1)) * 100)
       : null;
 
     const signals: Array<{ key: string; severity: 'high' | 'medium' | 'info'; fact: string; next_action: string; href: string }> = [];
