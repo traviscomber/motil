@@ -16,6 +16,16 @@ test('fleet economics keeps historical, observed and audited evidence tenant sco
   assert.match(api, /observed_condition_ready/);
 });
 
+test('fleet condition evidence is paged and partial coverage is never presented as complete', () => {
+  assert.match(api, /REPORT_PAGE_SIZE = 1000/);
+  assert.match(api, /MAX_REPORT_ROWS = 20000/);
+  assert.match(api, /loadDrillingReports/);
+  assert.match(api, /\.range\(offset, offset \+ REPORT_PAGE_SIZE - 1\)/);
+  assert.match(api, /observed_condition_truncated/);
+  assert.match(api, /MOTIL no presenta esa cobertura como completa/);
+  assert.match(api, /truncated: drillingResult\.truncated/);
+});
+
 test('fleet economics preserves canonical asset identity and does not infer causality', () => {
   assert.match(api, /canonical_asset_id/);
   assert.match(api, /Historia financiera reconocida y vinculada por canonical_asset_id/);
