@@ -40,18 +40,7 @@ function daysSince(dateValue?: string | null) {
 }
 
 function normalize(value: unknown) {
-  return String(value || '')
-    .trim()
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_|_$/g, '');
-}
-
-function canSeeAnyPending(role?: string | null) {
-  const normalizedRole = normalize(role);
-  return ['superadmin', 'admin', 'manager', 'gerente_general'].includes(normalizedRole);
+  return String(value || '').trim().toLowerCase();
 }
 
 type DocumentApproval = {
@@ -112,8 +101,7 @@ function getPendingApproval(doc: DocumentRecord, role: string | null | undefined
     const assignedTo = String(approval.assigned_to || '');
     const roleMatches = role ? approvalRole === normalize(role) : false;
     const userMatches = userId ? assignedTo === userId : false;
-    const executiveVisibility = canSeeAnyPending(role);
-    return approvalStatus === 'pending' && (roleMatches || userMatches || executiveVisibility);
+    return approvalStatus === 'pending' && (roleMatches || userMatches);
   });
 }
 
