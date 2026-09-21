@@ -187,12 +187,7 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false });
 
     if (status) {
-      const normalizedStatus = normalizeDocumentStatus(status);
-      if (status === 'pending') {
-        query = query.in('status', ['submitted', 'under_review', 'pending']);
-      } else {
-        query = query.eq('status', normalizedStatus);
-      }
+      query = query.eq('status', status);
     }
 
     if (mineOnly) {
