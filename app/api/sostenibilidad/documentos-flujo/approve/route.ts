@@ -14,23 +14,6 @@ function getSupabaseClient() {
   return createClient(supabaseUrl, supabaseServiceKey);
 }
 
-function normalizeRole(value: unknown) {
-  return String(value || '')
-    .trim()
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_|_$/g, '');
-}
-
-function canApproveRole(requiredRole: unknown, userRole: unknown) {
-  const required = normalizeRole(requiredRole);
-  const current = normalizeRole(userRole);
-  if (['superadmin', 'admin', 'manager'].includes(current)) return true;
-  return required === current;
-}
-
 interface ApprovalRequest {
   document_id: string;
   approval_level: number;
@@ -70,7 +53,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Approval record not found' }, { status: 404 });
     }
 
-    if (!canApproveRole(approval.required_role, user_role)) {
+    if (approval.required_role !== user_role) {
       return NextResponse.json({ error: 'Insufficient permissions to approve at this level' }, { status: 403 });
     }
 
