@@ -41,16 +41,6 @@ import { EeccFormDialog, type EeccRow } from '@/components/eecc/eecc-form-dialog
 import { EeccImportXls } from '@/components/eecc/eecc-import-xls';
 import { useModuleAccess } from '@/hooks/use-module-access';
 
-function complianceBadge(status?: string, approvedOn?: string) {
-  if (status === 'aprobado') {
-    return <Badge variant="secondary">Aprobado{approvedOn ? ` · ${new Date(`${approvedOn}T12:00:00`).toLocaleDateString('es-CL')}` : ''}</Badge>;
-  }
-  if (status === 'pendiente') return <Badge variant="outline">Pendiente</Badge>;
-  if (status === 'rechazado') return <Badge variant="destructive">Rechazado</Badge>;
-  if (status === 'vencido') return <Badge variant="outline">Vencido</Badge>;
-  return <span className="text-xs text-muted-foreground">Sin registro</span>;
-}
-
 const fetcher = async (url: string) => {
   const response = await fetch(url, { credentials: 'include' });
   const payload = await response.json().catch(() => null);
@@ -230,8 +220,6 @@ export default function EeccPage() {
                     <TableHead>RUT</TableHead>
                     <TableHead>Representante</TableHead>
                     <TableHead>Correo</TableHead>
-                    <TableHead>F30</TableHead>
-                    <TableHead>F30-1</TableHead>
                     <TableHead>Estado</TableHead>
                     {canManage && <TableHead className="text-right">Acciones</TableHead>}
                   </TableRow>
@@ -253,8 +241,6 @@ export default function EeccPage() {
                           ''
                         )}
                       </TableCell>
-                      <TableCell>{complianceBadge(item.f30_status, item.f30_approved_on)}</TableCell>
-                      <TableCell>{complianceBadge(item.f301_status, item.f301_approved_on)}</TableCell>
                       <TableCell>
                         {item.is_active ? (
                           <Badge variant="secondary">Activa</Badge>
