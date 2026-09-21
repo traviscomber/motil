@@ -37,6 +37,8 @@ async function ensureDocumentSlots(supabase: ReturnType<typeof getSupabaseServer
     'Recepcion de conductores por reglamento interno',
     'Programa de supervision a cargo personal',
     'Matriz de Identificacion de Peligros (MIPER)',
+    'F30 - Certificado de antecedentes laborales y previsionales',
+    'F30-1 - Certificado de cumplimiento de obligaciones laborales y previsionales',
   ];
 
   const { data: existingSlots, error: slotsLookupError } = await supabase
