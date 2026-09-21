@@ -11,10 +11,6 @@ export interface EeccRecord {
   notes: string;
   created_at: string;
   updated_at: string;
-  f30_status: string;
-  f30_approved_on: string;
-  f301_status: string;
-  f301_approved_on: string;
 }
 
 export interface CreateEeccInput {
@@ -39,7 +35,7 @@ export interface UpdateEeccInput {
   notes?: string;
 }
 
-function mapEecc(row: any, compliance?: Record<string, any>): EeccRecord {
+function mapEecc(row: any): EeccRecord {
   return {
     id: row.id,
     name: row.name || '',
@@ -51,10 +47,6 @@ function mapEecc(row: any, compliance?: Record<string, any>): EeccRecord {
     notes: row.notes || '',
     created_at: row.created_at,
     updated_at: row.updated_at,
-    f30_status: compliance?.F30?.status || 'sin_registro',
-    f30_approved_on: compliance?.F30?.approved_on || '',
-    f301_status: compliance?.['F30-1']?.status || 'sin_registro',
-    f301_approved_on: compliance?.['F30-1']?.approved_on || '',
   };
 }
 
@@ -85,29 +77,8 @@ export async function listEeccForOrganization(
     throw error;
   }
 
-  const eeccRows = data || [];
-  const ids = eeccRows.map((row: any) => row.id);
-  const complianceByEecc: Record<string, Record<string, any>> = {};
-
-  if (ids.length > 0) {
-    const { data: compliance, error: complianceError } = await supabase
-      .from('eecc_compliance_documents')
-      .select('eecc_id,document_type,status,approved_on')
-      .eq('organization_id', organizationId)
-      .in('eecc_id', ids);
-
-    if (complianceError) {
-      throw complianceError;
-    }
-
-    for (const row of compliance || []) {
-      complianceByEecc[row.eecc_id] ||= {};
-      complianceByEecc[row.eecc_id][row.document_type] = row;
-    }
-  }
-
   return {
-    eecc: eeccRows.map((row: any) => mapEecc(row, complianceByEecc[row.id])),
+    eecc: (data || []).map(mapEecc),
     total: count || 0,
   };
 }
