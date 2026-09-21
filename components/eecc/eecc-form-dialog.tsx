@@ -25,10 +25,6 @@ export interface EeccRow {
   phone: string;
   is_active: boolean;
   notes: string;
-  f30_status?: string;
-  f30_approved_on?: string;
-  f301_status?: string;
-  f301_approved_on?: string;
 }
 
 interface EeccFormDialogProps {
