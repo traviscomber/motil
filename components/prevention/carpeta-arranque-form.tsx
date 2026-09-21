@@ -31,6 +31,8 @@ const DOCUMENTOS_REQUERIDOS = [
   'Recepción de conductores por reglamento interno',
   'Programa de supervisión a cargo de personal',
   'Matriz de Identificación de Peligros (MIPER)',
+  'F30 - Certificado de antecedentes laborales y previsionales',
+  'F30-1 - Certificado de cumplimiento de obligaciones laborales y previsionales',
 ];
 
 type SlotStatus = 'idle' | 'uploading' | 'done' | 'error';
