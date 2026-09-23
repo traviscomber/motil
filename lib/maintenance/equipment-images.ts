@@ -48,9 +48,96 @@ const EXACT_EQUIPMENT_IMAGES: Array<{
     sourceDomain: 'machineryscene.com',
     note: 'Referencia 12/10 Warman de la misma familia y tamaño; requiere validación contra la placa del activo.',
   },
+
+  {
+    keywords: ['volkswagen delivery', 'vw delivery'],
+    image: 'https://i0.wp.com/minutomotor.com.ar/wp-content/uploads/2017/09/VolkswagenDelivery-02.jpg?resize=829%2C548&ssl=1',
+    sourceUrl: 'https://www.camionesybusesvolkswagen.cl/camiones/delivery-9-180/',
+    sourceDomain: 'camionesybusesvolkswagen.cl',
+    note: 'Referencia visual de la familia Volkswagen Delivery; validar carrocería y versión exacta del activo.',
+  },
+  {
+    keywords: ['atlas copco qas 275', 'qas 275'],
+    image: 'https://mediacache4.ep.dk/v-638458977531834839/71/af/2382-32b1-4330-9717-502097bbe444/fs10013003_1.jpg',
+    sourceUrl: 'https://www.ep.dk/maskiner/generatorer/atlas-copco-generatorer/fs10013003-atlas-copco-qas-275-generator',
+    sourceDomain: 'ep.dk',
+    note: 'Referencia visual del generador Atlas Copco QAS 275.',
+  },
+  {
+    keywords: ['weichai 70 kva', 'weichai 70kva'],
+    image: 'https://ac-landing-pages-user-uploads-production.s3.amazonaws.com/0000058194/b9fb77d2-41f0-4810-8b9a-f1662bb19613.png',
+    sourceUrl: 'https://landing.weichaichile.cl/grupo_electrogeno',
+    sourceDomain: 'weichaichile.cl',
+    note: 'Referencia visual de grupo electrógeno Weichai PowerGen 70 kVA.',
+  },
+  {
+    keywords: ['weichai 33 kva', 'weichai 33kva'],
+    image: 'https://www.agsa.com/cdn/shop/files/Generador33kVAWeichai_grande.png?v=1753802337',
+    sourceUrl: 'https://www.agsa.com/products/generador-de-energia-33kva-a-diesel',
+    sourceDomain: 'agsa.com',
+    note: 'Referencia visual de grupo electrógeno Weichai 33 kVA.',
+  },
+  {
+    keywords: ['grindex matador'],
+    image: 'https://dcdn-us.mitiendanube.com/stores/006/493/392/products/1-9_matador-9a846f292e63da739117664299426610-1024-1024.webp',
+    sourceUrl: 'https://ziomipompe.cl/productos/bomba-sumergible-grindex-matador-n-6-25hp-mineria/',
+    sourceDomain: 'ziomipompe.cl',
+    note: 'Referencia visual Grindex Matador N 25 HP; validar placa antes de tratarla como unidad exacta.',
+  },
+  {
+    keywords: ['bertolini ca 1029', 'bomba ca 1029', 'ca 1029'],
+    image: 'https://cdn11.bigcommerce.com/s-c1nawcms42/images/stencil/1280x1280/products/199/875/AMAZON_CA1029_02__61684.1663780649.jpg?c=1',
+    sourceUrl: 'https://www.canpump.com/bertolini-ca-1029-1015-psi-28-9-us-gpm-35-mm-shaft-hi-pressure-pump/',
+    sourceDomain: 'canpump.com',
+    note: 'Referencia visual del modelo Bertolini CA 1029; validar fabricante de la unidad instalada.',
+  },
+  {
+    keywords: ['caterpillar 246d', 'cat 246d', 'minicargador 246d'],
+    image: 'https://image.made-in-china.com/2f0j00hNlkFYbBroqG/Caterpillar-Cat-246D-Skid-Steer-Loader-Used-Small-Mini-Loader-Original-Good-Condition.jpg',
+    sourceUrl: 'https://yuyimachinery.en.made-in-china.com/product/qTjRkdByMahM/China-Caterpillar-Cat-246D-Skid-Steer-Loader-Used-Small-Mini-Loader-Original-Good-Condition.html',
+    sourceDomain: 'made-in-china.com',
+    note: 'Referencia visual del minicargador Caterpillar 246D; no acredita que sea la unidad física.',
+  },
+  {
+    keywords: ['espa vertical uv 8', 'espa vertical', 'bomba espa'],
+    image: 'https://acdn.mitiendanube.com/stores/003/451/871/products/multi-1184e7e3acab0cab9217178702853158-640-0.jpg',
+    sourceUrl: 'https://www.tecnicaser.mx/us/products/espa-multi45-vertical-multistage-pump-3-hp-220-440v-3stage/',
+    sourceDomain: 'tecnicaser.mx',
+    note: 'Referencia visual de bomba vertical multietapas ESPA; no corresponde necesariamente al modelo UV 8.',
+  },
+  {
+    keywords: ['versamatic', 'versa-matic'],
+    image: 'https://static.grainger.com/rp/s/is/image/Grainger/4GGF5_AS01',
+    sourceUrl: 'https://www.grainger.com/product/VERSA-MATIC-Double-Diaphragm-Pump-Air-4GGF5',
+    sourceDomain: 'grainger.com',
+    note: 'Referencia visual de bomba neumática de doble diafragma Versa-Matic; validar tamaño y material.',
+  },
+  {
+    keywords: ['grindex m 36', 'grindex 15hp', 'grindex 15 hp', 'bomba grindex'],
+    image: 'https://schmidts.store/cdn/shop/files/b75f3030d71cf0ee9b7b1b7979d6c2f1.jpg?v=1752695071&width=875',
+    sourceUrl: 'https://schmidts.store/collections/all',
+    sourceDomain: 'schmidts.store',
+    note: 'Referencia visual de familia de bombas sumergibles Grindex; validar modelo exacto.',
+  },
 ];
 
 const EQUIPMENT_IMAGE_MAP: { keywords: string[]; image: string; note: string }[] = [
+
+  {
+    keywords: ['bomba leader', 'leader 1029', 'leader 1022', 'leader 1025'],
+    image: 'https://www.mwleidingsystemen.nl/resolve_product_image/600x600/product-images/centrifugaalpomp-inoxplus-230-3-waaiers-230v-800w/6324318d97c9f2871575d5798e9b51dd.png',
+    note: 'Imagen referencial de familia Leader Pumps; el modelo exacto debe validarse en placa.',
+  },
+  {
+    keywords: ['bomba sumergible lapiz', 'bomba sumergible'],
+    image: 'https://img.directindustry.com/images_di/photo-g/113455-3985605.jpg',
+    note: 'Imagen referencial de una bomba sumergible industrial; no representa marca o modelo confirmado.',
+  },
+  {
+    keywords: ['ventilador 30 hp', 'ventilador 7,5 hp', 'ventilador 7.5 hp', 'ventilador minero'],
+    image: 'https://img1.goepe.com/2025056/0_1748352261_1513.png',
+    note: 'Imagen referencial de ventilador axial industrial/minero; potencia y configuración pueden variar.',
+  },
   {
     keywords: ['camioneta', 'pickup', 'hilux', 'ranger', 'l200', 'amarok', 'camionetas'],
     image: '/equipment/camioneta-4x4.png',
