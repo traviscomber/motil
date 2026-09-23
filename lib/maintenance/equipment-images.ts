@@ -14,6 +14,34 @@ const EXACT_EQUIPMENT_IMAGES: Array<{
   note: string;
 }> = [
   {
+    keywords: ['atlas copco v-900', 'atlas copco v900', 'compresor atlas copco v-900'],
+    image: 'https://image.made-in-china.com/203f0j00OGQeoAWEZtbw/Atlas-V900-Copco-Diesel-Portable-Screw-Air-Compressor-for-Mining-Quarry-High-Pressure-25bar-360psi-800-Cfm-950cfm-Atlascopco.webp',
+    sourceUrl: 'https://www.atlascopco.com/es-cl/construction-equipment/campaigns-energy/compresor-atlas-copco-v900',
+    sourceDomain: 'atlascopco.com',
+    note: 'Referencia visual del Atlas Copco V900; no acredita que sea la unidad física registrada.',
+  },
+  {
+    keywords: ['atlas copco xas-97', 'atlas copco xas 97', 'xas-97'],
+    image: 'https://www.truck1.co.in/img/xxl/2684/Atlas-Copco-XAS-97-DD-Belgium_2684_8538735924094.jpg',
+    sourceUrl: 'https://www.truck1.co.in/construction-machinery/air-compressors/atlas-copco-xas-97-dd-a7968032.html',
+    sourceDomain: 'truck1.co.in',
+    note: 'Referencia visual del Atlas Copco XAS 97; no acredita que sea la unidad física registrada.',
+  },
+  {
+    keywords: ['doosan p-600', 'doosan p600', 'compresor doosan p-600'],
+    image: 'https://static-data2.manualslib.com/product-images/037/2335314/doosan-p600wjd-t3-air-compressor.jpg',
+    sourceUrl: 'https://www.manualslib.com/manual/2335314/Doosan-P600wjd-T3.html',
+    sourceDomain: 'manualslib.com',
+    note: 'Referencia visual del Doosan P600; no acredita que sea la unidad física registrada.',
+  },
+  {
+    keywords: ['doosan xp-825', 'doosan xp825', 'xp-825'],
+    image: 'https://swiftequipment.com/Images/Air_Compressor/101187/FullSizeR3.large.jpg',
+    sourceUrl: 'https://swiftequipment.com/low-hours-doosan-xp825wcu-t3-diesel-air-compressor-p-101187.html',
+    sourceDomain: 'swiftequipment.com',
+    note: 'Referencia visual del Doosan XP825; no acredita que sea la unidad física registrada.',
+  },
+  {
     keywords: ['cargador frontal cat 938 (', 'cat 938 ('],
     image: 'https://media.sandhills.com/img.axd?c=True&checksum=o9Ho91Uvqt5zceYZ4i9g9SdCV%2BgxtdGJGMmiPgbb3v0%3D&ext=&h=460&id=9072143995&lp=&p=&rt=0&rwl=False&sz=Max&t=&w=614&wid=4326182721&wt=False',
     sourceUrl: 'https://www.cat.com/es_ES/products/new/equipment/wheel-loaders/small-wheel-loaders/123480.html',
