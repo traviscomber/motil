@@ -14,6 +14,34 @@ const EXACT_EQUIPMENT_IMAGES: Array<{
   note: string;
 }> = [
   {
+    keywords: ['cargador frontal cat 938 (', 'cat 938 ('],
+    image: 'https://media.sandhills.com/img.axd?c=True&checksum=o9Ho91Uvqt5zceYZ4i9g9SdCV%2BgxtdGJGMmiPgbb3v0%3D&ext=&h=460&id=9072143995&lp=&p=&rt=0&rwl=False&sz=Max&t=&w=614&wid=4326182721&wt=False',
+    sourceUrl: 'https://www.cat.com/es_ES/products/new/equipment/wheel-loaders/small-wheel-loaders/123480.html',
+    sourceDomain: 'cat.com',
+    note: 'Referencia visual de Caterpillar 938; no acredita que sea la unidad física registrada.',
+  },
+  {
+    keywords: ['atlas copco qas 500', 'atlas qas 500', 'qas 500 vd'],
+    image: 'https://5lrorwxhmjmnrik.leadongcdn.com/cloud/ijBqjKnpRiiSpkolmliq/Silent-Generator-200KVA-625KVA-460-460.jpg',
+    sourceUrl: 'https://www.atlascopco.com/es-cl/construction-equipment/products/power-diesel-generators/mobile-row/qas',
+    sourceDomain: 'atlascopco.com',
+    note: 'Referencia visual del Atlas Copco QAS 500; no acredita que sea la unidad física registrada.',
+  },
+  {
+    keywords: ['atlas qas 325', 'atlas copco qas 325', 'qas 325 kva'],
+    image: 'https://www.smtsweden.com/wp-content/uploads/2019/06/17041_19.jpg',
+    sourceUrl: 'https://www.atlascopco.com/es-cl/construction-equipment/products/power-diesel-generators/mobile-row/qas',
+    sourceDomain: 'atlascopco.com',
+    note: 'Referencia visual del Atlas Copco QAS 325; no acredita que sea la unidad física registrada.',
+  },
+  {
+    keywords: ['cummins 500 kva', 'generador cummins 500'],
+    image: 'https://agrotorg.net/imgs/board/68/580268-10.jpg',
+    sourceUrl: 'https://agrotorg.net/ru/board/m-580268/cummins-c500-d5q-500-kva-400-kw-2025-rik/',
+    sourceDomain: 'agrotorg.net',
+    note: 'Referencia visual de generador Cummins C500 de 500 kVA; validar versión exacta del activo.',
+  },
+  {
     keywords: ['cat 950 gc', 'caterpillar 950 gc', 'cargador frontal cat 950 gc'],
     image: 'https://s7d2.scene7.com/is/image/Caterpillar/C844066',
     sourceUrl: 'https://www.cat.com/en_US/products/new/equipment/wheel-loaders/medium-wheel-loaders/1000029532.html',
