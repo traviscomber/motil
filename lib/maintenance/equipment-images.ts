@@ -14,6 +14,55 @@ const EXACT_EQUIPMENT_IMAGES: Array<{
   note: string;
 }> = [
   {
+    keywords: ['ghh mk-a20', 'dumper ghh, modelo mk-a20', 'mk-a20'],
+    image: 'https://www.tasimacilar.com/d/other/2024/05/07/1715003791-ghh-mk-a20-4.jpg',
+    sourceUrl: 'https://ghhmm.co.za/mk-a20/',
+    sourceDomain: 'ghhmm.co.za',
+    note: 'Referencia visual del modelo GHH MK-A20; no acredita que sea la unidad física registrada.',
+  },
+  {
+    keywords: ['jcb 533-105t', 'jcb 533-105', 'manipulador jcb 533-105t'],
+    image: 'https://d1ssu070pg2v9i.cloudfront.net/pex/morrisleslie/2025/09/09140312/MLP18675-4.jpeg',
+    sourceUrl: 'https://www.morrisleslie.com/product/2023-jcb-533-105/',
+    sourceDomain: 'morrisleslie.com',
+    note: 'Referencia visual del modelo JCB 533-105; no acredita que sea la unidad física registrada.',
+  },
+  {
+    keywords: ['boomer 281', 'atlas copco, boomer 281', 'atlas copco boomer 281'],
+    image: 'https://d9z1tpn605xsl.cloudfront.net/uploads/gallery/image/25273280/2004_Atlas_Copco_RB_281_pic_1_new.jpg',
+    sourceUrl: 'https://www.plantandequipment.com/equipment-items/2004-atlas-copco-boomer-281',
+    sourceDomain: 'plantandequipment.com',
+    note: 'Referencia visual del modelo Atlas Copco Boomer 281; no acredita que sea la unidad física registrada.',
+  },
+  {
+    keywords: ['simba h-1253', 'simba h1253', 'atlas copco, simba h-1253'],
+    image: 'https://techinfo.epiroc.com/storage/simba_1253_470_%401x?fb=missing_image_470_%401x',
+    sourceUrl: 'https://techinfo.epiroc.com/en-us/information/30955174923-g',
+    sourceDomain: 'epiroc.com',
+    note: 'Referencia visual de la familia Simba 1253; no acredita que sea la unidad física registrada.',
+  },
+  {
+    keywords: ['generador toyama 6,5 kva', 'toyama 6,5 kva', 'toyama 6.5 kva'],
+    image: 'https://solucionesdinamicassdi.com/4032/planta-electrica-toyama-gasolina-tg6500cxr-bivolt-65kva-monofasica-avr-arranque-manual.jpg',
+    sourceUrl: 'https://solucionesdinamicassdi.com/es/generadores-a-gasolina/666-planta-electrica-toyama-gasolina-tg6500cxr-bivolt-65kva-monofasica-avr-arranque-manual.html',
+    sourceDomain: 'solucionesdinamicassdi.com',
+    note: 'Referencia visual Toyama TG6500CXR 6,5 kVA; validar variante exacta del activo.',
+  },
+  {
+    keywords: ['mitsubishi canter', 'camion mitsubishi canter', 'camión mitsubishi canter'],
+    image: 'https://macotattersall.cl/images/usados/mitsubishi/DRRT72/1.jpg',
+    sourceUrl: 'https://macotattersall.cl/usados?idus=137-mitsubishi-fuso-canter',
+    sourceDomain: 'macotattersall.cl',
+    note: 'Referencia visual Mitsubishi Fuso Canter en Chile; no acredita que sea la unidad física registrada.',
+  },
+  {
+    keywords: ['wilson 500 kva', 'generador wilson 500', 'fg wilson 500'],
+    image: 'https://www.nairaland.com/attachments/19285394_xp550119fgw500kvadieselgen1copy_jpeg9cd20caced48c8fcb6d7028320bfcdb8',
+    sourceUrl: 'https://www.fgwilson.com/es_ES/products/new/fg-wilson/diesel-generators/medium-range-225-938-kva/1000012492.html',
+    sourceDomain: 'fgwilson.com',
+    note: 'Referencia visual de generador FG Wilson P500 de 500 kVA; validar configuración exacta del activo.',
+  },
+  {
     keywords: ['simba s7d', 'atlas copco simba s7d'],
     image: 'https://rgamp.com/wp-content/uploads/2023/04/referencia-s7d-1.jpg',
     sourceUrl: 'https://rgamp.com/en/equipment/simba-s7d/',
