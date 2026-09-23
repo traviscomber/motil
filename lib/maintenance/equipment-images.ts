@@ -14,6 +14,13 @@ const EXACT_EQUIPMENT_IMAGES: Array<{
   note: string;
 }> = [
   {
+    keywords: ['sandvik, de-130', 'sandvik de-130', 'sandvik de130', 'sonda sandvik, de-130'],
+    image: 'https://geopsbg.com/wp-content/uploads/2020/07/Sandvik-DE-130.png',
+    sourceUrl: 'https://geopsbg.com/project/sandvik-de-130/',
+    sourceDomain: 'geopsbg.com',
+    note: 'Referencia visual del modelo Sandvik DE130; no acredita que sea la unidad física registrada.',
+  },
+  {
     keywords: ['onram 1000-3', 'onram 1000/3', 'onram 1000'],
     image: 'https://dasmithdrilling.com/sites/default/files/2022-10/onram03.jpg',
     sourceUrl: 'https://dasmithdrilling.com/equipment/hagby-onram-10003-msha-permissible-diamond-core-drill',
@@ -452,6 +459,13 @@ const EXACT_EQUIPMENT_IMAGES: Array<{
 ];
 
 const EQUIPMENT_IMAGE_MAP: { keywords: string[]; image: string; note: string; sourceUrl?: string; sourceDomain?: string }[] = [
+  {
+    keywords: ['scoop atlas copco st-1000', 'atlas copco st1000', 'atlas copco st-1000'],
+    image: 'https://tj.imgix.net/acces-industriel/mining-equipments/SCOOPTRAM-LOADER-CHARGEUSE-NAVETTE-ATLAS-COPCO-EPIROC-ST1010-MQ102-2.jpg?auto=compress%2Cformat&q=75&v=1732243444&w=1280',
+    sourceUrl: 'https://www.acces-s.ca/en/mining/equipment-for-sale-and-rental/atlas-copco-epiroc-st-1010-scooptram-loader',
+    sourceDomain: 'acces-s.ca',
+    note: 'Referencia visual de la familia Scooptram ST1000/ST1010; no se presenta como la unidad exacta.',
+  },
   {
     keywords: ['toyota hilux'],
     image: 'https://images.ctfassets.net/6rgkmnd309z8/45UaAwQ5vNOiaux2SyLDuh/7864404936f03dc8277f65f3c918c8b4/exterior_5__1_.webp',
