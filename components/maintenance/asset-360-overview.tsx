@@ -231,6 +231,34 @@ type Asset360Response = {
     mine_raw?: string | null;
     sector_raw?: string | null;
   }>;
+  maintenanceTaskCandidates?: Array<{
+    rig_name?: string | null;
+    component_key?: string | null;
+    suggested_task?: string | null;
+    observation_count?: number | string | null;
+    out_of_service_count?: number | string | null;
+    first_observed_at?: string | null;
+    last_observed_at?: string | null;
+    latest_status?: string | null;
+    latest_observation?: string | null;
+    signal_status?: string | null;
+    evidence_class?: string | null;
+  }>;
+  standardJobPlans?: Array<{
+    id: string;
+    plan_code?: string | null;
+    name?: string | null;
+    work_type?: string | null;
+    status?: string | null;
+    estimated_duration_hours?: number | string | null;
+    labor_people_required?: number | string | null;
+    skill_requirement?: string | null;
+    safety_controls?: string | null;
+    required_document_reference?: string | null;
+    reason?: string | null;
+    evidence_reference?: string | null;
+    approved_at?: string | null;
+  }>;
   runtimeCostIntelligence?: {
     reading_count?: number | string | null;
     first_reading_at?: string | null;
@@ -700,6 +728,8 @@ export function Asset360Overview({
   const operationalState = data.operationalState;
   const maintenancePriority = data.maintenancePriority;
   const runtimeCostIntelligence = data.runtimeCostIntelligence;
+  const maintenanceTaskCandidates = data.maintenanceTaskCandidates || [];
+  const standardJobPlans = data.standardJobPlans || [];
   const meterHistory = data.meterHistory || [];
   const drillOperationalEvidence = data.drillOperationalEvidence;
   const drillEconomicsChange = data.drillEconomicsChange;
@@ -1231,6 +1261,75 @@ export function Asset360Overview({
           )}
         </div>
       </details>
+
+      {maintenanceTaskCandidates.length > 0 || standardJobPlans.length > 0 ? (
+        <details className="group rounded-lg border border-border bg-card" open>
+          <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold">
+            Señales y planes de intervención
+          </summary>
+          <div className="border-t border-border p-4">
+            {maintenanceTaskCandidates.length > 0 ? (
+              <div>
+                <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                  Señales desde operación
+                </p>
+                <div className="mt-3 divide-y divide-border">
+                  {maintenanceTaskCandidates.slice(0, 6).map((row, index) => (
+                    <div key={`${row.component_key || 'signal'}-${index}`} className="grid gap-3 py-3 lg:grid-cols-[160px_minmax(0,1fr)_150px] lg:items-center">
+                      <div>
+                        <p className="text-sm font-medium">{row.component_key || 'Componente'}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">{row.signal_status || row.latest_status || 'Señal'}</p>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm">{row.suggested_task || row.latest_observation || 'Revisar condición observada'}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {number(row.observation_count || 0, 0)} observaciones · {number(row.out_of_service_count || 0, 0)} fuera de servicio
+                        </p>
+                      </div>
+                      <div className="lg:text-right">
+                        <p className="text-xs text-muted-foreground">Última evidencia</p>
+                        <p className="mt-1 text-sm font-medium">{date(row.last_observed_at)}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {standardJobPlans.length > 0 ? (
+              <div className={maintenanceTaskCandidates.length > 0 ? 'mt-5 border-t border-border pt-4' : ''}>
+                <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                  Plan estándar
+                </p>
+                <div className="mt-3 divide-y divide-border">
+                  {standardJobPlans.slice(0, 3).map((plan) => (
+                    <div key={plan.id} className="grid gap-3 py-3 lg:grid-cols-[150px_minmax(0,1fr)_180px] lg:items-center">
+                      <div>
+                        <p className="font-mono text-xs">{plan.plan_code || 'Sin código'}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">{plan.status || 'Sin estado'}</p>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">{plan.name || plan.work_type || 'Plan de intervención'}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {plan.skill_requirement || plan.reason || 'Sin requisito adicional'}
+                        </p>
+                      </div>
+                      <div className="lg:text-right">
+                        <p className="text-sm font-medium">
+                          {plan.estimated_duration_hours != null ? `${number(plan.estimated_duration_hours, 1)} h` : 'Sin duración'}
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {plan.labor_people_required != null ? `${number(plan.labor_people_required, 0)} personas` : 'Dotación no informada'}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </details>
+      ) : null}
 
       {runtimeCostIntelligence || meterHistory.length > 0 ? (
         <details className="group rounded-lg border border-border bg-card" open>
