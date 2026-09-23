@@ -184,6 +184,28 @@ type Asset360Response = {
       title?: string | null;
     } | null;
   }>;
+  maintenancePlanning?: Array<{
+    id: string;
+    source_row?: number | null;
+    mine_raw?: string | null;
+    asset_name_raw?: string | null;
+    meter_unit?: string | null;
+    interval_mp?: number | string | null;
+    last_mp?: number | string | null;
+    initial_reading_at?: string | null;
+    initial_reading?: number | string | null;
+    current_reading_at?: string | null;
+    current_reading?: number | string | null;
+    criticality_raw?: string | null;
+    scheduled_date?: string | null;
+    programming_status_raw?: string | null;
+    responsible_raw?: string | null;
+    parts_status_raw?: string | null;
+    observations?: string | null;
+    workbook_priority_raw?: string | null;
+    workbook_action_raw?: string | null;
+    updated_at?: string | null;
+  }>;
   closeReadiness?: Array<{
     work_order_id: string;
     work_order_number?: string | null;
@@ -417,6 +439,8 @@ export function Asset360Overview({
   const auditedInterventions = data.auditedInterventions || [];
   const installedParts = data.installedParts || [];
   const pendingParts = data.pendingParts || [];
+  const maintenancePlanning = data.maintenancePlanning || [];
+  const latestPlan = maintenancePlanning[0] || null;
   const acquisitionDate = asset.acquisition_date ? new Date(String(asset.acquisition_date)) : null;
   const assetAgeYears =
     acquisitionDate && !Number.isNaN(acquisitionDate.getTime())
@@ -753,9 +777,52 @@ export function Asset360Overview({
                 </div>
               ))}
             </div>
+          ) : latestPlan ? (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <IdentityItem
+                icon={Gauge}
+                label="Última MP"
+                value={latestPlan.last_mp != null ? `${number(latestPlan.last_mp, 1)} ${latestPlan.meter_unit || ''}` : null}
+              />
+              <IdentityItem
+                icon={Timer}
+                label="Intervalo MP"
+                value={latestPlan.interval_mp != null ? `${number(latestPlan.interval_mp, 1)} ${latestPlan.meter_unit || ''}` : null}
+              />
+              <IdentityItem
+                icon={CalendarDays}
+                label="Próxima programación"
+                value={date(latestPlan.scheduled_date)}
+              />
+              <IdentityItem
+                icon={Wrench}
+                label="Responsable"
+                value={latestPlan.responsible_raw}
+              />
+              <IdentityItem
+                icon={Gauge}
+                label="Lectura actual"
+                value={latestPlan.current_reading != null ? `${number(latestPlan.current_reading, 1)} ${latestPlan.meter_unit || ''}` : null}
+              />
+              <IdentityItem
+                icon={Activity}
+                label="Estado programación"
+                value={latestPlan.programming_status_raw}
+              />
+              <IdentityItem
+                icon={PackageCheck}
+                label="Estado materiales"
+                value={latestPlan.parts_status_raw}
+              />
+              <IdentityItem
+                icon={FileText}
+                label="Acción programa"
+                value={latestPlan.workbook_action_raw || latestPlan.observations}
+              />
+            </div>
           ) : (
             <p className="text-sm text-muted-foreground">
-              Aún no existen cierres de mantención auditados asociados a este activo.
+              No hay cierres auditados ni una pauta de mantenimiento enlazada a este activo.
             </p>
           )}
         </div>
@@ -827,6 +894,13 @@ export function Asset360Overview({
                       </div>
                     );
                   })}
+                </div>
+              ) : latestPlan?.parts_status_raw ? (
+                <div className="mt-3 rounded-md border border-border bg-muted/20 p-3">
+                  <p className="text-sm font-medium">{latestPlan.parts_status_raw}</p>
+                  {latestPlan.observations ? (
+                    <p className="mt-1 text-xs text-muted-foreground">{latestPlan.observations}</p>
+                  ) : null}
                 </div>
               ) : (
                 <p className="mt-3 text-sm text-muted-foreground">No hay materiales pendientes asociados a este activo.</p>
