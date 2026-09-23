@@ -146,6 +146,7 @@ export function Asset360Overview({
   scope?: 'equipos' | 'vehiculos';
 }) {
   const [origin, setOrigin] = useState('https://www.motil.app');
+  const [imageFailed, setImageFailed] = useState(false);
   const { data, error, isLoading, mutate } = useSWR<Asset360Response>(
     assetId ? `/api/maintenance/assets/${encodeURIComponent(assetId)}/operational-360` : null,
     fetcher,
@@ -250,6 +251,32 @@ export function Asset360Overview({
     getEquipmentImageMeta(`${asset.manufacturer || ''} ${asset.model || ''} ${asset.name || ''}`) ||
     getEquipmentImageMeta(`${asset.name || ''} ${asset.asset_type || ''} ${asset.category || ''}`);
 
+  useEffect(() => {
+    setImageFailed(false);
+  }, [equipmentImage?.image]);
+
+  const criticalityLabel: Record<string, string> = {
+    critical: 'Crítica',
+    high: 'Alta',
+    media: 'Media',
+    medium: 'Media',
+    low: 'Baja',
+    alta: 'Alta',
+    baja: 'Baja',
+  };
+  const statusLabel: Record<string, string> = {
+    active: 'Operativo',
+    maintenance: 'En mantención',
+    inactive: 'Inactivo',
+    out_of_service: 'Fuera de servicio',
+  };
+  const displayCriticality = asset.criticality
+    ? criticalityLabel[String(asset.criticality).toLowerCase()] || asset.criticality
+    : null;
+  const displayStatus = asset.operational_status
+    ? statusLabel[String(asset.operational_status).toLowerCase()] || asset.operational_status
+    : null;
+
   const attention = summary.criticalOpen > 0
     ? { tone: 'border-destructive/40 bg-destructive/5', title: 'OT crítica abierta', detail: 'Revisar la orden crítica y su siguiente acción.' }
     : summary.overduePreventives > 0
@@ -267,39 +294,34 @@ export function Asset360Overview({
           <div className="grid lg:grid-cols-[minmax(230px,0.75fr)_minmax(0,2fr)_220px]">
             <div className="border-b border-border bg-muted/20 p-4 lg:border-b-0 lg:border-r">
               <div className="overflow-hidden rounded-md border border-border/70 bg-background">
-                {equipmentImage ? (
+                {equipmentImage && !imageFailed ? (
                   <img
                     src={equipmentImage.image}
                     alt={`Imagen referencial de ${asset.name || 'equipo'}`}
                     className="h-48 w-full object-cover"
+                    onError={() => setImageFailed(true)}
                   />
                 ) : (
                   <div className="flex h-48 items-center justify-center px-5 text-center text-xs text-muted-foreground">
-                    Fotografía real del activo aún no incorporada.
+                    Imagen no disponible. La ficha sigue operativa.
                   </div>
                 )}
               </div>
-              {equipmentImage ? (
-                <div className="mt-2 space-y-1 text-[11px] leading-relaxed text-muted-foreground">
-                  <p>{equipmentImage.note}</p>
+              {equipmentImage && !imageFailed ? (
+                <div className="mt-2 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+                  <span>{equipmentImage.match === 'model' ? 'Referencia de modelo' : 'Referencia de familia'}</span>
                   {equipmentImage.sourceUrl ? (
                     <a
                       href={equipmentImage.sourceUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center gap-1 font-medium text-foreground hover:underline"
+                      className="font-medium text-foreground hover:underline"
                     >
-                      Fuente: {equipmentImage.sourceDomain || 'referencia pública'}
+                      {equipmentImage.sourceDomain || 'Fuente'}
                     </a>
-                  ) : (
-                    <p>Referencia visual interna de familia.</p>
-                  )}
+                  ) : null}
                 </div>
-              ) : (
-                <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-                  Sin imagen segura para este activo. No se usa una fotografía genérica en equipos cuya identidad visual requiere validación.
-                </p>
-              )}
+              ) : null}
             </div>
 
             <div className="min-w-0 p-5 lg:p-6">
@@ -318,12 +340,12 @@ export function Asset360Overview({
                     <Badge variant={asset.is_active ? 'outline' : 'secondary'}>
                       {asset.is_active ? 'Activo' : 'Inactivo'}
                     </Badge>
-                    {asset.operational_status ? (
-                      <Badge variant="outline">{asset.operational_status}</Badge>
+                    {displayStatus ? (
+                      <Badge variant="outline">{displayStatus}</Badge>
                     ) : null}
-                    {asset.criticality ? (
+                    {displayCriticality ? (
                       <Badge variant={String(asset.criticality).toLowerCase().includes('crit') ? 'destructive' : 'secondary'}>
-                        {asset.criticality}
+                        {displayCriticality}
                       </Badge>
                     ) : null}
                     {asset.validation_status ? (
