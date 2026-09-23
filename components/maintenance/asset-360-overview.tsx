@@ -146,7 +146,7 @@ export function Asset360Overview({
   scope?: 'equipos' | 'vehiculos';
 }) {
   const [origin, setOrigin] = useState('https://www.motil.app');
-  const [imageFailed, setImageFailed] = useState(false);
+  const [failedImageSrc, setFailedImageSrc] = useState<string | null>(null);
   const { data, error, isLoading, mutate } = useSWR<Asset360Response>(
     assetId ? `/api/maintenance/assets/${encodeURIComponent(assetId)}/operational-360` : null,
     fetcher,
@@ -251,9 +251,7 @@ export function Asset360Overview({
     getEquipmentImageMeta(`${asset.manufacturer || ''} ${asset.model || ''} ${asset.name || ''}`) ||
     getEquipmentImageMeta(`${asset.name || ''} ${asset.asset_type || ''} ${asset.category || ''}`);
 
-  useEffect(() => {
-    setImageFailed(false);
-  }, [equipmentImage?.image]);
+  const imageFailed = Boolean(equipmentImage?.image && failedImageSrc === equipmentImage.image);
 
   const criticalityLabel: Record<string, string> = {
     critical: 'Crítica',
@@ -299,7 +297,7 @@ export function Asset360Overview({
                     src={equipmentImage.image}
                     alt={`Imagen referencial de ${asset.name || 'equipo'}`}
                     className="h-48 w-full object-cover"
-                    onError={() => setImageFailed(true)}
+                    onError={() => setFailedImageSrc(equipmentImage.image)}
                   />
                 ) : (
                   <div className="flex h-48 items-center justify-center px-5 text-center text-xs text-muted-foreground">
