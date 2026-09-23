@@ -191,6 +191,31 @@ type Asset360Response = {
     first_cost_date?: string | null;
     last_cost_date?: string | null;
   }>;
+  drillEconomics?: {
+    window_start?: string | null;
+    window_end?: string | null;
+    last_cost_date?: string | null;
+    last_drilling_date?: string | null;
+    recognized_cost_events_90d?: number | string | null;
+    recognized_cost_clp_90d?: number | string | null;
+    drilling_reports_90d?: number | string | null;
+    drilled_meters_90d?: number | string | null;
+    cost_clp_per_meter_90d?: number | string | null;
+    evidence_status?: string | null;
+  } | null;
+  drillingMaintenanceReview?: Array<{
+    source_report_id: string;
+    operation_date?: string | null;
+    review_reason?: string | null;
+    equipment_status_raw?: string | null;
+    machine_observations?: string | null;
+    review_status?: string | null;
+    linked_work_order_id?: string | null;
+    decision_note?: string | null;
+    reviewed_at?: string | null;
+    has_linked_work_order?: boolean | null;
+    policy?: string | null;
+  }>;
   drillingHistory?: Array<{
     id: string;
     operation_date?: string | null;
@@ -586,6 +611,8 @@ export function Asset360Overview({
   const purchaseHistorySummary = data.purchaseHistorySummary;
   const economicHistory = data.economicHistory || [];
   const drillingHistory = data.drillingHistory || [];
+  const drillEconomics = data.drillEconomics;
+  const drillingMaintenanceReview = data.drillingMaintenanceReview || [];
   const economicLifetime = economicHistory.reduce(
     (sum, row) => sum + Number(row.historical_total_cost || 0),
     0,
@@ -1134,6 +1161,43 @@ export function Asset360Overview({
               <IdentityItem icon={CalendarDays} label="Última operación" value={date(drillingHistory[0]?.operation_date)} />
               <IdentityItem icon={MapPin} label="Última faena" value={drillingHistory[0]?.mine_raw || drillingHistory[0]?.site_raw} />
             </div>
+            {drillEconomics ? (
+              <div className="mb-4 grid gap-4 rounded-md border border-border bg-muted/20 p-4 sm:grid-cols-2 lg:grid-cols-4">
+                <IdentityItem icon={Coins} label="Costo 90 días" value={drillEconomics.recognized_cost_clp_90d != null ? money(drillEconomics.recognized_cost_clp_90d) : null} />
+                <IdentityItem icon={Activity} label="Metros 90 días" value={drillEconomics.drilled_meters_90d != null ? `${number(drillEconomics.drilled_meters_90d, 1)} m` : null} />
+                <IdentityItem icon={Coins} label="Costo por metro" value={drillEconomics.cost_clp_per_meter_90d != null ? `${money(drillEconomics.cost_clp_per_meter_90d)}/m` : null} />
+                <IdentityItem icon={FileText} label="Evidencia 90 días" value={drillEconomics.evidence_status} />
+              </div>
+            ) : null}
+            {drillingMaintenanceReview.length > 0 ? (
+              <div className="mb-4 rounded-md border border-border">
+                <div className="border-b border-border px-4 py-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                    Señales para revisión de mantención
+                  </p>
+                </div>
+                <div className="divide-y divide-border">
+                  {drillingMaintenanceReview.slice(0, 4).map((row) => (
+                    <div key={row.source_report_id} className="grid gap-2 px-4 py-3 md:grid-cols-[120px_minmax(0,1fr)_160px] md:items-center">
+                      <div>
+                        <p className="text-xs text-muted-foreground">{date(row.operation_date)}</p>
+                        <p className="mt-1 text-xs font-medium">{row.review_status || 'Pendiente'}</p>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">{row.review_reason || 'Revisión requerida'}</p>
+                        <p className="mt-1 truncate text-xs text-muted-foreground">
+                          {row.machine_observations || row.equipment_status_raw || row.decision_note || 'Sin observación adicional'}
+                        </p>
+                      </div>
+                      <div className="md:text-right">
+                        <p className="text-xs text-muted-foreground">OT asociada</p>
+                        <p className="mt-1 text-sm font-medium">{row.has_linked_work_order ? 'Sí' : 'No'}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
             <div className="divide-y divide-border">
               {drillingHistory.slice(0, 8).map((row) => (
                 <div key={row.id} className="grid gap-3 py-3 lg:grid-cols-[120px_120px_minmax(0,1fr)_140px] lg:items-center">
