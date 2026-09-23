@@ -491,6 +491,7 @@ type Asset360Response = {
     workbook_action_raw?: string | null;
     updated_at?: string | null;
   }>;
+  canEdit?: boolean;
   closeReadiness?: Array<{
     work_order_id: string;
     work_order_number?: string | null;
@@ -1453,11 +1454,25 @@ export function Asset360Overview({
             <IdentityItem icon={PackageCheck} label="Materiales" value={latestPlan.parts_status_raw} />
           </div>
         ) : (
-          <div className="border-t border-border p-4">
-            <p className="text-sm font-medium">Sin plan de mantención registrado</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              No existe una pauta o planificación de mantenimiento enlazada a este activo en la fuente actual.
-            </p>
+          <div className="flex flex-col gap-4 border-t border-border p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-medium">Sin plan de mantención registrado</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                No existe una pauta o planificación de mantenimiento enlazada a este activo en la fuente actual.
+              </p>
+            </div>
+            {data.canEdit ? (
+              <Button asChild size="sm">
+                <Link
+                  href={`/dashboard/mantenimiento/planes-estandar?new=1&assetCode=${encodeURIComponent(asset.asset_code || '')}&assetName=${encodeURIComponent(asset.name || '')}`}
+                >
+                  <Wrench className="mr-1 h-4 w-4" />
+                  Crear plan de mantención
+                </Link>
+              </Button>
+            ) : (
+              <p className="text-xs text-muted-foreground">Sin permisos para crear planes.</p>
+            )}
           </div>
         )}
       </details>
