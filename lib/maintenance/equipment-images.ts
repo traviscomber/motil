@@ -14,6 +14,62 @@ const EXACT_EQUIPMENT_IMAGES: Array<{
   note: string;
 }> = [
   {
+    keywords: ['simba s7d', 'atlas copco simba s7d'],
+    image: 'https://rgamp.com/wp-content/uploads/2023/04/referencia-s7d-1.jpg',
+    sourceUrl: 'https://rgamp.com/en/equipment/simba-s7d/',
+    sourceDomain: 'rgamp.com',
+    note: 'Referencia visual del modelo Simba S7D; no acredita que sea la unidad física registrada.',
+  },
+  {
+    keywords: ['ford f-150 2025', 'ford f150 2025'],
+    image: 'https://carimages.d2cmedia.ca/newcarimages/fr/cb69bb1e0e26462/Ford/F-150/2025/1200/464168-UExBVElORQ/white/front45.png',
+    sourceUrl: 'https://www.fordthetford.com/modeles/Ford-F_150.html',
+    sourceDomain: 'fordthetford.com',
+    note: 'Referencia visual Ford F-150 2025; no acredita que sea la unidad física registrada.',
+  },
+  {
+    keywords: ['kia frontier 2023', 'kia frontier'],
+    image: 'https://img.linemedia.com/img/s/flatbed-truck-3-5t/KIA/Frontier-2-5---1669206114719474609_big--22112314213896082700.jpg',
+    sourceUrl: 'https://autoline.info/-/sale/flatbed-trucks-3-5t/KIA/Frontier-2-5--22112314213896082700',
+    sourceDomain: 'autoline.info',
+    note: 'Referencia visual de Kia Frontier; validar configuración exacta del activo.',
+  },
+  {
+    keywords: ['nissan terrano 2013', 'nissan terrano'],
+    image: 'https://chileautos.pxcrush.net/chileautos/cars/private/exhqjb1s0ypanw8rrnrso8yl3.jpg?height=725&pxc_bgtype=self&pxc_method=fitfill&width=1087',
+    sourceUrl: 'https://www.chileautos.cl/vehiculos/nissan/terrano/',
+    sourceDomain: 'chileautos.cl',
+    note: 'Referencia visual Nissan Terrano; validar año y configuración exacta del activo.',
+  },
+  {
+    keywords: ['volkswagen amarok 2024', 'amarok 2024'],
+    image: 'https://http2.mlstatic.com/D_749783-MLA78505821184_082024-C.jpg',
+    sourceUrl: 'https://www.volkswagen.cl/es/modelos/amarok.html',
+    sourceDomain: 'volkswagen.cl',
+    note: 'Referencia visual Volkswagen Amarok 2024; no acredita que sea la unidad física registrada.',
+  },
+  {
+    keywords: ['toyota new hilux 2016'],
+    image: 'https://chileautos.pxcrush.net/chileautos/cars/private/631fmg20y17rw5kvjdbtocgga.jpg?pxc_method=fit&pxc_size=560%2C750',
+    sourceUrl: 'https://www.chileautos.cl/vehiculos/toyota/hilux/2016/',
+    sourceDomain: 'chileautos.cl',
+    note: 'Referencia visual Toyota Hilux 2016; no acredita que sea la unidad física registrada.',
+  },
+  {
+    keywords: ['toyota new hilux 2021', 'toyota new hilux 2022'],
+    image: 'https://chileautos.pxcrush.net/cars/dealer/ey00098w9q51e9qdk22ur36u8.jpg?height=725&pxc_bgtype=self&pxc_method=fitfill&width=1087',
+    sourceUrl: 'https://www.chileautos.cl/vehiculos/toyota/hilux/',
+    sourceDomain: 'chileautos.cl',
+    note: 'Referencia visual Toyota Hilux de la generación 2021-2022; no acredita que sea la unidad física registrada.',
+  },
+  {
+    keywords: ['toyota new hilux 2023', 'toyota new hilux 2024', 'toyota new hilux 2025'],
+    image: 'https://s3-sitioweb.s3.amazonaws.com/content/uploads/2024/01/21154712/A-13-2.jpg',
+    sourceUrl: 'https://toyota.cl/modelos/pickup/hilux/',
+    sourceDomain: 'toyota.cl',
+    note: 'Referencia visual oficial Toyota Hilux de la generación vigente; no acredita que sea la unidad física registrada.',
+  },
+  {
     keywords: ['atlas copco v-900', 'atlas copco v900', 'compresor atlas copco v-900'],
     image: 'https://image.made-in-china.com/203f0j00OGQeoAWEZtbw/Atlas-V900-Copco-Diesel-Portable-Screw-Air-Compressor-for-Mining-Quarry-High-Pressure-25bar-360psi-800-Cfm-950cfm-Atlascopco.webp',
     sourceUrl: 'https://www.atlascopco.com/es-cl/construction-equipment/campaigns-energy/compresor-atlas-copco-v900',
