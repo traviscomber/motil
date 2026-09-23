@@ -32,6 +32,7 @@ import { getEquipmentImageMeta } from '@/lib/maintenance/equipment-images';
 
 type Asset360Response = {
   generatedAt?: string | null;
+  unavailableSources?: string[];
   asset?: {
     id: string;
     asset_code?: string | null;
@@ -800,15 +801,33 @@ export function Asset360Overview({
       ? Math.max(expectedLifespan - assetAgeYears, 0)
       : null;
 
+  const unavailableSources = data.unavailableSources || [];
+  const hasPurchaseEvidence = Number(purchaseHistorySummary?.purchaseLines || 0) > 0 || procurementOrders.length > 0;
+  const hasMaintenanceEvidence = auditedInterventions.length > 0 || Number(operationalState?.work_order_count || 0) > 0;
+  const hasMaterialEvidence = installedParts.length > 0 || pendingParts.length > 0 || supplyChain.length > 0;
+  const hasProductionEvidence = drillingHistory.length > 0 || Number(operationalState?.drilling_report_count || 0) > 0;
+  const hasRuntimeEvidence = meterHistory.length > 0 || Number(runtimeCostIntelligence?.reading_count || 0) > 0;
+  const hasEconomicEvidence = economicHistory.length > 0 || Number(operationalState?.recognized_cost_event_count || 0) > 0;
+
   const coverageItems = [
+    ['Identidad canónica', true, 'Disponible'],
+    ['Estado operacional', Boolean(operationalState), operationalState ? 'Disponible' : 'Sin estado consolidado'],
     ['Plan de mantención', Boolean(maintenancePriority || latestPlan), maintenancePriority || latestPlan ? 'Disponible' : 'No registrado'],
-    ['Historial económico', economicHistory.length > 0, economicHistory.length > 0 ? 'Disponible' : 'Sin movimientos'],
-    ['Historial horómetro', meterHistory.length > 0, meterHistory.length > 0 ? 'Disponible' : 'Sin lecturas históricas'],
-    ['Compras / proveedores', Number(purchaseHistorySummary?.purchaseLines || 0) > 0 || procurementOrders.length > 0, Number(purchaseHistorySummary?.purchaseLines || 0) > 0 || procurementOrders.length > 0 ? 'Disponible' : 'Sin compras enlazadas'],
-    ['OT / mantenciones', auditedInterventions.length > 0 || Number(operationalState?.work_order_count || 0) > 0, auditedInterventions.length > 0 || Number(operationalState?.work_order_count || 0) > 0 ? 'Disponible' : 'Sin OT enlazadas'],
-    ['Vida útil', expectedLifespan != null, expectedLifespan != null ? 'Disponible' : 'No informada'],
+    ['Horómetro / uso', hasRuntimeEvidence, hasRuntimeEvidence ? 'Disponible' : 'Sin lecturas históricas'],
+    ['Economía / costos', hasEconomicEvidence, hasEconomicEvidence ? 'Disponible' : 'Sin movimientos'],
+    ['Compras / proveedores', hasPurchaseEvidence, hasPurchaseEvidence ? 'Disponible' : 'Sin compras enlazadas'],
+    ['OT / mantenciones', hasMaintenanceEvidence, hasMaintenanceEvidence ? 'Disponible' : 'Sin OT enlazadas'],
+    ['Materiales / repuestos', hasMaterialEvidence, hasMaterialEvidence ? 'Disponible' : 'Sin movimientos enlazados'],
+    ['Vida útil', expectedLifespan != null || asset.acquisition_date != null, expectedLifespan != null || asset.acquisition_date != null ? 'Disponible' : 'No informada'],
+    ['Producción / actividad', hasProductionEvidence || recentEvents.length > 0, hasProductionEvidence || recentEvents.length > 0 ? 'Disponible' : 'Sin actividad enlazada'],
   ] as const;
   const coverageAvailableCount = coverageItems.filter(([, available]) => available).length;
+  const coverageMissingCount = coverageItems.length - coverageAvailableCount;
+  const coverageUnavailableCount = unavailableSources.length;
+  const latestMpValue = latestPlan?.last_mp != null ? Number(latestPlan.last_mp) : null;
+  const latestMpSummary = latestMpValue != null && Number.isFinite(latestMpValue) && latestMpValue > 0
+    ? `Última MP ${number(latestMpValue, 1)} ${latestPlan?.meter_unit || ''}`.trim()
+    : 'Última MP no informada';
 
   const planningPriorityText = String(maintenancePriority?.priority || '');
   const attention = summary.criticalOpen > 0
@@ -995,7 +1014,12 @@ export function Asset360Overview({
       </Card>
 
       <details className="group rounded-lg border border-border bg-card">
-        <SectionSummary title="Cobertura de la ficha" hint={`${coverageAvailableCount}/${coverageItems.length} capas principales disponibles`} />
+        <SectionSummary
+          title="Cobertura de la ficha"
+          hint={coverageUnavailableCount > 0
+            ? `${coverageAvailableCount} capas con evidencia · ${coverageMissingCount} sin registro · ${coverageUnavailableCount} fuentes temporalmente no disponibles`
+            : `${coverageAvailableCount} capas con evidencia · ${coverageMissingCount} sin registro`}
+        />
         <div className="grid gap-px border-t border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
           {coverageItems.map(([label, available, status]) => (
             <div key={label} className="bg-card px-4 py-3">
@@ -1641,7 +1665,7 @@ export function Asset360Overview({
       ) : null}
 
       <details className="group rounded-lg border border-border bg-card">
-        <SectionSummary title="Últimas mantenciones" hint={auditedInterventions.length > 0 ? `${auditedInterventions.length} cierres auditados disponibles` : latestPlan ? `Plan disponible · última MP ${show(latestPlan.last_mp)}` : 'Sin mantenciones auditadas registradas'} />
+        <SectionSummary title="Últimas mantenciones" hint={auditedInterventions.length > 0 ? `${auditedInterventions.length} cierres auditados disponibles` : latestPlan ? `Plan disponible · ${latestMpSummary}` : 'Sin mantenciones auditadas registradas'} />
         <div className="border-t border-border p-4">
           {auditedInterventions.length > 0 ? (
             <div className="divide-y divide-border">
