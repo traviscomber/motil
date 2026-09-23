@@ -254,8 +254,45 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         .limit(5),
     ]);
 
-    const error = ordersResult.error || closeResult.error || preventiveResult.error || runtimeResult.error || reliabilityResult.error || runtimeReliabilityResult.error || snapshotsResult.error || partsResult.error || eventsResult.error || planningResult.error || operationalStateResult.error || supplyChainResult.error || procurementOrdersResult.error || costCenterPurchaseHistoryResult.error || namePurchaseHistoryResult.error || economicHistoryResult.error || drillingHistoryResult.error || drillEconomicsResult.error || drillingReviewResult.error || maintenancePriorityResult.error || financeReconciliationResult.error || runtimeCostResult.error || meterHistoryResult.error || drillEvidenceResult.error || drillEconomicsChangeResult.error || taskCandidatesResult.error || standardPlanResult.error;
-    if (error) throw error;
+    const sourceResults = [
+      ['workOrders', ordersResult],
+      ['closeReadiness', closeResult],
+      ['preventives', preventiveResult],
+      ['runtime', runtimeResult],
+      ['reliability', reliabilityResult],
+      ['runtimeReliability', runtimeReliabilityResult],
+      ['closureSnapshots', snapshotsResult],
+      ['parts', partsResult],
+      ['events', eventsResult],
+      ['maintenancePlanning', planningResult],
+      ['operationalState', operationalStateResult],
+      ['supplyChain', supplyChainResult],
+      ['procurementOrders', procurementOrdersResult],
+      ['purchaseHistoryCostCenter', costCenterPurchaseHistoryResult],
+      ['purchaseHistoryName', namePurchaseHistoryResult],
+      ['economicHistory', economicHistoryResult],
+      ['drillingHistory', drillingHistoryResult],
+      ['drillEconomics', drillEconomicsResult],
+      ['drillingReview', drillingReviewResult],
+      ['maintenancePriority', maintenancePriorityResult],
+      ['financeReconciliation', financeReconciliationResult],
+      ['runtimeCost', runtimeCostResult],
+      ['meterHistory', meterHistoryResult],
+      ['drillEvidence', drillEvidenceResult],
+      ['drillEconomicsChange', drillEconomicsChangeResult],
+      ['taskCandidates', taskCandidatesResult],
+      ['standardPlans', standardPlanResult],
+    ] as const;
+    const sourceErrors = sourceResults
+      .filter(([, result]) => Boolean(result.error))
+      .map(([source, result]) => ({
+        source,
+        code: result.error?.code || null,
+        message: result.error?.message || 'query_failed',
+      }));
+    if (sourceErrors.length > 0) {
+      console.warn('[asset-360] optional sources unavailable', { assetId: id, sourceErrors });
+    }
 
     const closeRows = closeResult.data || [];
     const preventives = [...(preventiveResult.data || [])].sort((a: any, b: any) => {
@@ -407,6 +444,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       maintenanceTaskCandidates: taskCandidatesResult.data || [],
       standardJobPlans: standardPlanResult.data || [],
       canEdit: access.canWrite,
+      unavailableSources: sourceErrors.map((item) => item.source),
       evidence: {
         mtbf: 'Sólo desde intervalos correctivos auditados con horómetro válido.',
         mttr: 'Sólo desde horas reales de correctivos auditados.',
