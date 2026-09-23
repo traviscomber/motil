@@ -87,7 +87,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       validation_status: asset.validation_status,
     };
 
-    const [ordersResult, closeResult, preventiveResult, runtimeResult, reliabilityResult, runtimeReliabilityResult, snapshotsResult, partsResult, eventsResult, planningResult, operationalStateResult, supplyChainResult, procurementOrdersResult, costCenterPurchaseHistoryResult, namePurchaseHistoryResult, economicHistoryResult, drillingHistoryResult, drillEconomicsResult, drillingReviewResult, maintenancePriorityResult, financeReconciliationResult, runtimeCostResult, meterHistoryResult, drillEvidenceResult, drillEconomicsChangeResult] = await Promise.all([
+    const [ordersResult, closeResult, preventiveResult, runtimeResult, reliabilityResult, runtimeReliabilityResult, snapshotsResult, partsResult, eventsResult, planningResult, operationalStateResult, supplyChainResult, procurementOrdersResult, costCenterPurchaseHistoryResult, namePurchaseHistoryResult, economicHistoryResult, drillingHistoryResult, drillEconomicsResult, drillingReviewResult, maintenancePriorityResult, financeReconciliationResult, runtimeCostResult, meterHistoryResult, drillEvidenceResult, drillEconomicsChangeResult, taskCandidatesResult, standardPlanResult] = await Promise.all([
       context.supabase
         .from('maintenance_operational_work_order_flow_v1')
         .select('work_order_id,work_order_number,status,priority,work_type,scheduled_date,assigned_person_name,flow_status,open_purchase_order_count,quantity_requested,quantity_issued,quantity_installed,total_cost')
@@ -238,9 +238,23 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         .eq('organization_id', context.organizationId)
         .eq('canonical_asset_id', id)
         .maybeSingle(),
+      context.supabase
+        .from('maintenance_operation_task_candidates_v1')
+        .select('rig_name,component_key,suggested_task,observation_count,out_of_service_count,first_observed_at,last_observed_at,latest_status,latest_observation,signal_status,evidence_class')
+        .eq('organization_id', context.organizationId)
+        .eq('canonical_asset_id', id)
+        .order('last_observed_at', { ascending: false, nullsFirst: false })
+        .limit(10),
+      context.supabase
+        .from('maintenance_standard_job_plans')
+        .select('id,plan_code,name,work_type,status,estimated_duration_hours,labor_people_required,skill_requirement,safety_controls,required_document_reference,reason,evidence_reference,approved_at')
+        .eq('organization_id', context.organizationId)
+        .eq('canonical_asset_id', id)
+        .order('updated_at', { ascending: false })
+        .limit(5),
     ]);
 
-    const error = ordersResult.error || closeResult.error || preventiveResult.error || runtimeResult.error || reliabilityResult.error || runtimeReliabilityResult.error || snapshotsResult.error || partsResult.error || eventsResult.error || planningResult.error || operationalStateResult.error || supplyChainResult.error || procurementOrdersResult.error || costCenterPurchaseHistoryResult.error || namePurchaseHistoryResult.error || economicHistoryResult.error || drillingHistoryResult.error || drillEconomicsResult.error || drillingReviewResult.error || maintenancePriorityResult.error || financeReconciliationResult.error || runtimeCostResult.error || meterHistoryResult.error || drillEvidenceResult.error || drillEconomicsChangeResult.error;
+    const error = ordersResult.error || closeResult.error || preventiveResult.error || runtimeResult.error || reliabilityResult.error || runtimeReliabilityResult.error || snapshotsResult.error || partsResult.error || eventsResult.error || planningResult.error || operationalStateResult.error || supplyChainResult.error || procurementOrdersResult.error || costCenterPurchaseHistoryResult.error || namePurchaseHistoryResult.error || economicHistoryResult.error || drillingHistoryResult.error || drillEconomicsResult.error || drillingReviewResult.error || maintenancePriorityResult.error || financeReconciliationResult.error || runtimeCostResult.error || meterHistoryResult.error || drillEvidenceResult.error || drillEconomicsChangeResult.error || taskCandidatesResult.error || standardPlanResult.error;
     if (error) throw error;
 
     const closeRows = closeResult.data || [];
@@ -389,6 +403,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       meterHistory: meterHistoryResult.data || [],
       drillOperationalEvidence: drillEvidenceResult.data || null,
       drillEconomicsChange: drillEconomicsChangeResult.data || null,
+      maintenanceTaskCandidates: taskCandidatesResult.data || [],
+      standardJobPlans: standardPlanResult.data || [],
       canEdit: access.canWrite,
       evidence: {
         mtbf: 'Sólo desde intervalos correctivos auditados con horómetro válido.',
