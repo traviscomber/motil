@@ -87,7 +87,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       validation_status: asset.validation_status,
     };
 
-    const [ordersResult, closeResult, preventiveResult, runtimeResult, reliabilityResult, runtimeReliabilityResult, snapshotsResult, partsResult, eventsResult, planningResult, operationalStateResult, supplyChainResult, procurementOrdersResult, costCenterPurchaseHistoryResult, namePurchaseHistoryResult, economicHistoryResult, drillingHistoryResult, drillEconomicsResult, drillingReviewResult, maintenancePriorityResult, financeReconciliationResult] = await Promise.all([
+    const [ordersResult, closeResult, preventiveResult, runtimeResult, reliabilityResult, runtimeReliabilityResult, snapshotsResult, partsResult, eventsResult, planningResult, operationalStateResult, supplyChainResult, procurementOrdersResult, costCenterPurchaseHistoryResult, namePurchaseHistoryResult, economicHistoryResult, drillingHistoryResult, drillEconomicsResult, drillingReviewResult, maintenancePriorityResult, financeReconciliationResult, runtimeCostResult, meterHistoryResult, drillEvidenceResult, drillEconomicsChangeResult] = await Promise.all([
       context.supabase
         .from('maintenance_operational_work_order_flow_v1')
         .select('work_order_id,work_order_number,status,priority,work_type,scheduled_date,assigned_person_name,flow_status,open_purchase_order_count,quantity_requested,quantity_issued,quantity_installed,total_cost')
@@ -213,9 +213,34 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         .eq('organization_id', context.organizationId)
         .eq('canonical_asset_id', id)
         .maybeSingle(),
+      context.supabase
+        .from('maintenance_runtime_cost_intelligence_v1')
+        .select('reading_count,first_reading_at,last_reading_at,latest_meter_hours,observed_operating_hours,reset_count,usable_for_rate_metrics,audited_closures,audited_total_cost,audited_cost_per_operating_hour')
+        .eq('organization_id', context.organizationId)
+        .eq('canonical_asset_id', id)
+        .maybeSingle(),
+      context.supabase
+        .from('planning_asset_meter_readings')
+        .select('id,recorded_at,meter_value,meter_unit,source_kind,source_reference')
+        .eq('organization_id', context.organizationId)
+        .eq('canonical_asset_id', id)
+        .order('recorded_at', { ascending: false })
+        .limit(12),
+      context.supabase
+        .from('drill_asset_operational_evidence_90d_v1')
+        .select('window_start,window_end,drilling_reports,out_of_service_reports,operational_with_observations_reports,operational_reports,invalid_status_reports,equipment_without_crew_reports,power_outage_reports,water_shortage_reports,install_disassembly_reports,scaling_reports,work_order_count,open_work_order_count,recorded_downtime_hours,external_cost_clp,part_line_count,quantity_installed,installed_parts_cost_clp,availability_days,scheduled_minutes,availability_downtime_minutes,evidence_status')
+        .eq('organization_id', context.organizationId)
+        .eq('canonical_asset_id', id)
+        .maybeSingle(),
+      context.supabase
+        .from('drill_asset_unit_economics_change_v1')
+        .select('current_month,previous_month,current_cost_clp_per_meter,previous_cost_clp_per_meter,current_cost_clp,previous_cost_clp,current_drilled_meters,previous_drilled_meters,cost_per_meter_change_pct,drilled_meters_change_pct,recognized_cost_change_pct,interpretation_policy')
+        .eq('organization_id', context.organizationId)
+        .eq('canonical_asset_id', id)
+        .maybeSingle(),
     ]);
 
-    const error = ordersResult.error || closeResult.error || preventiveResult.error || runtimeResult.error || reliabilityResult.error || runtimeReliabilityResult.error || snapshotsResult.error || partsResult.error || eventsResult.error || planningResult.error || operationalStateResult.error || supplyChainResult.error || procurementOrdersResult.error || costCenterPurchaseHistoryResult.error || namePurchaseHistoryResult.error || economicHistoryResult.error || drillingHistoryResult.error || drillEconomicsResult.error || drillingReviewResult.error || maintenancePriorityResult.error || financeReconciliationResult.error;
+    const error = ordersResult.error || closeResult.error || preventiveResult.error || runtimeResult.error || reliabilityResult.error || runtimeReliabilityResult.error || snapshotsResult.error || partsResult.error || eventsResult.error || planningResult.error || operationalStateResult.error || supplyChainResult.error || procurementOrdersResult.error || costCenterPurchaseHistoryResult.error || namePurchaseHistoryResult.error || economicHistoryResult.error || drillingHistoryResult.error || drillEconomicsResult.error || drillingReviewResult.error || maintenancePriorityResult.error || financeReconciliationResult.error || runtimeCostResult.error || meterHistoryResult.error || drillEvidenceResult.error || drillEconomicsChangeResult.error;
     if (error) throw error;
 
     const closeRows = closeResult.data || [];
@@ -360,6 +385,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       drillingMaintenanceReview: drillingReviewResult.data || [],
       maintenancePriority: maintenancePriorityResult.data || null,
       financeReconciliation: financeReconciliationResult.data || null,
+      runtimeCostIntelligence: runtimeCostResult.data || null,
+      meterHistory: meterHistoryResult.data || [],
+      drillOperationalEvidence: drillEvidenceResult.data || null,
+      drillEconomicsChange: drillEconomicsChangeResult.data || null,
       canEdit: access.canWrite,
       evidence: {
         mtbf: 'Sólo desde intervalos correctivos auditados con horómetro válido.',
