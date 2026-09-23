@@ -184,6 +184,28 @@ type Asset360Response = {
       title?: string | null;
     } | null;
   }>;
+  economicHistory?: Array<{
+    fiscal_year?: number | null;
+    movement_count?: number | string | null;
+    historical_total_cost?: number | string | null;
+    first_cost_date?: string | null;
+    last_cost_date?: string | null;
+  }>;
+  drillingHistory?: Array<{
+    id: string;
+    operation_date?: string | null;
+    hole_code_raw?: string | null;
+    rig_name_raw?: string | null;
+    site_raw?: string | null;
+    shift_code_raw?: string | null;
+    operator_name_raw?: string | null;
+    drilled_meters?: number | string | null;
+    machine_observations?: string | null;
+    drilling_observations?: string | null;
+    equipment_status_raw?: string | null;
+    mine_raw?: string | null;
+    sector_raw?: string | null;
+  }>;
   operationalState?: {
     operational_status?: string | null;
     criticality?: string | null;
@@ -562,6 +584,16 @@ export function Asset360Overview({
   const procurementOrders = data.procurementOrders || [];
   const costCenterPurchaseHistory = data.costCenterPurchaseHistory || [];
   const purchaseHistorySummary = data.purchaseHistorySummary;
+  const economicHistory = data.economicHistory || [];
+  const drillingHistory = data.drillingHistory || [];
+  const economicLifetime = economicHistory.reduce(
+    (sum, row) => sum + Number(row.historical_total_cost || 0),
+    0,
+  );
+  const drillingMeters = drillingHistory.reduce(
+    (sum, row) => sum + Number(row.drilled_meters || 0),
+    0,
+  );
   const latestPlan = maintenancePlanning[0] || null;
   const acquisitionDate = asset.acquisition_date ? new Date(String(asset.acquisition_date)) : null;
   const assetAgeYears =
@@ -1054,6 +1086,83 @@ export function Asset360Overview({
           )}
         </div>
       </details>
+
+      <details className="group rounded-lg border border-border bg-card" open>
+        <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold">
+          Historial económico
+        </summary>
+        <div className="border-t border-border p-4">
+          {economicHistory.length > 0 ? (
+            <>
+              <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <IdentityItem icon={Coins} label="Años con movimientos" value={economicHistory.length} />
+                <IdentityItem icon={Coins} label="Costo histórico" value={money(economicLifetime)} />
+                <IdentityItem
+                  icon={CalendarDays}
+                  label="Primer costo"
+                  value={date(economicHistory[economicHistory.length - 1]?.first_cost_date)}
+                />
+                <IdentityItem icon={CalendarDays} label="Último costo" value={date(economicHistory[0]?.last_cost_date)} />
+              </div>
+              <div className="divide-y divide-border">
+                {economicHistory.slice(0, 6).map((row) => (
+                  <div key={String(row.fiscal_year)} className="grid gap-3 py-3 sm:grid-cols-[100px_140px_minmax(0,1fr)] sm:items-center">
+                    <p className="text-sm font-semibold">{row.fiscal_year || 'Sin año'}</p>
+                    <p className="text-sm">{money(row.historical_total_cost)}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {number(row.movement_count || 0, 0)} movimientos · {date(row.first_cost_date)} → {date(row.last_cost_date)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">No hay movimientos económicos históricos enlazados a este activo.</p>
+          )}
+        </div>
+      </details>
+
+      {drillingHistory.length > 0 ? (
+        <details className="group rounded-lg border border-border bg-card" open>
+          <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold">
+            Producción y uso del equipo
+          </summary>
+          <div className="border-t border-border p-4">
+            <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <IdentityItem icon={Gauge} label="Reportes recientes" value={drillingHistory.length} />
+              <IdentityItem icon={Activity} label="Metros perforados" value={`${number(drillingMeters, 1)} m`} />
+              <IdentityItem icon={CalendarDays} label="Última operación" value={date(drillingHistory[0]?.operation_date)} />
+              <IdentityItem icon={MapPin} label="Última faena" value={drillingHistory[0]?.mine_raw || drillingHistory[0]?.site_raw} />
+            </div>
+            <div className="divide-y divide-border">
+              {drillingHistory.slice(0, 8).map((row) => (
+                <div key={row.id} className="grid gap-3 py-3 lg:grid-cols-[120px_120px_minmax(0,1fr)_140px] lg:items-center">
+                  <div>
+                    <p className="text-xs text-muted-foreground">{date(row.operation_date)}</p>
+                    <p className="mt-1 font-mono text-xs">{row.hole_code_raw || 'Sin sondaje'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Producción</p>
+                    <p className="mt-1 text-sm font-medium">{number(row.drilled_meters || 0, 1)} m</p>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">
+                      {row.operator_name_raw || 'Operador no informado'} · {row.shift_code_raw || 'Sin turno'}
+                    </p>
+                    <p className="mt-1 truncate text-xs text-muted-foreground">
+                      {row.machine_observations || row.drilling_observations || row.equipment_status_raw || 'Sin observaciones'}
+                    </p>
+                  </div>
+                  <div className="lg:text-right">
+                    <p className="text-xs text-muted-foreground">Ubicación</p>
+                    <p className="mt-1 text-sm font-medium">{row.sector_raw || row.site_raw || row.mine_raw || 'No informada'}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </details>
+      ) : null}
 
       <details className="group rounded-lg border border-border bg-card" open>
         <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold">
