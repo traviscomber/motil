@@ -8,10 +8,14 @@ import {
   AlertTriangle,
   ArrowRight,
   Building2,
+  CalendarDays,
+  Coins,
+  Database,
   FileText,
   Gauge,
   Hash,
   MapPin,
+  PackageCheck,
   QrCode,
   RefreshCw,
   ShieldCheck,
@@ -40,6 +44,19 @@ type Asset360Response = {
     location?: string | null;
     criticality?: string | null;
     operational_status?: string | null;
+    meter_unit?: string | null;
+    mobility_class?: string | null;
+    lifecycle_state?: string | null;
+    lifecycle_reason?: string | null;
+    acquisition_date?: string | null;
+    acquisition_cost?: number | string | null;
+    expected_lifespan_years?: number | string | null;
+    baseline_mtbf_hours?: number | string | null;
+    source_file?: string | null;
+    source_sheet?: string | null;
+    source_row?: number | null;
+    imported_at?: string | null;
+    updated_at?: string | null;
     is_active?: boolean | null;
     validation_status?: string | null;
   };
@@ -89,6 +106,16 @@ type Asset360Response = {
     alert_due?: boolean;
     generated_work_order_id?: string | null;
   } | null;
+  recentEvents?: Array<{
+    id: string;
+    work_order_id?: string | null;
+    event_type?: string | null;
+    event_at?: string | null;
+    actor_name?: string | null;
+    summary?: string | null;
+  }>;
+  installedParts?: Array<unknown>;
+  pendingParts?: Array<unknown>;
   closeReadiness?: Array<{
     work_order_id: string;
     work_order_number?: string | null;
@@ -116,6 +143,13 @@ const money = (value: unknown) =>
 const show = (value: unknown) => {
   if (value == null || String(value).trim() === '') return 'No informado';
   return String(value);
+};
+
+const date = (value: unknown) => {
+  if (!value) return 'No informado';
+  const parsed = new Date(String(value));
+  if (Number.isNaN(parsed.getTime())) return show(value);
+  return new Intl.DateTimeFormat('es-CL', { dateStyle: 'medium' }).format(parsed);
 };
 
 function IdentityItem({
@@ -275,6 +309,44 @@ export function Asset360Overview({
     ? statusLabel[String(asset.operational_status).toLowerCase()] || asset.operational_status
     : null;
 
+
+  const lifecycleLabel: Record<string, string> = {
+    active: 'Activo',
+    inactive: 'Inactivo',
+    maintenance: 'En mantención',
+    retired: 'Retirado',
+  };
+  const mobilityLabel: Record<string, string> = {
+    mobile: 'Móvil',
+    fixed: 'Fijo',
+    stationary: 'Estacionario',
+  };
+  const displayLifecycle = asset.lifecycle_state
+    ? lifecycleLabel[String(asset.lifecycle_state).toLowerCase()] || asset.lifecycle_state
+    : null;
+  const displayMobility = asset.mobility_class
+    ? mobilityLabel[String(asset.mobility_class).toLowerCase()] || asset.mobility_class
+    : null;
+  const assetDetails = [
+    asset.manufacturer ? ['Fabricante', asset.manufacturer, Building2] as const : null,
+    asset.model ? ['Modelo', asset.model, Hash] as const : null,
+    asset.license_plate ? ['Patente', asset.license_plate, Hash] as const : null,
+    asset.meter_unit ? ['Unidad de control', asset.meter_unit, Gauge] as const : null,
+    displayMobility ? ['Movilidad', displayMobility, MapPin] as const : null,
+    displayLifecycle ? ['Ciclo de vida', displayLifecycle, Activity] as const : null,
+    asset.acquisition_date ? ['Adquisición', date(asset.acquisition_date), CalendarDays] as const : null,
+    asset.expected_lifespan_years != null
+      ? ['Vida esperada', `${number(asset.expected_lifespan_years, 0)} años`, Timer] as const
+      : null,
+    asset.acquisition_cost != null
+      ? ['Costo adquisición', money(asset.acquisition_cost), Coins] as const
+      : null,
+    asset.baseline_mtbf_hours != null
+      ? ['MTBF base', `${number(asset.baseline_mtbf_hours, 0)} h`, Timer] as const
+      : null,
+  ].filter(Boolean) as Array<readonly [string, string, LucideIcon]>;
+  const recentEvents = data.recentEvents || [];
+
   const attention = summary.criticalOpen > 0
     ? { tone: 'border-destructive/40 bg-destructive/5', title: 'OT crítica abierta', detail: 'Revisar la orden crítica y su siguiente acción.' }
     : summary.overduePreventives > 0
@@ -406,6 +478,19 @@ export function Asset360Overview({
               </div>
             ))}
           </div>
+
+          {assetDetails.length > 0 ? (
+            <div className="border-t border-border px-5 py-5">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                Datos del activo
+              </p>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+                {assetDetails.map(([label, value, Icon]) => (
+                  <IdentityItem key={label} icon={Icon} label={label} value={value} />
+                ))}
+              </div>
+            </div>
+          ) : null}
         </CardContent>
       </Card>
 
@@ -553,6 +638,28 @@ export function Asset360Overview({
         </div>
       </details>
 
+
+      <details className="group rounded-lg border border-border bg-card">
+        <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold">
+          Actividad reciente del activo
+        </summary>
+        <div className="border-t border-border p-4">
+          {recentEvents.length > 0 ? (
+            <div className="divide-y divide-border">
+              {recentEvents.slice(0, 5).map((event) => (
+                <div key={event.id} className="grid gap-1 py-3 sm:grid-cols-[120px_minmax(0,1fr)_180px] sm:items-center">
+                  <span className="text-xs text-muted-foreground">{date(event.event_at)}</span>
+                  <span className="text-sm font-medium">{event.summary || event.event_type || 'Evento de mantenimiento'}</span>
+                  <span className="text-xs text-muted-foreground sm:text-right">{event.actor_name || 'Actor no informado'}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No hay eventos recientes registrados para este activo.</p>
+          )}
+        </div>
+      </details>
+
       <details className="group rounded-lg border border-border bg-card">
         <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold">
           Trazabilidad y criterio de evidencia
@@ -561,6 +668,16 @@ export function Asset360Overview({
           <p className="text-sm leading-relaxed text-muted-foreground">
             Horómetro, MTBF y MTTR se muestran sólo desde evidencia operacional auditada. El costo se obtiene desde snapshots de cierre auditado. Los campos de identidad ausentes permanecen explícitamente como no informados.
           </p>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <IdentityItem icon={Database} label="Fuente" value={asset.source_file} />
+            <IdentityItem icon={FileText} label="Hoja" value={asset.source_sheet} />
+            <IdentityItem icon={Hash} label="Fila fuente" value={asset.source_row} />
+            <IdentityItem icon={CalendarDays} label="Última actualización" value={date(asset.updated_at || asset.imported_at)} />
+          </div>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <IdentityItem icon={PackageCheck} label="Repuestos instalados" value={data.installedParts?.length ?? 0} />
+            <IdentityItem icon={PackageCheck} label="Repuestos pendientes" value={data.pendingParts?.length ?? 0} />
+          </div>
         </div>
       </details>
     </div>
