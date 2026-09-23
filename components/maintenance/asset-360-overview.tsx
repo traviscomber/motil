@@ -9,6 +9,7 @@ import {
   ArrowRight,
   Building2,
   CalendarDays,
+  ChevronDown,
   Coins,
   Database,
   FileText,
@@ -556,6 +557,27 @@ function IdentityItem({
   );
 }
 
+function SectionSummary({
+  title,
+  hint,
+}: {
+  title: string;
+  hint?: string | null;
+}) {
+  return (
+    <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4">
+      <div className="min-w-0">
+        <p className="text-sm font-semibold">{title}</p>
+        {hint ? <p className="mt-1 truncate text-xs font-normal text-muted-foreground">{hint}</p> : null}
+      </div>
+      <span className="flex shrink-0 items-center gap-1 text-xs font-medium text-muted-foreground">
+        Ver detalle
+        <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
+      </span>
+    </summary>
+  );
+}
+
 export function Asset360Overview({
   assetId,
   scope = 'equipos',
@@ -786,6 +808,7 @@ export function Asset360Overview({
     ['OT / mantenciones', auditedInterventions.length > 0 || Number(operationalState?.work_order_count || 0) > 0, auditedInterventions.length > 0 || Number(operationalState?.work_order_count || 0) > 0 ? 'Disponible' : 'Sin OT enlazadas'],
     ['Vida útil', expectedLifespan != null, expectedLifespan != null ? 'Disponible' : 'No informada'],
   ] as const;
+  const coverageAvailableCount = coverageItems.filter(([, available]) => available).length;
 
   const planningPriorityText = String(maintenancePriority?.priority || '');
   const attention = summary.criticalOpen > 0
@@ -972,9 +995,7 @@ export function Asset360Overview({
       </Card>
 
       <details className="group rounded-lg border border-border bg-card">
-        <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold">
-          Cobertura de la ficha
-        </summary>
+        <SectionSummary title="Cobertura de la ficha" hint={`${coverageAvailableCount}/${coverageItems.length} capas principales disponibles`} />
         <div className="grid gap-px border-t border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
           {coverageItems.map(([label, available, status]) => (
             <div key={label} className="bg-card px-4 py-3">
@@ -989,9 +1010,7 @@ export function Asset360Overview({
       </details>
 
       <details className="group rounded-lg border border-border bg-card" open>
-        <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold">
-          Operación, mantenimiento y confiabilidad
-        </summary>
+        <SectionSummary title="Operación, mantenimiento y confiabilidad" hint={`${summary.activeWorkOrders} OT activas · ${summary.overduePreventives} preventivos vencidos · ${summary.operationalBlockers} bloqueos`} />
         <div className="grid gap-4 border-t border-border p-4 lg:grid-cols-3">
         <Card className="shadow-none">
           <CardContent className="p-5">
@@ -1115,10 +1134,8 @@ export function Asset360Overview({
       </details>
 
 
-      <details className="group rounded-lg border border-border bg-card" open>
-        <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold">
-          Estado económico-operacional
-        </summary>
+      <details className="group rounded-lg border border-border bg-card">
+        <SectionSummary title="Estado económico-operacional" hint={operationalState?.last_cost_at ? `Costo 12m ${money(operationalState.recognized_cost_clp_12m)} · corte ${date(operationalState.last_cost_at)}` : 'Costos, OT y disponibilidad del activo'} />
         <div className="grid gap-4 border-t border-border p-4 sm:grid-cols-2 lg:grid-cols-4">
           <IdentityItem
             icon={Coins}
@@ -1170,10 +1187,8 @@ export function Asset360Overview({
         </div>
       </details>
 
-      <details className="group rounded-lg border border-border bg-card" open>
-        <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold">
-          Compras y proveedores
-        </summary>
+      <details className="group rounded-lg border border-border bg-card">
+        <SectionSummary title="Compras y proveedores" hint={purchaseHistorySummary?.lastSupplier ? `${purchaseHistorySummary.lastSupplier} · última compra ${date(purchaseHistorySummary.lastOrderDate)}` : 'Sin compras directas o contexto histórico disponible'} />
         <div className="border-t border-border p-4">
           {purchaseHistorySummary && Number(purchaseHistorySummary.purchaseLines || 0) > 0 ? (
             <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
@@ -1269,9 +1284,7 @@ export function Asset360Overview({
       </details>
 
       <details className="group rounded-lg border border-border bg-card">
-        <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold">
-          Cadena de suministro de mantención
-        </summary>
+        <SectionSummary title="Cadena de suministro de mantención" hint={`${supplyChain.length} registros enlazados`} />
         <div className="border-t border-border p-4">
           {supplyChain.length > 0 ? (
             <div className="divide-y divide-border">
@@ -1311,10 +1324,8 @@ export function Asset360Overview({
       </details>
 
       {maintenanceTaskCandidates.length > 0 || standardJobPlans.length > 0 ? (
-        <details className="group rounded-lg border border-border bg-card" open>
-          <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold">
-            Señales y planes de intervención
-          </summary>
+        <details className="group rounded-lg border border-border bg-card">
+          <SectionSummary title="Señales y planes de intervención" hint={`${maintenanceTaskCandidates.length} señales · ${standardJobPlans.length} planes estándar`} />
           <div className="border-t border-border p-4">
             {maintenanceTaskCandidates.length > 0 ? (
               <div>
@@ -1383,10 +1394,8 @@ export function Asset360Overview({
       ) : null}
 
       {runtimeCostIntelligence || meterHistory.length > 0 ? (
-        <details className="group rounded-lg border border-border bg-card" open>
-          <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold">
-            Uso, horómetro y costo por hora
-          </summary>
+        <details className="group rounded-lg border border-border bg-card">
+          <SectionSummary title="Uso, horómetro y costo por hora" hint={runtimeCostIntelligence?.latest_meter_hours != null ? `${number(runtimeCostIntelligence.latest_meter_hours, 1)} h · registrado ${date(runtimeCostIntelligence.last_reading_at)}` : 'Sin lectura de horómetro disponible'} />
           <div className="grid gap-4 border-t border-border p-4 sm:grid-cols-2 lg:grid-cols-4">
             <IdentityItem
               icon={Gauge}
@@ -1434,10 +1443,8 @@ export function Asset360Overview({
         </details>
       ) : null}
 
-      <details className="group rounded-lg border border-border bg-card" open>
-        <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold">
-          Planificación de mantenimiento
-        </summary>
+      <details className="group rounded-lg border border-border bg-card" open={planningPriorityText.startsWith('P1') || planningPriorityText.startsWith('P2') || (!maintenancePriority && !latestPlan)}>
+        <SectionSummary title="Planificación de mantenimiento" hint={maintenancePriority ? `${maintenancePriority.priority || 'Con pauta'} · ${maintenancePriority.recommended_action || 'plan configurado'}` : latestPlan ? 'Pauta disponible' : 'Sin plan de mantención registrado'} />
         {maintenancePriority ? (
           <>
             <div className="grid gap-4 border-t border-border p-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -1508,10 +1515,8 @@ export function Asset360Overview({
         )}
       </details>
 
-      <details className="group rounded-lg border border-border bg-card" open>
-        <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold">
-          Historial económico
-        </summary>
+      <details className="group rounded-lg border border-border bg-card">
+        <SectionSummary title="Historial económico" hint={economicHistory.length > 0 ? `${economicHistory.length} años con movimientos · ${money(economicLifetime)}` : 'Sin movimientos económicos históricos'} />
         <div className="border-t border-border p-4">
           {economicHistory.length > 0 ? (
             <>
@@ -1544,10 +1549,8 @@ export function Asset360Overview({
       </details>
 
       {drillingHistory.length > 0 ? (
-        <details className="group rounded-lg border border-border bg-card" open>
-          <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold">
-            Producción y uso del equipo
-          </summary>
+        <details className="group rounded-lg border border-border bg-card">
+          <SectionSummary title="Producción y uso del equipo" hint={drillingHistory[0]?.operation_date ? `${number(drillingMeters, 1)} m en reportes mostrados · hasta ${date(drillingHistory[0].operation_date)}` : 'Sin producción reciente enlazada'} />
           <div className="border-t border-border p-4">
             <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <IdentityItem icon={Gauge} label="Reportes recientes" value={drillingHistory.length} meta={drillingHistory[0]?.operation_date ? `Hasta ${date(drillingHistory[0].operation_date)}` : null} />
@@ -1637,10 +1640,8 @@ export function Asset360Overview({
         </details>
       ) : null}
 
-      <details className="group rounded-lg border border-border bg-card" open>
-        <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold">
-          Últimas mantenciones
-        </summary>
+      <details className="group rounded-lg border border-border bg-card">
+        <SectionSummary title="Últimas mantenciones" hint={auditedInterventions.length > 0 ? `${auditedInterventions.length} cierres auditados disponibles` : latestPlan ? `Plan disponible · última MP ${show(latestPlan.last_mp)}` : 'Sin mantenciones auditadas registradas'} />
         <div className="border-t border-border p-4">
           {auditedInterventions.length > 0 ? (
             <div className="divide-y divide-border">
@@ -1727,10 +1728,8 @@ export function Asset360Overview({
         </div>
       </details>
 
-      <details className="group rounded-lg border border-border bg-card" open>
-        <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold">
-          Materiales y repuestos
-        </summary>
+      <details className="group rounded-lg border border-border bg-card">
+        <SectionSummary title="Materiales y repuestos" hint={`${data.installedParts?.length ?? 0} instalados · ${data.pendingParts?.length ?? 0} pendientes`} />
         <div className="grid gap-4 border-t border-border p-4 lg:grid-cols-2">
           <Card className="shadow-none">
             <CardContent className="p-5">
@@ -1809,10 +1808,8 @@ export function Asset360Overview({
         </div>
       </details>
 
-      <details className="group rounded-lg border border-border bg-card" open>
-        <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold">
-          Vida útil y ciclo del activo
-        </summary>
+      <details className="group rounded-lg border border-border bg-card">
+        <SectionSummary title="Vida útil y ciclo del activo" hint={remainingLifeYears != null ? `${number(remainingLifeYears, 1)} años remanentes estimados` : 'Vida útil no informada'} />
         <div className="grid gap-4 border-t border-border p-4 sm:grid-cols-2 lg:grid-cols-4">
           <IdentityItem icon={CalendarDays} label="Fecha adquisición" value={date(asset.acquisition_date)} meta={asset.updated_at ? `Maestro actualizado ${date(asset.updated_at)}` : null} />
           <IdentityItem
@@ -1843,9 +1840,7 @@ export function Asset360Overview({
       </details>
 
       <details className="group rounded-lg border border-border bg-card">
-        <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold">
-          Actividad reciente del activo
-        </summary>
+        <SectionSummary title="Actividad reciente del activo" hint={`${recentEvents.length} eventos recientes`} />
         <div className="border-t border-border p-4">
           {recentEvents.length > 0 ? (
             <div className="divide-y divide-border">
@@ -1864,9 +1859,7 @@ export function Asset360Overview({
       </details>
 
       <details className="group rounded-lg border border-border bg-card">
-        <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold">
-          Trazabilidad y criterio de evidencia
-        </summary>
+        <SectionSummary title="Trazabilidad y criterio de evidencia" hint={asset.source_file ? `${asset.source_file} · actualizado ${date(asset.updated_at || asset.imported_at)}` : `Actualizado ${date(asset.updated_at || asset.imported_at)}`} />
         <div className="border-t border-border px-5 py-4">
           <p className="text-sm leading-relaxed text-muted-foreground">
             Horómetro, MTBF y MTTR se muestran sólo desde evidencia operacional auditada. El costo se obtiene desde snapshots de cierre auditado. Los campos de identidad ausentes permanecen explícitamente como no informados.
