@@ -231,6 +231,40 @@ type Asset360Response = {
     mine_raw?: string | null;
     sector_raw?: string | null;
   }>;
+  maintenancePriority?: {
+    meter_unit?: string | null;
+    interval_mp?: number | string | null;
+    last_mp?: number | string | null;
+    next_due_meter?: number | string | null;
+    current_reading_at?: string | null;
+    current_reading?: number | string | null;
+    remaining_meter?: number | string | null;
+    interval_consumed?: number | string | null;
+    utilization_per_day?: number | string | null;
+    projected_days?: number | string | null;
+    projected_due_at?: string | null;
+    criticality_raw?: string | null;
+    criticality_score?: number | string | null;
+    urgency_score?: number | string | null;
+    total_score?: number | string | null;
+    priority?: string | null;
+    recommended_action?: string | null;
+    scheduled_date?: string | null;
+    programming_status_raw?: string | null;
+    responsible_raw?: string | null;
+    parts_status_raw?: string | null;
+    observations?: string | null;
+    match_method?: string | null;
+    match_score?: number | string | null;
+  } | null;
+  financeReconciliation?: {
+    finance_asset_id?: string | null;
+    finance_asset_code?: string | null;
+    finance_asset_name?: string | null;
+    candidate_count?: number | string | null;
+    reconciliation_status?: string | null;
+    match_method?: string | null;
+  } | null;
   operationalState?: {
     operational_status?: string | null;
     criticality?: string | null;
@@ -605,6 +639,8 @@ export function Asset360Overview({
   const pendingParts = data.pendingParts || [];
   const maintenancePlanning = data.maintenancePlanning || [];
   const operationalState = data.operationalState;
+  const maintenancePriority = data.maintenancePriority;
+  const financeReconciliation = data.financeReconciliation;
   const supplyChain = data.supplyChain || [];
   const procurementOrders = data.procurementOrders || [];
   const costCenterPurchaseHistory = data.costCenterPurchaseHistory || [];
@@ -634,15 +670,20 @@ export function Asset360Overview({
       ? Math.max(expectedLifespan - assetAgeYears, 0)
       : null;
 
+  const planningPriorityText = String(maintenancePriority?.priority || '');
   const attention = summary.criticalOpen > 0
     ? { tone: 'border-destructive/40 bg-destructive/5', title: 'OT crítica abierta', detail: 'Revisar la orden crítica y su siguiente acción.' }
     : summary.overduePreventives > 0
-      ? { tone: 'border-amber-500/40 bg-amber-500/5', title: 'Preventivo vencido', detail: 'Existe mantenimiento preventivo que requiere atención.' }
-      : summary.operationalBlockers > 0
-        ? { tone: 'border-amber-500/40 bg-amber-500/5', title: 'Bloqueo operativo', detail: 'Existe una dependencia que impide avanzar o cerrar trabajo.' }
-        : summary.pendingPlanSteps > 0
-          ? { tone: 'border-border bg-muted/20', title: 'Trabajo pendiente', detail: 'Quedan pasos de ejecución antes del cierre.' }
-          : { tone: 'border-border bg-muted/10', title: 'Sin alertas operacionales', detail: 'No hay excepciones abiertas en la evidencia disponible.' };
+      ? { tone: 'border-amber-500/40 bg-amber-500/5', title: 'Preventivo vencido', detail: maintenancePriority?.recommended_action || 'Existe mantenimiento preventivo que requiere atención.' }
+      : planningPriorityText.startsWith('P1')
+        ? { tone: 'border-destructive/40 bg-destructive/5', title: planningPriorityText, detail: maintenancePriority?.recommended_action || 'Intervención prioritaria según planificación.' }
+        : planningPriorityText.startsWith('P2')
+          ? { tone: 'border-amber-500/40 bg-amber-500/5', title: planningPriorityText, detail: maintenancePriority?.recommended_action || 'Intervención próxima según planificación.' }
+          : summary.operationalBlockers > 0
+            ? { tone: 'border-amber-500/40 bg-amber-500/5', title: 'Bloqueo operativo', detail: 'Existe una dependencia que impide avanzar o cerrar trabajo.' }
+            : summary.pendingPlanSteps > 0
+              ? { tone: 'border-border bg-muted/20', title: 'Trabajo pendiente', detail: 'Quedan pasos de ejecución antes del cierre.' }
+              : { tone: 'border-border bg-muted/10', title: 'Sin alertas operacionales', detail: 'No hay excepciones abiertas en la evidencia disponible.' };
 
   return (
     <div className="space-y-5">
@@ -795,6 +836,20 @@ export function Asset360Overview({
                 <ArrowRight className="ml-1 h-4 w-4" />
               </Link>
             </Button>
+          ) : null}
+          {!actionableWorkOrder && maintenancePriority ? (
+            <div className="text-right text-xs text-muted-foreground">
+              {maintenancePriority.remaining_meter != null ? (
+                <p>
+                  Margen: {number(maintenancePriority.remaining_meter, 0)} {maintenancePriority.meter_unit || ''}
+                </p>
+              ) : null}
+              {maintenancePriority.projected_due_at ? (
+                <p className="mt-1">Proyección: {date(maintenancePriority.projected_due_at)}</p>
+              ) : maintenancePriority.scheduled_date ? (
+                <p className="mt-1">Programado: {date(maintenancePriority.scheduled_date)}</p>
+              ) : null}
+            </div>
           ) : null}
         </CardContent>
       </Card>
@@ -1113,6 +1168,45 @@ export function Asset360Overview({
           )}
         </div>
       </details>
+
+      {maintenancePriority ? (
+        <details className="group rounded-lg border border-border bg-card" open>
+          <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold">
+            Planificación de mantenimiento
+          </summary>
+          <div className="grid gap-4 border-t border-border p-4 sm:grid-cols-2 lg:grid-cols-4">
+            <IdentityItem icon={Activity} label="Prioridad" value={maintenancePriority.priority} />
+            <IdentityItem
+              icon={Gauge}
+              label="Lectura actual"
+              value={maintenancePriority.current_reading != null ? `${number(maintenancePriority.current_reading, 1)} ${maintenancePriority.meter_unit || ''}` : null}
+            />
+            <IdentityItem
+              icon={Gauge}
+              label="Próximo MP"
+              value={maintenancePriority.next_due_meter != null ? `${number(maintenancePriority.next_due_meter, 1)} ${maintenancePriority.meter_unit || ''}` : null}
+            />
+            <IdentityItem
+              icon={Timer}
+              label="Margen"
+              value={maintenancePriority.remaining_meter != null ? `${number(maintenancePriority.remaining_meter, 1)} ${maintenancePriority.meter_unit || ''}` : null}
+            />
+            <IdentityItem icon={CalendarDays} label="Fecha proyectada" value={date(maintenancePriority.projected_due_at || maintenancePriority.scheduled_date)} />
+            <IdentityItem icon={Wrench} label="Responsable" value={maintenancePriority.responsible_raw} />
+            <IdentityItem icon={PackageCheck} label="Materiales" value={maintenancePriority.parts_status_raw} />
+            <IdentityItem icon={FileText} label="Estado programación" value={maintenancePriority.programming_status_raw} />
+          </div>
+          {maintenancePriority.recommended_action ? (
+            <div className="border-t border-border px-4 py-4">
+              <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Acción recomendada</p>
+              <p className="mt-2 text-sm font-medium">{maintenancePriority.recommended_action}</p>
+              {maintenancePriority.observations ? (
+                <p className="mt-1 text-xs text-muted-foreground">{maintenancePriority.observations}</p>
+              ) : null}
+            </div>
+          ) : null}
+        </details>
+      ) : null}
 
       <details className="group rounded-lg border border-border bg-card" open>
         <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold">
@@ -1457,6 +1551,13 @@ export function Asset360Overview({
             <IdentityItem icon={FileText} label="Hoja" value={asset.source_sheet} />
             <IdentityItem icon={Hash} label="Fila fuente" value={asset.source_row} />
             <IdentityItem icon={CalendarDays} label="Última actualización" value={date(asset.updated_at || asset.imported_at)} />
+            {financeReconciliation ? (
+              <IdentityItem
+                icon={Coins}
+                label="Conciliación finanzas"
+                value={`${financeReconciliation.reconciliation_status || 'Sin estado'} · ${financeReconciliation.match_method || 'sin método'}`}
+              />
+            ) : null}
           </div>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <IdentityItem icon={PackageCheck} label="Repuestos instalados" value={data.installedParts?.length ?? 0} />
