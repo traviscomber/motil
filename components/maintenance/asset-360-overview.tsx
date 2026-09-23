@@ -10,7 +10,6 @@ import {
   Building2,
   FileText,
   Gauge,
-  GitBranch,
   Hash,
   MapPin,
   QrCode,
