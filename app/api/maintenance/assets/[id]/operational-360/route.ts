@@ -56,7 +56,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       validation_status: asset.validation_status,
     };
 
-    const [ordersResult, closeResult, preventiveResult, runtimeResult, reliabilityResult, runtimeReliabilityResult, snapshotsResult, partsResult, eventsResult, planningResult] = await Promise.all([
+    const [ordersResult, closeResult, preventiveResult, runtimeResult, reliabilityResult, runtimeReliabilityResult, snapshotsResult, partsResult, eventsResult, planningResult, operationalStateResult, supplyChainResult, procurementOrdersResult] = await Promise.all([
       context.supabase
         .from('maintenance_operational_work_order_flow_v1')
         .select('work_order_id,work_order_number,status,priority,work_type,scheduled_date,assigned_person_name,flow_status,open_purchase_order_count,quantity_requested,quantity_issued,quantity_installed,total_cost')
@@ -121,9 +121,29 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         .eq('canonical_asset_id', id)
         .order('updated_at', { ascending: false })
         .limit(5),
+      context.supabase
+        .from('asset_operational_state_v1')
+        .select('operational_status,criticality,location,recognized_cost_event_count,last_cost_at,recognized_cost_clp_lifetime,recognized_cost_clp_ytd,recognized_cost_clp_12m,work_order_count,open_work_order_count,recorded_downtime_hours,drilling_report_count,drilled_meters,sensor_count,sensor_reading_count,evidence_domain_count,availability_evidence_status,availability_pct,last_availability_date,availability_days_30d,scheduled_minutes_30d,downtime_minutes_30d')
+        .eq('organization_id', context.organizationId)
+        .eq('canonical_asset_id', id)
+        .maybeSingle(),
+      context.supabase
+        .from('work_order_supply_chain_v1')
+        .select('work_order_id,work_order_number,title,work_order_status,priority,scheduled_date,material_requirement_count,material_shortage_count,material_shortage_quantity,supply_need_count,open_supply_need_count,supply_needs_with_request,procurement_request_count,open_procurement_request_count,promoted_procurement_request_count,procurement_order_count,undelivered_order_count,delivered_order_count,procurement_order_amount,part_line_count,parts_requested,parts_issued,parts_installed,parts_cost,stock_movement_count,stock_movement_cost,supply_chain_status')
+        .eq('organization_id', context.organizationId)
+        .eq('canonical_asset_id', id)
+        .order('scheduled_date', { ascending: false, nullsFirst: false })
+        .limit(10),
+      context.supabase
+        .from('procurement_operational_orders')
+        .select('id,order_number,supplier_id,status,currency,total_amount,expected_delivery_date,actual_delivery_date,issued_at,updated_at,work_order_id')
+        .eq('organization_id', context.organizationId)
+        .eq('canonical_asset_id', id)
+        .order('issued_at', { ascending: false, nullsFirst: false })
+        .limit(10),
     ]);
 
-    const error = ordersResult.error || closeResult.error || preventiveResult.error || runtimeResult.error || reliabilityResult.error || runtimeReliabilityResult.error || snapshotsResult.error || partsResult.error || eventsResult.error || planningResult.error;
+    const error = ordersResult.error || closeResult.error || preventiveResult.error || runtimeResult.error || reliabilityResult.error || runtimeReliabilityResult.error || snapshotsResult.error || partsResult.error || eventsResult.error || planningResult.error || operationalStateResult.error || supplyChainResult.error || procurementOrdersResult.error;
     if (error) throw error;
 
     const closeRows = closeResult.data || [];
@@ -166,6 +186,33 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     if (productResult.error) throw productResult.error;
     const productsById = new Map((productResult.data || []).map((row: any) => [row.id, row]));
 
+    const supplierIds = Array.from(
+      new Set((procurementOrdersResult.data || []).map((row: any) => row.supplier_id).filter(Boolean)),
+    );
+    const [supplierResult, supplierScoreResult] = supplierIds.length
+      ? await Promise.all([
+          context.supabase
+            .from('canonical_suppliers_v1')
+            .select('id,legal_name,trade_name,payment_terms,email,phone')
+            .eq('organization_id', context.organizationId)
+            .in('id', supplierIds),
+          context.supabase
+            .from('supplier_operational_score_v2')
+            .select('supplier_id,supplier_name,total_orders,completed_orders,on_time_orders,last_delivery_date,receipt_count,quantity_received,quantity_accepted,quantity_rejected,returns_count,delivery_score,quality_score,invoice_score,operational_score,evidence_dimensions')
+            .eq('organization_id', context.organizationId)
+            .in('supplier_id', supplierIds),
+        ])
+      : [{ data: [], error: null }, { data: [], error: null }];
+    if (supplierResult.error) throw supplierResult.error;
+    if (supplierScoreResult.error) throw supplierScoreResult.error;
+    const suppliersById = new Map((supplierResult.data || []).map((row: any) => [row.id, row]));
+    const supplierScoresById = new Map((supplierScoreResult.data || []).map((row: any) => [row.supplier_id, row]));
+    const procurementOrders = (procurementOrdersResult.data || []).map((row: any) => ({
+      ...row,
+      supplier: suppliersById.get(row.supplier_id) || null,
+      supplierScore: supplierScoresById.get(row.supplier_id) || null,
+    }));
+
     const parts = (partsResult.data || []).map((row: any) => ({
       ...row,
       product: productsById.get(row.canonical_product_id) || null,
@@ -206,6 +253,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       pendingParts,
       recentEvents: eventsResult.data || [],
       maintenancePlanning: planningResult.data || [],
+      operationalState: operationalStateResult.data || null,
+      supplyChain: supplyChainResult.data || [],
+      procurementOrders,
       canEdit: access.canWrite,
       evidence: {
         mtbf: 'Sólo desde intervalos correctivos auditados con horómetro válido.',
