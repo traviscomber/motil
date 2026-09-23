@@ -237,6 +237,14 @@ type Asset360Response = {
     stock_movement_cost?: number | string | null;
     supply_chain_status?: string | null;
   }>;
+  purchaseHistorySummary?: {
+    purchaseLines?: number;
+    orders?: number;
+    suppliers?: number;
+    netSpend?: number | string | null;
+    lastOrderDate?: string | null;
+    lastSupplier?: string | null;
+  };
   costCenterPurchaseHistory?: Array<{
     id: number;
     order_number?: string | null;
@@ -552,6 +560,7 @@ export function Asset360Overview({
   const supplyChain = data.supplyChain || [];
   const procurementOrders = data.procurementOrders || [];
   const costCenterPurchaseHistory = data.costCenterPurchaseHistory || [];
+  const purchaseHistorySummary = data.purchaseHistorySummary;
   const latestPlan = maintenancePlanning[0] || null;
   const acquisitionDate = asset.acquisition_date ? new Date(String(asset.acquisition_date)) : null;
   const assetAgeYears =
@@ -910,6 +919,15 @@ export function Asset360Overview({
           Compras y proveedores
         </summary>
         <div className="border-t border-border p-4">
+          {purchaseHistorySummary && Number(purchaseHistorySummary.purchaseLines || 0) > 0 ? (
+            <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+              <IdentityItem icon={Building2} label="Último proveedor" value={purchaseHistorySummary.lastSupplier} />
+              <IdentityItem icon={CalendarDays} label="Última compra" value={date(purchaseHistorySummary.lastOrderDate)} />
+              <IdentityItem icon={FileText} label="Órdenes históricas" value={purchaseHistorySummary.orders} />
+              <IdentityItem icon={Building2} label="Proveedores" value={purchaseHistorySummary.suppliers} />
+              <IdentityItem icon={Coins} label="Gasto histórico neto" value={purchaseHistorySummary.netSpend != null ? money(purchaseHistorySummary.netSpend) : null} />
+            </div>
+          ) : null}
           {procurementOrders.length > 0 ? (
             <div className="divide-y divide-border">
               {procurementOrders.slice(0, 5).map((order) => {
