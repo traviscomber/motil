@@ -14,6 +14,41 @@ const EXACT_EQUIPMENT_IMAGES: Array<{
   note: string;
 }> = [
   {
+    keywords: ['chevrolet nkr 613', 'camion chevrolet nkr 613', 'camión chevrolet nkr 613'],
+    image: 'https://chileautos.pxcrush.net/cars/dealer/835p6z211m6s7ug9a462079j4.jpg?pxc_format=auto&pxc_height=600&pxc_method=crop&pxc_width=900',
+    sourceUrl: 'https://www.chileautos.cl/vehiculos/detalles/2011-chevrolet-nkr-613/CP-AD-8424573/',
+    sourceDomain: 'chileautos.cl',
+    note: 'Referencia visual Chevrolet NKR 613 en Chile; no acredita que sea la unidad física registrada.',
+  },
+  {
+    keywords: ['foton auman', 'fotón aumán', 'camion foton auman', 'camión fotón aumán'],
+    image: 'https://www.newtrac.cl/wp-content/uploads/2025/11/IMG_3064.jpg',
+    sourceUrl: 'https://www.newtrac.cl/productos/tractocamion-foton-2019-auman-2544-6x2-aut-ref-lt76-buin/?id=25417&idCategoria=299',
+    sourceDomain: 'newtrac.cl',
+    note: 'Referencia visual de camión Foton Auman en Chile; carrocería y configuración pueden variar.',
+  },
+  {
+    keywords: ['mercedes benz aljibe', 'camion mercedes benz aljibe', 'camión mercedes benz aljibe'],
+    image: 'https://chileautos.pxcrush.net/cars/dealer/76i8suc4eb2pkbfdpunzza1w1.jpg?height=725&pxc_bgtype=self&pxc_method=fitfill&width=1087',
+    sourceUrl: 'https://www.chileautos.cl/vehiculos/mercedes-benz/actros-3336/',
+    sourceDomain: 'chileautos.cl',
+    note: 'Referencia visual de camión aljibe Mercedes-Benz en Chile; validar modelo exacto del activo.',
+  },
+  {
+    keywords: ['atlas copco xams', 'compresor portatil atlas copco xams', 'compresor portátil atlas copco xams'],
+    image: 'https://image.made-in-china.com/2f0j00bqdcNgPlQwok/Atlas-Copco-Diesel-Engine-portable-air-compressor-XAMS850.webp',
+    sourceUrl: 'https://bestrand-compressor.en.made-in-china.com/product/WJiUORqCLshe/China-Atlas-Copco-Diesel-Engine-portable-air-compressor-XAMS850.html',
+    sourceDomain: 'made-in-china.com',
+    note: 'Referencia visual de la familia Atlas Copco XAMS; validar variante exacta del activo.',
+  },
+  {
+    keywords: ['cat 938-g', 'cat 938g', 'cargador frontal cat 938-g'],
+    image: 'https://espacios.nyc3.cdn.digitaloceanspaces.com/maquinaria24/machinery-rents/June2025/pdMHGkKfmKZpoKuw5YwZ.jpeg',
+    sourceUrl: 'https://maquinaria24.com/es/machinery_rents/1999-caterpillar-938g-4444',
+    sourceDomain: 'maquinaria24.com',
+    note: 'Referencia visual del modelo Caterpillar 938G; no acredita que sea la unidad física registrada.',
+  },
+  {
     keywords: ['ghh mk-a20', 'dumper ghh, modelo mk-a20', 'mk-a20'],
     image: 'https://www.tasimacilar.com/d/other/2024/05/07/1715003791-ghh-mk-a20-4.jpg',
     sourceUrl: 'https://ghhmm.co.za/mk-a20/',
