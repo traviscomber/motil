@@ -346,9 +346,6 @@ export function Asset360Overview({
                         {displayCriticality}
                       </Badge>
                     ) : null}
-                    {asset.validation_status ? (
-                      <Badge variant="secondary">{asset.validation_status}</Badge>
-                    ) : null}
                   </div>
                   <p className="mt-3 text-sm text-muted-foreground">
                     {technicalIdentity || 'Clasificación técnica no informada'}
