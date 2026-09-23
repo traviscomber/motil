@@ -1017,7 +1017,7 @@ export function Asset360Overview({
         <SectionSummary
           title="Cobertura de la ficha"
           hint={coverageUnavailableCount > 0
-            ? `${coverageAvailableCount} capas con evidencia · ${coverageMissingCount} sin registro · ${coverageUnavailableCount} fuentes temporalmente no disponibles`
+            ? `${coverageAvailableCount} capas con evidencia · ${coverageMissingCount} sin registro · ${coverageUnavailableCount} ${coverageUnavailableCount === 1 ? 'fuente no disponible' : 'fuentes no disponibles'}`
             : `${coverageAvailableCount} capas con evidencia · ${coverageMissingCount} sin registro`}
         />
         <div className="grid gap-px border-t border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
