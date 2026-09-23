@@ -56,6 +56,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             .order('order_date', { ascending: false, nullsFirst: false })
             .limit(100)
         : Promise.resolve({ data: [], error: null });
+    const isDrillRig = String(asset.asset_type || '').toLowerCase() === 'drill_rig';
+
     const normalizedAsset = {
       id: asset.id,
       asset_code: asset.asset_code,
@@ -181,26 +183,32 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         .eq('canonical_asset_id', id)
         .order('fiscal_year', { ascending: false })
         .limit(10),
-      context.supabase
-        .from('production_drilling_source_reports')
-        .select('id,operation_date,hole_code_raw,rig_name_raw,site_raw,shift_code_raw,operator_name_raw,drilled_meters,machine_observations,drilling_observations,equipment_status_raw,mine_raw,sector_raw')
-        .eq('organization_id', context.organizationId)
-        .eq('canonical_asset_id', id)
-        .order('operation_date', { ascending: false, nullsFirst: false })
-        .limit(20),
-      context.supabase
-        .from('drill_asset_unit_economics_90d_v1')
-        .select('window_start,window_end,last_cost_date,last_drilling_date,recognized_cost_events_90d,recognized_cost_clp_90d,drilling_reports_90d,drilled_meters_90d,cost_clp_per_meter_90d,evidence_status')
-        .eq('organization_id', context.organizationId)
-        .eq('canonical_asset_id', id)
-        .maybeSingle(),
-      context.supabase
-        .from('drilling_maintenance_review_queue_v1')
-        .select('source_report_id,operation_date,review_reason,equipment_status_raw,machine_observations,review_status,linked_work_order_id,decision_note,reviewed_at,has_linked_work_order,policy')
-        .eq('organization_id', context.organizationId)
-        .eq('canonical_asset_id', id)
-        .order('operation_date', { ascending: false, nullsFirst: false })
-        .limit(10),
+      isDrillRig
+        ? context.supabase
+            .from('production_drilling_source_reports')
+            .select('id,operation_date,hole_code_raw,rig_name_raw,site_raw,shift_code_raw,operator_name_raw,drilled_meters,machine_observations,drilling_observations,equipment_status_raw,mine_raw,sector_raw')
+            .eq('organization_id', context.organizationId)
+            .eq('canonical_asset_id', id)
+            .order('operation_date', { ascending: false, nullsFirst: false })
+            .limit(20)
+        : Promise.resolve({ data: [], error: null }),
+      isDrillRig
+        ? context.supabase
+            .from('drill_asset_unit_economics_90d_v1')
+            .select('window_start,window_end,last_cost_date,last_drilling_date,recognized_cost_events_90d,recognized_cost_clp_90d,drilling_reports_90d,drilled_meters_90d,cost_clp_per_meter_90d,evidence_status')
+            .eq('organization_id', context.organizationId)
+            .eq('canonical_asset_id', id)
+            .maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
+      isDrillRig
+        ? context.supabase
+            .from('drilling_maintenance_review_queue_v1')
+            .select('source_report_id,operation_date,review_reason,equipment_status_raw,machine_observations,review_status,linked_work_order_id,decision_note,reviewed_at,has_linked_work_order,policy')
+            .eq('organization_id', context.organizationId)
+            .eq('canonical_asset_id', id)
+            .order('operation_date', { ascending: false, nullsFirst: false })
+            .limit(10)
+        : Promise.resolve({ data: [], error: null }),
       context.supabase
         .from('planning_maintenance_priority_v1')
         .select('meter_unit,interval_mp,last_mp,next_due_meter,current_reading_at,current_reading,remaining_meter,interval_consumed,utilization_per_day,projected_days,projected_due_at,criticality_raw,criticality_score,urgency_score,total_score,priority,recommended_action,scheduled_date,programming_status_raw,responsible_raw,parts_status_raw,observations,match_method,match_score')
@@ -226,25 +234,31 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         .eq('canonical_asset_id', id)
         .order('recorded_at', { ascending: false })
         .limit(12),
-      context.supabase
-        .from('drill_asset_operational_evidence_90d_v1')
-        .select('window_start,window_end,drilling_reports,out_of_service_reports,operational_with_observations_reports,operational_reports,invalid_status_reports,equipment_without_crew_reports,power_outage_reports,water_shortage_reports,install_disassembly_reports,scaling_reports,work_order_count,open_work_order_count,recorded_downtime_hours,external_cost_clp,part_line_count,quantity_installed,installed_parts_cost_clp,availability_days,scheduled_minutes,availability_downtime_minutes,evidence_status')
-        .eq('organization_id', context.organizationId)
-        .eq('canonical_asset_id', id)
-        .maybeSingle(),
-      context.supabase
-        .from('drill_asset_unit_economics_change_v1')
-        .select('current_month,previous_month,current_cost_clp_per_meter,previous_cost_clp_per_meter,current_cost_clp,previous_cost_clp,current_drilled_meters,previous_drilled_meters,cost_per_meter_change_pct,drilled_meters_change_pct,recognized_cost_change_pct,interpretation_policy')
-        .eq('organization_id', context.organizationId)
-        .eq('canonical_asset_id', id)
-        .maybeSingle(),
-      context.supabase
-        .from('maintenance_operation_task_candidates_v1')
-        .select('rig_name,component_key,suggested_task,observation_count,out_of_service_count,first_observed_at,last_observed_at,latest_status,latest_observation,signal_status,evidence_class')
-        .eq('organization_id', context.organizationId)
-        .eq('canonical_asset_id', id)
-        .order('last_observed_at', { ascending: false, nullsFirst: false })
-        .limit(10),
+      isDrillRig
+        ? context.supabase
+            .from('drill_asset_operational_evidence_90d_v1')
+            .select('window_start,window_end,drilling_reports,out_of_service_reports,operational_with_observations_reports,operational_reports,invalid_status_reports,equipment_without_crew_reports,power_outage_reports,water_shortage_reports,install_disassembly_reports,scaling_reports,work_order_count,open_work_order_count,recorded_downtime_hours,external_cost_clp,part_line_count,quantity_installed,installed_parts_cost_clp,availability_days,scheduled_minutes,availability_downtime_minutes,evidence_status')
+            .eq('organization_id', context.organizationId)
+            .eq('canonical_asset_id', id)
+            .maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
+      isDrillRig
+        ? context.supabase
+            .from('drill_asset_unit_economics_change_v1')
+            .select('current_month,previous_month,current_cost_clp_per_meter,previous_cost_clp_per_meter,current_cost_clp,previous_cost_clp,current_drilled_meters,previous_drilled_meters,cost_per_meter_change_pct,drilled_meters_change_pct,recognized_cost_change_pct,interpretation_policy')
+            .eq('organization_id', context.organizationId)
+            .eq('canonical_asset_id', id)
+            .maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
+      isDrillRig
+        ? context.supabase
+            .from('maintenance_operation_task_candidates_v1')
+            .select('rig_name,component_key,suggested_task,observation_count,out_of_service_count,first_observed_at,last_observed_at,latest_status,latest_observation,signal_status,evidence_class')
+            .eq('organization_id', context.organizationId)
+            .eq('canonical_asset_id', id)
+            .order('last_observed_at', { ascending: false, nullsFirst: false })
+            .limit(10)
+        : Promise.resolve({ data: [], error: null }),
       context.supabase
         .from('maintenance_standard_job_plans')
         .select('id,plan_code,name,work_type,status,estimated_duration_hours,labor_people_required,skill_requirement,safety_controls,required_document_reference,reason,evidence_reference,approved_at')
