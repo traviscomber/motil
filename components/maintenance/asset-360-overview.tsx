@@ -231,6 +231,65 @@ type Asset360Response = {
     mine_raw?: string | null;
     sector_raw?: string | null;
   }>;
+  runtimeCostIntelligence?: {
+    reading_count?: number | string | null;
+    first_reading_at?: string | null;
+    last_reading_at?: string | null;
+    latest_meter_hours?: number | string | null;
+    observed_operating_hours?: number | string | null;
+    reset_count?: number | string | null;
+    usable_for_rate_metrics?: boolean | null;
+    audited_closures?: number | string | null;
+    audited_total_cost?: number | string | null;
+    audited_cost_per_operating_hour?: number | string | null;
+  } | null;
+  meterHistory?: Array<{
+    id: string;
+    recorded_at?: string | null;
+    meter_value?: number | string | null;
+    meter_unit?: string | null;
+    source_kind?: string | null;
+    source_reference?: string | null;
+  }>;
+  drillOperationalEvidence?: {
+    window_start?: string | null;
+    window_end?: string | null;
+    drilling_reports?: number | string | null;
+    out_of_service_reports?: number | string | null;
+    operational_with_observations_reports?: number | string | null;
+    operational_reports?: number | string | null;
+    invalid_status_reports?: number | string | null;
+    equipment_without_crew_reports?: number | string | null;
+    power_outage_reports?: number | string | null;
+    water_shortage_reports?: number | string | null;
+    install_disassembly_reports?: number | string | null;
+    scaling_reports?: number | string | null;
+    work_order_count?: number | string | null;
+    open_work_order_count?: number | string | null;
+    recorded_downtime_hours?: number | string | null;
+    external_cost_clp?: number | string | null;
+    part_line_count?: number | string | null;
+    quantity_installed?: number | string | null;
+    installed_parts_cost_clp?: number | string | null;
+    availability_days?: number | string | null;
+    scheduled_minutes?: number | string | null;
+    availability_downtime_minutes?: number | string | null;
+    evidence_status?: string | null;
+  } | null;
+  drillEconomicsChange?: {
+    current_month?: string | null;
+    previous_month?: string | null;
+    current_cost_clp_per_meter?: number | string | null;
+    previous_cost_clp_per_meter?: number | string | null;
+    current_cost_clp?: number | string | null;
+    previous_cost_clp?: number | string | null;
+    current_drilled_meters?: number | string | null;
+    previous_drilled_meters?: number | string | null;
+    cost_per_meter_change_pct?: number | string | null;
+    drilled_meters_change_pct?: number | string | null;
+    recognized_cost_change_pct?: number | string | null;
+    interpretation_policy?: string | null;
+  } | null;
   maintenancePriority?: {
     meter_unit?: string | null;
     interval_mp?: number | string | null;
@@ -640,6 +699,10 @@ export function Asset360Overview({
   const maintenancePlanning = data.maintenancePlanning || [];
   const operationalState = data.operationalState;
   const maintenancePriority = data.maintenancePriority;
+  const runtimeCostIntelligence = data.runtimeCostIntelligence;
+  const meterHistory = data.meterHistory || [];
+  const drillOperationalEvidence = data.drillOperationalEvidence;
+  const drillEconomicsChange = data.drillEconomicsChange;
   const financeReconciliation = data.financeReconciliation;
   const supplyChain = data.supplyChain || [];
   const procurementOrders = data.procurementOrders || [];
@@ -1169,6 +1232,50 @@ export function Asset360Overview({
         </div>
       </details>
 
+      {runtimeCostIntelligence || meterHistory.length > 0 ? (
+        <details className="group rounded-lg border border-border bg-card" open>
+          <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold">
+            Uso, horómetro y costo por hora
+          </summary>
+          <div className="grid gap-4 border-t border-border p-4 sm:grid-cols-2 lg:grid-cols-4">
+            <IdentityItem
+              icon={Gauge}
+              label="Último horómetro"
+              value={runtimeCostIntelligence?.latest_meter_hours != null ? `${number(runtimeCostIntelligence.latest_meter_hours, 1)} h` : null}
+            />
+            <IdentityItem
+              icon={Timer}
+              label="Horas observadas"
+              value={runtimeCostIntelligence?.observed_operating_hours != null ? `${number(runtimeCostIntelligence.observed_operating_hours, 1)} h` : null}
+            />
+            <IdentityItem
+              icon={Coins}
+              label="Costo auditado / hora"
+              value={runtimeCostIntelligence?.audited_cost_per_operating_hour != null ? `${money(runtimeCostIntelligence.audited_cost_per_operating_hour)}/h` : null}
+            />
+            <IdentityItem
+              icon={FileText}
+              label="Lecturas"
+              value={runtimeCostIntelligence?.reading_count ?? meterHistory.length}
+            />
+          </div>
+          {meterHistory.length > 0 ? (
+            <div className="border-t border-border px-4 py-4">
+              <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Últimas lecturas</p>
+              <div className="mt-3 divide-y divide-border">
+                {meterHistory.slice(0, 6).map((row) => (
+                  <div key={row.id} className="grid gap-2 py-2 sm:grid-cols-[140px_120px_minmax(0,1fr)] sm:items-center">
+                    <span className="text-xs text-muted-foreground">{date(row.recorded_at)}</span>
+                    <span className="text-sm font-medium">{number(row.meter_value || 0, 1)} {row.meter_unit || ''}</span>
+                    <span className="truncate text-xs text-muted-foreground">{row.source_kind || row.source_reference || 'Fuente operacional'}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </details>
+      ) : null}
+
       {maintenancePriority ? (
         <details className="group rounded-lg border border-border bg-card" open>
           <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold">
@@ -1255,6 +1362,21 @@ export function Asset360Overview({
               <IdentityItem icon={CalendarDays} label="Última operación" value={date(drillingHistory[0]?.operation_date)} />
               <IdentityItem icon={MapPin} label="Última faena" value={drillingHistory[0]?.mine_raw || drillingHistory[0]?.site_raw} />
             </div>
+            {drillOperationalEvidence ? (
+              <div className="mb-4 grid gap-4 rounded-md border border-border bg-muted/20 p-4 sm:grid-cols-2 lg:grid-cols-4">
+                <IdentityItem icon={Activity} label="Operativo" value={drillOperationalEvidence.operational_reports} />
+                <IdentityItem icon={Activity} label="Fuera de servicio" value={drillOperationalEvidence.out_of_service_reports} />
+                <IdentityItem icon={Timer} label="Downtime 90 días" value={drillOperationalEvidence.recorded_downtime_hours != null ? `${number(drillOperationalEvidence.recorded_downtime_hours, 1)} h` : null} />
+                <IdentityItem icon={PackageCheck} label="Repuestos instalados 90 días" value={drillOperationalEvidence.quantity_installed} />
+              </div>
+            ) : null}
+            {drillEconomicsChange ? (
+              <div className="mb-4 grid gap-4 rounded-md border border-border bg-muted/20 p-4 sm:grid-cols-2 lg:grid-cols-3">
+                <IdentityItem icon={Coins} label="Costo/m mes actual" value={drillEconomicsChange.current_cost_clp_per_meter != null ? `${money(drillEconomicsChange.current_cost_clp_per_meter)}/m` : null} />
+                <IdentityItem icon={Coins} label="Cambio costo/m" value={drillEconomicsChange.cost_per_meter_change_pct != null ? `${number(drillEconomicsChange.cost_per_meter_change_pct, 1)}%` : null} />
+                <IdentityItem icon={Activity} label="Cambio metros" value={drillEconomicsChange.drilled_meters_change_pct != null ? `${number(drillEconomicsChange.drilled_meters_change_pct, 1)}%` : null} />
+              </div>
+            ) : null}
             {drillEconomics ? (
               <div className="mb-4 grid gap-4 rounded-md border border-border bg-muted/20 p-4 sm:grid-cols-2 lg:grid-cols-4">
                 <IdentityItem icon={Coins} label="Costo 90 días" value={drillEconomics.recognized_cost_clp_90d != null ? money(drillEconomics.recognized_cost_clp_90d) : null} />
