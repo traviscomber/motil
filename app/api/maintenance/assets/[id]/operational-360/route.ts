@@ -87,7 +87,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       validation_status: asset.validation_status,
     };
 
-    const [ordersResult, closeResult, preventiveResult, runtimeResult, reliabilityResult, runtimeReliabilityResult, snapshotsResult, partsResult, eventsResult, planningResult, operationalStateResult, supplyChainResult, procurementOrdersResult, costCenterPurchaseHistoryResult, namePurchaseHistoryResult, economicHistoryResult, drillingHistoryResult, drillEconomicsResult, drillingReviewResult] = await Promise.all([
+    const [ordersResult, closeResult, preventiveResult, runtimeResult, reliabilityResult, runtimeReliabilityResult, snapshotsResult, partsResult, eventsResult, planningResult, operationalStateResult, supplyChainResult, procurementOrdersResult, costCenterPurchaseHistoryResult, namePurchaseHistoryResult, economicHistoryResult, drillingHistoryResult, drillEconomicsResult, drillingReviewResult, maintenancePriorityResult, financeReconciliationResult] = await Promise.all([
       context.supabase
         .from('maintenance_operational_work_order_flow_v1')
         .select('work_order_id,work_order_number,status,priority,work_type,scheduled_date,assigned_person_name,flow_status,open_purchase_order_count,quantity_requested,quantity_issued,quantity_installed,total_cost')
@@ -201,9 +201,21 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         .eq('canonical_asset_id', id)
         .order('operation_date', { ascending: false, nullsFirst: false })
         .limit(10),
+      context.supabase
+        .from('planning_maintenance_priority_v1')
+        .select('meter_unit,interval_mp,last_mp,next_due_meter,current_reading_at,current_reading,remaining_meter,interval_consumed,utilization_per_day,projected_days,projected_due_at,criticality_raw,criticality_score,urgency_score,total_score,priority,recommended_action,scheduled_date,programming_status_raw,responsible_raw,parts_status_raw,observations,match_method,match_score')
+        .eq('organization_id', context.organizationId)
+        .eq('canonical_asset_id', id)
+        .maybeSingle(),
+      context.supabase
+        .from('finance_asset_reconciliation_v1')
+        .select('finance_asset_id,finance_asset_code,finance_asset_name,candidate_count,reconciliation_status,match_method')
+        .eq('organization_id', context.organizationId)
+        .eq('canonical_asset_id', id)
+        .maybeSingle(),
     ]);
 
-    const error = ordersResult.error || closeResult.error || preventiveResult.error || runtimeResult.error || reliabilityResult.error || runtimeReliabilityResult.error || snapshotsResult.error || partsResult.error || eventsResult.error || planningResult.error || operationalStateResult.error || supplyChainResult.error || procurementOrdersResult.error || costCenterPurchaseHistoryResult.error || namePurchaseHistoryResult.error || economicHistoryResult.error || drillingHistoryResult.error || drillEconomicsResult.error || drillingReviewResult.error;
+    const error = ordersResult.error || closeResult.error || preventiveResult.error || runtimeResult.error || reliabilityResult.error || runtimeReliabilityResult.error || snapshotsResult.error || partsResult.error || eventsResult.error || planningResult.error || operationalStateResult.error || supplyChainResult.error || procurementOrdersResult.error || costCenterPurchaseHistoryResult.error || namePurchaseHistoryResult.error || economicHistoryResult.error || drillingHistoryResult.error || drillEconomicsResult.error || drillingReviewResult.error || maintenancePriorityResult.error || financeReconciliationResult.error;
     if (error) throw error;
 
     const closeRows = closeResult.data || [];
@@ -346,6 +358,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       drillingHistory: drillingHistoryResult.data || [],
       drillEconomics: drillEconomicsResult.data || null,
       drillingMaintenanceReview: drillingReviewResult.data || [],
+      maintenancePriority: maintenancePriorityResult.data || null,
+      financeReconciliation: financeReconciliationResult.data || null,
       canEdit: access.canWrite,
       evidence: {
         mtbf: 'Sólo desde intervalos correctivos auditados con horómetro válido.',
