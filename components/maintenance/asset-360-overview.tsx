@@ -463,7 +463,7 @@ export function Asset360Overview({
         <Card className="shadow-none">
           <CardContent className="p-5">
             <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-              Ejecución y cierre
+              Cierre y ejecución
             </p>
             <div className="mt-3 grid grid-cols-2 gap-4">
               <div>
