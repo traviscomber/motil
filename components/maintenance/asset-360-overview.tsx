@@ -24,7 +24,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { StatePanel } from '@/components/ui/state-panel';
-import { EquipmentPhoto } from '@/components/maintenance/equipment-photo';
+import { getEquipmentImage } from '@/lib/maintenance/equipment-images';
 
 type Asset360Response = {
   asset?: {
@@ -247,6 +247,9 @@ export function Asset360Overview({
   ]
     .filter(Boolean)
     .join(' · ');
+  const equipmentImage =
+    getEquipmentImage(technicalIdentity) ||
+    getEquipmentImage(`${asset.name || ''} ${asset.asset_type || ''} ${asset.category || ''}`);
 
   return (
     <div className="space-y-5">
@@ -254,15 +257,18 @@ export function Asset360Overview({
         <CardContent className="p-0">
           <div className="grid lg:grid-cols-[minmax(230px,0.75fr)_minmax(0,2fr)_220px]">
             <div className="border-b border-border bg-muted/20 p-4 lg:border-b-0 lg:border-r">
-              <div className="overflow-hidden rounded-md bg-background">
-                <EquipmentPhoto
-                  assetName={asset.name}
-                  assetType={asset.asset_type || asset.category}
-                  machineFamily={technicalIdentity}
-                />
-                <div className="flex min-h-44 items-center justify-center px-5 text-center text-xs text-muted-foreground [&:has(img)]:hidden">
-                  Fotografía real del activo aún no incorporada.
-                </div>
+              <div className="overflow-hidden rounded-md border border-border/70 bg-background">
+                {equipmentImage ? (
+                  <img
+                    src={equipmentImage}
+                    alt={`Imagen referencial de ${asset.name || 'equipo'}`}
+                    className="h-48 w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-48 items-center justify-center px-5 text-center text-xs text-muted-foreground">
+                    Fotografía real del activo aún no incorporada.
+                  </div>
+                )}
               </div>
               <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
                 Imagen referencial cuando existe coincidencia de familia. La fotografía de terreno debe prevalecer cuando esté disponible.
