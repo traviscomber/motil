@@ -13,7 +13,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   try {
     const { data: asset, error: assetError } = await context.supabase
-      .from('maintenance_canonical_assets_v1')
+      .from('canonical_assets_current')
       .select('id,asset_code,name,asset_type,category,manufacturer,model,serial_number,license_plate,cost_center_code,location,criticality,is_active,validation_status')
       .eq('organization_id', context.organizationId)
       .eq('id', id)
