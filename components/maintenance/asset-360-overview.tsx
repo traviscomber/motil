@@ -184,6 +184,98 @@ type Asset360Response = {
       title?: string | null;
     } | null;
   }>;
+  operationalState?: {
+    operational_status?: string | null;
+    criticality?: string | null;
+    location?: string | null;
+    recognized_cost_event_count?: number | string | null;
+    last_cost_at?: string | null;
+    recognized_cost_clp_lifetime?: number | string | null;
+    recognized_cost_clp_ytd?: number | string | null;
+    recognized_cost_clp_12m?: number | string | null;
+    work_order_count?: number | string | null;
+    open_work_order_count?: number | string | null;
+    recorded_downtime_hours?: number | string | null;
+    drilling_report_count?: number | string | null;
+    drilled_meters?: number | string | null;
+    sensor_count?: number | string | null;
+    sensor_reading_count?: number | string | null;
+    evidence_domain_count?: number | string | null;
+    availability_evidence_status?: string | null;
+    availability_pct?: number | string | null;
+    last_availability_date?: string | null;
+    availability_days_30d?: number | string | null;
+    scheduled_minutes_30d?: number | string | null;
+    downtime_minutes_30d?: number | string | null;
+  } | null;
+  supplyChain?: Array<{
+    work_order_id: string;
+    work_order_number?: string | null;
+    title?: string | null;
+    work_order_status?: string | null;
+    priority?: string | null;
+    scheduled_date?: string | null;
+    material_requirement_count?: number | string | null;
+    material_shortage_count?: number | string | null;
+    material_shortage_quantity?: number | string | null;
+    supply_need_count?: number | string | null;
+    open_supply_need_count?: number | string | null;
+    supply_needs_with_request?: number | string | null;
+    procurement_request_count?: number | string | null;
+    open_procurement_request_count?: number | string | null;
+    promoted_procurement_request_count?: number | string | null;
+    procurement_order_count?: number | string | null;
+    undelivered_order_count?: number | string | null;
+    delivered_order_count?: number | string | null;
+    procurement_order_amount?: number | string | null;
+    part_line_count?: number | string | null;
+    parts_requested?: number | string | null;
+    parts_issued?: number | string | null;
+    parts_installed?: number | string | null;
+    parts_cost?: number | string | null;
+    stock_movement_count?: number | string | null;
+    stock_movement_cost?: number | string | null;
+    supply_chain_status?: string | null;
+  }>;
+  procurementOrders?: Array<{
+    id: string;
+    order_number?: string | null;
+    supplier_id?: string | null;
+    status?: string | null;
+    currency?: string | null;
+    total_amount?: number | string | null;
+    expected_delivery_date?: string | null;
+    actual_delivery_date?: string | null;
+    issued_at?: string | null;
+    updated_at?: string | null;
+    work_order_id?: string | null;
+    supplier?: {
+      id: string;
+      legal_name?: string | null;
+      trade_name?: string | null;
+      payment_terms?: string | null;
+      email?: string | null;
+      phone?: string | null;
+    } | null;
+    supplierScore?: {
+      supplier_id?: string | null;
+      supplier_name?: string | null;
+      total_orders?: number | string | null;
+      completed_orders?: number | string | null;
+      on_time_orders?: number | string | null;
+      last_delivery_date?: string | null;
+      receipt_count?: number | string | null;
+      quantity_received?: number | string | null;
+      quantity_accepted?: number | string | null;
+      quantity_rejected?: number | string | null;
+      returns_count?: number | string | null;
+      delivery_score?: number | string | null;
+      quality_score?: number | string | null;
+      invoice_score?: number | string | null;
+      operational_score?: number | string | null;
+      evidence_dimensions?: number | string | null;
+    } | null;
+  }>;
   maintenancePlanning?: Array<{
     id: string;
     source_row?: number | null;
@@ -440,6 +532,9 @@ export function Asset360Overview({
   const installedParts = data.installedParts || [];
   const pendingParts = data.pendingParts || [];
   const maintenancePlanning = data.maintenancePlanning || [];
+  const operationalState = data.operationalState;
+  const supplyChain = data.supplyChain || [];
+  const procurementOrders = data.procurementOrders || [];
   const latestPlan = maintenancePlanning[0] || null;
   const acquisitionDate = asset.acquisition_date ? new Date(String(asset.acquisition_date)) : null;
   const assetAgeYears =
@@ -744,6 +839,153 @@ export function Asset360Overview({
         </div>
       </details>
 
+
+      <details className="group rounded-lg border border-border bg-card" open>
+        <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold">
+          Estado económico-operacional
+        </summary>
+        <div className="grid gap-4 border-t border-border p-4 sm:grid-cols-2 lg:grid-cols-4">
+          <IdentityItem
+            icon={Coins}
+            label="Costo reconocido vida"
+            value={operationalState?.recognized_cost_clp_lifetime != null ? money(operationalState.recognized_cost_clp_lifetime) : null}
+          />
+          <IdentityItem
+            icon={Coins}
+            label="Costo últimos 12 meses"
+            value={operationalState?.recognized_cost_clp_12m != null ? money(operationalState.recognized_cost_clp_12m) : null}
+          />
+          <IdentityItem
+            icon={Coins}
+            label="Costo año"
+            value={operationalState?.recognized_cost_clp_ytd != null ? money(operationalState.recognized_cost_clp_ytd) : null}
+          />
+          <IdentityItem
+            icon={CalendarDays}
+            label="Último costo"
+            value={date(operationalState?.last_cost_at)}
+          />
+          <IdentityItem
+            icon={Wrench}
+            label="OT históricas"
+            value={operationalState?.work_order_count}
+          />
+          <IdentityItem
+            icon={Wrench}
+            label="OT abiertas"
+            value={operationalState?.open_work_order_count}
+          />
+          <IdentityItem
+            icon={Timer}
+            label="Detención registrada"
+            value={operationalState?.recorded_downtime_hours != null ? `${number(operationalState.recorded_downtime_hours, 1)} h` : null}
+          />
+          <IdentityItem
+            icon={Activity}
+            label="Disponibilidad"
+            value={operationalState?.availability_pct != null ? `${number(operationalState.availability_pct, 1)}%` : operationalState?.availability_evidence_status}
+          />
+        </div>
+      </details>
+
+      <details className="group rounded-lg border border-border bg-card" open>
+        <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold">
+          Compras y proveedores
+        </summary>
+        <div className="border-t border-border p-4">
+          {procurementOrders.length > 0 ? (
+            <div className="divide-y divide-border">
+              {procurementOrders.slice(0, 5).map((order) => {
+                const supplierName =
+                  order.supplier?.trade_name ||
+                  order.supplier?.legal_name ||
+                  order.supplierScore?.supplier_name ||
+                  'Proveedor no informado';
+                return (
+                  <div key={order.id} className="grid gap-3 py-4 lg:grid-cols-[150px_minmax(0,1fr)_150px_180px] lg:items-center">
+                    <div>
+                      <p className="font-mono text-xs">{order.order_number || 'OC sin número'}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{date(order.issued_at)}</p>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{supplierName}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {order.status || 'Estado no informado'}
+                        {order.expected_delivery_date ? ` · entrega esperada ${date(order.expected_delivery_date)}` : ''}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Monto OC</p>
+                      <p className="mt-1 text-sm font-medium">
+                        {order.total_amount != null ? `${order.currency || 'CLP'} ${number(order.total_amount, 0)}` : 'Sin monto'}
+                      </p>
+                    </div>
+                    <div className="lg:text-right">
+                      <p className="text-xs text-muted-foreground">Desempeño proveedor</p>
+                      <p className="mt-1 text-sm font-medium">
+                        {order.supplierScore?.operational_score != null
+                          ? `${number(order.supplierScore.operational_score, 0)}/100`
+                          : 'Sin score'}
+                      </p>
+                      {order.supplierScore?.delivery_score != null ? (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Entrega {number(order.supplierScore.delivery_score, 0)} · Calidad {number(order.supplierScore.quality_score || 0, 0)}
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              No hay órdenes de compra enlazadas directamente a este activo todavía.
+            </p>
+          )}
+        </div>
+      </details>
+
+      <details className="group rounded-lg border border-border bg-card">
+        <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold">
+          Cadena de suministro de mantención
+        </summary>
+        <div className="border-t border-border p-4">
+          {supplyChain.length > 0 ? (
+            <div className="divide-y divide-border">
+              {supplyChain.slice(0, 5).map((row) => (
+                <div key={row.work_order_id} className="grid gap-3 py-4 lg:grid-cols-[150px_minmax(0,1fr)_150px_150px] lg:items-center">
+                  <div>
+                    <p className="font-mono text-xs">{row.work_order_number || 'OT sin número'}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{date(row.scheduled_date)}</p>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{row.title || 'Mantención'}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {row.supply_chain_status || 'Sin estado'} · {number(row.material_shortage_count || 0)} quiebres · {number(row.open_supply_need_count || 0)} necesidades abiertas
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Compras</p>
+                    <p className="mt-1 text-sm font-medium">{number(row.procurement_order_count || 0)} OC</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{money(row.procurement_order_amount)}</p>
+                  </div>
+                  <div className="lg:text-right">
+                    <p className="text-xs text-muted-foreground">Materiales</p>
+                    <p className="mt-1 text-sm font-medium">
+                      {number(row.parts_installed || 0)} instalados
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">{money(row.parts_cost)}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              No hay movimientos de cadena de suministro enlazados a este activo.
+            </p>
+          )}
+        </div>
+      </details>
 
       <details className="group rounded-lg border border-border bg-card" open>
         <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold">
