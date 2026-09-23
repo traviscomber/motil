@@ -31,7 +31,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           .from('canonical_purchase_order_lines_current')
           .select('id,order_number,line_number,product_code,description,quantity,unit,unit_cost,net_amount,cost_center_code,asset_reference,supplier_name,order_date,status')
           .eq('organization_id', context.organizationId)
-          .eq('cost_center_code', asset.cost_center_code)
+          .ilike('cost_center_code', `${asset.cost_center_code} %`)
           .order('order_date', { ascending: false, nullsFirst: false })
           .limit(10)
       : Promise.resolve({ data: [], error: null });
