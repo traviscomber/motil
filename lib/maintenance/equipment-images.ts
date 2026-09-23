@@ -124,6 +124,21 @@ const EXACT_EQUIPMENT_IMAGES: Array<{
 const EQUIPMENT_IMAGE_MAP: { keywords: string[]; image: string; note: string; sourceUrl?: string; sourceDomain?: string }[] = [
 
   {
+    keywords: ['cat cs-533e', 'compactadora cat cs-533e', 'compactadora cat, cs-533e'],
+    image: 'https://commons.wikimedia.org/wiki/Special:FilePath/Caterpillar%20CS-533E.jpg',
+    sourceUrl: 'https://commons.wikimedia.org/wiki/File:Caterpillar_CS-533E.jpg',
+    sourceDomain: 'commons.wikimedia.org',
+    note: 'Referencia visual exacta del modelo Caterpillar CS-533E; no acredita que sea la unidad física registrada.',
+  },
+  {
+    keywords: ['paus rl 852', 'rl 852'],
+    image: 'https://live.staticflickr.com/8319/8063867950_6d5b5bc47d.jpg',
+    sourceUrl: 'https://www.flickr.com/photos/yc-amicellicollection/8063867950/',
+    sourceDomain: 'flickr.com',
+    note: 'Referencia visual del modelo PAUS RL 852 TSL Scaler; no acredita que sea la unidad física registrada.',
+  },
+
+  {
     keywords: ['saer centrifuga', 'bomba 950 saer', 'saer'],
     image: 'https://static-data2.manualslib.com/product-images/a21/1933312/saer-elettropompe-ir-water-pump.jpg',
     sourceUrl: 'https://www.manualslib.com/manual/1933312/Saer-Elettropompe-Ir.html?page=23',
