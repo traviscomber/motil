@@ -13,13 +13,35 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   try {
     const { data: asset, error: assetError } = await context.supabase
-      .from('canonical_assets_current')
-      .select('id,asset_code,name,asset_type,category,manufacturer,model,serial_number,license_plate,cost_center_code,location,criticality,operational_status,is_active,validation_status')
+      .from('maintenance_canonical_assets_v1')
+      .select('id,asset_code,name,asset_type,category,manufacturer,model,serial_number,license_plate,cost_center_code,is_active,validation_status,source_payload')
       .eq('organization_id', context.organizationId)
       .eq('id', id)
       .maybeSingle();
     if (assetError) throw assetError;
     if (!asset) return NextResponse.json({ error: 'Equipo no encontrado' }, { status: 404 });
+
+    const sourcePayload =
+      asset.source_payload && typeof asset.source_payload === 'object'
+        ? (asset.source_payload as Record<string, unknown>)
+        : {};
+    const normalizedAsset = {
+      id: asset.id,
+      asset_code: asset.asset_code,
+      name: asset.name,
+      asset_type: asset.asset_type,
+      category: asset.category,
+      manufacturer: asset.manufacturer || sourcePayload.manufacturer || null,
+      model: asset.model || sourcePayload.model || null,
+      serial_number: asset.serial_number || sourcePayload.serial_number || null,
+      license_plate: asset.license_plate,
+      cost_center_code: asset.cost_center_code,
+      location: sourcePayload.location || null,
+      criticality: sourcePayload.criticality || null,
+      operational_status: sourcePayload.status || sourcePayload.operational_status || null,
+      is_active: asset.is_active,
+      validation_status: asset.validation_status,
+    };
 
     const [ordersResult, closeResult, preventiveResult, runtimeResult, reliabilityResult, runtimeReliabilityResult, snapshotsResult, partsResult, eventsResult] = await Promise.all([
       context.supabase
@@ -150,7 +172,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     };
 
     return NextResponse.json({
-      asset,
+      asset: normalizedAsset,
       summary,
       workOrders: ordersResult.data || [],
       closeReadiness: closeRows,
