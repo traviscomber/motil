@@ -763,6 +763,15 @@ export function Asset360Overview({
       ? Math.max(expectedLifespan - assetAgeYears, 0)
       : null;
 
+  const coverageItems = [
+    ['Plan de mantención', Boolean(maintenancePriority || latestPlan), maintenancePriority || latestPlan ? 'Disponible' : 'No registrado'],
+    ['Historial económico', economicHistory.length > 0, economicHistory.length > 0 ? 'Disponible' : 'Sin movimientos'],
+    ['Historial horómetro', meterHistory.length > 0, meterHistory.length > 0 ? 'Disponible' : 'Sin lecturas históricas'],
+    ['Compras / proveedores', Number(purchaseHistorySummary?.purchaseLines || 0) > 0 || procurementOrders.length > 0, Number(purchaseHistorySummary?.purchaseLines || 0) > 0 || procurementOrders.length > 0 ? 'Disponible' : 'Sin compras enlazadas'],
+    ['OT / mantenciones', auditedInterventions.length > 0 || Number(operationalState?.work_order_count || 0) > 0, auditedInterventions.length > 0 || Number(operationalState?.work_order_count || 0) > 0 ? 'Disponible' : 'Sin OT enlazadas'],
+    ['Vida útil', expectedLifespan != null, expectedLifespan != null ? 'Disponible' : 'No informada'],
+  ] as const;
+
   const planningPriorityText = String(maintenancePriority?.priority || '');
   const attention = summary.criticalOpen > 0
     ? { tone: 'border-destructive/40 bg-destructive/5', title: 'OT crítica abierta', detail: 'Revisar la orden crítica y su siguiente acción.' }
@@ -946,6 +955,23 @@ export function Asset360Overview({
           ) : null}
         </CardContent>
       </Card>
+
+      <details className="group rounded-lg border border-border bg-card">
+        <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold">
+          Cobertura de la ficha
+        </summary>
+        <div className="grid gap-px border-t border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
+          {coverageItems.map(([label, available, status]) => (
+            <div key={label} className="bg-card px-4 py-3">
+              <p className="text-xs text-muted-foreground">{label}</p>
+              <p className="mt-1 text-sm font-medium">{status}</p>
+              {!available ? (
+                <p className="mt-1 text-[11px] text-muted-foreground">La fuente actual no contiene información enlazada para este activo.</p>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      </details>
 
       <details className="group rounded-lg border border-border bg-card" open>
         <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold">
@@ -1371,48 +1397,70 @@ export function Asset360Overview({
                 ))}
               </div>
             </div>
-          ) : null}
+          ) : (
+            <div className="border-t border-border px-4 py-4 text-sm text-muted-foreground">
+              Sin historial de lecturas de horómetro/medidor enlazado a este activo.
+            </div>
+          )}
         </details>
       ) : null}
 
-      {maintenancePriority ? (
-        <details className="group rounded-lg border border-border bg-card" open>
-          <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold">
-            Planificación de mantenimiento
-          </summary>
-          <div className="grid gap-4 border-t border-border p-4 sm:grid-cols-2 lg:grid-cols-4">
-            <IdentityItem icon={Activity} label="Prioridad" value={maintenancePriority.priority} />
-            <IdentityItem
-              icon={Gauge}
-              label="Lectura actual"
-              value={maintenancePriority.current_reading != null ? `${number(maintenancePriority.current_reading, 1)} ${maintenancePriority.meter_unit || ''}` : null}
-            />
-            <IdentityItem
-              icon={Gauge}
-              label="Próximo MP"
-              value={maintenancePriority.next_due_meter != null ? `${number(maintenancePriority.next_due_meter, 1)} ${maintenancePriority.meter_unit || ''}` : null}
-            />
-            <IdentityItem
-              icon={Timer}
-              label="Margen"
-              value={maintenancePriority.remaining_meter != null ? `${number(maintenancePriority.remaining_meter, 1)} ${maintenancePriority.meter_unit || ''}` : null}
-            />
-            <IdentityItem icon={CalendarDays} label="Fecha proyectada" value={date(maintenancePriority.projected_due_at || maintenancePriority.scheduled_date)} />
-            <IdentityItem icon={Wrench} label="Responsable" value={maintenancePriority.responsible_raw} />
-            <IdentityItem icon={PackageCheck} label="Materiales" value={maintenancePriority.parts_status_raw} />
-            <IdentityItem icon={FileText} label="Estado programación" value={maintenancePriority.programming_status_raw} />
-          </div>
-          {maintenancePriority.recommended_action ? (
-            <div className="border-t border-border px-4 py-4">
-              <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Acción recomendada</p>
-              <p className="mt-2 text-sm font-medium">{maintenancePriority.recommended_action}</p>
-              {maintenancePriority.observations ? (
-                <p className="mt-1 text-xs text-muted-foreground">{maintenancePriority.observations}</p>
-              ) : null}
+      <details className="group rounded-lg border border-border bg-card" open>
+        <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold">
+          Planificación de mantenimiento
+        </summary>
+        {maintenancePriority ? (
+          <>
+            <div className="grid gap-4 border-t border-border p-4 sm:grid-cols-2 lg:grid-cols-4">
+              <IdentityItem icon={Activity} label="Prioridad" value={maintenancePriority.priority} />
+              <IdentityItem
+                icon={Gauge}
+                label="Lectura actual"
+                value={maintenancePriority.current_reading != null ? `${number(maintenancePriority.current_reading, 1)} ${maintenancePriority.meter_unit || ''}` : null}
+              />
+              <IdentityItem
+                icon={Gauge}
+                label="Próximo MP"
+                value={maintenancePriority.next_due_meter != null ? `${number(maintenancePriority.next_due_meter, 1)} ${maintenancePriority.meter_unit || ''}` : null}
+              />
+              <IdentityItem
+                icon={Timer}
+                label="Margen"
+                value={maintenancePriority.remaining_meter != null ? `${number(maintenancePriority.remaining_meter, 1)} ${maintenancePriority.meter_unit || ''}` : null}
+              />
+              <IdentityItem icon={CalendarDays} label="Fecha proyectada" value={date(maintenancePriority.projected_due_at || maintenancePriority.scheduled_date)} />
+              <IdentityItem icon={Wrench} label="Responsable" value={maintenancePriority.responsible_raw} />
+              <IdentityItem icon={PackageCheck} label="Materiales" value={maintenancePriority.parts_status_raw} />
+              <IdentityItem icon={FileText} label="Estado programación" value={maintenancePriority.programming_status_raw} />
             </div>
-          ) : null}
-        </details>
-      ) : null}
+            {maintenancePriority.recommended_action ? (
+              <div className="border-t border-border px-4 py-4">
+                <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Acción recomendada</p>
+                <p className="mt-2 text-sm font-medium">{maintenancePriority.recommended_action}</p>
+                {maintenancePriority.observations ? (
+                  <p className="mt-1 text-xs text-muted-foreground">{maintenancePriority.observations}</p>
+                ) : null}
+              </div>
+            ) : null}
+          </>
+        ) : latestPlan ? (
+          <div className="grid gap-4 border-t border-border p-4 sm:grid-cols-2 lg:grid-cols-4">
+            <IdentityItem icon={Gauge} label="Última MP" value={latestPlan.last_mp != null ? `${number(latestPlan.last_mp, 1)} ${latestPlan.meter_unit || ''}` : null} />
+            <IdentityItem icon={Timer} label="Intervalo MP" value={latestPlan.interval_mp != null ? `${number(latestPlan.interval_mp, 1)} ${latestPlan.meter_unit || ''}` : null} />
+            <IdentityItem icon={CalendarDays} label="Fecha programada" value={date(latestPlan.scheduled_date)} />
+            <IdentityItem icon={Wrench} label="Responsable" value={latestPlan.responsible_raw} />
+            <IdentityItem icon={Activity} label="Estado" value={latestPlan.programming_status_raw} />
+            <IdentityItem icon={PackageCheck} label="Materiales" value={latestPlan.parts_status_raw} />
+          </div>
+        ) : (
+          <div className="border-t border-border p-4">
+            <p className="text-sm font-medium">Sin plan de mantención registrado</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              No existe una pauta o planificación de mantenimiento enlazada a este activo en la fuente actual.
+            </p>
+          </div>
+        )}
+      </details>
 
       <details className="group rounded-lg border border-border bg-card" open>
         <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold">
