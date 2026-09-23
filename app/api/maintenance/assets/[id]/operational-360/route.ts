@@ -33,7 +33,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           .eq('organization_id', context.organizationId)
           .ilike('cost_center_code', `${asset.cost_center_code} %`)
           .order('order_date', { ascending: false, nullsFirst: false })
-          .limit(10)
+          .limit(100)
       : Promise.resolve({ data: [], error: null });
     const normalizedAsset = {
       id: asset.id,
@@ -224,6 +224,20 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       supplierScore: supplierScoresById.get(row.supplier_id) || null,
     }));
 
+    const costCenterPurchaseHistory = costCenterPurchaseHistoryResult.data || [];
+    const purchaseHistorySummary = {
+      purchaseLines: costCenterPurchaseHistory.length,
+      orders: new Set(costCenterPurchaseHistory.map((row: any) => row.order_number).filter(Boolean)).size,
+      suppliers: new Set(costCenterPurchaseHistory.map((row: any) => row.supplier_name).filter(Boolean)).size,
+      netSpend: costCenterPurchaseHistory.reduce((sum: number, row: any) => sum + Number(row.net_amount || 0), 0),
+      lastOrderDate: costCenterPurchaseHistory
+        .map((row: any) => row.order_date)
+        .filter(Boolean)
+        .sort()
+        .reverse()[0] || null,
+      lastSupplier: costCenterPurchaseHistory[0]?.supplier_name || null,
+    };
+
     const parts = (partsResult.data || []).map((row: any) => ({
       ...row,
       product: productsById.get(row.canonical_product_id) || null,
@@ -267,7 +281,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       operationalState: operationalStateResult.data || null,
       supplyChain: supplyChainResult.data || [],
       procurementOrders,
-      costCenterPurchaseHistory: costCenterPurchaseHistoryResult.data || [],
+      costCenterPurchaseHistory,
+      purchaseHistorySummary,
       canEdit: access.canWrite,
       evidence: {
         mtbf: 'Sólo desde intervalos correctivos auditados con horómetro válido.',
