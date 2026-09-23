@@ -14,7 +14,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   try {
     const { data: asset, error: assetError } = await context.supabase
       .from('maintenance_canonical_assets_v1')
-      .select('id,asset_code,name,asset_type,category,manufacturer,model,serial_number,license_plate,cost_center_code,is_active,validation_status,source_payload')
+      .select('id,asset_code,name,asset_type,category,manufacturer,model,serial_number,license_plate,cost_center_code,is_active,validation_status,source_file,source_sheet,source_row,imported_at,updated_at,source_payload')
       .eq('organization_id', context.organizationId)
       .eq('id', id)
       .maybeSingle();
@@ -39,6 +39,19 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       location: sourcePayload.location || sourcePayload.mine || null,
       criticality: sourcePayload.criticality || sourcePayload.criticality_raw || null,
       operational_status: sourcePayload.status || sourcePayload.operational_status || null,
+      meter_unit: sourcePayload.meter_unit || null,
+      mobility_class: sourcePayload.mobility_class || null,
+      lifecycle_state: sourcePayload.lifecycle_state || null,
+      lifecycle_reason: sourcePayload.lifecycle_reason || null,
+      acquisition_date: sourcePayload.acquisition_date || null,
+      acquisition_cost: sourcePayload.acquisition_cost ?? null,
+      expected_lifespan_years: sourcePayload.expected_lifespan_years ?? null,
+      baseline_mtbf_hours: sourcePayload.mtbf_hours ?? null,
+      source_file: asset.source_file,
+      source_sheet: asset.source_sheet,
+      source_row: asset.source_row,
+      imported_at: asset.imported_at,
+      updated_at: asset.updated_at,
       is_active: asset.is_active,
       validation_status: asset.validation_status,
     };
