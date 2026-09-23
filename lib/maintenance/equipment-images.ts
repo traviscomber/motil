@@ -14,6 +14,13 @@ const EXACT_EQUIPMENT_IMAGES: Array<{
   note: string;
 }> = [
   {
+    keywords: ['weichai 165 kva', 'weichai 165', 'generador weichai 165'],
+    image: 'https://ac-landing-pages-user-uploads-production.s3.amazonaws.com/0000058194/ac725f72-4cac-42e4-a0c0-4e973ad6843a.png',
+    sourceUrl: 'https://www.weichaichile.cl/generador-wpg165l9/',
+    sourceDomain: 'weichaichile.cl',
+    note: 'Referencia visual oficial Weichai WPG165L9 de 165 kVA; validar versión exacta del activo.',
+  },
+  {
     keywords: ['atlas copco st-1030', 'atlas copco st1030', 'scoop atlas copco st-1030', 'scoop atlas copco st1030'],
     image: 'https://tj.imgix.net/acces-industriel/mining-equipments/SCOOPTRAM-LOADER-CHARGEUSE-NAVETTE-ATLAS-COPCO-EPIROC-ST1013-EM356-2.jpg?auto=compress%2Cformat&q=75&v=1732243554&w=1280',
     sourceUrl: 'https://www.acces-s.ca/en/mining/equipment-for-sale-and-rental/atlas-copco-epiroc-st-1030-scooptram-loader-3',
