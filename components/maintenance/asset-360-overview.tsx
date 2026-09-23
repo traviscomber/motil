@@ -114,8 +114,76 @@ type Asset360Response = {
     actor_name?: string | null;
     summary?: string | null;
   }>;
-  installedParts?: Array<unknown>;
-  pendingParts?: Array<unknown>;
+  auditedInterventions?: Array<{
+    id: string;
+    work_order_id: string;
+    closure_sequence?: number | null;
+    parts_cost?: number | string | null;
+    labor_cost?: number | string | null;
+    effective_external_cost?: number | string | null;
+    total_cost?: number | string | null;
+    closed_at?: string | null;
+    workOrder?: {
+      id: string;
+      work_order_number?: string | null;
+      title?: string | null;
+      status?: string | null;
+      priority?: string | null;
+      work_type?: string | null;
+      scheduled_date?: string | null;
+      start_date?: string | null;
+      completion_date?: string | null;
+      root_cause?: string | null;
+      preventive_actions?: string | null;
+      actual_duration_hours?: number | string | null;
+    } | null;
+  }>;
+  installedParts?: Array<{
+    id: string;
+    quantity_requested?: number | null;
+    quantity_issued?: number | null;
+    quantity_installed?: number | null;
+    quantity_returned?: number | null;
+    unit_cost?: number | string | null;
+    total_cost?: number | string | null;
+    status?: string | null;
+    installed_at?: string | null;
+    notes?: string | null;
+    product?: {
+      id: string;
+      product_code?: string | null;
+      name?: string | null;
+      unit?: string | null;
+    } | null;
+    workOrder?: {
+      id: string;
+      work_order_number?: string | null;
+      title?: string | null;
+    } | null;
+  }>;
+  pendingParts?: Array<{
+    id: string;
+    quantity_requested?: number | null;
+    quantity_issued?: number | null;
+    quantity_installed?: number | null;
+    quantity_returned?: number | null;
+    unit_cost?: number | string | null;
+    total_cost?: number | string | null;
+    status?: string | null;
+    installed_at?: string | null;
+    notes?: string | null;
+    product?: {
+      id: string;
+      product_code?: string | null;
+      name?: string | null;
+      unit?: string | null;
+    } | null;
+    workOrder?: {
+      id: string;
+      work_order_number?: string | null;
+      title?: string | null;
+    } | null;
+  }>;
   closeReadiness?: Array<{
     work_order_id: string;
     work_order_number?: string | null;
@@ -346,6 +414,20 @@ export function Asset360Overview({
       : null,
   ].filter(Boolean) as Array<readonly [string, string, LucideIcon]>;
   const recentEvents = data.recentEvents || [];
+  const auditedInterventions = data.auditedInterventions || [];
+  const installedParts = data.installedParts || [];
+  const pendingParts = data.pendingParts || [];
+  const acquisitionDate = asset.acquisition_date ? new Date(String(asset.acquisition_date)) : null;
+  const assetAgeYears =
+    acquisitionDate && !Number.isNaN(acquisitionDate.getTime())
+      ? Math.max((Date.now() - acquisitionDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000), 0)
+      : null;
+  const expectedLifespan =
+    asset.expected_lifespan_years != null ? Number(asset.expected_lifespan_years) : null;
+  const remainingLifeYears =
+    assetAgeYears != null && expectedLifespan != null
+      ? Math.max(expectedLifespan - assetAgeYears, 0)
+      : null;
 
   const attention = summary.criticalOpen > 0
     ? { tone: 'border-destructive/40 bg-destructive/5', title: 'OT crítica abierta', detail: 'Revisar la orden crítica y su siguiente acción.' }
@@ -638,6 +720,151 @@ export function Asset360Overview({
         </div>
       </details>
 
+
+      <details className="group rounded-lg border border-border bg-card" open>
+        <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold">
+          Últimas mantenciones
+        </summary>
+        <div className="border-t border-border p-4">
+          {auditedInterventions.length > 0 ? (
+            <div className="divide-y divide-border">
+              {auditedInterventions.slice(0, 5).map((item) => (
+                <div key={item.id} className="grid gap-3 py-4 lg:grid-cols-[140px_minmax(0,1fr)_140px_140px] lg:items-center">
+                  <div>
+                    <p className="text-xs text-muted-foreground">{date(item.closed_at || item.workOrder?.completion_date)}</p>
+                    <p className="mt-1 font-mono text-xs">{item.workOrder?.work_order_number || 'OT sin número'}</p>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{item.workOrder?.title || item.workOrder?.work_type || 'Mantención cerrada'}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {item.workOrder?.root_cause || item.workOrder?.preventive_actions || 'Sin causa o acción documentada.'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Duración real</p>
+                    <p className="mt-1 text-sm font-medium">
+                      {item.workOrder?.actual_duration_hours != null ? `${number(item.workOrder.actual_duration_hours, 1)} h` : 'Sin base'}
+                    </p>
+                  </div>
+                  <div className="lg:text-right">
+                    <p className="text-xs text-muted-foreground">Costo auditado</p>
+                    <p className="mt-1 text-sm font-medium">{money(item.total_cost)}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Aún no existen cierres de mantención auditados asociados a este activo.
+            </p>
+          )}
+        </div>
+      </details>
+
+      <details className="group rounded-lg border border-border bg-card" open>
+        <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold">
+          Materiales y repuestos
+        </summary>
+        <div className="grid gap-4 border-t border-border p-4 lg:grid-cols-2">
+          <Card className="shadow-none">
+            <CardContent className="p-5">
+              <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Instalados</p>
+              {installedParts.length > 0 ? (
+                <div className="mt-3 divide-y divide-border">
+                  {installedParts.slice(0, 8).map((part) => (
+                    <div key={part.id} className="flex items-start justify-between gap-4 py-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">
+                          {part.product?.name || part.product?.product_code || 'Repuesto sin nombre'}
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {part.workOrder?.work_order_number || 'OT no informada'} · {date(part.installed_at)}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-medium">{number(part.quantity_installed || 0, 0)} {part.product?.unit || ''}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {part.total_cost != null ? money(part.total_cost) : part.unit_cost != null ? money(Number(part.unit_cost) * Number(part.quantity_installed || 0)) : 'Sin costo'}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-3 text-sm text-muted-foreground">No hay repuestos instalados registrados para este activo.</p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-none">
+            <CardContent className="p-5">
+              <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Pendientes</p>
+              {pendingParts.length > 0 ? (
+                <div className="mt-3 divide-y divide-border">
+                  {pendingParts.slice(0, 8).map((part) => {
+                    const pending = Math.max(
+                      Number(part.quantity_requested || 0) -
+                        Number(part.quantity_installed || 0) -
+                        Number(part.quantity_returned || 0),
+                      0,
+                    );
+                    return (
+                      <div key={part.id} className="flex items-start justify-between gap-4 py-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">
+                            {part.product?.name || part.product?.product_code || 'Repuesto sin nombre'}
+                          </p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {part.workOrder?.work_order_number || 'OT no informada'} · {part.status || 'Pendiente'}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-medium">{number(pending, 0)} {part.product?.unit || ''}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            Solicitado {number(part.quantity_requested || 0, 0)}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="mt-3 text-sm text-muted-foreground">No hay materiales pendientes asociados a este activo.</p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </details>
+
+      <details className="group rounded-lg border border-border bg-card" open>
+        <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold">
+          Vida útil y ciclo del activo
+        </summary>
+        <div className="grid gap-4 border-t border-border p-4 sm:grid-cols-2 lg:grid-cols-4">
+          <IdentityItem icon={CalendarDays} label="Fecha adquisición" value={date(asset.acquisition_date)} />
+          <IdentityItem
+            icon={Timer}
+            label="Edad estimada"
+            value={assetAgeYears != null ? `${number(assetAgeYears, 1)} años` : 'No informado'}
+          />
+          <IdentityItem
+            icon={Timer}
+            label="Vida útil esperada"
+            value={expectedLifespan != null ? `${number(expectedLifespan, 0)} años` : 'No informado'}
+          />
+          <IdentityItem
+            icon={Activity}
+            label="Vida útil remanente"
+            value={remainingLifeYears != null ? `${number(remainingLifeYears, 1)} años` : 'No informado'}
+          />
+        </div>
+        <div className="grid gap-4 border-t border-border px-4 py-4 sm:grid-cols-2 lg:grid-cols-4">
+          <IdentityItem icon={Coins} label="Costo adquisición" value={asset.acquisition_cost != null ? money(asset.acquisition_cost) : null} />
+          <IdentityItem icon={Timer} label="MTBF base" value={asset.baseline_mtbf_hours != null ? `${number(asset.baseline_mtbf_hours, 0)} h` : null} />
+          <IdentityItem icon={Timer} label="MTBF real" value={mtbf} />
+          <IdentityItem icon={Activity} label="Tiempo detenido auditado" value={reliability?.total_downtime_hours != null ? `${number(reliability.total_downtime_hours, 1)} h` : 'Sin base'} />
+        </div>
+      </details>
 
       <details className="group rounded-lg border border-border bg-card">
         <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold">
