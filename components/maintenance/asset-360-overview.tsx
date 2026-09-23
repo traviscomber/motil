@@ -235,10 +235,9 @@ export function Asset360Overview({
   ];
 
   const links = [
-    { href: `${basePath}/ficha-tecnica`, label: 'Ficha técnica', icon: Gauge },
-    { href: `${basePath}/arbol`, label: 'Árbol de fallas', icon: GitBranch },
     { href: `${basePath}/documentos`, label: 'Documentos', icon: FileText },
-    { href: `${basePath}/qr`, label: 'QR y tarjeta', icon: QrCode },
+    { href: `${basePath}/ficha-tecnica`, label: 'Ficha técnica', icon: Gauge },
+    { href: `${basePath}/qr`, label: 'QR', icon: QrCode },
   ];
 
   const technicalIdentity = [
@@ -251,6 +250,16 @@ export function Asset360Overview({
   const equipmentImage =
     getEquipmentImageMeta(`${asset.manufacturer || ''} ${asset.model || ''} ${asset.name || ''}`) ||
     getEquipmentImageMeta(`${asset.name || ''} ${asset.asset_type || ''} ${asset.category || ''}`);
+
+  const attention = summary.criticalOpen > 0
+    ? { tone: 'border-destructive/40 bg-destructive/5', title: 'OT crítica abierta', detail: 'Revisar la orden crítica y su siguiente acción.' }
+    : summary.overduePreventives > 0
+      ? { tone: 'border-amber-500/40 bg-amber-500/5', title: 'Preventivo vencido', detail: 'Existe mantenimiento preventivo que requiere atención.' }
+      : summary.operationalBlockers > 0
+        ? { tone: 'border-amber-500/40 bg-amber-500/5', title: 'Bloqueo operativo', detail: 'Existe una dependencia que impide avanzar o cerrar trabajo.' }
+        : summary.pendingPlanSteps > 0
+          ? { tone: 'border-border bg-muted/20', title: 'Trabajo pendiente', detail: 'Quedan pasos de ejecución antes del cierre.' }
+          : { tone: 'border-border bg-muted/10', title: 'Sin alertas operacionales', detail: 'No hay excepciones abiertas en la evidencia disponible.' };
 
   return (
     <div className="space-y-5">
@@ -384,7 +393,29 @@ export function Asset360Overview({
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <Card className={`shadow-none ${attention.tone}`}>
+        <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Qué requiere atención</p>
+            <p className="mt-1 text-lg font-semibold">{attention.title}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{attention.detail}</p>
+          </div>
+          {actionableWorkOrder ? (
+            <Button asChild size="sm">
+              <Link href={`/dashboard/mantenimiento/ordenes-trabajo/cierre?workOrderId=${encodeURIComponent(actionableWorkOrder.work_order_id)}`}>
+                Continuar trabajo
+                <ArrowRight className="ml-1 h-4 w-4" />
+              </Link>
+            </Button>
+          ) : null}
+        </CardContent>
+      </Card>
+
+      <details className="group rounded-lg border border-border bg-card" open>
+        <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold">
+          Operación, mantenimiento y confiabilidad
+        </summary>
+        <div className="grid gap-4 border-t border-border p-4 lg:grid-cols-3">
         <Card className="shadow-none">
           <CardContent className="p-5">
             <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
@@ -503,11 +534,19 @@ export function Asset360Overview({
             )}
           </CardContent>
         </Card>
-      </div>
+        </div>
+      </details>
 
-      <p className="px-1 text-[11px] leading-relaxed text-muted-foreground">
-        Horómetro, MTBF y MTTR se muestran sólo desde evidencia operacional auditada. El costo se obtiene desde snapshots de cierre auditado. Los campos de identidad ausentes permanecen explícitamente como no informados.
-      </p>
+      <details className="group rounded-lg border border-border bg-card">
+        <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold">
+          Trazabilidad y criterio de evidencia
+        </summary>
+        <div className="border-t border-border px-5 py-4">
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            Horómetro, MTBF y MTTR se muestran sólo desde evidencia operacional auditada. El costo se obtiene desde snapshots de cierre auditado. Los campos de identidad ausentes permanecen explícitamente como no informados.
+          </p>
+        </div>
+      </details>
     </div>
   );
 }
