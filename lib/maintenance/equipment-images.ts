@@ -14,6 +14,13 @@ const EXACT_EQUIPMENT_IMAGES: Array<{
   note: string;
 }> = [
   {
+    keywords: ['onram de-130', 'onram de130'],
+    image: 'https://geopsbg.com/wp-content/uploads/2020/07/Sandvik-DE-130.png',
+    sourceUrl: 'https://www.drillcentral.com/drill-rigs/drill-bits/product/274-sandvik-de130-onram-1000-2-underground-drill-rig',
+    sourceDomain: 'drillcentral.com',
+    note: 'Referencia visual Sandvik DE130 / Onram; la configuración exacta de la unidad debe validarse.',
+  },
+  {
     keywords: ['sandvik, de-130', 'sandvik de-130', 'sandvik de130', 'sonda sandvik, de-130'],
     image: 'https://geopsbg.com/wp-content/uploads/2020/07/Sandvik-DE-130.png',
     sourceUrl: 'https://geopsbg.com/project/sandvik-de-130/',
@@ -459,6 +466,76 @@ const EXACT_EQUIPMENT_IMAGES: Array<{
 ];
 
 const EQUIPMENT_IMAGE_MAP: { keywords: string[]; image: string; note: string; sourceUrl?: string; sourceDomain?: string }[] = [
+  {
+    keywords: ['diamec 230'],
+    image: 'https://geotechpedia.com/Images/Equipment/DIAMEC_232-2.jpg',
+    sourceUrl: 'https://geotechpedia.com/Equipment/Show/57/Diamec-232--Underground-core-drilling-rig-for-narrow-spaces',
+    sourceDomain: 'geotechpedia.com',
+    note: 'Referencia visual de la familia Diamec 23x; no se presenta como fotografía exacta del Diamec 230.',
+  },
+  {
+    keywords: ['mds 141'],
+    image: 'https://cdn.ironpla.net/i/16702/629/cd46d4f0-79c6-4009-8504-6d5446ee996a-nowater.jpg',
+    sourceUrl: 'https://www.ironplanet.com/mpe-ames-construction',
+    sourceDomain: 'ironplanet.com',
+    note: 'Referencia visual de perforadora compacta sobre orugas; el modelo MDS 141 debe validarse.',
+  },
+  {
+    keywords: ['ingetrol', 'sonda ingetrol h-600', 'ingetrol h-600'],
+    image: 'https://www.gygperforaciones.pe/wp-content/uploads/2021/10/proyecto-antapite-1-opt-768x576.jpeg',
+    sourceUrl: 'https://www.gygperforaciones.pe/portafolio-proyectos/',
+    sourceDomain: 'gygperforaciones.pe',
+    note: 'Referencia visual real de equipo Ingetrol en operación; no se presenta como la unidad física exacta.',
+  },
+  {
+    keywords: ['perforadora dth'],
+    image: 'https://dc-mkt-prod.cloud.bosch.tech/pe/media/blog/h600.jpg',
+    sourceUrl: 'https://www.boschrexroth.com/es/pe/blog/eficiencia-rexroth-en-la-maquina-peruana-h600dth-de-maqpower/',
+    sourceDomain: 'boschrexroth.com',
+    note: 'Referencia visual real de perforadora DTH; el modelo exacto del activo no está informado.',
+  },
+  {
+    keywords: ['scoop xcjc modelo xc-928', 'xcjc xc-928', 'xc-928'],
+    image: 'https://s.alicdn.com/%40sc04/kf/H5d54fecc68eb41309ac16a9cfe446feb8/Underground-Mining-Loader-with-Double-Boom-Side-Control-LHD-Machine-Diesel-Powered-1m-Bucket-70-60KW.jpg',
+    sourceUrl: 'https://www.alibaba.com/showroom/mining-loader-underground-bucket.html',
+    sourceDomain: 'alibaba.com',
+    note: 'Referencia visual de cargador LHD subterráneo de la misma familia; no se presenta como XCJC XC-928 exacto.',
+  },
+  {
+    keywords: ['generador tdb 150 kva', 'generador m-150'],
+    image: 'https://storage.googleapis.com/equipzilla-images/categories/general/COEEGE150.jpg',
+    sourceUrl: 'https://equipzilla.com/alquiler/maquinaria/energia-aire-climatizacion/grupos-electrogenos/grupo-electrogeno-diesel-150-kva-industrial-con-ats',
+    sourceDomain: 'equipzilla.com',
+    note: 'Referencia visual real de grupo electrógeno industrial de 150 kVA; fabricante exacto no verificado.',
+  },
+  {
+    keywords: ['generador denegri 110 kva'],
+    image: 'https://d3m0xk3430j32g.cloudfront.net/images/upload/79260/card/65f7dea602c589.15041286.jpg',
+    sourceUrl: 'https://www.construex.cl/exhibidores/energen/producto/generador_electrico_diesel_110_chile',
+    sourceDomain: 'construex.cl',
+    note: 'Referencia visual real de grupo electrógeno industrial de 110 kVA; fabricante exacto no verificado.',
+  },
+  {
+    keywords: ['generador negrini 120 kva'],
+    image: 'https://cdn.ironpla.net/i/18926/573/be15dc31-a44d-42f1-9ccb-59d883fc8b04.jpg',
+    sourceUrl: 'https://www.rbauction.com/pdp/2025-ashita-gfs-120-120-kva-skid-mounted-planta-de-luz-%28sin-usar%29---generator-set-%28unused%29/13295842',
+    sourceDomain: 'rbauction.com',
+    note: 'Referencia visual real de grupo electrógeno encapsulado de 120 kVA; fabricante exacto no verificado.',
+  },
+  {
+    keywords: ['generador positron 63 kva'],
+    image: 'https://img500.exportersindia.com/product_images/bc-500/2023/4/11858292/63-kva-diesel-generator-1680929821-6839677.jpeg',
+    sourceUrl: 'https://www.exportersindia.com/product-detail/harison-63-kva-diesel-generator-6272132338.htm',
+    sourceDomain: 'exportersindia.com',
+    note: 'Referencia visual real de grupo electrógeno industrial de 63 kVA; fabricante exacto no verificado.',
+  },
+  {
+    keywords: ['camion volkswagen trendy', 'camión volkswagen trendy'],
+    image: 'https://i0.wp.com/minutomotor.com.ar/wp-content/uploads/2017/09/VolkswagenDelivery-02.jpg?resize=829%2C548&ssl=1',
+    sourceUrl: 'https://www.camionesybusesvolkswagen.cl/camiones/delivery-9-180/',
+    sourceDomain: 'camionesybusesvolkswagen.cl',
+    note: 'Referencia visual de camión Volkswagen comercial; el modelo “Trendy” del maestro debe validarse.',
+  },
   {
     keywords: ['scoop atlas copco st-1000', 'atlas copco st1000', 'atlas copco st-1000'],
     image: 'https://tj.imgix.net/acces-industriel/mining-equipments/SCOOPTRAM-LOADER-CHARGEUSE-NAVETTE-ATLAS-COPCO-EPIROC-ST1010-MQ102-2.jpg?auto=compress%2Cformat&q=75&v=1732243444&w=1280',
