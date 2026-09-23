@@ -14,6 +14,20 @@ const EXACT_EQUIPMENT_IMAGES: Array<{
   note: string;
 }> = [
   {
+    keywords: ['atlas copco st-1030', 'atlas copco st1030', 'scoop atlas copco st-1030', 'scoop atlas copco st1030'],
+    image: 'https://tj.imgix.net/acces-industriel/mining-equipments/SCOOPTRAM-LOADER-CHARGEUSE-NAVETTE-ATLAS-COPCO-EPIROC-ST1013-EM356-2.jpg?auto=compress%2Cformat&q=75&v=1732243554&w=1280',
+    sourceUrl: 'https://www.acces-s.ca/en/mining/equipment-for-sale-and-rental/atlas-copco-epiroc-st-1030-scooptram-loader-3',
+    sourceDomain: 'acces-s.ca',
+    note: 'Referencia visual del modelo Atlas Copco ST1030; no acredita que sea la unidad física registrada.',
+  },
+  {
+    keywords: ['diamec 232', 'diamec 232-2008', 'diamec 232-2012'],
+    image: 'https://geotechpedia.com/Images/Equipment/DIAMEC_232-1.jpg',
+    sourceUrl: 'https://geotechpedia.com/Equipment/Show/57/Diamec-232--Underground-core-drilling-rig-for-narrow-spaces',
+    sourceDomain: 'geotechpedia.com',
+    note: 'Referencia visual del modelo Diamec 232; no acredita que sea la unidad física registrada.',
+  },
+  {
     keywords: ['chevrolet nkr 613', 'camion chevrolet nkr 613', 'camión chevrolet nkr 613'],
     image: 'https://chileautos.pxcrush.net/cars/dealer/835p6z211m6s7ug9a462079j4.jpg?pxc_format=auto&pxc_height=600&pxc_method=crop&pxc_width=900',
     sourceUrl: 'https://www.chileautos.cl/vehiculos/detalles/2011-chevrolet-nkr-613/CP-AD-8424573/',
