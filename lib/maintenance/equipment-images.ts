@@ -16,8 +16,8 @@ const EXACT_EQUIPMENT_IMAGES: Array<{
   {
     keywords: ['komatsu pc1250'],
     image: 'https://www.euronato.ru/content/images/newsi1/source/img_1735569896.jpg',
-    sourceUrl: 'https://www.komatsu.com/en-us/products/equipment/excavators/large-excavators/pc1250lc-11',
-    sourceDomain: 'komatsu.com',
+    sourceUrl: 'https://www.euronato.ru/about/news/v_nalichii_ekskavator_komatsu_pc1250_lizing_prodazha_arenda_ekskavator_pc-1250_iz_yaponii/',
+    sourceDomain: 'euronato.ru',
     note: 'Referencia visual del modelo Komatsu PC1250; no acredita que sea la unidad física instalada.',
   },
   {
