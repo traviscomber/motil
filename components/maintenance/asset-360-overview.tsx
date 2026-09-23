@@ -24,7 +24,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { StatePanel } from '@/components/ui/state-panel';
-import { getEquipmentImage } from '@/lib/maintenance/equipment-images';
+import { getEquipmentImageMeta } from '@/lib/maintenance/equipment-images';
 
 type Asset360Response = {
   asset?: {
@@ -249,8 +249,8 @@ export function Asset360Overview({
     .filter(Boolean)
     .join(' · ');
   const equipmentImage =
-    getEquipmentImage(technicalIdentity) ||
-    getEquipmentImage(`${asset.name || ''} ${asset.asset_type || ''} ${asset.category || ''}`);
+    getEquipmentImageMeta(`${asset.manufacturer || ''} ${asset.model || ''} ${asset.name || ''}`) ||
+    getEquipmentImageMeta(`${asset.name || ''} ${asset.asset_type || ''} ${asset.category || ''}`);
 
   return (
     <div className="space-y-5">
@@ -261,7 +261,7 @@ export function Asset360Overview({
               <div className="overflow-hidden rounded-md border border-border/70 bg-background">
                 {equipmentImage ? (
                   <img
-                    src={equipmentImage}
+                    src={equipmentImage.image}
                     alt={`Imagen referencial de ${asset.name || 'equipo'}`}
                     className="h-48 w-full object-cover"
                   />
@@ -271,9 +271,27 @@ export function Asset360Overview({
                   </div>
                 )}
               </div>
-              <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-                Imagen referencial cuando existe coincidencia de familia. La fotografía de terreno debe prevalecer cuando esté disponible.
-              </p>
+              {equipmentImage ? (
+                <div className="mt-2 space-y-1 text-[11px] leading-relaxed text-muted-foreground">
+                  <p>{equipmentImage.note}</p>
+                  {equipmentImage.sourceUrl ? (
+                    <a
+                      href={equipmentImage.sourceUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 font-medium text-foreground hover:underline"
+                    >
+                      Fuente: {equipmentImage.sourceDomain || 'referencia pública'}
+                    </a>
+                  ) : (
+                    <p>Referencia visual interna de familia.</p>
+                  )}
+                </div>
+              ) : (
+                <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+                  Sin imagen segura para este activo. No se usa una fotografía genérica en equipos cuya identidad visual requiere validación.
+                </p>
+              )}
             </div>
 
             <div className="min-w-0 p-5 lg:p-6">
