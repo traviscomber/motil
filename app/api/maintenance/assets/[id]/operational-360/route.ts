@@ -26,15 +26,36 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         ? (asset.source_payload as Record<string, unknown>)
         : {};
 
+    const purchaseSelect =
+      'id,order_number,line_number,product_code,description,quantity,unit,unit_cost,net_amount,cost_center_code,asset_reference,supplier_name,order_date,status';
     const costCenterPurchaseHistoryPromise = asset.cost_center_code
       ? context.supabase
           .from('canonical_purchase_order_lines_current')
-          .select('id,order_number,line_number,product_code,description,quantity,unit,unit_cost,net_amount,cost_center_code,asset_reference,supplier_name,order_date,status')
+          .select(purchaseSelect)
           .eq('organization_id', context.organizationId)
           .ilike('cost_center_code', `${asset.cost_center_code} %`)
           .order('order_date', { ascending: false, nullsFirst: false })
           .limit(100)
       : Promise.resolve({ data: [], error: null });
+
+    const purchaseNameTokens = String(asset.name || '')
+      .split(/\s+/)
+      .map((token) => token.replace(/[^\p{L}\p{N}-]+/gu, ''))
+      .filter((token) => token.length >= 3)
+      .filter((token) => !['ano', 'año', 'camion', 'camión', 'cargador', 'frontal', 'generador', 'grua', 'grúa', 'horquilla', 'scoop', 'sonda', 'jumbo', 'excavadora', 'manipulador', 'telescopico', 'telescópico'].includes(token.toLowerCase()))
+      .slice(0, 5);
+    const purchaseNamePattern =
+      purchaseNameTokens.length >= 2 ? `%${purchaseNameTokens.join('%')}%` : null;
+    const namePurchaseHistoryPromise =
+      !asset.cost_center_code && purchaseNamePattern
+        ? context.supabase
+            .from('canonical_purchase_order_lines_current')
+            .select(purchaseSelect)
+            .eq('organization_id', context.organizationId)
+            .ilike('cost_center_code', purchaseNamePattern)
+            .order('order_date', { ascending: false, nullsFirst: false })
+            .limit(100)
+        : Promise.resolve({ data: [], error: null });
     const normalizedAsset = {
       id: asset.id,
       asset_code: asset.asset_code,
@@ -66,7 +87,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       validation_status: asset.validation_status,
     };
 
-    const [ordersResult, closeResult, preventiveResult, runtimeResult, reliabilityResult, runtimeReliabilityResult, snapshotsResult, partsResult, eventsResult, planningResult, operationalStateResult, supplyChainResult, procurementOrdersResult, costCenterPurchaseHistoryResult] = await Promise.all([
+    const [ordersResult, closeResult, preventiveResult, runtimeResult, reliabilityResult, runtimeReliabilityResult, snapshotsResult, partsResult, eventsResult, planningResult, operationalStateResult, supplyChainResult, procurementOrdersResult, costCenterPurchaseHistoryResult, namePurchaseHistoryResult] = await Promise.all([
       context.supabase
         .from('maintenance_operational_work_order_flow_v1')
         .select('work_order_id,work_order_number,status,priority,work_type,scheduled_date,assigned_person_name,flow_status,open_purchase_order_count,quantity_requested,quantity_issued,quantity_installed,total_cost')
@@ -152,9 +173,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         .order('issued_at', { ascending: false, nullsFirst: false })
         .limit(10),
       costCenterPurchaseHistoryPromise,
+      namePurchaseHistoryPromise,
     ]);
 
-    const error = ordersResult.error || closeResult.error || preventiveResult.error || runtimeResult.error || reliabilityResult.error || runtimeReliabilityResult.error || snapshotsResult.error || partsResult.error || eventsResult.error || planningResult.error || operationalStateResult.error || supplyChainResult.error || procurementOrdersResult.error || costCenterPurchaseHistoryResult.error;
+    const error = ordersResult.error || closeResult.error || preventiveResult.error || runtimeResult.error || reliabilityResult.error || runtimeReliabilityResult.error || snapshotsResult.error || partsResult.error || eventsResult.error || planningResult.error || operationalStateResult.error || supplyChainResult.error || procurementOrdersResult.error || costCenterPurchaseHistoryResult.error || namePurchaseHistoryResult.error;
     if (error) throw error;
 
     const closeRows = closeResult.data || [];
@@ -224,8 +246,18 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       supplierScore: supplierScoresById.get(row.supplier_id) || null,
     }));
 
-    const costCenterPurchaseHistory = costCenterPurchaseHistoryResult.data || [];
+    const purchaseHistoryMatchBasis = asset.cost_center_code ? 'cost_center' : 'name_model';
+    const purchaseHistoryRows = asset.cost_center_code
+      ? costCenterPurchaseHistoryResult.data || []
+      : namePurchaseHistoryResult.data || [];
+    const seenPurchaseLineIds = new Set<number>();
+    const costCenterPurchaseHistory = purchaseHistoryRows.filter((row: any) => {
+      if (seenPurchaseLineIds.has(row.id)) return false;
+      seenPurchaseLineIds.add(row.id);
+      return true;
+    });
     const purchaseHistorySummary = {
+      matchBasis: purchaseHistoryMatchBasis,
       purchaseLines: costCenterPurchaseHistory.length,
       orders: new Set(costCenterPurchaseHistory.map((row: any) => row.order_number).filter(Boolean)).size,
       suppliers: new Set(costCenterPurchaseHistory.map((row: any) => row.supplier_name).filter(Boolean)).size,
