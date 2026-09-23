@@ -823,7 +823,6 @@ export function Asset360Overview({
   ] as const;
   const coverageAvailableCount = coverageItems.filter(([, available]) => available).length;
   const coverageMissingCount = coverageItems.length - coverageAvailableCount;
-  const coverageUnavailableCount = unavailableSources.length;
   const latestMpValue = latestPlan?.last_mp != null ? Number(latestPlan.last_mp) : null;
   const latestMpSummary = latestMpValue != null && Number.isFinite(latestMpValue) && latestMpValue > 0
     ? `Última MP ${number(latestMpValue, 1)} ${latestPlan?.meter_unit || ''}`.trim()
@@ -1016,9 +1015,7 @@ export function Asset360Overview({
       <details className="group rounded-lg border border-border bg-card">
         <SectionSummary
           title="Cobertura de la ficha"
-          hint={coverageUnavailableCount > 0
-            ? `${coverageAvailableCount} capas con evidencia · ${coverageMissingCount} sin registro · ${coverageUnavailableCount} ${coverageUnavailableCount === 1 ? 'fuente no disponible' : 'fuentes no disponibles'}`
-            : `${coverageAvailableCount} capas con evidencia · ${coverageMissingCount} sin registro`}
+          hint={`${coverageAvailableCount} capas con evidencia · ${coverageMissingCount} sin registro`}
         />
         <div className="grid gap-px border-t border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
           {coverageItems.map(([label, available, status]) => (
