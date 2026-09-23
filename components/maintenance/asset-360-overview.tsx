@@ -388,7 +388,7 @@ export function Asset360Overview({
         <Card className="shadow-none">
           <CardContent className="p-5">
             <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-              Próximo preventivo
+              Próximo preventivo por horas
             </p>
             {nextPreventive ? (
               <>
@@ -506,7 +506,7 @@ export function Asset360Overview({
       </div>
 
       <p className="px-1 text-[11px] leading-relaxed text-muted-foreground">
-        Horómetro, MTBF, MTTR y costos se muestran sólo desde evidencia operacional auditada. Los campos de identidad ausentes permanecen explícitamente como no informados.
+        Horómetro, MTBF y MTTR se muestran sólo desde evidencia operacional auditada. El costo se obtiene desde snapshots de cierre auditado. Los campos de identidad ausentes permanecen explícitamente como no informados.
       </p>
     </div>
   );
