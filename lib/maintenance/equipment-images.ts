@@ -14,6 +14,13 @@ const EXACT_EQUIPMENT_IMAGES: Array<{
   note: string;
 }> = [
   {
+    keywords: ['onram 1000-3', 'onram 1000/3', 'onram 1000'],
+    image: 'https://dasmithdrilling.com/sites/default/files/2022-10/onram03.jpg',
+    sourceUrl: 'https://dasmithdrilling.com/equipment/hagby-onram-10003-msha-permissible-diamond-core-drill',
+    sourceDomain: 'dasmithdrilling.com',
+    note: 'Referencia visual del modelo Hagby/Onram 1000/3; no acredita que sea la unidad física registrada.',
+  },
+  {
     keywords: ['weichai 165 kva', 'weichai 165', 'generador weichai 165'],
     image: 'https://ac-landing-pages-user-uploads-production.s3.amazonaws.com/0000058194/ac725f72-4cac-42e4-a0c0-4e973ad6843a.png',
     sourceUrl: 'https://www.weichaichile.cl/generador-wpg165l9/',
@@ -445,6 +452,20 @@ const EXACT_EQUIPMENT_IMAGES: Array<{
 ];
 
 const EQUIPMENT_IMAGE_MAP: { keywords: string[]; image: string; note: string; sourceUrl?: string; sourceDomain?: string }[] = [
+  {
+    keywords: ['toyota hilux'],
+    image: 'https://images.ctfassets.net/6rgkmnd309z8/45UaAwQ5vNOiaux2SyLDuh/7864404936f03dc8277f65f3c918c8b4/exterior_5__1_.webp',
+    sourceUrl: 'https://toyota.cl/modelos/pickup/hilux/',
+    sourceDomain: 'toyota.cl',
+    note: 'Referencia visual oficial de familia Toyota Hilux; el año exacto debe validarse.',
+  },
+  {
+    keywords: ['camion mitsubishi 4x4', 'camión mitsubishi 4x4', 'mitsubishi fuso 4x4'],
+    image: 'https://www.truck1.cl/img/xxl/8682/Mitsubishi-Fuso-4x4-3-way-tipper-Hungria_8682_5635058386988.jpg',
+    sourceUrl: 'https://www.truck1.cl/tm/mitsubishi-fuso-4x4',
+    sourceDomain: 'truck1.cl',
+    note: 'Referencia visual de familia Mitsubishi Fuso 4x4; validar modelo y carrocería exactos.',
+  },
 
   {
     keywords: ['grua horquilla nissan', 'nissan flo 2m25', 'forklift nissan'],
