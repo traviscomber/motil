@@ -532,10 +532,12 @@ function IdentityItem({
   icon: Icon,
   label,
   value,
+  meta,
 }: {
   icon: LucideIcon;
   label: string;
   value: unknown;
+  meta?: string | null;
 }) {
   return (
     <div className="min-w-0 border-l border-border/70 pl-3">
@@ -544,6 +546,7 @@ function IdentityItem({
         {label}
       </div>
       <p className="mt-1 truncate text-sm font-medium text-foreground">{show(value)}</p>
+      {meta ? <p className="mt-1 truncate text-[11px] text-muted-foreground">{meta}</p> : null}
     </div>
   );
 }
@@ -1110,16 +1113,19 @@ export function Asset360Overview({
             icon={Coins}
             label="Costo reconocido vida"
             value={operationalState?.recognized_cost_clp_lifetime != null ? money(operationalState.recognized_cost_clp_lifetime) : null}
+            meta={operationalState?.last_cost_at ? `Acumulado hasta ${date(operationalState.last_cost_at)}` : 'Sin fecha de último costo'}
           />
           <IdentityItem
             icon={Coins}
             label="Costo últimos 12 meses"
             value={operationalState?.recognized_cost_clp_12m != null ? money(operationalState.recognized_cost_clp_12m) : null}
+            meta={operationalState?.last_cost_at ? `Período móvil a ${date(operationalState.last_cost_at)}` : null}
           />
           <IdentityItem
             icon={Coins}
             label="Costo año"
             value={operationalState?.recognized_cost_clp_ytd != null ? money(operationalState.recognized_cost_clp_ytd) : null}
+            meta={operationalState?.last_cost_at ? `Año a ${date(operationalState.last_cost_at)}` : null}
           />
           <IdentityItem
             icon={CalendarDays}
@@ -1145,6 +1151,7 @@ export function Asset360Overview({
             icon={Activity}
             label="Disponibilidad"
             value={operationalState?.availability_pct != null ? `${number(operationalState.availability_pct, 1)}%` : operationalState?.availability_evidence_status}
+            meta={operationalState?.last_availability_date ? `Fecha de corte ${date(operationalState.last_availability_date)}` : operationalState?.availability_days_30d ? 'Período: últimos 30 días' : 'Sin fecha de corte'}
           />
         </div>
       </details>
@@ -1156,11 +1163,11 @@ export function Asset360Overview({
         <div className="border-t border-border p-4">
           {purchaseHistorySummary && Number(purchaseHistorySummary.purchaseLines || 0) > 0 ? (
             <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-              <IdentityItem icon={Building2} label="Último proveedor" value={purchaseHistorySummary.lastSupplier} />
+              <IdentityItem icon={Building2} label="Último proveedor" value={purchaseHistorySummary.lastSupplier} meta={purchaseHistorySummary.lastOrderDate ? `Última compra ${date(purchaseHistorySummary.lastOrderDate)}` : null} />
               <IdentityItem icon={CalendarDays} label="Última compra" value={date(purchaseHistorySummary.lastOrderDate)} />
-              <IdentityItem icon={FileText} label="Órdenes históricas" value={purchaseHistorySummary.orders} />
-              <IdentityItem icon={Building2} label="Proveedores" value={purchaseHistorySummary.suppliers} />
-              <IdentityItem icon={Coins} label="Gasto histórico neto" value={purchaseHistorySummary.netSpend != null ? money(purchaseHistorySummary.netSpend) : null} />
+              <IdentityItem icon={FileText} label="Órdenes históricas" value={purchaseHistorySummary.orders} meta={purchaseHistorySummary.lastOrderDate ? `Hasta ${date(purchaseHistorySummary.lastOrderDate)}` : null} />
+              <IdentityItem icon={Building2} label="Proveedores" value={purchaseHistorySummary.suppliers} meta={purchaseHistorySummary.lastOrderDate ? `Hasta ${date(purchaseHistorySummary.lastOrderDate)}` : null} />
+              <IdentityItem icon={Coins} label="Gasto histórico neto" value={purchaseHistorySummary.netSpend != null ? money(purchaseHistorySummary.netSpend) : null} meta={purchaseHistorySummary.lastOrderDate ? `Acumulado hasta ${date(purchaseHistorySummary.lastOrderDate)}` : null} />
             </div>
           ) : null}
           {procurementOrders.length > 0 ? (
@@ -1333,7 +1340,10 @@ export function Asset360Overview({
                     <div key={plan.id} className="grid gap-3 py-3 lg:grid-cols-[150px_minmax(0,1fr)_180px] lg:items-center">
                       <div>
                         <p className="font-mono text-xs">{plan.plan_code || 'Sin código'}</p>
-                        <p className="mt-1 text-xs text-muted-foreground">{plan.status || 'Sin estado'}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {plan.status || 'Sin estado'}
+                          {plan.approved_at ? ` · aprobado ${date(plan.approved_at)}` : ''}
+                        </p>
                       </div>
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium">{plan.name || plan.work_type || 'Plan de intervención'}</p>
@@ -1368,21 +1378,25 @@ export function Asset360Overview({
               icon={Gauge}
               label="Último horómetro"
               value={runtimeCostIntelligence?.latest_meter_hours != null ? `${number(runtimeCostIntelligence.latest_meter_hours, 1)} h` : null}
+              meta={runtimeCostIntelligence?.last_reading_at ? `Registrado el ${date(runtimeCostIntelligence.last_reading_at)}` : 'Sin fecha de lectura'}
             />
             <IdentityItem
               icon={Timer}
               label="Horas observadas"
               value={runtimeCostIntelligence?.observed_operating_hours != null ? `${number(runtimeCostIntelligence.observed_operating_hours, 1)} h` : null}
+              meta={runtimeCostIntelligence?.first_reading_at && runtimeCostIntelligence?.last_reading_at ? `Período ${date(runtimeCostIntelligence.first_reading_at)} → ${date(runtimeCostIntelligence.last_reading_at)}` : null}
             />
             <IdentityItem
               icon={Coins}
               label="Costo auditado / hora"
               value={runtimeCostIntelligence?.audited_cost_per_operating_hour != null ? `${money(runtimeCostIntelligence.audited_cost_per_operating_hour)}/h` : null}
+              meta={reliability?.last_audited_closure_at ? `Cierres auditados hasta ${date(reliability.last_audited_closure_at)}` : 'Sin cierre auditado con fecha'}
             />
             <IdentityItem
               icon={FileText}
               label="Lecturas"
               value={runtimeCostIntelligence?.reading_count ?? meterHistory.length}
+              meta={runtimeCostIntelligence?.last_reading_at ? `Última el ${date(runtimeCostIntelligence.last_reading_at)}` : null}
             />
           </div>
           {meterHistory.length > 0 ? (
@@ -1413,26 +1427,29 @@ export function Asset360Overview({
         {maintenancePriority ? (
           <>
             <div className="grid gap-4 border-t border-border p-4 sm:grid-cols-2 lg:grid-cols-4">
-              <IdentityItem icon={Activity} label="Prioridad" value={maintenancePriority.priority} />
+              <IdentityItem icon={Activity} label="Prioridad" value={maintenancePriority.priority} meta={maintenancePriority.current_reading_at ? `Calculada con lectura del ${date(maintenancePriority.current_reading_at)}` : latestPlan?.updated_at ? `Fuente actualizada ${date(latestPlan.updated_at)}` : null} />
               <IdentityItem
                 icon={Gauge}
                 label="Lectura actual"
                 value={maintenancePriority.current_reading != null ? `${number(maintenancePriority.current_reading, 1)} ${maintenancePriority.meter_unit || ''}` : null}
+                meta={maintenancePriority.current_reading_at ? `Registrado el ${date(maintenancePriority.current_reading_at)}` : 'Sin fecha de lectura'}
               />
               <IdentityItem
                 icon={Gauge}
                 label="Próximo MP"
                 value={maintenancePriority.next_due_meter != null ? `${number(maintenancePriority.next_due_meter, 1)} ${maintenancePriority.meter_unit || ''}` : null}
+                meta={maintenancePriority.projected_due_at ? `Proyección ${date(maintenancePriority.projected_due_at)}` : maintenancePriority.scheduled_date ? `Programado ${date(maintenancePriority.scheduled_date)}` : null}
               />
               <IdentityItem
                 icon={Timer}
                 label="Margen"
                 value={maintenancePriority.remaining_meter != null ? `${number(maintenancePriority.remaining_meter, 1)} ${maintenancePriority.meter_unit || ''}` : null}
+                meta={maintenancePriority.current_reading_at ? `Con lectura del ${date(maintenancePriority.current_reading_at)}` : null}
               />
               <IdentityItem icon={CalendarDays} label="Fecha proyectada" value={date(maintenancePriority.projected_due_at || maintenancePriority.scheduled_date)} />
-              <IdentityItem icon={Wrench} label="Responsable" value={maintenancePriority.responsible_raw} />
-              <IdentityItem icon={PackageCheck} label="Materiales" value={maintenancePriority.parts_status_raw} />
-              <IdentityItem icon={FileText} label="Estado programación" value={maintenancePriority.programming_status_raw} />
+              <IdentityItem icon={Wrench} label="Responsable" value={maintenancePriority.responsible_raw} meta={latestPlan?.updated_at ? `Fuente actualizada ${date(latestPlan.updated_at)}` : null} />
+              <IdentityItem icon={PackageCheck} label="Materiales" value={maintenancePriority.parts_status_raw} meta={latestPlan?.updated_at ? `Estado al ${date(latestPlan.updated_at)}` : null} />
+              <IdentityItem icon={FileText} label="Estado programación" value={maintenancePriority.programming_status_raw} meta={latestPlan?.updated_at ? `Actualizado ${date(latestPlan.updated_at)}` : null} />
             </div>
             {maintenancePriority.recommended_action ? (
               <div className="border-t border-border px-4 py-4">
@@ -1486,7 +1503,7 @@ export function Asset360Overview({
             <>
               <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <IdentityItem icon={Coins} label="Años con movimientos" value={economicHistory.length} />
-                <IdentityItem icon={Coins} label="Costo histórico" value={money(economicLifetime)} />
+                <IdentityItem icon={Coins} label="Costo histórico" value={money(economicLifetime)} meta={economicHistory[0]?.last_cost_date ? `Corte ${date(economicHistory[0].last_cost_date)}` : null} />
                 <IdentityItem
                   icon={CalendarDays}
                   label="Primer costo"
@@ -1519,24 +1536,24 @@ export function Asset360Overview({
           </summary>
           <div className="border-t border-border p-4">
             <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <IdentityItem icon={Gauge} label="Reportes recientes" value={drillingHistory.length} />
-              <IdentityItem icon={Activity} label="Metros perforados" value={`${number(drillingMeters, 1)} m`} />
+              <IdentityItem icon={Gauge} label="Reportes recientes" value={drillingHistory.length} meta={drillingHistory[0]?.operation_date ? `Hasta ${date(drillingHistory[0].operation_date)}` : null} />
+              <IdentityItem icon={Activity} label="Metros perforados" value={`${number(drillingMeters, 1)} m`} meta={drillingHistory[0]?.operation_date ? `En reportes mostrados · hasta ${date(drillingHistory[0].operation_date)}` : 'En reportes mostrados'} />
               <IdentityItem icon={CalendarDays} label="Última operación" value={date(drillingHistory[0]?.operation_date)} />
               <IdentityItem icon={MapPin} label="Última faena" value={drillingHistory[0]?.mine_raw || drillingHistory[0]?.site_raw} />
             </div>
             {drillOperationalEvidence ? (
               <div className="mb-4 grid gap-4 rounded-md border border-border bg-muted/20 p-4 sm:grid-cols-2 lg:grid-cols-4">
-                <IdentityItem icon={Activity} label="Operativo" value={drillOperationalEvidence.operational_reports} />
-                <IdentityItem icon={Activity} label="Fuera de servicio" value={drillOperationalEvidence.out_of_service_reports} />
-                <IdentityItem icon={Timer} label="Downtime 90 días" value={drillOperationalEvidence.recorded_downtime_hours != null ? `${number(drillOperationalEvidence.recorded_downtime_hours, 1)} h` : null} />
-                <IdentityItem icon={PackageCheck} label="Repuestos instalados 90 días" value={drillOperationalEvidence.quantity_installed} />
+                <IdentityItem icon={Activity} label="Operativo" value={drillOperationalEvidence.operational_reports} meta={drillOperationalEvidence.window_start && drillOperationalEvidence.window_end ? `Período ${date(drillOperationalEvidence.window_start)} → ${date(drillOperationalEvidence.window_end)}` : 'Período 90 días'} />
+                <IdentityItem icon={Activity} label="Fuera de servicio" value={drillOperationalEvidence.out_of_service_reports} meta={drillOperationalEvidence.window_start && drillOperationalEvidence.window_end ? `Período ${date(drillOperationalEvidence.window_start)} → ${date(drillOperationalEvidence.window_end)}` : 'Período 90 días'} />
+                <IdentityItem icon={Timer} label="Downtime 90 días" value={drillOperationalEvidence.recorded_downtime_hours != null ? `${number(drillOperationalEvidence.recorded_downtime_hours, 1)} h` : null} meta={drillOperationalEvidence.window_end ? `Corte ${date(drillOperationalEvidence.window_end)}` : null} />
+                <IdentityItem icon={PackageCheck} label="Repuestos instalados 90 días" value={drillOperationalEvidence.quantity_installed} meta={drillOperationalEvidence.window_end ? `Corte ${date(drillOperationalEvidence.window_end)}` : null} />
               </div>
             ) : null}
             {drillEconomicsChange ? (
               <div className="mb-4 grid gap-4 rounded-md border border-border bg-muted/20 p-4 sm:grid-cols-2 lg:grid-cols-3">
-                <IdentityItem icon={Coins} label="Costo/m mes actual" value={drillEconomicsChange.current_cost_clp_per_meter != null ? `${money(drillEconomicsChange.current_cost_clp_per_meter)}/m` : null} />
-                <IdentityItem icon={Coins} label="Cambio costo/m" value={drillEconomicsChange.cost_per_meter_change_pct != null ? `${number(drillEconomicsChange.cost_per_meter_change_pct, 1)}%` : null} />
-                <IdentityItem icon={Activity} label="Cambio metros" value={drillEconomicsChange.drilled_meters_change_pct != null ? `${number(drillEconomicsChange.drilled_meters_change_pct, 1)}%` : null} />
+                <IdentityItem icon={Coins} label="Costo/m mes actual" value={drillEconomicsChange.current_cost_clp_per_meter != null ? `${money(drillEconomicsChange.current_cost_clp_per_meter)}/m` : null} meta={drillEconomicsChange.current_month ? `Período ${date(drillEconomicsChange.current_month)}` : null} />
+                <IdentityItem icon={Coins} label="Cambio costo/m" value={drillEconomicsChange.cost_per_meter_change_pct != null ? `${number(drillEconomicsChange.cost_per_meter_change_pct, 1)}%` : null} meta={drillEconomicsChange.current_month && drillEconomicsChange.previous_month ? `${date(drillEconomicsChange.previous_month)} → ${date(drillEconomicsChange.current_month)}` : null} />
+                <IdentityItem icon={Activity} label="Cambio metros" value={drillEconomicsChange.drilled_meters_change_pct != null ? `${number(drillEconomicsChange.drilled_meters_change_pct, 1)}%` : null} meta={drillEconomicsChange.current_month && drillEconomicsChange.previous_month ? `${date(drillEconomicsChange.previous_month)} → ${date(drillEconomicsChange.current_month)}` : null} />
               </div>
             ) : null}
             {drillEconomics ? (
@@ -1776,28 +1793,31 @@ export function Asset360Overview({
           Vida útil y ciclo del activo
         </summary>
         <div className="grid gap-4 border-t border-border p-4 sm:grid-cols-2 lg:grid-cols-4">
-          <IdentityItem icon={CalendarDays} label="Fecha adquisición" value={date(asset.acquisition_date)} />
+          <IdentityItem icon={CalendarDays} label="Fecha adquisición" value={date(asset.acquisition_date)} meta={asset.updated_at ? `Maestro actualizado ${date(asset.updated_at)}` : null} />
           <IdentityItem
             icon={Timer}
             label="Edad estimada"
             value={assetAgeYears != null ? `${number(assetAgeYears, 1)} años` : 'No informado'}
+            meta={asset.acquisition_date ? `Calculada desde ${date(asset.acquisition_date)}` : null}
           />
           <IdentityItem
             icon={Timer}
             label="Vida útil esperada"
             value={expectedLifespan != null ? `${number(expectedLifespan, 0)} años` : 'No informado'}
+            meta={asset.updated_at ? `Maestro actualizado ${date(asset.updated_at)}` : null}
           />
           <IdentityItem
             icon={Activity}
             label="Vida útil remanente"
             value={remainingLifeYears != null ? `${number(remainingLifeYears, 1)} años` : 'No informado'}
+            meta={asset.acquisition_date && expectedLifespan != null ? `Calculada desde adquisición y vida esperada` : null}
           />
         </div>
         <div className="grid gap-4 border-t border-border px-4 py-4 sm:grid-cols-2 lg:grid-cols-4">
-          <IdentityItem icon={Coins} label="Costo adquisición" value={asset.acquisition_cost != null ? money(asset.acquisition_cost) : null} />
+          <IdentityItem icon={Coins} label="Costo adquisición" value={asset.acquisition_cost != null ? money(asset.acquisition_cost) : null} meta={asset.acquisition_date ? `Fecha adquisición ${date(asset.acquisition_date)}` : asset.updated_at ? `Maestro actualizado ${date(asset.updated_at)}` : null} />
           <IdentityItem icon={Timer} label="MTBF base" value={asset.baseline_mtbf_hours != null ? `${number(asset.baseline_mtbf_hours, 0)} h` : null} />
-          <IdentityItem icon={Timer} label="MTBF real" value={mtbf} />
-          <IdentityItem icon={Activity} label="Tiempo detenido auditado" value={reliability?.total_downtime_hours != null ? `${number(reliability.total_downtime_hours, 1)} h` : 'Sin base'} />
+          <IdentityItem icon={Timer} label="MTBF real" value={mtbf} meta={reliability?.last_audited_closure_at ? `Cierres auditados hasta ${date(reliability.last_audited_closure_at)}` : 'Sin cierre auditado con fecha'} />
+          <IdentityItem icon={Activity} label="Tiempo detenido auditado" value={reliability?.total_downtime_hours != null ? `${number(reliability.total_downtime_hours, 1)} h` : 'Sin base'} meta={reliability?.last_audited_closure_at ? `Hasta cierre ${date(reliability.last_audited_closure_at)}` : null} />
         </div>
       </details>
 
