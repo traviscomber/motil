@@ -237,6 +237,22 @@ type Asset360Response = {
     stock_movement_cost?: number | string | null;
     supply_chain_status?: string | null;
   }>;
+  costCenterPurchaseHistory?: Array<{
+    id: number;
+    order_number?: string | null;
+    line_number?: number | null;
+    product_code?: string | null;
+    description?: string | null;
+    quantity?: number | string | null;
+    unit?: string | null;
+    unit_cost?: number | string | null;
+    net_amount?: number | string | null;
+    cost_center_code?: string | null;
+    asset_reference?: string | null;
+    supplier_name?: string | null;
+    order_date?: string | null;
+    status?: string | null;
+  }>;
   procurementOrders?: Array<{
     id: string;
     order_number?: string | null;
@@ -535,6 +551,7 @@ export function Asset360Overview({
   const operationalState = data.operationalState;
   const supplyChain = data.supplyChain || [];
   const procurementOrders = data.procurementOrders || [];
+  const costCenterPurchaseHistory = data.costCenterPurchaseHistory || [];
   const latestPlan = maintenancePlanning[0] || null;
   const acquisitionDate = asset.acquisition_date ? new Date(String(asset.acquisition_date)) : null;
   const assetAgeYears =
@@ -937,9 +954,39 @@ export function Asset360Overview({
                 );
               })}
             </div>
+          ) : costCenterPurchaseHistory.length > 0 ? (
+            <div>
+              <div className="mb-3 rounded-md border border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+                Sin OC enlazada directamente al activo. Se muestran las compras recientes del centro de costo {asset.cost_center_code || 'asociado'} como contexto, no como atribución directa al equipo.
+              </div>
+              <div className="divide-y divide-border">
+                {costCenterPurchaseHistory.slice(0, 8).map((line) => (
+                  <div key={line.id} className="grid gap-3 py-4 lg:grid-cols-[150px_minmax(0,1fr)_180px_140px] lg:items-center">
+                    <div>
+                      <p className="font-mono text-xs">{line.order_number || 'OC sin número'}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{date(line.order_date)}</p>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{line.supplier_name || 'Proveedor no informado'}</p>
+                      <p className="mt-1 truncate text-xs text-muted-foreground">
+                        {line.product_code || 'Sin código'} · {line.description || 'Sin descripción'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Cantidad / unidad</p>
+                      <p className="mt-1 text-sm font-medium">{number(line.quantity || 0, 1)} {line.unit || ''}</p>
+                    </div>
+                    <div className="lg:text-right">
+                      <p className="text-xs text-muted-foreground">Monto neto</p>
+                      <p className="mt-1 text-sm font-medium">{line.net_amount != null ? money(line.net_amount) : 'Sin monto'}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           ) : (
             <p className="text-sm text-muted-foreground">
-              No hay órdenes de compra enlazadas directamente a este activo todavía.
+              No hay compras enlazadas directamente al activo ni historial disponible para su centro de costo.
             </p>
           )}
         </div>
