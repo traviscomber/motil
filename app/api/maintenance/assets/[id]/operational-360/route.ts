@@ -133,7 +133,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         .limit(100),
       context.supabase
         .from('work_order_parts')
-        .select('id,work_order_id,canonical_product_id,quantity_requested,quantity_reserved,quantity_issued,quantity_installed,quantity_returned,unit_cost,status,installed_at,notes')
+        .select('id,work_order_id,canonical_product_id,quantity_requested,quantity_reserved,quantity_issued,quantity_installed,quantity_returned,unit_cost,status,installed_at,notes,created_at,updated_at')
         .eq('organization_id', context.organizationId)
         .eq('canonical_asset_id', id)
         .order('created_at', { ascending: false })
@@ -374,6 +374,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     };
 
     return NextResponse.json({
+      generatedAt: new Date().toISOString(),
       asset: normalizedAsset,
       summary,
       workOrders: ordersResult.data || [],
