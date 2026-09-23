@@ -415,6 +415,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       },
     });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'No se pudo cargar la Ficha 360 operacional' }, { status: 500 });
+    console.error('[asset-360] operational-360 failed', {
+      assetId: id,
+      message: error instanceof Error ? error.message : (error as { message?: string } | null)?.message || 'unknown',
+      code: (error as { code?: string } | null)?.code || null,
+      details: (error as { details?: string } | null)?.details || null,
+      hint: (error as { hint?: string } | null)?.hint || null,
+    });
+    return NextResponse.json({ error: 'No se pudo cargar la Ficha 360 operacional' }, { status: 500 });
   }
 }
