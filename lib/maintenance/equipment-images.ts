@@ -121,7 +121,36 @@ const EXACT_EQUIPMENT_IMAGES: Array<{
   },
 ];
 
-const EQUIPMENT_IMAGE_MAP: { keywords: string[]; image: string; note: string }[] = [
+const EQUIPMENT_IMAGE_MAP: { keywords: string[]; image: string; note: string; sourceUrl?: string; sourceDomain?: string }[] = [
+
+  {
+    keywords: ['saer centrifuga', 'bomba 950 saer', 'saer'],
+    image: 'https://static-data2.manualslib.com/product-images/a21/1933312/saer-elettropompe-ir-water-pump.jpg',
+    sourceUrl: 'https://www.manualslib.com/manual/1933312/Saer-Elettropompe-Ir.html?page=23',
+    sourceDomain: 'manualslib.com',
+    note: 'Referencia visual de bomba centrífuga SAER; el modelo exacto 950 debe validarse.',
+  },
+  {
+    keywords: ['ziebtec pt-500', 'ventilador neumatico ziebtec', 'pt-500'],
+    image: 'https://image.made-in-china.com/318f0j00FtjUErosbhcB/-mp4.webp',
+    sourceUrl: 'https://ziebtec.cl/ventilador-neumatico/',
+    sourceDomain: 'ziebtec.cl',
+    note: 'Referencia visual de ventilador axial minero; la ficha del activo identifica Ziebtec PT-500.',
+  },
+  {
+    keywords: ['rodillo doble tambor', 'rodillo compactador'],
+    image: 'https://s.alicdn.com/%40sc04/kf/Hae6f73b07e6d42a0b5297975c5b51c6ai/High-Quality-5-Ton-Double-Drum-Road-Roller-Kubota-Engine-Vibration-Compactor-Machine-for-Asphalt-Construction-Include-Pump-Motor.jpg',
+    sourceUrl: 'https://toolz.cl/tienda/herramientas-de-compactacion/rodillo-compactador-vibratorio-rr-1500rr-1500/',
+    sourceDomain: 'toolz.cl',
+    note: 'Referencia visual de rodillo doble tambor con motor Kubota.',
+  },
+  {
+    keywords: ['ford transit', 'bus ford transit'],
+    image: 'https://cdn.jdpower.com/Models/640x480/2023-Ford-TransitPassengerWagon-XL.jpg',
+    sourceUrl: 'https://www.ford.mx/camiones/transit/pasajeros/2023/',
+    sourceDomain: 'ford.mx',
+    note: 'Referencia visual Ford Transit de pasajeros 2023.',
+  },
 
   {
     keywords: ['bomba leader', 'leader 1029', 'leader 1022', 'leader 1025'],
@@ -219,6 +248,8 @@ export function getEquipmentImageMeta(text: string | null | undefined): Equipmen
       return {
         image: entry.image,
         match: 'family',
+        sourceUrl: entry.sourceUrl,
+        sourceDomain: entry.sourceDomain,
         note: entry.note,
       };
     }
