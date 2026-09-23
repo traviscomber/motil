@@ -13,6 +13,14 @@ const EXACT_EQUIPMENT_IMAGES: Array<{
   sourceDomain: string;
   note: string;
 }> = [
+
+  {
+    keywords: ['liugong cpcd25a', 'liugong cpcd25', 'cpcd25a'],
+    image: 'https://liugongrussia.ru/images/catalog/forklift/CPCD25/CPCD25_960x540x72_01.png',
+    sourceUrl: 'https://www.liugong.com/en/product/cpcd25/index.html',
+    sourceDomain: 'liugong.com',
+    note: 'Referencia visual del modelo LiuGong CPCD25/CPCD25A; no acredita que sea la unidad física registrada.',
+  },
   {
     keywords: ['komatsu pc1250'],
     image: 'https://www.euronato.ru/content/images/newsi1/source/img_1735569896.jpg',
@@ -122,6 +130,14 @@ const EXACT_EQUIPMENT_IMAGES: Array<{
 ];
 
 const EQUIPMENT_IMAGE_MAP: { keywords: string[]; image: string; note: string; sourceUrl?: string; sourceDomain?: string }[] = [
+
+  {
+    keywords: ['grua horquilla nissan', 'nissan flo 2m25', 'forklift nissan'],
+    image: 'https://p-c-s.co.jp/preowned/wp-content/uploads/2020/01/01-72.jpg',
+    sourceUrl: 'https://p-c-s.co.jp/preowned/search/3585',
+    sourceDomain: 'p-c-s.co.jp',
+    note: 'Referencia visual de grúa horquilla Nissan de 2,5 toneladas; el modelo exacto debe validarse en placa.',
+  },
 
   {
     keywords: ['cat cs-533e', 'compactadora cat cs-533e', 'compactadora cat, cs-533e'],
