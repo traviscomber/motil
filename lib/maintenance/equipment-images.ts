@@ -467,6 +467,13 @@ const EXACT_EQUIPMENT_IMAGES: Array<{
 
 const EQUIPMENT_IMAGE_MAP: { keywords: string[]; image: string; note: string; sourceUrl?: string; sourceDomain?: string }[] = [
   {
+    keywords: ['shulz sct-204', 'schulz sct-204', 'sct-204'],
+    image: 'https://ferreteriamarsella.vtexassets.com/arquivos/ids/180392-800-auto?aspect=true&height=auto&v=638744717835700000&width=800',
+    sourceUrl: 'https://www.ferreteriamarsella.cl/compresor-de-tornillo-sct-2050e-50hp-ie-3-10bar--cts-050x000s101-schulz-f042989---f042989/p',
+    sourceDomain: 'ferreteriamarsella.cl',
+    note: 'Referencia visual real de la familia industrial Schulz SCT 20xx; el modelo exacto SCT-204 del maestro debe validarse.',
+  },
+  {
     keywords: ['diamec 230'],
     image: 'https://geotechpedia.com/Images/Equipment/DIAMEC_232-2.jpg',
     sourceUrl: 'https://geotechpedia.com/Equipment/Show/57/Diamec-232--Underground-core-drilling-rig-for-narrow-spaces',
