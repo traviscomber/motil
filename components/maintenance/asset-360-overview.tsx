@@ -40,6 +40,7 @@ type Asset360Response = {
     cost_center_code?: string | null;
     location?: string | null;
     criticality?: string | null;
+    operational_status?: string | null;
     is_active?: boolean | null;
     validation_status?: string | null;
   };
@@ -291,6 +292,9 @@ export function Asset360Overview({
                     <Badge variant={asset.is_active ? 'outline' : 'secondary'}>
                       {asset.is_active ? 'Activo' : 'Inactivo'}
                     </Badge>
+                    {asset.operational_status ? (
+                      <Badge variant="outline">{asset.operational_status}</Badge>
+                    ) : null}
                     {asset.criticality ? (
                       <Badge variant={String(asset.criticality).toLowerCase().includes('crit') ? 'destructive' : 'secondary'}>
                         {asset.criticality}
