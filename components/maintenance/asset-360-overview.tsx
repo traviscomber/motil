@@ -1677,18 +1677,16 @@ export function Asset360Overview({
         <details className="group rounded-lg border border-border bg-card">
           <SectionSummary title="Producción" hint={drillingHistory[0]?.operation_date ? `${number(drillingMeters, 1)} m · ${drillingHistory.length} reportes · hasta ${date(drillingHistory[0].operation_date)}` : 'Sin producción reciente'} />
           <div className="border-t border-border p-4">
-            <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <IdentityItem icon={Gauge} label="Reportes recientes" value={drillingHistory.length} meta={drillingHistory[0]?.operation_date ? `Hasta ${date(drillingHistory[0].operation_date)}` : null} />
-              <IdentityItem icon={Activity} label="Metros perforados" value={`${number(drillingMeters, 1)} m`} meta={drillingHistory[0]?.operation_date ? `En reportes mostrados · hasta ${date(drillingHistory[0].operation_date)}` : 'En reportes mostrados'} />
+            <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <IdentityItem icon={Activity} label="Metros perforados" value={`${number(drillingMeters, 1)} m`} meta={drillingHistory[0]?.operation_date ? `${drillingHistory.length} reportes · hasta ${date(drillingHistory[0].operation_date)}` : `${drillingHistory.length} reportes`} />
               <IdentityItem icon={CalendarDays} label="Última operación" value={date(drillingHistory[0]?.operation_date)} />
               <IdentityItem icon={MapPin} label="Última faena" value={drillingHistory[0]?.mine_raw || drillingHistory[0]?.site_raw} />
             </div>
             {drillOperationalEvidence ? (
-              <div className="mb-4 grid gap-4 rounded-md border border-border bg-muted/20 p-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="mb-4 grid gap-4 rounded-md border border-border bg-muted/20 p-4 sm:grid-cols-2 lg:grid-cols-3">
                 <IdentityItem icon={Activity} label="Operativo" value={drillOperationalEvidence.operational_reports} meta={drillOperationalEvidence.window_start && drillOperationalEvidence.window_end ? `Período ${date(drillOperationalEvidence.window_start)} → ${date(drillOperationalEvidence.window_end)}` : 'Período 90 días'} />
                 <IdentityItem icon={Activity} label="Fuera de servicio" value={drillOperationalEvidence.out_of_service_reports} meta={drillOperationalEvidence.window_start && drillOperationalEvidence.window_end ? `Período ${date(drillOperationalEvidence.window_start)} → ${date(drillOperationalEvidence.window_end)}` : 'Período 90 días'} />
                 <IdentityItem icon={Timer} label="Downtime 90 días" value={drillOperationalEvidence.recorded_downtime_hours != null ? `${number(drillOperationalEvidence.recorded_downtime_hours, 1)} h` : null} meta={drillOperationalEvidence.window_end ? `Corte ${date(drillOperationalEvidence.window_end)}` : null} />
-                <IdentityItem icon={PackageCheck} label="Repuestos instalados 90 días" value={drillOperationalEvidence.quantity_installed} meta={drillOperationalEvidence.window_end ? `Corte ${date(drillOperationalEvidence.window_end)}` : null} />
               </div>
             ) : null}
             {drillEconomicsChange ? (
@@ -1699,11 +1697,17 @@ export function Asset360Overview({
               </div>
             ) : null}
             {drillEconomics ? (
-              <div className="mb-4 grid gap-4 rounded-md border border-border bg-muted/20 p-4 sm:grid-cols-2 lg:grid-cols-4">
-                <IdentityItem icon={Coins} label="Costo 90 días" value={drillEconomics.recognized_cost_clp_90d != null ? money(drillEconomics.recognized_cost_clp_90d) : null} meta={drillEconomics.window_start && drillEconomics.window_end ? `Período ${date(drillEconomics.window_start)} → ${date(drillEconomics.window_end)}` : drillEconomics.last_cost_date ? `Último costo ${date(drillEconomics.last_cost_date)}` : null} />
-                <IdentityItem icon={Activity} label="Metros 90 días" value={drillEconomics.drilled_meters_90d != null ? `${number(drillEconomics.drilled_meters_90d, 1)} m` : null} meta={drillEconomics.window_start && drillEconomics.window_end ? `Período ${date(drillEconomics.window_start)} → ${date(drillEconomics.window_end)}` : drillEconomics.last_drilling_date ? `Última perforación ${date(drillEconomics.last_drilling_date)}` : null} />
-                <IdentityItem icon={Coins} label="Costo por metro" value={drillEconomics.cost_clp_per_meter_90d != null ? `${money(drillEconomics.cost_clp_per_meter_90d)}/m` : null} meta={drillEconomics.window_end ? `Fecha de corte ${date(drillEconomics.window_end)}` : null} />
-                <IdentityItem icon={FileText} label="Evidencia 90 días" value={drillEconomics.evidence_status} meta={drillEconomics.window_end ? `Fecha de corte ${date(drillEconomics.window_end)}` : null} />
+              <div className="mb-4 rounded-md border border-border bg-muted/20 p-4">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  <IdentityItem icon={Coins} label="Costo 90 días" value={drillEconomics.recognized_cost_clp_90d != null ? money(drillEconomics.recognized_cost_clp_90d) : null} meta={drillEconomics.window_start && drillEconomics.window_end ? `Período ${date(drillEconomics.window_start)} → ${date(drillEconomics.window_end)}` : drillEconomics.last_cost_date ? `Último costo ${date(drillEconomics.last_cost_date)}` : null} />
+                  <IdentityItem icon={Activity} label="Metros 90 días" value={drillEconomics.drilled_meters_90d != null ? `${number(drillEconomics.drilled_meters_90d, 1)} m` : null} meta={drillEconomics.window_start && drillEconomics.window_end ? `Período ${date(drillEconomics.window_start)} → ${date(drillEconomics.window_end)}` : drillEconomics.last_drilling_date ? `Última perforación ${date(drillEconomics.last_drilling_date)}` : null} />
+                  <IdentityItem icon={Coins} label="Costo por metro" value={drillEconomics.cost_clp_per_meter_90d != null ? `${money(drillEconomics.cost_clp_per_meter_90d)}/m` : null} meta={drillEconomics.window_end ? `Fecha de corte ${date(drillEconomics.window_end)}` : null} />
+                </div>
+                {drillEconomics.evidence_status ? (
+                  <p className="mt-3 border-t border-border pt-3 text-xs text-muted-foreground">
+                    Evidencia: {drillEconomics.evidence_status}
+                  </p>
+                ) : null}
               </div>
             ) : null}
             {drillingMaintenanceReview.length > 0 ? (
@@ -1813,10 +1817,51 @@ export function Asset360Overview({
             ? `${installedParts.length} instalados · ${pendingParts.length} pendientes`
             : 'Sin repuestos vinculados'}
         />
-        <div className="grid gap-4 border-t border-border p-4 lg:grid-cols-2">
-          <Card className="shadow-none">
-            <CardContent className="p-5">
-              <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Instalados</p>
+        <div className="border-t border-border">
+          <div className="p-4">
+            <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Pendientes</p>
+            {pendingParts.length > 0 ? (
+              <div className="mt-3 divide-y divide-border">
+                {pendingParts.slice(0, 8).map((part) => {
+                  const pending = Math.max(
+                    Number(part.quantity_requested || 0) -
+                      Number(part.quantity_installed || 0) -
+                      Number(part.quantity_returned || 0),
+                    0,
+                  );
+                  return (
+                    <div key={part.id} className="flex items-start justify-between gap-4 py-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">
+                          {part.product?.name || part.product?.product_code || 'Repuesto sin nombre'}
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {part.workOrder?.work_order_number || 'OT no informada'} · {part.status || 'Pendiente'}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-medium">{number(pending, 0)} {part.product?.unit || ''}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Solicitado {number(part.quantity_requested || 0, 0)}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : latestPlan?.parts_status_raw ? (
+              <div className="mt-3 rounded-md border border-border bg-muted/20 p-3">
+                <p className="text-sm font-medium">{latestPlan.parts_status_raw}</p>
+                {latestPlan.observations ? (
+                  <p className="mt-1 text-xs text-muted-foreground">{latestPlan.observations}</p>
+                ) : null}
+              </div>
+            ) : (
+              <p className="mt-3 text-sm text-muted-foreground">No hay materiales pendientes asociados a este activo.</p>
+            )}
+          </div>
+          <div className="border-t border-border p-4">
+            <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Historial instalado</p>
               {installedParts.length > 0 ? (
                 <div className="mt-3 divide-y divide-border">
                   {installedParts.slice(0, 8).map((part) => (
@@ -1841,53 +1886,7 @@ export function Asset360Overview({
               ) : (
                 <p className="mt-3 text-sm text-muted-foreground">No hay repuestos instalados registrados para este activo.</p>
               )}
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-none">
-            <CardContent className="p-5">
-              <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Pendientes</p>
-              {pendingParts.length > 0 ? (
-                <div className="mt-3 divide-y divide-border">
-                  {pendingParts.slice(0, 8).map((part) => {
-                    const pending = Math.max(
-                      Number(part.quantity_requested || 0) -
-                        Number(part.quantity_installed || 0) -
-                        Number(part.quantity_returned || 0),
-                      0,
-                    );
-                    return (
-                      <div key={part.id} className="flex items-start justify-between gap-4 py-3">
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium">
-                            {part.product?.name || part.product?.product_code || 'Repuesto sin nombre'}
-                          </p>
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            {part.workOrder?.work_order_number || 'OT no informada'} · {part.status || 'Pendiente'}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-medium">{number(pending, 0)} {part.product?.unit || ''}</p>
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            Solicitado {number(part.quantity_requested || 0, 0)}
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : latestPlan?.parts_status_raw ? (
-                <div className="mt-3 rounded-md border border-border bg-muted/20 p-3">
-                  <p className="text-sm font-medium">{latestPlan.parts_status_raw}</p>
-                  {latestPlan.observations ? (
-                    <p className="mt-1 text-xs text-muted-foreground">{latestPlan.observations}</p>
-                  ) : null}
-                </div>
-              ) : (
-                <p className="mt-3 text-sm text-muted-foreground">No hay materiales pendientes asociados a este activo.</p>
-              )}
-            </CardContent>
-          </Card>
+          </div>
         </div>
       </details>
 
