@@ -114,6 +114,12 @@ test('asset 360 enriches exact cost center codes with canonical names', () => {
   assert.match(ui, /asset\.cost_center_name/);
 });
 
+test('asset 360 carries dated corroboration for consolidated locations', () => {
+  assert.match(api, /normalizeLocationEvidence\(operationalLocation\) === normalizeLocationEvidence\(evidenceLocation\)/);
+  assert.match(api, /location_evidence_at/);
+  assert.match(ui, /asset\.location_evidence_at/);
+});
+
 test('asset 360 resolves canonical location and exact cost center evidence', () => {
   assert.match(api, /deriveMachinesFromCostCenters/);
   assert.match(api, /from\('cost_centers'\)/);
