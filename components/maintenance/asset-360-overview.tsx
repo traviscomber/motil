@@ -1780,9 +1780,9 @@ export function Asset360Overview({
         <SectionSummary
           title="Planificación"
           hint={maintenancePriority
-            ? `${String(maintenancePriority.priority || '').toUpperCase().includes('SIN LÍNEA BASE') ? 'Sin línea base' : maintenancePriority.priority || 'Sin prioridad'} · ${maintenancePriority.responsible_raw || 'responsable pendiente'}`
+            ? `${String(maintenancePriority.priority || '').toUpperCase().includes('SIN LÍNEA BASE') ? 'Base técnica sin programación' : maintenancePriority.priority || 'Sin prioridad'} · ${maintenancePriority.responsible_raw || 'responsable pendiente'}`
             : latestPlan
-              ? `${latestPlan.programming_status_raw || 'Pauta disponible'} · ${latestPlan.responsible_raw || 'responsable pendiente'}`
+              ? `${String(latestPlan.programming_status_raw || '').toLowerCase() === 'no programado' ? 'Pauta técnica · no programada' : latestPlan.programming_status_raw || 'Pauta disponible'}${latestPlan.responsible_raw ? ` · ${latestPlan.responsible_raw}` : ''}`
               : 'Sin planificación enlazada'}
         />
         {maintenancePriority ? (
@@ -1818,8 +1818,9 @@ export function Asset360Overview({
               />
               <IdentityItem
                 icon={PackageCheck}
-                label="Materiales"
+                label="Repuestos en pauta"
                 value={maintenancePriority.parts_status_raw || 'Sin estado'}
+                meta="Estado de planificación; no equivale a quiebre de stock"
               />
             </div>
             {maintenancePriority.recommended_action ? (
@@ -1866,8 +1867,9 @@ export function Asset360Overview({
               />
               <IdentityItem
                 icon={PackageCheck}
-                label="Materiales"
+                label="Repuestos en pauta"
                 value={latestPlan.parts_status_raw || 'Sin estado'}
+                meta="Estado de planificación; no equivale a quiebre de stock"
               />
             </div>
           </div>
