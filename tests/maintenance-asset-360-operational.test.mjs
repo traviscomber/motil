@@ -77,6 +77,14 @@ test('asset 360 recovers a unique current meter from planning when stronger mete
   assert.match(api, /planningCurrentEvidence\?\.current_reading_at/);
 });
 
+test('asset 360 treats annual planning units as periodicity rather than a missing horometer', () => {
+  assert.match(api, /const planningMeterUnit = planningMeterUnits\.length === 1 \? planningMeterUnits\[0\] : null/);
+  assert.match(api, /meter_unit: normalizedAsset\.meter_unit \|\| planningMeterUnit \|\| null/);
+  assert.match(ui, /\['anual', 'annual'\]\.includes\(effectiveMeterUnit\)/);
+  assert.match(ui, /\? 'Periodicidad'/);
+  assert.match(ui, /\? 'Anual'/);
+});
+
 test('asset 360 exposes source row provenance when present', () => {
   assert.match(ui, /label="Hoja"/);
   assert.match(ui, /Fila \$\{asset\.source_row\}/);
