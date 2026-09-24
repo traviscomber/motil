@@ -284,6 +284,8 @@ type Asset360Response = {
     audited_total_cost?: number | string | null;
     audited_cost_per_operating_hour?: number | string | null;
     meter_evidence_source?: string | null;
+    material_meter_decrease_count?: number | string | null;
+    meter_sequence_status?: string | null;
   } | null;
   meterHistory?: Array<{
     id: string;
@@ -1718,9 +1720,11 @@ export function Asset360Overview({
                     <span className="block text-sm font-medium">Historial de horómetro</span>
                     <span className="mt-0.5 block text-xs text-muted-foreground">
                       {runtimeCostIntelligence?.reading_count ?? meterHistory.length} lecturas
-                      {runtimeCostIntelligence?.reset_count != null && Number(runtimeCostIntelligence.reset_count) > 0
-                        ? ` · ${number(runtimeCostIntelligence.reset_count, 0)} reinicios detectados`
-                        : ''}
+                      {Number(runtimeCostIntelligence?.material_meter_decrease_count || 0) > 0
+                        ? ` · ${number(runtimeCostIntelligence?.material_meter_decrease_count || 0, 0)} descenso material por revisar`
+                        : runtimeCostIntelligence?.reset_count != null && Number(runtimeCostIntelligence.reset_count) > 0
+                          ? ` · ${number(runtimeCostIntelligence.reset_count, 0)} reinicios detectados`
+                          : ''}
                     </span>
                   </span>
                   <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
