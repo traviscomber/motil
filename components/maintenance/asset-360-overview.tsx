@@ -424,6 +424,8 @@ type Asset360Response = {
   }>;
   purchaseHistorySummary?: {
     purchaseLines?: number;
+    pricedLines?: number;
+    unpricedLines?: number;
     orders?: number;
     suppliers?: number;
     netSpend?: number | string | null;
@@ -1412,9 +1414,13 @@ export function Asset360Overview({
               />
               <IdentityItem
                 icon={Coins}
-                label="Gasto histórico neto"
+                label="Gasto histórico neto registrado"
                 value={purchaseHistorySummary?.netSpend != null ? money(purchaseHistorySummary.netSpend) : 'Sin base'}
-                meta={purchaseHistorySummary?.lastOrderDate ? `Hasta ${date(purchaseHistorySummary.lastOrderDate)}` : null}
+                meta={Number(purchaseHistorySummary?.unpricedLines || 0) > 0
+                  ? `${number(purchaseHistorySummary?.unpricedLines || 0, 0)} líneas sin monto · corte ${date(purchaseHistorySummary?.lastOrderDate)}`
+                  : purchaseHistorySummary?.lastOrderDate
+                    ? `Hasta ${date(purchaseHistorySummary.lastOrderDate)}`
+                    : null}
               />
               <IdentityItem
                 icon={Building2}
