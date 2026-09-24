@@ -102,6 +102,13 @@ test('asset 360 falls back to the canonical current asset for exact-id status ev
   assert.match(api, /canonical_assets_current/);
 });
 
+test('asset 360 restricts inferred Chilean plates to road vehicle identities', () => {
+  assert.match(api, /function isRoadVehicleIdentity/);
+  assert.match(api, /CAMIONETA\|CAMIONETAS\|CAMION\|CAMIONES\|BUS\|BUSES\|FURGON\|VEHICULO\|VEHICLE\|TRUCK\|PICKUP/);
+  assert.match(api, /!isRoadVehicleIdentity/);
+  assert.match(api, /inferChileanPlateFromName\(normalizedAsset\.name\)/);
+});
+
 test('asset 360 labels deterministic family as reference when canonical type is absent', () => {
   assert.match(api, /reference_family: referenceFamily \|\| null/);
   assert.match(ui, /Familia: \$\{asset\.reference_family\}/);
