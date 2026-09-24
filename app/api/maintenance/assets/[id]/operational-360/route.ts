@@ -6,6 +6,26 @@ import { MODULE_KEYS, requireModuleAccess } from '@/lib/api/module-access';
 
 const OPTIONAL_SOURCE_TIMEOUT_MS = 2500;
 
+function normalizeAssetIdentity(value: unknown) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase()
+    .replace(/\b(SONDA|EQUIPO|MAQUINA|MÁQUINA)\b/g, ' ')
+    .replace(/[^A-Z0-9]+/g, '')
+    .trim();
+}
+
+function normalizeLocationEvidence(value: unknown) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase()
+    .replace(/^MINA\s+/, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function withOptionalTimeout<T>(query: PromiseLike<T>, source: string): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<T>((resolve) => {
@@ -85,9 +105,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             .from('canonical_cost_centers_current')
             .select('cost_center_code,name,full_path,center_type,is_active')
             .eq('organization_id', context.organizationId)
-            .ilike('name', String(asset.name).trim())
             .eq('is_active', true)
-            .limit(2)
         : Promise.resolve({ data: [], error: null });
 
     const normalizedAsset = {
@@ -457,26 +475,41 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       workOrder: workOrdersById.get(row.work_order_id) || null,
     }));
 
-    const exactCostCenterMatches = costCenterMatchResult.data || [];
+    const normalizedAssetIdentity = normalizeAssetIdentity(asset.name);
+    const exactCostCenterMatches = (costCenterMatchResult.data || []).filter((center: any) =>
+      normalizedAssetIdentity &&
+      normalizeAssetIdentity(center?.name) === normalizedAssetIdentity
+    );
     const exactCostCenter =
       !asset.cost_center_code && exactCostCenterMatches.length === 1
         ? exactCostCenterMatches[0]
         : null;
-    const costCenterPath = exactCostCenter?.full_path
-      ? String(exactCostCenter.full_path)
-          .split('>')
-          .map((part) => part.trim())
-          .filter(Boolean)
-      : [];
-    const costCenterLocation =
-      costCenterPath.length > 1 ? costCenterPath.slice(0, -1).join(' > ') : null;
+
+    const locationCandidates = [
+      ...(planningResult.data || []).map((row: any) => row.mine_raw),
+      ...(drillingHistoryResult.data || []).map((row: any) => row.site_raw),
+    ]
+      .map((value) => String(value || '').trim())
+      .filter(Boolean);
+
+    const normalizedLocations = new Map<string, string>();
+    for (const candidate of locationCandidates) {
+      const normalized = normalizeLocationEvidence(candidate);
+      if (!normalized || normalized === 'NO REGISTRADO' || normalized === '#ERROR!') continue;
+      if (!normalizedLocations.has(normalized)) normalizedLocations.set(normalized, candidate);
+    }
+    const evidenceLocation =
+      normalizedLocations.size === 1
+        ? [...normalizedLocations.values()][0]
+        : null;
+
     const resolvedAsset = {
       ...normalizedAsset,
       cost_center_code: normalizedAsset.cost_center_code || exactCostCenter?.cost_center_code || null,
       location:
         operationalStateResult.data?.location ||
         normalizedAsset.location ||
-        costCenterLocation ||
+        evidenceLocation ||
         null,
     };
 
