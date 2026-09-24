@@ -955,10 +955,13 @@ export function Asset360Overview({
     if (!source) return 'Sin fuente resuelta';
     const labels: Record<string, string> = {
       maintenance_canonical_assets_v1: 'Maestro canónico',
+      canonical_assets_current: 'Maestro canónico actual',
+      maintenance_asset_status_history: 'Historial de estado del activo',
       asset_operational_state_v1: 'Estado operacional consolidado',
       planning_maintenance_source_rows: 'Planificación de mantenimiento',
       planning_or_production_evidence: 'Planificación / producción',
       cost_centers_exact_identity: 'Centro de costo por identidad exacta',
+      purchase_history_exact_identity: 'Centro de costo por histórico de compras',
       asset_runtime_readings: 'Lecturas operacionales',
       planning_asset_meter_readings: 'Planificación · horómetro',
       schedule_snapshot: 'Pauta preventiva',
