@@ -61,6 +61,10 @@ type Asset360Response = {
     updated_at?: string | null;
     is_active?: boolean | null;
     validation_status?: string | null;
+    cost_center_evidence_source?: string | null;
+    location_evidence_source?: string | null;
+    criticality_evidence_source?: string | null;
+    operational_status_evidence_source?: string | null;
   };
   summary?: {
     activeWorkOrders: number;
@@ -856,6 +860,20 @@ export function Asset360Overview({
   const sourceLabel = asset.source_file?.startsWith('public.')
     ? 'Maestro de activos'
     : asset.source_file || 'Fuente no informada';
+  const evidenceSourceLabel = (source?: string | null) => {
+    if (!source) return 'Sin fuente resuelta';
+    const labels: Record<string, string> = {
+      maintenance_canonical_assets_v1: 'Maestro canónico',
+      asset_operational_state_v1: 'Estado operacional consolidado',
+      planning_maintenance_source_rows: 'Planificación de mantenimiento',
+      planning_or_production_evidence: 'Planificación / producción',
+      cost_centers_exact_identity: 'Centro de costo por identidad exacta',
+      asset_runtime_readings: 'Lecturas operacionales',
+      planning_asset_meter_readings: 'Planificación · horómetro',
+      schedule_snapshot: 'Pauta preventiva',
+    };
+    return labels[source] || source;
+  };
   const hasPurchaseEvidence = Number(purchaseHistorySummary?.purchaseLines || 0) > 0 || procurementOrders.length > 0;
   const hasMaintenanceEvidence = auditedInterventions.length > 0 || Number(operationalState?.work_order_count || 0) > 0;
   const hasMaterialEvidence = installedParts.length > 0 || pendingParts.length > 0 || supplyChain.length > 0;
@@ -881,10 +899,13 @@ export function Asset360Overview({
   );
 
   const coverageItems = [
-    ['Identidad canónica', true, 'Disponible'],
-    ['Estado operacional', Boolean(operationalState), operationalState ? 'Disponible' : 'Sin estado consolidado'],
+    ['Identidad base', Boolean(asset.asset_code && asset.name), asset.asset_code && asset.name ? 'Disponible' : 'Incompleta'],
+    ['Centro de costo', Boolean(asset.cost_center_code), asset.cost_center_code ? 'Disponible' : 'No resuelto'],
+    ['Ubicación', Boolean(asset.location), asset.location ? 'Disponible' : 'No resuelta'],
+    ['Criticidad', Boolean(asset.criticality), asset.criticality ? 'Disponible' : 'No resuelta'],
+    ['Estado operacional', Boolean(asset.operational_status), asset.operational_status ? 'Disponible' : 'Sin estado validado'],
     ['Plan de mantención', Boolean(maintenancePriority || latestPlan), maintenancePriority || latestPlan ? 'Disponible' : 'No registrado'],
-    ['Horómetro / uso', hasRuntimeEvidence, hasRuntimeEvidence ? 'Disponible' : 'Sin lecturas históricas'],
+    ['Horómetro / uso', hasRuntimeEvidence, hasRuntimeEvidence ? 'Disponible' : 'Sin lectura defendible'],
     ['Economía / costos', hasEconomicEvidence, hasEconomicEvidence ? 'Disponible' : 'Sin movimientos'],
     ['Compras / proveedores', hasPurchaseEvidence, hasPurchaseEvidence ? 'Disponible' : 'Sin compras enlazadas'],
     ['OT / mantenciones', hasMaintenanceEvidence, hasMaintenanceEvidence ? 'Disponible' : 'Sin OT enlazadas'],
@@ -2273,9 +2294,13 @@ export function Asset360Overview({
                 Horómetro, confiabilidad y costos se muestran sólo cuando existe evidencia operacional o económica enlazada.
               </p>
               <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <IdentityItem icon={Database} label="Fuente" value={sourceLabel} />
+                <IdentityItem icon={Database} label="Fuente maestra" value={sourceLabel} />
+                <IdentityItem icon={MapPin} label="Ubicación" value={asset.location} meta={evidenceSourceLabel(asset.location_evidence_source)} />
+                <IdentityItem icon={ShieldCheck} label="Criticidad" value={displayCriticality} meta={evidenceSourceLabel(asset.criticality_evidence_source)} />
+                <IdentityItem icon={Activity} label="Estado" value={displayStatus} meta={evidenceSourceLabel(asset.operational_status_evidence_source)} />
+                <IdentityItem icon={Building2} label="Centro de costo" value={asset.cost_center_code} meta={evidenceSourceLabel(asset.cost_center_evidence_source)} />
+                <IdentityItem icon={Gauge} label="Horómetro" value={runtimeCostIntelligence?.latest_meter_hours != null ? `${number(runtimeCostIntelligence.latest_meter_hours, 1)} h` : null} meta={evidenceSourceLabel(runtimeCostIntelligence?.meter_evidence_source)} />
                 <IdentityItem icon={FileText} label="Hoja" value={asset.source_sheet} />
-                <IdentityItem icon={Hash} label="Fila fuente" value={asset.source_row} />
                 <IdentityItem icon={CalendarDays} label="Última actualización" value={date(asset.updated_at || asset.imported_at)} />
               </div>
               {financeReconciliation ? (
