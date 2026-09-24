@@ -547,6 +547,21 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         ? [...normalizedLocations.values()][0]
         : null;
 
+    const planningCriticalities = new Map<string, string>();
+    for (const row of planningResult.data || []) {
+      const raw = String(row.criticality_raw || '').trim();
+      if (!raw || ['#ERROR!', 'N/A', 'NO REGISTRADO'].includes(raw.toUpperCase())) continue;
+      const normalized = raw
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toUpperCase();
+      if (!planningCriticalities.has(normalized)) planningCriticalities.set(normalized, raw);
+    }
+    const evidenceCriticality =
+      planningCriticalities.size === 1
+        ? [...planningCriticalities.values()][0]
+        : null;
+
     const resolvedAsset = {
       ...normalizedAsset,
       cost_center_code: normalizedAsset.cost_center_code || exactCostCenter?.code || null,
@@ -555,6 +570,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         normalizedAsset.location ||
         evidenceLocation ||
         null,
+      criticality: normalizedAsset.criticality || evidenceCriticality || null,
+      criticality_evidence_source:
+        !normalizedAsset.criticality && evidenceCriticality
+          ? 'planning_maintenance_source_rows'
+          : null,
     };
 
     const planningMeterHistory = dedupeMeterHistory(meterHistoryResult.data || []);
