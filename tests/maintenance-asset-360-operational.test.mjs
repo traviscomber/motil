@@ -105,6 +105,14 @@ test('asset 360 does not render missing evidence as zero or raw source errors', 
   assert.doesNotMatch(ui, /number\(row\.meter_value \|\| 0/);
 });
 
+test('asset 360 hides absent identity fields from the primary header', () => {
+  assert.match(ui, /const primaryIdentity = \[/);
+  assert.match(ui, /asset\.cost_center_code \?/);
+  assert.match(ui, /asset\.location \?/);
+  assert.match(ui, /primaryIdentity\.length > 0/);
+  assert.doesNotMatch(ui, /label="N° de serie"[\s\S]{0,120}value=\{scope === 'vehiculos'/);
+});
+
 test('equipment list trusts the canonical active state for deduplicated fleet identity', () => {
   assert.match(assetsApi, /\.eq\('is_active', true\)/);
   assert.doesNotMatch(assetsApi, /asset_identity_unified_preview_v1/);
