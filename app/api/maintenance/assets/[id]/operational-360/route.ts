@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getOrganizationContext } from '@/lib/api/organization-context';
 import { MODULE_KEYS, requireModuleAccess } from '@/lib/api/module-access';
+import { deriveMachinesFromCostCenters } from '@/lib/maintenance/cost-center-machines';
 
 const OPTIONAL_SOURCE_TIMEOUT_MS = 2500;
 
@@ -102,10 +103,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const costCenterMatchPromise =
       !asset.cost_center_code && asset.name
         ? context.supabase
-            .from('canonical_cost_centers_current')
-            .select('cost_center_code,name,full_path,center_type,is_active')
+            .from('cost_centers')
+            .select('id,code,name,description,status')
             .eq('organization_id', context.organizationId)
-            .eq('is_active', true)
         : Promise.resolve({ data: [], error: null });
 
     const normalizedAsset = {
@@ -476,9 +476,18 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }));
 
     const normalizedAssetIdentity = normalizeAssetIdentity(asset.name);
-    const exactCostCenterMatches = (costCenterMatchResult.data || []).filter((center: any) =>
+    const derivedCostCenterMachines = deriveMachinesFromCostCenters(
+      (costCenterMatchResult.data || []).map((center: any) => ({
+        id: String(center.id),
+        code: String(center.code || ''),
+        name: String(center.name || ''),
+        description: center.description || null,
+        status: center.status || null,
+      }))
+    );
+    const exactCostCenterMatches = derivedCostCenterMachines.filter((machine) =>
       normalizedAssetIdentity &&
-      normalizeAssetIdentity(center?.name) === normalizedAssetIdentity
+      normalizeAssetIdentity(machine.name) === normalizedAssetIdentity
     );
     const exactCostCenter =
       !asset.cost_center_code && exactCostCenterMatches.length === 1
@@ -505,7 +514,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     const resolvedAsset = {
       ...normalizedAsset,
-      cost_center_code: normalizedAsset.cost_center_code || exactCostCenter?.cost_center_code || null,
+      cost_center_code: normalizedAsset.cost_center_code || exactCostCenter?.code || null,
       location:
         operationalStateResult.data?.location ||
         normalizedAsset.location ||
