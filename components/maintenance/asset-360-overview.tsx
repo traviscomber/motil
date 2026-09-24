@@ -1060,37 +1060,39 @@ export function Asset360Overview({
         </CardContent>
       </Card>
 
-      <Card className={`shadow-none ${attention.tone}`}>
-        <CardContent className={showAttentionDetail ? "flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between" : "flex items-center justify-between gap-4 px-5 py-3"}>
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Atención</p>
-            <p className={showAttentionDetail ? "mt-1 text-lg font-semibold" : "mt-1 text-sm font-medium"}>{attention.title}</p>
-            {attention.detail && showAttentionDetail ? <p className="mt-1 text-sm text-muted-foreground">{attention.detail}</p> : null}
-          </div>
-          {actionableWorkOrder ? (
-            <Button asChild size="sm">
-              <Link href={`/dashboard/mantenimiento/ordenes-trabajo/cierre?workOrderId=${encodeURIComponent(actionableWorkOrder.work_order_id)}`}>
-                Continuar trabajo
-                <ArrowRight className="ml-1 h-4 w-4" />
-              </Link>
-            </Button>
-          ) : null}
-          {!actionableWorkOrder && maintenancePriority ? (
-            <div className="text-right text-xs text-muted-foreground">
-              {maintenancePriority.remaining_meter != null ? (
-                <p>
-                  Margen: {number(maintenancePriority.remaining_meter, 0)} {maintenancePriority.meter_unit || ''}
-                </p>
-              ) : null}
-              {maintenancePriority.projected_due_at ? (
-                <p className="mt-1">Proyección: {date(maintenancePriority.projected_due_at)}</p>
-              ) : maintenancePriority.scheduled_date ? (
-                <p className="mt-1">Programado: {date(maintenancePriority.scheduled_date)}</p>
-              ) : null}
+      {showAttentionDetail ? (
+        <Card className={`shadow-none ${attention.tone}`}>
+          <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Atención</p>
+              <p className="mt-1 text-lg font-semibold">{attention.title}</p>
+              {attention.detail ? <p className="mt-1 text-sm text-muted-foreground">{attention.detail}</p> : null}
             </div>
-          ) : null}
-        </CardContent>
-      </Card>
+            {actionableWorkOrder ? (
+              <Button asChild size="sm">
+                <Link href={`/dashboard/mantenimiento/ordenes-trabajo/cierre?workOrderId=${encodeURIComponent(actionableWorkOrder.work_order_id)}`}>
+                  Continuar trabajo
+                  <ArrowRight className="ml-1 h-4 w-4" />
+                </Link>
+              </Button>
+            ) : null}
+            {!actionableWorkOrder && maintenancePriority ? (
+              <div className="text-right text-xs text-muted-foreground">
+                {maintenancePriority.remaining_meter != null ? (
+                  <p>
+                    Margen: {number(maintenancePriority.remaining_meter, 0)} {maintenancePriority.meter_unit || ''}
+                  </p>
+                ) : null}
+                {maintenancePriority.projected_due_at ? (
+                  <p className="mt-1">Proyección: {date(maintenancePriority.projected_due_at)}</p>
+                ) : maintenancePriority.scheduled_date ? (
+                  <p className="mt-1">Programado: {date(maintenancePriority.scheduled_date)}</p>
+                ) : null}
+              </div>
+            ) : null}
+          </CardContent>
+        </Card>
+      ) : null}
 
       <details className="group rounded-lg border border-border bg-card" open={maintenanceNeedsAttention}>
         <SectionSummary
@@ -1714,9 +1716,9 @@ export function Asset360Overview({
         <SectionSummary
           title="Planificación"
           hint={maintenancePriority
-            ? `${maintenancePriority.priority || 'Sin prioridad'} · ${maintenancePriority.responsible_raw || 'sin responsable'}`
+            ? `${String(maintenancePriority.priority || '').toUpperCase().includes('SIN LÍNEA BASE') ? 'Sin línea base' : maintenancePriority.priority || 'Sin prioridad'} · ${maintenancePriority.responsible_raw || 'responsable pendiente'}`
             : latestPlan
-              ? `${latestPlan.programming_status_raw || 'Pauta disponible'} · ${latestPlan.responsible_raw || 'sin responsable'}`
+              ? `${latestPlan.programming_status_raw || 'Pauta disponible'} · ${latestPlan.responsible_raw || 'responsable pendiente'}`
               : 'Sin planificación enlazada'}
         />
         {maintenancePriority ? (
