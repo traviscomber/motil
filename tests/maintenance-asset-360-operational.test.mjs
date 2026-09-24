@@ -169,6 +169,13 @@ test('asset 360 uses a uniquely derived cost center for purchase history', () =>
   assert.match(api, /derived cost center purchase history unavailable/);
 });
 
+test('asset 360 preserves unpriced purchase lines instead of silently treating them as zero', () => {
+  assert.match(api, /unpricedLines/);
+  assert.match(api, /row\.net_amount != null \? sum \+ Number\(row\.net_amount\) : sum/);
+  assert.match(ui, /Gasto histórico neto registrado/);
+  assert.match(ui, /líneas sin monto/);
+});
+
 test('asset 360 labels deterministically derived cost center purchase context correctly', () => {
   assert.match(ui, /cost_center_derived/);
   assert.match(ui, /resuelto de forma determinística/);
