@@ -34,3 +34,19 @@ test('asset 360 surfaces next preventive closure and reliability in one view', (
   assert.match(ui, /preventivo-horas/);
   assert.match(ui, /ordenes-trabajo\/cierre/);
 });
+
+test('asset 360 keeps secondary evidence consolidated', () => {
+  assert.match(ui, /title="Compras y abastecimiento"/);
+  assert.doesNotMatch(ui, /SectionSummary title="Abastecimiento de mantención"/);
+  assert.doesNotMatch(ui, /SectionSummary title="Compras y proveedores"/);
+
+  assert.match(ui, /title="Cobertura y trazabilidad"/);
+  assert.doesNotMatch(ui, /SectionSummary title="Cobertura"/);
+  assert.doesNotMatch(ui, /SectionSummary title="Trazabilidad"/);
+
+  assert.match(ui, /Evolución anual/);
+  assert.doesNotMatch(ui, /SectionSummary title="Costos por año"/);
+  assert.doesNotMatch(ui, /SectionSummary title="Actividad reciente"/);
+  assert.doesNotMatch(ui, /label="OT históricas"/);
+});
+
