@@ -588,6 +588,17 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         ? [...planningCriticalities.values()][0]
         : null;
 
+    const planningEvidenceAt = (planningResult.data || [])
+      .map((row: any) => row.updated_at)
+      .filter(Boolean)
+      .sort()
+      .reverse()[0] || null;
+    const drillingLocationEvidenceAt = (drillingHistoryResult.data || [])
+      .map((row: any) => row.operation_date)
+      .filter(Boolean)
+      .sort()
+      .reverse()[0] || null;
+
     const operationalLocation = normalizeLocationEvidence(operationalStateResult.data?.location)
       ? String(operationalStateResult.data?.location || '').trim()
       : null;
@@ -623,6 +634,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             : evidenceLocation
               ? 'planning_or_production_evidence'
               : null,
+      location_evidence_at:
+        operationalLocation
+          ? null
+          : payloadLocation
+            ? normalizedAsset.updated_at || normalizedAsset.imported_at || null
+            : evidenceLocation
+              ? [planningEvidenceAt, drillingLocationEvidenceAt].filter(Boolean).sort().reverse()[0] || null
+              : null,
       criticality: operationalCriticality || payloadCriticality || evidenceCriticality || null,
       criticality_evidence_source:
         operationalCriticality
@@ -631,6 +650,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             ? 'maintenance_canonical_assets_v1'
             : evidenceCriticality
               ? 'planning_maintenance_source_rows'
+              : null,
+      criticality_evidence_at:
+        operationalCriticality
+          ? null
+          : payloadCriticality
+            ? normalizedAsset.updated_at || normalizedAsset.imported_at || null
+            : evidenceCriticality
+              ? planningEvidenceAt
               : null,
       operational_status: operationalStatus || payloadStatus || null,
       operational_status_evidence_source:
@@ -646,6 +673,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             ? 'cost_center_family'
             : 'deterministic_name_classifier'
           : null,
+      reference_family_evidence_at:
+        referenceFamily ? normalizedAsset.updated_at || normalizedAsset.imported_at || null : null,
       license_plate: normalizedAsset.license_plate || inferredLicensePlate || null,
       license_plate_evidence_source:
         normalizedAsset.license_plate
@@ -653,6 +682,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           : inferredLicensePlate
             ? 'deterministic_name_plate'
             : null,
+      license_plate_evidence_at:
+        normalizedAsset.license_plate || inferredLicensePlate
+          ? normalizedAsset.updated_at || normalizedAsset.imported_at || null
+          : null,
     };
 
     const rawPlanningMeterHistory = meterHistoryResult.data || [];
