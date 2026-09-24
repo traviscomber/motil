@@ -1090,7 +1090,9 @@ export function Asset360Overview({
                 Economía
               </p>
               <h2 className="mt-1 text-lg font-semibold">Inversión en mantenimiento</h2>
-              <p className="mt-1 text-xs text-muted-foreground">Costos históricos enlazados al activo.</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Gasto reconocido y enlazado al equipo. No equivale al costo total de propiedad.
+              </p>
             </div>
             {economicLastCostDate ? (
               <p className="text-xs text-muted-foreground">Corte {date(economicLastCostDate)}</p>
@@ -1099,10 +1101,12 @@ export function Asset360Overview({
 
           {economicLifetimeValue != null || economicHistory.length > 0 ? (
             <>
-              <div className="grid gap-5 py-5 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)] lg:items-start">
-                <div className="border-b border-border pb-5 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-6">
-                  <p className="text-xs text-muted-foreground">Costo histórico acumulado</p>
-                  <p className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">{money(economicLifetimeValue)}</p>
+              <div className="grid gap-px bg-border sm:grid-cols-3">
+                <div className="bg-card py-5 pr-4 sm:pr-5">
+                  <p className="text-xs text-muted-foreground">Histórico acumulado</p>
+                  <p className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
+                    {money(economicLifetimeValue)}
+                  </p>
                   <p className="mt-2 text-xs text-muted-foreground">
                     {economicFirstCostDate && economicLastCostDate
                       ? `${date(economicFirstCostDate)} → ${date(economicLastCostDate)}`
@@ -1110,27 +1114,40 @@ export function Asset360Overview({
                         ? `Desde ${date(economicFirstCostDate)}`
                         : 'Desde el primer registro disponible'}
                   </p>
-                  <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                    <IdentityItem
-                      icon={Hash}
-                      label="Movimientos de costo"
-                      value={economicMovementCount || 'Sin base'}
-                    />
-                    <IdentityItem
-                      icon={Coins}
-                      label="Promedio anual"
-                      value={economicAnnualAverage != null ? money(economicAnnualAverage) : 'Sin base'}
-                      meta={economicYearsWithMovements > 0 ? `${economicYearsWithMovements} años con movimientos` : null}
-                    />
-                  </div>
                 </div>
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-                  <IdentityItem
-                    icon={Coins}
-                    label="Últimos 12 meses"
-                    value={economic12mValue != null ? money(economic12mValue) : 'Sin base'}
-                    meta={economicLastCostDate ? `Corte ${date(economicLastCostDate)}` : null}
-                  />
+                <div className="bg-card px-0 py-5 sm:px-5">
+                  <p className="text-xs text-muted-foreground">Últimos 12 meses</p>
+                  <p className="mt-2 text-2xl font-semibold tracking-tight">
+                    {economic12mValue != null ? money(economic12mValue) : 'Sin base'}
+                  </p>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {economicLastCostDate ? `Corte ${date(economicLastCostDate)}` : 'Sin fecha de corte'}
+                  </p>
+                </div>
+                <div className="bg-card py-5 sm:pl-5">
+                  <p className="text-xs text-muted-foreground">Última imputación</p>
+                  <p className="mt-2 text-xl font-semibold">{date(economicLastCostDate)}</p>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {economicMovementCount > 0
+                      ? `${economicMovementCount} movimientos reconocidos`
+                      : 'Sin movimientos contabilizados'}
+                  </p>
+                </div>
+              </div>
+
+              <details className="group border-t border-border pt-4">
+                <summary className="cursor-pointer list-none text-sm font-medium">
+                  <span className="flex items-center justify-between gap-4">
+                    <span>Detalle económico</span>
+                    <span className="flex items-center gap-2 text-xs font-normal text-muted-foreground">
+                      {economicHistory.length > 0
+                        ? `${economicHistory.length} años fiscales`
+                        : 'Sin evolución anual'}
+                      <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
+                    </span>
+                  </span>
+                </summary>
+                <div className="mt-4 grid gap-4 border-b border-border pb-4 sm:grid-cols-2">
                   <IdentityItem
                     icon={CalendarDays}
                     label="Año en curso"
@@ -1138,12 +1155,26 @@ export function Asset360Overview({
                     meta={economicLastCostDate ? `Corte ${date(economicLastCostDate)}` : null}
                   />
                   <IdentityItem
-                    icon={CalendarDays}
-                    label="Última imputación"
-                    value={date(economicLastCostDate)}
+                    icon={Coins}
+                    label="Promedio anual"
+                    value={economicAnnualAverage != null ? money(economicAnnualAverage) : 'Sin base'}
+                    meta={economicYearsWithMovements > 0 ? `${economicYearsWithMovements} años con movimientos` : null}
                   />
                 </div>
-              </div>
+                {economicHistory.length > 0 ? (
+                  <div className="divide-y divide-border">
+                    {economicHistory.slice(0, 6).map((row) => (
+                      <div key={String(row.fiscal_year)} className="grid gap-3 py-3 sm:grid-cols-[100px_140px_minmax(0,1fr)] sm:items-center">
+                        <p className="text-sm font-semibold">{row.fiscal_year || 'Sin año'}</p>
+                        <p className="text-sm">{money(row.historical_total_cost)}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {number(row.movement_count || 0, 0)} movimientos · {date(row.first_cost_date)} → {date(row.last_cost_date)}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </details>
             </>
           ) : (
             <div className="py-5">
@@ -1153,29 +1184,6 @@ export function Asset360Overview({
               </p>
             </div>
           )}
-          {economicHistory.length > 0 ? (
-            <details className="border-t border-border pt-4">
-              <summary className="cursor-pointer list-none text-sm font-medium">
-                <span className="flex items-center justify-between gap-4">
-                  <span>Evolución anual</span>
-                  <span className="text-xs font-normal text-muted-foreground">
-                    {economicHistory.length} años fiscales
-                  </span>
-                </span>
-              </summary>
-              <div className="mt-3 divide-y divide-border">
-                {economicHistory.slice(0, 6).map((row) => (
-                  <div key={String(row.fiscal_year)} className="grid gap-3 py-3 sm:grid-cols-[100px_140px_minmax(0,1fr)] sm:items-center">
-                    <p className="text-sm font-semibold">{row.fiscal_year || 'Sin año'}</p>
-                    <p className="text-sm">{money(row.historical_total_cost)}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {number(row.movement_count || 0, 0)} movimientos · {date(row.first_cost_date)} → {date(row.last_cost_date)}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </details>
-          ) : null}
         </CardContent>
       </Card>
 
