@@ -58,6 +58,12 @@ test('asset 360 keeps secondary evidence consolidated', () => {
   assert.doesNotMatch(ui, /label="OT históricas"/);
 });
 
+test('asset 360 labels schedule meter snapshots as references rather than observed readings', () => {
+  assert.match(ui, /meterIsScheduleReference/);
+  assert.match(ui, /Horómetro de pauta|effectiveMeterDisplayLabel/);
+  assert.match(ui, /Referencia de pauta; sin lectura observada/);
+});
+
 test('asset 360 rejects zero schedule snapshots as current meter evidence', () => {
   assert.match(api, /value === 0 && String\(row\.meter_evidence_source \|\| ''\)\.toLowerCase\(\) === 'schedule_snapshot'/);
   assert.match(ui, /defendableNextPreventiveMeter/);
