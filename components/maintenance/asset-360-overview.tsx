@@ -774,11 +774,6 @@ export function Asset360Overview({
   const maintenanceTaskCandidates = data.maintenanceTaskCandidates || [];
   const standardJobPlans = data.standardJobPlans || [];
   const generatedAt = data.generatedAt;
-  const latestPartTimestamp = [...(data.installedParts || []), ...(data.pendingParts || [])]
-    .map((row) => row.updated_at || row.installed_at || row.created_at)
-    .filter(Boolean)
-    .sort()
-    .reverse()[0] || null;
   const meterHistory = data.meterHistory || [];
   const drillOperationalEvidence = data.drillOperationalEvidence;
   const drillEconomicsChange = data.drillEconomicsChange;
@@ -1923,12 +1918,19 @@ export function Asset360Overview({
             meta={asset.acquisition_date && expectedLifespan != null ? `Calculada desde adquisición y vida esperada` : null}
           />
         </div>
-        <div className="grid gap-4 border-t border-border px-4 py-4 sm:grid-cols-2 lg:grid-cols-4">
-          <IdentityItem icon={Coins} label="Costo adquisición" value={asset.acquisition_cost != null ? money(asset.acquisition_cost) : null} meta={asset.acquisition_date ? `Fecha adquisición ${date(asset.acquisition_date)}` : asset.updated_at ? `Maestro actualizado ${date(asset.updated_at)}` : null} />
-          <IdentityItem icon={Timer} label="MTBF base" value={asset.baseline_mtbf_hours != null ? `${number(asset.baseline_mtbf_hours, 0)} h` : null} meta={asset.updated_at ? `Maestro actualizado ${date(asset.updated_at)}` : null} />
-          <IdentityItem icon={Timer} label="MTBF real" value={mtbf} meta={reliability?.last_audited_closure_at ? `Cierres auditados hasta ${date(reliability.last_audited_closure_at)}` : 'Sin cierre auditado con fecha'} />
-          <IdentityItem icon={Activity} label="Tiempo detenido auditado" value={reliability?.total_downtime_hours != null ? `${number(reliability.total_downtime_hours, 1)} h` : 'Sin base'} meta={reliability?.last_audited_closure_at ? `Hasta cierre ${date(reliability.last_audited_closure_at)}` : null} />
-        </div>
+        {asset.acquisition_cost != null ? (
+          <div className="border-t border-border px-4 py-3">
+            <p className="text-xs text-muted-foreground">Costo de adquisición</p>
+            <p className="mt-1 text-sm font-medium">{money(asset.acquisition_cost)}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {asset.acquisition_date
+                ? `Fecha de adquisición ${date(asset.acquisition_date)}`
+                : asset.updated_at
+                  ? `Maestro actualizado ${date(asset.updated_at)}`
+                  : 'Sin fecha de referencia'}
+            </p>
+          </div>
+        ) : null}
       </details>
 
       <details className="group rounded-lg border border-border bg-card">
@@ -1953,15 +1955,27 @@ export function Asset360Overview({
       <details className="group rounded-lg border border-border bg-card">
         <SectionSummary
           title="Cobertura"
-          hint={`${coverageAvailableCount}/${coverageItems.length} capas con evidencia`}
+          hint={coverageMissingCount > 0
+            ? `${coverageMissingCount} brechas · ${coverageAvailableCount}/${coverageItems.length} capas con evidencia`
+            : `${coverageAvailableCount}/${coverageItems.length} capas con evidencia`}
         />
-        <div className="grid gap-px border-t border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
-          {coverageItems.map(([label, available, status]) => (
-            <div key={label} className="bg-card px-4 py-3">
-              <p className="text-xs text-muted-foreground">{label}</p>
-              <p className="mt-1 text-sm font-medium">{status}</p>
+        <div className="border-t border-border p-4">
+          {coverageMissingCount > 0 ? (
+            <div className="divide-y divide-border">
+              {coverageItems
+                .filter(([, available]) => !available)
+                .map(([label, , status]) => (
+                  <div key={label} className="grid gap-1 py-3 sm:grid-cols-[minmax(0,1fr)_220px] sm:items-center">
+                    <p className="text-sm font-medium">{label}</p>
+                    <p className="text-xs text-muted-foreground sm:text-right">{status}</p>
+                  </div>
+                ))}
             </div>
-          ))}
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              No hay brechas de cobertura en las capas evaluadas.
+            </p>
+          )}
         </div>
       </details>
 
@@ -1976,19 +1990,18 @@ export function Asset360Overview({
             <IdentityItem icon={FileText} label="Hoja" value={asset.source_sheet} />
             <IdentityItem icon={Hash} label="Fila fuente" value={asset.source_row} />
             <IdentityItem icon={CalendarDays} label="Última actualización" value={date(asset.updated_at || asset.imported_at)} />
-            {financeReconciliation ? (
-              <IdentityItem
-                icon={Coins}
-                label="Conciliación finanzas"
-                value={`${financeReconciliation.reconciliation_status || 'Sin estado'} · ${financeReconciliation.match_method || 'sin método'}`}
-                meta="La vista de conciliación actual no expone timestamp propio"
-              />
-            ) : null}
           </div>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <IdentityItem icon={PackageCheck} label="Repuestos instalados" value={data.installedParts?.length ?? 0} meta={latestPartTimestamp ? `Movimientos hasta ${date(latestPartTimestamp)}` : 'Sin timestamp de movimientos'} />
-            <IdentityItem icon={PackageCheck} label="Repuestos pendientes" value={data.pendingParts?.length ?? 0} meta={latestPartTimestamp ? `Estado al ${date(latestPartTimestamp)}` : 'Sin timestamp de movimientos'} />
-          </div>
+          {financeReconciliation ? (
+            <div className="mt-4 border-t border-border pt-3">
+              <p className="text-xs text-muted-foreground">Conciliación finanzas</p>
+              <p className="mt-1 text-sm font-medium">
+                {financeReconciliation.reconciliation_status || 'Sin estado'} · {financeReconciliation.match_method || 'sin método'}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                La vista de conciliación actual no expone timestamp propio.
+              </p>
+            </div>
+          ) : null}
         </div>
       </details>
     </div>
