@@ -86,3 +86,19 @@ test('equipment list hides active canonical aliases instead of deleting evidence
   assert.match(assetsApi, /deduplicatedAliases/);
 });
 
+test('asset 360 deduplicates repeated meter observations without deleting source evidence', () => {
+  assert.match(api, /dedupeMeterHistory/);
+  assert.match(api, /workbook_history: 1/);
+  assert.match(api, /workbook_current: 2/);
+  assert.match(api, /workbook_initial: 3/);
+  assert.match(api, /\.limit\(24\)/);
+  assert.match(api, /dedupeMeterHistory\(meterHistoryResult\.data \|\| \[\]\)/);
+});
+
+test('asset 360 rejects placeholder locations as operational evidence', () => {
+  assert.match(api, /SIN MINA ASIGNADA/);
+  assert.match(api, /SIN ASIGNAR/);
+  assert.match(api, /NO ASIGNADO/);
+  assert.match(api, /#ERROR!/);
+});
+
