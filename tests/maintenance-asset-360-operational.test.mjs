@@ -80,6 +80,13 @@ test('asset 360 keeps inferred family referential rather than canonical', () => 
   assert.match(ui, /no canónico/);
 });
 
+test('asset 360 can recover a strongly formatted Chilean plate without overwriting canonical identity', () => {
+  assert.match(api, /inferChileanPlateFromName/);
+  assert.match(api, /normalizedAsset\.license_plate \|\| inferredLicensePlate \|\| null/);
+  assert.match(api, /deterministic_name_plate/);
+  assert.match(ui, /Patente extraída del nombre con formato validado/);
+});
+
 test('asset 360 surfaces planning or schedule horometer without inventing runtime history', () => {
   assert.match(api, /planningMeterHistory/);
   assert.match(api, /preventiveMeterSnapshot/);
