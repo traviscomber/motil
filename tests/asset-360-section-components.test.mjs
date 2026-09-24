@@ -13,6 +13,40 @@ const interventionSection = fs.readFileSync(
   'components/maintenance/asset-360/intervention-section.tsx',
   'utf8',
 );
+const runtimeSection = fs.readFileSync(
+  'components/maintenance/asset-360/runtime-section.tsx',
+  'utf8',
+);
+
+test('asset 360 runtime section owns the runtime intelligence and meter history types', () => {
+  assert.match(runtimeSection, /export type Asset360RuntimeCostIntelligence = \{/);
+  assert.match(runtimeSection, /audited_cost_per_operating_hour\?: number \| string \| null;/);
+  assert.match(runtimeSection, /material_meter_decrease_count\?: number \| string \| null;/);
+  assert.match(runtimeSection, /export type Asset360MeterHistoryRow = \{/);
+  assert.match(runtimeSection, /meter_value\?: number \| string \| null;/);
+});
+
+test('asset 360 runtime section renders meter usage and history', () => {
+  assert.match(runtimeSection, /export function Asset360RuntimeSection\(/);
+  assert.match(runtimeSection, /if \(!hasRuntimeEvidence\) return null;/);
+  assert.match(runtimeSection, /y uso`/);
+  assert.match(runtimeSection, /Horas observadas/);
+  assert.match(runtimeSection, /Costo auditado \/ hora/);
+  assert.match(runtimeSection, /Sólo cierres auditados y horas observadas/);
+  assert.match(runtimeSection, /descenso material por revisar/);
+  assert.match(runtimeSection, /reinicios detectados/);
+});
+
+test('asset 360 overview delegates runtime rendering to the runtime section', () => {
+  assert.match(overview, /from '@\/components\/maintenance\/asset-360\/runtime-section'/);
+  assert.match(overview, /<Asset360RuntimeSection[ \n]/);
+  assert.match(overview, /runtimeCostIntelligence=\{runtimeCostIntelligence\}/);
+  assert.match(overview, /effectiveMeterDisplayLabel=\{effectiveMeterDisplayLabel\}/);
+  assert.match(overview, /runtimeCostIntelligence\?: Asset360RuntimeCostIntelligence;/);
+  assert.match(overview, /meterHistory\?: Asset360MeterHistoryRow\[\];/);
+  assert.doesNotMatch(overview, /Horas observadas/);
+  assert.doesNotMatch(overview, /descenso material por revisar/);
+});
 
 test('asset 360 intervention section owns the task signal and job plan types', () => {
   assert.match(interventionSection, /export type Asset360MaintenanceTaskCandidate = \{/);
