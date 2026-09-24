@@ -1302,9 +1302,8 @@ export function Asset360Overview({
         <SectionSummary title="Compras y proveedores" hint={purchaseHistorySummary?.lastSupplier ? `${purchaseHistorySummary.lastSupplier} · última compra ${date(purchaseHistorySummary.lastOrderDate)}` : 'Sin compras enlazadas'} />
         <div className="border-t border-border p-4">
           {purchaseHistorySummary && Number(purchaseHistorySummary.purchaseLines || 0) > 0 ? (
-            <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <IdentityItem icon={Building2} label="Último proveedor" value={purchaseHistorySummary.lastSupplier} meta={purchaseHistorySummary.lastOrderDate ? `Última compra ${date(purchaseHistorySummary.lastOrderDate)}` : null} />
-              <IdentityItem icon={CalendarDays} label="Última compra" value={date(purchaseHistorySummary.lastOrderDate)} />
               <IdentityItem icon={FileText} label="Órdenes históricas" value={purchaseHistorySummary.orders} meta={purchaseHistorySummary.lastOrderDate ? `Hasta ${date(purchaseHistorySummary.lastOrderDate)}` : null} />
               <IdentityItem icon={Building2} label="Proveedores" value={purchaseHistorySummary.suppliers} meta={purchaseHistorySummary.lastOrderDate ? `Hasta ${date(purchaseHistorySummary.lastOrderDate)}` : null} />
               <IdentityItem icon={Coins} label="Gasto histórico neto" value={purchaseHistorySummary.netSpend != null ? money(purchaseHistorySummary.netSpend) : null} meta={purchaseHistorySummary.lastOrderDate ? `Acumulado hasta ${date(purchaseHistorySummary.lastOrderDate)}` : null} />
@@ -1569,31 +1568,47 @@ export function Asset360Overview({
         />
         {maintenancePriority ? (
           <>
-            <div className="grid gap-4 border-t border-border p-4 sm:grid-cols-2 lg:grid-cols-4">
-              <IdentityItem icon={Activity} label="Prioridad" value={maintenancePriority.priority} meta={maintenancePriority.current_reading_at ? `Calculada con lectura del ${date(maintenancePriority.current_reading_at)}` : latestPlan?.updated_at ? `Fuente actualizada ${date(latestPlan.updated_at)}` : null} />
-              <IdentityItem
-                icon={Gauge}
-                label="Lectura actual"
-                value={maintenancePriority.current_reading != null ? `${number(maintenancePriority.current_reading, 1)} ${maintenancePriority.meter_unit || ''}` : null}
-                meta={maintenancePriority.current_reading_at ? `Registrado el ${date(maintenancePriority.current_reading_at)}` : 'Sin fecha de lectura'}
-              />
-              <IdentityItem
-                icon={Gauge}
-                label="Próximo mantenimiento"
-                value={maintenancePriority.next_due_meter != null ? `${number(maintenancePriority.next_due_meter, 1)} ${maintenancePriority.meter_unit || ''}` : null}
-                meta={maintenancePriority.projected_due_at ? `Proyección ${date(maintenancePriority.projected_due_at)}` : maintenancePriority.scheduled_date ? `Programado ${date(maintenancePriority.scheduled_date)}` : null}
-              />
-              <IdentityItem
-                icon={Timer}
-                label="Margen"
-                value={maintenancePriority.remaining_meter != null ? `${number(maintenancePriority.remaining_meter, 1)} ${maintenancePriority.meter_unit || ''}` : null}
-                meta={maintenancePriority.current_reading_at ? `Con lectura del ${date(maintenancePriority.current_reading_at)}` : null}
-              />
-              <IdentityItem icon={CalendarDays} label="Fecha proyectada" value={date(maintenancePriority.projected_due_at || maintenancePriority.scheduled_date)} />
-              <IdentityItem icon={Wrench} label="Responsable" value={maintenancePriority.responsible_raw} meta={latestPlan?.updated_at ? `Fuente actualizada ${date(latestPlan.updated_at)}` : null} />
-              <IdentityItem icon={PackageCheck} label="Materiales" value={maintenancePriority.parts_status_raw} meta={latestPlan?.updated_at ? `Estado al ${date(latestPlan.updated_at)}` : null} />
-              <IdentityItem icon={FileText} label="Estado programación" value={maintenancePriority.programming_status_raw} meta={latestPlan?.updated_at ? `Actualizado ${date(latestPlan.updated_at)}` : null} />
-            </div>
+            <>
+              <div className="grid gap-4 border-t border-border p-4 sm:grid-cols-2 lg:grid-cols-4">
+                <IdentityItem icon={Activity} label="Prioridad" value={maintenancePriority.priority} meta={maintenancePriority.current_reading_at ? `Calculada con lectura del ${date(maintenancePriority.current_reading_at)}` : latestPlan?.updated_at ? `Fuente actualizada ${date(latestPlan.updated_at)}` : null} />
+                <IdentityItem
+                  icon={Gauge}
+                  label="Lectura actual"
+                  value={maintenancePriority.current_reading != null ? `${number(maintenancePriority.current_reading, 1)} ${maintenancePriority.meter_unit || ''}` : null}
+                  meta={maintenancePriority.current_reading_at ? `Registrado el ${date(maintenancePriority.current_reading_at)}` : 'Sin fecha de lectura'}
+                />
+                <IdentityItem
+                  icon={Gauge}
+                  label="Próximo mantenimiento"
+                  value={maintenancePriority.next_due_meter != null ? `${number(maintenancePriority.next_due_meter, 1)} ${maintenancePriority.meter_unit || ''}` : null}
+                  meta={maintenancePriority.projected_due_at ? `Proyección ${date(maintenancePriority.projected_due_at)}` : maintenancePriority.scheduled_date ? `Programado ${date(maintenancePriority.scheduled_date)}` : null}
+                />
+                <IdentityItem
+                  icon={Timer}
+                  label="Margen"
+                  value={maintenancePriority.remaining_meter != null ? `${number(maintenancePriority.remaining_meter, 1)} ${maintenancePriority.meter_unit || ''}` : null}
+                  meta={maintenancePriority.current_reading_at ? `Con lectura del ${date(maintenancePriority.current_reading_at)}` : null}
+                />
+              </div>
+              <div className="grid gap-x-6 gap-y-3 border-t border-border px-4 py-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                <div>
+                  <p className="text-xs text-muted-foreground">Fecha proyectada</p>
+                  <p className="mt-1 font-medium">{date(maintenancePriority.projected_due_at || maintenancePriority.scheduled_date)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Responsable</p>
+                  <p className="mt-1 font-medium">{maintenancePriority.responsible_raw || 'Sin responsable'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Materiales</p>
+                  <p className="mt-1 font-medium">{maintenancePriority.parts_status_raw || 'Sin estado'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Programación</p>
+                  <p className="mt-1 font-medium">{maintenancePriority.programming_status_raw || 'Sin estado'}</p>
+                </div>
+              </div>
+            </>
             {maintenancePriority.recommended_action ? (
               <div className="border-t border-border px-4 py-4">
                 <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Siguiente acción</p>
@@ -1605,14 +1620,24 @@ export function Asset360Overview({
             ) : null}
           </>
         ) : latestPlan ? (
-          <div className="grid gap-4 border-t border-border p-4 sm:grid-cols-2 lg:grid-cols-4">
-            <IdentityItem icon={Gauge} label="Última MP" value={latestPlan.last_mp != null ? `${number(latestPlan.last_mp, 1)} ${latestPlan.meter_unit || ''}` : null} meta={latestPlan.current_reading_at ? `Lectura al ${date(latestPlan.current_reading_at)}` : latestPlan.updated_at ? `Fuente actualizada ${date(latestPlan.updated_at)}` : null} />
-            <IdentityItem icon={Timer} label="Intervalo MP" value={latestPlan.interval_mp != null ? `${number(latestPlan.interval_mp, 1)} ${latestPlan.meter_unit || ''}` : null} meta={latestPlan.updated_at ? `Fuente actualizada ${date(latestPlan.updated_at)}` : null} />
-            <IdentityItem icon={CalendarDays} label="Fecha programada" value={date(latestPlan.scheduled_date)} />
-            <IdentityItem icon={Wrench} label="Responsable" value={latestPlan.responsible_raw} meta={latestPlan.updated_at ? `Actualizado ${date(latestPlan.updated_at)}` : null} />
-            <IdentityItem icon={Activity} label="Estado" value={latestPlan.programming_status_raw} meta={latestPlan.updated_at ? `Actualizado ${date(latestPlan.updated_at)}` : null} />
-            <IdentityItem icon={PackageCheck} label="Materiales" value={latestPlan.parts_status_raw} meta={latestPlan.updated_at ? `Estado al ${date(latestPlan.updated_at)}` : null} />
-          </div>
+          <>
+            <div className="grid gap-4 border-t border-border p-4 sm:grid-cols-2 lg:grid-cols-4">
+              <IdentityItem icon={Gauge} label="Última MP" value={latestPlan.last_mp != null ? `${number(latestPlan.last_mp, 1)} ${latestPlan.meter_unit || ''}` : null} meta={latestPlan.current_reading_at ? `Lectura al ${date(latestPlan.current_reading_at)}` : latestPlan.updated_at ? `Fuente actualizada ${date(latestPlan.updated_at)}` : null} />
+              <IdentityItem icon={Timer} label="Intervalo MP" value={latestPlan.interval_mp != null ? `${number(latestPlan.interval_mp, 1)} ${latestPlan.meter_unit || ''}` : null} meta={latestPlan.updated_at ? `Fuente actualizada ${date(latestPlan.updated_at)}` : null} />
+              <IdentityItem icon={CalendarDays} label="Fecha programada" value={date(latestPlan.scheduled_date)} />
+              <IdentityItem icon={Wrench} label="Responsable" value={latestPlan.responsible_raw} meta={latestPlan.updated_at ? `Actualizado ${date(latestPlan.updated_at)}` : null} />
+            </div>
+            <div className="grid gap-x-6 gap-y-3 border-t border-border px-4 py-3 text-sm sm:grid-cols-2">
+              <div>
+                <p className="text-xs text-muted-foreground">Programación</p>
+                <p className="mt-1 font-medium">{latestPlan.programming_status_raw || 'Sin estado'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Materiales</p>
+                <p className="mt-1 font-medium">{latestPlan.parts_status_raw || 'Sin estado'}</p>
+              </div>
+            </div>
+          </>
         ) : (
           <div className="flex flex-col gap-4 border-t border-border p-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
