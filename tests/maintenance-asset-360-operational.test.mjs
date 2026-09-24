@@ -126,3 +126,10 @@ test('asset 360 labels deterministically derived cost center purchase context co
   assert.match(ui, /resuelto de forma determinística/);
 });
 
+test('asset 360 prefers one canonical cost center when duplicate names are redistributable aliases', () => {
+  assert.match(api, /getRedistributableMachineAssignment/);
+  assert.match(api, /canonicalExactCostCenterMatches/);
+  assert.match(api, /!getRedistributableMachineAssignment\(machine\.code\)/);
+  assert.match(api, /canonicalExactCostCenterMatches\.length === 1/);
+});
+
