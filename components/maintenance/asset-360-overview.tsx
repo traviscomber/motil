@@ -43,6 +43,7 @@ type Asset360Response = {
     serial_number?: string | null;
     license_plate?: string | null;
     cost_center_code?: string | null;
+    cost_center_name?: string | null;
     location?: string | null;
     criticality?: string | null;
     operational_status?: string | null;
@@ -701,7 +702,7 @@ export function Asset360Overview({
     asset.cost_center_code
       ? [
           'Centro de costo',
-          asset.cost_center_code,
+          asset.cost_center_name ? `${asset.cost_center_code} · ${asset.cost_center_name}` : asset.cost_center_code,
           Building2,
           asset.cost_center_evidence_source === 'cost_centers_exact_identity'
             ? 'Resuelto por identidad exacta'
