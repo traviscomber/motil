@@ -1284,18 +1284,14 @@ export function Asset360Overview({
             ? `${operationalState.availability_pct != null ? `${number(operationalState.availability_pct, 1)}%` : 'Sin base'} · ${operationalState.open_work_order_count || 0} OT abiertas`
             : 'Sin base de disponibilidad'}
         />
-        <div className="grid gap-4 border-t border-border p-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 border-t border-border p-4 sm:grid-cols-2 lg:grid-cols-3">
           <IdentityItem
-            icon={Wrench}
-            label="OT históricas"
-            value={operationalState?.work_order_count}
-            meta={generatedAt ? `Corte de consulta ${date(generatedAt)}` : null}
-          />
-          <IdentityItem
-            icon={Wrench}
-            label="OT abiertas"
-            value={operationalState?.open_work_order_count}
-            meta={generatedAt ? `Estado consultado ${date(generatedAt)}` : null}
+            icon={Activity}
+            label="Disponibilidad"
+            value={operationalState?.availability_pct != null ? `${number(operationalState.availability_pct, 1)}%` : 'Sin base'}
+            meta={operationalState?.last_availability_date
+              ? `Fecha de corte ${date(operationalState.last_availability_date)}`
+              : operationalState?.availability_evidence_status || (operationalState?.availability_days_30d ? 'Período: últimos 30 días' : 'Sin fecha de corte')}
           />
           <IdentityItem
             icon={Timer}
@@ -1304,10 +1300,10 @@ export function Asset360Overview({
             meta={generatedAt ? `Acumulado al corte ${date(generatedAt)}` : null}
           />
           <IdentityItem
-            icon={Activity}
-            label="Disponibilidad"
-            value={operationalState?.availability_pct != null ? `${number(operationalState.availability_pct, 1)}%` : operationalState?.availability_evidence_status || 'Sin base'}
-            meta={operationalState?.last_availability_date ? `Fecha de corte ${date(operationalState.last_availability_date)}` : operationalState?.availability_days_30d ? 'Período: últimos 30 días' : 'Sin fecha de corte'}
+            icon={Wrench}
+            label="OT abiertas"
+            value={operationalState?.open_work_order_count}
+            meta={generatedAt ? `Estado consultado ${date(generatedAt)}` : null}
           />
         </div>
       </details>
