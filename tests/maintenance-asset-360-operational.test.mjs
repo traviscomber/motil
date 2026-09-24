@@ -77,6 +77,15 @@ test('asset 360 recovers a unique current meter from planning when stronger mete
   assert.match(api, /planningCurrentEvidence\?\.current_reading_at/);
 });
 
+test('asset 360 surfaces dated operational freshness from the canonical operating spine', () => {
+  assert.match(api, /from\('asset_operating_spine_v1'\)/);
+  assert.match(api, /last_work_order_at,last_drilling_date,last_cost_event_at,last_telemetry_at,evidence_domain_count/);
+  assert.match(api, /operatingSpine: operatingSpineResult\.data \|\| null/);
+  assert.match(ui, /Última evidencia operacional/);
+  assert.match(ui, /operatingSpine\?\.last_cost_event_at/);
+  assert.match(ui, /operatingSpine\?\.last_drilling_date/);
+});
+
 test('asset 360 operational state query only selects columns present in the live view', () => {
   assert.match(api, /from\('asset_operational_state_v1'\)/);
   assert.doesNotMatch(api, /drilled_meters,last_drilling_date,sensor_count/);
