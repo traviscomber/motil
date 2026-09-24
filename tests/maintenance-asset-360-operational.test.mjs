@@ -3,7 +3,14 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 const api = fs.readFileSync('app/api/maintenance/assets/[id]/operational-360/route.ts', 'utf8');
-const ui = fs.readFileSync('components/maintenance/asset-360-overview.tsx', 'utf8');
+const asset360Dir = 'components/maintenance/asset-360';
+const ui =
+  fs.readFileSync('components/maintenance/asset-360-overview.tsx', 'utf8') +
+  fs
+    .readdirSync(asset360Dir)
+    .filter((file) => file.endsWith('.tsx') || file.endsWith('.ts'))
+    .map((file) => fs.readFileSync(`${asset360Dir}/${file}`, 'utf8'))
+    .join('\n');
 const assetsApi = fs.readFileSync('app/api/maintenance/assets/route.ts', 'utf8');
 const costCenterMachines = fs.readFileSync('lib/maintenance/cost-center-machines.ts', 'utf8');
 const identityEvidence = fs.readFileSync('lib/maintenance/asset-identity-evidence.ts', 'utf8');

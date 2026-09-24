@@ -27,6 +27,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { StatePanel } from '@/components/ui/state-panel';
+import {
+  cleanEvidenceText,
+  date,
+  money,
+  number,
+} from '@/components/maintenance/asset-360/format';
+import { IdentityItem, SectionSummary } from '@/components/maintenance/asset-360/primitives';
 import { getEquipmentImageMeta } from '@/lib/maintenance/equipment-images';
 
 type Asset360Response = {
@@ -559,84 +566,6 @@ const fetcher = async (url: string): Promise<Asset360Response> => {
   if (!response.ok) throw new Error(payload?.error || 'No se pudo cargar la ficha 360 operacional');
   return payload;
 };
-
-const number = (value: unknown, digits = 0) =>
-  Number(value).toLocaleString('es-CL', { maximumFractionDigits: digits });
-
-const money = (value: unknown) =>
-  value == null ? 'Sin base' : `$${Number(value).toLocaleString('es-CL', { maximumFractionDigits: 0 })}`;
-
-const show = (value: unknown) => {
-  if (value == null || String(value).trim() === '') return 'No informado';
-  return String(value);
-};
-
-const date = (value: unknown) => {
-  if (!value) return 'No informado';
-  const raw = String(value);
-  const dateOnly = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (dateOnly) {
-    const [, year, month, day] = dateOnly;
-    return new Intl.DateTimeFormat('es-CL', { dateStyle: 'medium' }).format(
-      new Date(Number(year), Number(month) - 1, Number(day)),
-    );
-  }
-  const parsed = new Date(raw);
-  if (Number.isNaN(parsed.getTime())) return show(value);
-  return new Intl.DateTimeFormat('es-CL', { dateStyle: 'medium' }).format(parsed);
-};
-const cleanEvidenceText = (value: unknown) => {
-  const text = String(value || '').trim();
-  if (!text) return null;
-  const normalized = text.toUpperCase();
-  if (['#ERROR!', 'NO REGISTRADO', 'N/A', 'SIN ASIGNAR', 'NO ASIGNADO', 'DESCONOCIDO', '-'].includes(normalized)) return null;
-  return text;
-};
-
-
-function IdentityItem({
-  icon: Icon,
-  label,
-  value,
-  meta,
-}: {
-  icon: LucideIcon;
-  label: string;
-  value: unknown;
-  meta?: string | null;
-}) {
-  return (
-    <div className="min-w-0 border-l border-border/70 pl-3">
-      <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-        <Icon className="h-3.5 w-3.5" />
-        {label}
-      </div>
-      <p className="mt-1 truncate text-sm font-medium text-foreground">{show(value)}</p>
-      {meta ? <p className="mt-1 truncate text-[11px] text-muted-foreground">{meta}</p> : null}
-    </div>
-  );
-}
-
-function SectionSummary({
-  title,
-  hint,
-}: {
-  title: string;
-  hint?: string | null;
-}) {
-  return (
-    <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4">
-      <div className="min-w-0">
-        <p className="text-sm font-semibold">{title}</p>
-        {hint ? <p className="mt-1 truncate text-xs font-normal text-muted-foreground">{hint}</p> : null}
-      </div>
-      <span className="flex shrink-0 items-center gap-1 text-xs font-medium text-muted-foreground">
-        Ver detalle
-        <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
-      </span>
-    </summary>
-  );
-}
 
 export function Asset360Overview({
   assetId,
