@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getOrganizationContext } from '@/lib/api/organization-context';
 import { MODULE_KEYS, requireModuleAccess } from '@/lib/api/module-access';
-import { deriveMachinesFromCostCenters } from '@/lib/maintenance/cost-center-machines';
+import { deriveMachinesFromCostCenters, getRedistributableMachineAssignment } from '@/lib/maintenance/cost-center-machines';
 
 const OPTIONAL_SOURCE_TIMEOUT_MS = 2500;
 
@@ -500,10 +500,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       normalizedAssetIdentity &&
       normalizeAssetIdentity(machine.name) === normalizedAssetIdentity
     );
+    const canonicalExactCostCenterMatches = exactCostCenterMatches.filter(
+      (machine) => !getRedistributableMachineAssignment(machine.code),
+    );
     const exactCostCenter =
       !asset.cost_center_code && exactCostCenterMatches.length === 1
         ? exactCostCenterMatches[0]
-        : null;
+        : !asset.cost_center_code && canonicalExactCostCenterMatches.length === 1
+          ? canonicalExactCostCenterMatches[0]
+          : null;
 
     const derivedCostCenterPurchaseHistoryResult =
       !asset.cost_center_code && exactCostCenter?.code
