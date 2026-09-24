@@ -43,6 +43,7 @@ type Asset360Response = {
     serial_number?: string | null;
     license_plate?: string | null;
     cost_center_code?: string | null;
+    cost_center_name?: string | null;
     location?: string | null;
     criticality?: string | null;
     operational_status?: string | null;
@@ -61,6 +62,22 @@ type Asset360Response = {
     updated_at?: string | null;
     is_active?: boolean | null;
     validation_status?: string | null;
+    cost_center_evidence_source?: string | null;
+    location_evidence_source?: string | null;
+    location_evidence_at?: string | null;
+    criticality_evidence_source?: string | null;
+    criticality_evidence_at?: string | null;
+    operational_status_evidence_source?: string | null;
+    operational_status_evidence_at?: string | null;
+    operational_status_reason?: string | null;
+    reference_manufacturer?: string | null;
+    reference_manufacturer_evidence_source?: string | null;
+    reference_manufacturer_evidence_at?: string | null;
+    reference_family?: string | null;
+    reference_family_evidence_source?: string | null;
+    reference_family_evidence_at?: string | null;
+    license_plate_evidence_source?: string | null;
+    license_plate_evidence_at?: string | null;
   };
   summary?: {
     activeWorkOrders: number;
@@ -74,6 +91,7 @@ type Asset360Response = {
     reading_count?: number;
     last_reading_at?: string | null;
     latest_meter_hours?: number | string | null;
+    latest_meter_unit?: string | null;
     observed_operating_hours?: number | string | null;
     reset_count?: number;
     usable_for_rate_metrics?: boolean;
@@ -103,6 +121,7 @@ type Asset360Response = {
     frequency_hours?: number | string | null;
     due_meter?: number | string | null;
     effective_current_meter?: number | string | null;
+    meter_evidence_source?: string | null;
     hour_status?: string | null;
     remaining_hours?: number | string | null;
     alert_due?: boolean;
@@ -270,6 +289,7 @@ type Asset360Response = {
     first_reading_at?: string | null;
     last_reading_at?: string | null;
     latest_meter_hours?: number | string | null;
+    latest_meter_unit?: string | null;
     observed_operating_hours?: number | string | null;
     reset_count?: number | string | null;
     usable_for_rate_metrics?: boolean | null;
@@ -277,6 +297,8 @@ type Asset360Response = {
     audited_total_cost?: number | string | null;
     audited_cost_per_operating_hour?: number | string | null;
     meter_evidence_source?: string | null;
+    material_meter_decrease_count?: number | string | null;
+    meter_sequence_status?: string | null;
   } | null;
   meterHistory?: Array<{
     id: string;
@@ -359,6 +381,24 @@ type Asset360Response = {
     reconciliation_status?: string | null;
     match_method?: string | null;
   } | null;
+  identityHistory?: Array<{
+    source_asset_id?: string | null;
+    source_asset_code?: string | null;
+    source_asset_name?: string | null;
+    target_asset_id?: string | null;
+    target_asset_code?: string | null;
+    target_asset_name?: string | null;
+    evidence_rule?: string | null;
+    identity_status?: string | null;
+    canonicalized?: boolean | null;
+  }>;
+  operatingSpine?: {
+    last_work_order_at?: string | null;
+    last_drilling_date?: string | null;
+    last_cost_event_at?: string | null;
+    last_telemetry_at?: string | null;
+    evidence_domain_count?: number | string | null;
+  } | null;
   operationalState?: {
     operational_status?: string | null;
     criticality?: string | null;
@@ -373,6 +413,7 @@ type Asset360Response = {
     recorded_downtime_hours?: number | string | null;
     drilling_report_count?: number | string | null;
     drilled_meters?: number | string | null;
+    last_drilling_date?: string | null;
     sensor_count?: number | string | null;
     sensor_reading_count?: number | string | null;
     evidence_domain_count?: number | string | null;
@@ -414,6 +455,8 @@ type Asset360Response = {
   }>;
   purchaseHistorySummary?: {
     purchaseLines?: number;
+    pricedLines?: number;
+    unpricedLines?: number;
     orders?: number;
     suppliers?: number;
     netSpend?: number | string | null;
@@ -546,7 +589,7 @@ const cleanEvidenceText = (value: unknown) => {
   const text = String(value || '').trim();
   if (!text) return null;
   const normalized = text.toUpperCase();
-  if (normalized === '#ERROR!' || normalized === 'NO REGISTRADO' || normalized === 'N/A') return null;
+  if (['#ERROR!', 'NO REGISTRADO', 'N/A', 'SIN ASIGNAR', 'NO ASIGNADO', 'DESCONOCIDO', '-'].includes(normalized)) return null;
   return text;
 };
 
@@ -671,22 +714,99 @@ export function Asset360Overview({
     Number(rr?.audited_corrective_events || 0) > 0 && rr?.mttr_hours != null
       ? `${number(rr.mttr_hours, 1)} h`
       : 'Sin base';
+  const defendableNextPreventiveMeter = Boolean(
+    nextPreventive?.effective_current_meter != null &&
+    !(
+      Number(nextPreventive.effective_current_meter) === 0 &&
+      String(nextPreventive.meter_evidence_source || '').toLowerCase() === 'schedule_snapshot'
+    )
+  );
+  const effectiveMeterUnit = String(
+    data.runtimeCostIntelligence?.latest_meter_unit || asset.meter_unit || 'h',
+  ).trim().toLowerCase();
+  const usesAnnualControl = ['anual', 'annual'].includes(effectiveMeterUnit);
+  const effectiveMeterLabel =
+    effectiveMeterUnit === 'km'
+      ? 'Odómetro'
+      : effectiveMeterUnit === 'h'
+        ? 'Horómetro'
+        : usesAnnualControl
+          ? 'Periodicidad'
+          : 'Medidor';
+  const meterIsScheduleReference =
+    data.runtimeCostIntelligence?.meter_evidence_source === 'schedule_snapshot' &&
+    !data.runtimeCostIntelligence?.last_reading_at;
+  const effectiveMeterDisplayLabel = meterIsScheduleReference
+    ? `${effectiveMeterLabel} de pauta`
+    : effectiveMeterLabel;
+  const effectiveMeterSuffix = effectiveMeterUnit || '';
+  const primaryIdentity = [
+    asset.cost_center_code
+      ? [
+          'Centro de costo',
+          asset.cost_center_name ? `${asset.cost_center_code} · ${asset.cost_center_name}` : asset.cost_center_code,
+          Building2,
+          asset.cost_center_evidence_source === 'cost_centers_exact_identity'
+            ? 'Resuelto por identidad exacta'
+            : asset.cost_center_evidence_source === 'purchase_history_exact_identity'
+              ? 'Resuelto por identidad exacta en histórico de compras'
+              : null,
+        ] as const
+      : null,
+    asset.location
+      ? [
+          'Ubicación',
+          asset.location,
+          MapPin,
+          asset.location_evidence_source === 'planning_or_production_evidence'
+            ? `Recuperada desde evidencia operacional${asset.location_evidence_at ? ` · ${date(asset.location_evidence_at)}` : ''}`
+            : asset.location_evidence_at
+              ? `${
+                  asset.location_evidence_source === 'asset_operational_state_v1'
+                    ? 'Estado operacional consolidado'
+                    : asset.location_evidence_source === 'maintenance_canonical_assets_v1'
+                      ? 'Maestro canónico'
+                      : 'Evidencia operacional'
+                } · ${date(asset.location_evidence_at)}`
+              : null,
+        ] as const
+      : null,
+    asset.license_plate
+      ? [
+          'Patente',
+          asset.license_plate,
+          ShieldCheck,
+          asset.license_plate_evidence_source === 'deterministic_name_plate'
+            ? `Recuperada desde el nombre del activo${asset.license_plate_evidence_at ? ` · ${date(asset.license_plate_evidence_at)}` : ''}`
+            : null,
+        ] as const
+      : asset.serial_number
+        ? ['N° de serie', asset.serial_number, ShieldCheck, null] as const
+        : null,
+  ].filter(Boolean) as Array<readonly [string, string, LucideIcon, string | null]>;
+
   const metrics: Metric[] = [
     ['OT activas', summary.activeWorkOrders, Wrench],
     ['Preventivos vencidos', summary.overduePreventives, AlertTriangle],
     ['Bloqueos operativos', summary.operationalBlockers, Activity],
     [
-      'Horómetro',
+      effectiveMeterDisplayLabel,
       runtime?.latest_meter_hours != null
         ? `${number(runtime.latest_meter_hours, 1)} h`
-        : 'Sin lectura',
+        : data.runtimeCostIntelligence?.latest_meter_hours != null
+          ? `${number(data.runtimeCostIntelligence.latest_meter_hours, 1)} ${effectiveMeterSuffix}`.trim()
+          : defendableNextPreventiveMeter
+            ? `${number(nextPreventive?.effective_current_meter, 1)} ${asset.meter_unit || 'h'}`.trim()
+            : usesAnnualControl
+              ? 'Anual'
+              : 'Sin lectura',
       Gauge,
     ],
   ];
 
   const links = [
-    { href: `${basePath}/documentos`, label: 'Documentos', icon: FileText },
     { href: `${basePath}/ficha-tecnica`, label: 'Ficha técnica', icon: Gauge },
+    { href: `${basePath}/documentos`, label: 'Documentos', icon: FileText },
   ];
 
   const assetTypeLabel: Record<string, string> = {
@@ -702,9 +822,9 @@ export function Asset360Overview({
     ? assetTypeLabel[String(asset.asset_type).toLowerCase()] || asset.category || asset.asset_type
     : asset.category || null;
   const technicalIdentity = [
-    asset.manufacturer,
+    asset.manufacturer || (asset.reference_manufacturer ? `${asset.reference_manufacturer} (referencial)` : null),
     asset.model,
-    displayAssetType,
+    displayAssetType || (asset.reference_family ? `Familia: ${asset.reference_family}` : null),
   ]
     .filter(Boolean)
     .join(' · ');
@@ -755,12 +875,31 @@ export function Asset360Overview({
     ? mobilityLabel[String(asset.mobility_class).toLowerCase()] || asset.mobility_class
     : null;
   const assetDetails = [
-    asset.manufacturer ? ['Fabricante', asset.manufacturer, Building2] as const : null,
+    asset.manufacturer
+      ? ['Fabricante', asset.manufacturer, Building2] as const
+      : asset.reference_manufacturer
+        ? [
+            'Fabricante referencial',
+            asset.reference_manufacturer,
+            Building2,
+            asset.reference_manufacturer_evidence_at
+              ? `Extraído del nombre · ${date(asset.reference_manufacturer_evidence_at)}`
+              : 'Extraído del nombre',
+          ] as const
+        : null,
     asset.model ? ['Modelo', asset.model, Hash] as const : null,
     asset.license_plate ? ['Patente', asset.license_plate, Hash] as const : null,
     asset.meter_unit ? ['Unidad de control', asset.meter_unit, Gauge] as const : null,
     displayMobility ? ['Movilidad', displayMobility, MapPin] as const : null,
     displayLifecycle ? ['Ciclo de vida', displayLifecycle, Activity] as const : null,
+    !displayAssetType && asset.reference_family
+      ? [
+          'Familia referencial',
+          asset.reference_family,
+          Wrench,
+          asset.reference_family_evidence_at ? `Derivada del nombre · ${date(asset.reference_family_evidence_at)}` : 'Derivada del nombre',
+        ] as const
+      : null,
     asset.acquisition_date ? ['Adquisición', date(asset.acquisition_date), CalendarDays] as const : null,
     asset.expected_lifespan_years != null
       ? ['Vida esperada', `${number(asset.expected_lifespan_years, 0)} años`, Timer] as const
@@ -771,13 +910,18 @@ export function Asset360Overview({
     asset.baseline_mtbf_hours != null
       ? ['MTBF base', `${number(asset.baseline_mtbf_hours, 0)} h`, Timer] as const
       : null,
-  ].filter(Boolean) as Array<readonly [string, string, LucideIcon]>;
+  ].filter(Boolean) as Array<readonly [string, string, LucideIcon, string?]>;
   const recentEvents = data.recentEvents || [];
   const auditedInterventions = data.auditedInterventions || [];
   const installedParts = data.installedParts || [];
   const pendingParts = data.pendingParts || [];
   const maintenancePlanning = data.maintenancePlanning || [];
+  const hasAnnualReadingConflict = maintenancePlanning.some((row) => {
+    const unit = String(row.meter_unit || '').trim().toLowerCase();
+    return ['anual', 'annual'].includes(unit) && row.current_reading != null;
+  });
   const operationalState = data.operationalState;
+  const operatingSpine = data.operatingSpine;
   const maintenancePriority = data.maintenancePriority;
   const runtimeCostIntelligence = data.runtimeCostIntelligence;
   const maintenanceTaskCandidates = data.maintenanceTaskCandidates || [];
@@ -787,10 +931,19 @@ export function Asset360Overview({
   const drillOperationalEvidence = data.drillOperationalEvidence;
   const drillEconomicsChange = data.drillEconomicsChange;
   const financeReconciliation = data.financeReconciliation;
+  const identityHistory = data.identityHistory || [];
   const supplyChain = data.supplyChain || [];
   const procurementOrders = data.procurementOrders || [];
   const costCenterPurchaseHistory = data.costCenterPurchaseHistory || [];
   const purchaseHistorySummary = data.purchaseHistorySummary;
+  const openSupplyNeedsCount = supplyChain.reduce(
+    (sum, row) => sum + Number(row.open_supply_need_count || 0),
+    0,
+  );
+  const materialShortageCount = supplyChain.reduce(
+    (sum, row) => sum + Number(row.material_shortage_count || 0),
+    0,
+  );
   const economicHistory = data.economicHistory || [];
   const drillingHistory = data.drillingHistory || [];
   const drillEconomics = data.drillEconomics;
@@ -811,7 +964,11 @@ export function Asset360Overview({
   const economicFirstCostDate = economicHistory.length > 0
     ? economicHistory[economicHistory.length - 1]?.first_cost_date
     : null;
-  const economicLastCostDate = economicHistory[0]?.last_cost_date || operationalState?.last_cost_at || null;
+  const economicLastCostDate =
+    economicHistory[0]?.last_cost_date ||
+    operatingSpine?.last_cost_event_at ||
+    operationalState?.last_cost_at ||
+    null;
   const economicLifetimeValue = operationalState?.recognized_cost_clp_lifetime != null
     ? Number(operationalState.recognized_cost_clp_lifetime)
     : economicHistory.length > 0
@@ -823,10 +980,21 @@ export function Asset360Overview({
   const economic12mValue = operationalState?.recognized_cost_clp_12m != null
     ? Number(operationalState.recognized_cost_clp_12m)
     : null;
-  const drillingMeters = drillingHistory.reduce(
-    (sum, row) => sum + Number(row.drilled_meters || 0),
+  const recentDrillingMeters = drillingHistory.reduce(
+    (sum, row) => {
+      const value = Number(row.drilled_meters);
+      return Number.isFinite(value) && value > 0 ? sum + value : sum;
+    },
     0,
   );
+  const consolidatedDrillingMeters =
+    operationalState?.drilled_meters != null
+      ? Math.max(Number(operationalState.drilled_meters) || 0, 0)
+      : recentDrillingMeters;
+  const consolidatedDrillingReports =
+    operationalState?.drilling_report_count != null
+      ? Number(operationalState.drilling_report_count) || 0
+      : drillingHistory.length;
   const latestPlan = maintenancePlanning[0] || null;
   const acquisitionDate = asset.acquisition_date ? new Date(String(asset.acquisition_date)) : null;
   const assetAgeYears =
@@ -839,11 +1007,51 @@ export function Asset360Overview({
     assetAgeYears != null && expectedLifespan != null
       ? Math.max(expectedLifespan - assetAgeYears, 0)
       : null;
+  const operationalEvidenceDates = [
+    operatingSpine?.last_work_order_at,
+    operatingSpine?.last_drilling_date,
+    operatingSpine?.last_cost_event_at,
+    operatingSpine?.last_telemetry_at,
+  ].filter(Boolean) as string[];
+  const lastOperationalEvidenceAt = operationalEvidenceDates
+    .map((value) => ({ value, time: new Date(value).getTime() }))
+    .filter((item) => !Number.isNaN(item.time))
+    .sort((a, b) => b.time - a.time)[0]?.value || null;
+  const latestEvidence = [
+    { value: lastOperationalEvidenceAt, source: 'Operación' },
+    { value: latestPlan?.updated_at || null, source: 'Planificación' },
+    { value: runtimeCostIntelligence?.last_reading_at || null, source: effectiveMeterLabel },
+  ]
+    .filter((item): item is { value: string; source: string } => Boolean(item.value))
+    .map((item) => ({ ...item, time: new Date(item.value).getTime() }))
+    .filter((item) => !Number.isNaN(item.time))
+    .sort((a, b) => b.time - a.time)[0] || null;
 
   const unavailableSources = data.unavailableSources || [];
   const sourceLabel = asset.source_file?.startsWith('public.')
     ? 'Maestro de activos'
     : asset.source_file || 'Fuente no informada';
+  const evidenceSourceLabel = (source?: string | null) => {
+    if (!source) return 'Sin fuente resuelta';
+    const labels: Record<string, string> = {
+      maintenance_canonical_assets_v1: 'Maestro canónico',
+      canonical_assets_current: 'Maestro canónico actual',
+      maintenance_asset_status_history: 'Historial de estado del activo',
+      asset_operational_state_v1: 'Estado operacional consolidado',
+      planning_maintenance_source_rows: 'Planificación de mantenimiento',
+      planning_or_production_evidence: 'Planificación / producción',
+      cost_centers_exact_identity: 'Centro de costo por identidad exacta',
+      purchase_history_exact_identity: 'Centro de costo por histórico de compras',
+      asset_runtime_readings: 'Lecturas operacionales',
+      planning_asset_meter_readings: 'Planificación · horómetro',
+      schedule_snapshot: 'Pauta preventiva',
+      cost_center_family: 'Familia del centro de costo',
+      deterministic_name_classifier: 'Clasificador determinístico del nombre',
+      deterministic_name_brand: 'Marca explícita extraída del nombre',
+      deterministic_name_plate: 'Patente extraída del nombre con formato validado',
+    };
+    return labels[source] || source;
+  };
   const hasPurchaseEvidence = Number(purchaseHistorySummary?.purchaseLines || 0) > 0 || procurementOrders.length > 0;
   const hasMaintenanceEvidence = auditedInterventions.length > 0 || Number(operationalState?.work_order_count || 0) > 0;
   const hasMaterialEvidence = installedParts.length > 0 || pendingParts.length > 0 || supplyChain.length > 0;
@@ -852,7 +1060,7 @@ export function Asset360Overview({
     meterHistory.length > 0 ||
     Number(runtimeCostIntelligence?.reading_count || 0) > 0 ||
     runtimeCostIntelligence?.latest_meter_hours != null ||
-    nextPreventive?.effective_current_meter != null;
+    defendableNextPreventiveMeter;
   const hasEconomicEvidence = economicHistory.length > 0 || Number(operationalState?.recognized_cost_event_count || 0) > 0;
   const hasAvailabilityEvidence = Boolean(
     operationalState?.last_availability_date ||
@@ -869,10 +1077,23 @@ export function Asset360Overview({
   );
 
   const coverageItems = [
-    ['Identidad canónica', true, 'Disponible'],
-    ['Estado operacional', Boolean(operationalState), operationalState ? 'Disponible' : 'Sin estado consolidado'],
+    ['Identidad base', Boolean(asset.asset_code && asset.name), asset.asset_code && asset.name ? 'Disponible' : 'Incompleta'],
+    ['Centro de costo', Boolean(asset.cost_center_code), asset.cost_center_code ? 'Disponible' : 'No resuelto'],
+    ['Ubicación', Boolean(asset.location), asset.location ? 'Disponible' : 'No resuelta'],
+    ['Criticidad', Boolean(asset.criticality), asset.criticality ? 'Disponible' : 'No resuelta'],
+    ['Estado operacional', Boolean(asset.operational_status), asset.operational_status ? 'Disponible' : 'Sin estado validado'],
     ['Plan de mantención', Boolean(maintenancePriority || latestPlan), maintenancePriority || latestPlan ? 'Disponible' : 'No registrado'],
-    ['Horómetro / uso', hasRuntimeEvidence, hasRuntimeEvidence ? 'Disponible' : 'Sin lecturas históricas'],
+    [
+      usesAnnualControl ? 'Periodicidad de control' : 'Horómetro / uso',
+      usesAnnualControl || hasRuntimeEvidence,
+      hasAnnualReadingConflict
+        ? 'Anual · lectura numérica por validar'
+        : usesAnnualControl
+          ? 'Anual'
+          : hasRuntimeEvidence
+            ? 'Disponible'
+            : 'Sin lectura defendible',
+    ],
     ['Economía / costos', hasEconomicEvidence, hasEconomicEvidence ? 'Disponible' : 'Sin movimientos'],
     ['Compras / proveedores', hasPurchaseEvidence, hasPurchaseEvidence ? 'Disponible' : 'Sin compras enlazadas'],
     ['OT / mantenciones', hasMaintenanceEvidence, hasMaintenanceEvidence ? 'Disponible' : 'Sin OT enlazadas'],
@@ -919,18 +1140,18 @@ export function Asset360Overview({
     <div className="space-y-5">
       <Card className="overflow-hidden border-border/80 shadow-none">
         <CardContent className="p-0">
-          <div className="grid lg:grid-cols-[minmax(230px,0.75fr)_minmax(0,2fr)_220px]">
+          <div className="grid lg:grid-cols-[220px_minmax(0,1fr)]">
             <div className="border-b border-border bg-muted/20 p-4 lg:border-b-0 lg:border-r">
               <div className="overflow-hidden rounded-md border border-border/70 bg-background">
                 {equipmentImage && !imageFailed ? (
                   <img
                     src={equipmentImage.image}
                     alt={`Imagen referencial de ${asset.name || 'equipo'}`}
-                    className="h-48 w-full object-cover"
+                    className="h-40 w-full object-cover lg:h-full lg:min-h-52"
                     onError={() => setFailedImageSrc(equipmentImage.image)}
                   />
                 ) : (
-                  <div className="flex h-48 items-center justify-center px-5 text-center text-xs text-muted-foreground">
+                  <div className="flex h-40 items-center justify-center px-5 text-center text-xs text-muted-foreground lg:h-full lg:min-h-52">
                     Imagen no disponible. La ficha sigue operativa.
                   </div>
                 )}
@@ -974,6 +1195,12 @@ export function Asset360Overview({
                   {technicalIdentity ? (
                     <p className="mt-3 text-sm text-muted-foreground">{technicalIdentity}</p>
                   ) : null}
+                  {asset.operational_status_evidence_at ? (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Estado {asset.operational_status_evidence_source === 'maintenance_asset_status_history' ? 'registrado' : 'actualizado'} el {date(asset.operational_status_evidence_at)}
+                      {asset.operational_status_reason ? ` · ${asset.operational_status_reason}` : ''}
+                    </p>
+                  ) : null}
                 </div>
 
                 <div className="flex flex-wrap gap-2">
@@ -988,29 +1215,15 @@ export function Asset360Overview({
                 </div>
               </div>
 
-              <div className="mt-6 grid gap-4 sm:grid-cols-3">
-                <IdentityItem icon={Building2} label="Centro de costo" value={asset.cost_center_code} />
-                <IdentityItem icon={MapPin} label="Ubicación" value={asset.location} />
-                <IdentityItem
-                  icon={ShieldCheck}
-                  label={scope === 'vehiculos' ? 'Patente / serie' : 'N° de serie'}
-                  value={scope === 'vehiculos' ? asset.license_plate || asset.serial_number : asset.serial_number}
-                />
-              </div>
+              {primaryIdentity.length > 0 ? (
+                <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {primaryIdentity.map(([label, value, Icon, meta]) => (
+                    <IdentityItem key={label} icon={Icon} label={label} value={value} meta={meta} />
+                  ))}
+                </div>
+              ) : null}
             </div>
 
-            <div className="flex flex-col items-center justify-center border-t border-border bg-muted/10 p-5 lg:border-l lg:border-t-0">
-              <Link href={`${basePath}/qr`} className="group">
-                <div className="rounded-lg border bg-white p-3">
-                  <img
-                    src={qrImageUrl}
-                    alt={`QR de ${asset.asset_code || asset.name || 'activo'}`}
-                    className="h-32 w-32 object-contain"
-                  />
-                </div>
-              </Link>
-              <p className="mt-3 text-xs font-medium text-muted-foreground">QR</p>
-            </div>
           </div>
 
           <div className="grid gap-px border-t bg-border sm:grid-cols-2 xl:grid-cols-4">
@@ -1026,148 +1239,75 @@ export function Asset360Overview({
           </div>
 
           {assetDetails.length > 0 ? (
-            <div className="border-t border-border px-5 py-5">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                Datos del activo
-              </p>
-              <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-                {assetDetails.map(([label, value, Icon]) => (
-                  <IdentityItem key={label} icon={Icon} label={label} value={value} />
-                ))}
-              </div>
-            </div>
-          ) : null}
-        </CardContent>
-      </Card>
-
-      <Card className={`shadow-none ${attention.tone}`}>
-        <CardContent className={showAttentionDetail ? "flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between" : "flex items-center justify-between gap-4 px-5 py-3"}>
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Atención</p>
-            <p className={showAttentionDetail ? "mt-1 text-lg font-semibold" : "mt-1 text-sm font-medium"}>{attention.title}</p>
-            {attention.detail && showAttentionDetail ? <p className="mt-1 text-sm text-muted-foreground">{attention.detail}</p> : null}
-          </div>
-          {actionableWorkOrder ? (
-            <Button asChild size="sm">
-              <Link href={`/dashboard/mantenimiento/ordenes-trabajo/cierre?workOrderId=${encodeURIComponent(actionableWorkOrder.work_order_id)}`}>
-                Continuar trabajo
-                <ArrowRight className="ml-1 h-4 w-4" />
-              </Link>
-            </Button>
-          ) : null}
-          {!actionableWorkOrder && maintenancePriority ? (
-            <div className="text-right text-xs text-muted-foreground">
-              {maintenancePriority.remaining_meter != null ? (
-                <p>
-                  Margen: {number(maintenancePriority.remaining_meter, 0)} {maintenancePriority.meter_unit || ''}
-                </p>
-              ) : null}
-              {maintenancePriority.projected_due_at ? (
-                <p className="mt-1">Proyección: {date(maintenancePriority.projected_due_at)}</p>
-              ) : maintenancePriority.scheduled_date ? (
-                <p className="mt-1">Programado: {date(maintenancePriority.scheduled_date)}</p>
-              ) : null}
-            </div>
-          ) : null}
-        </CardContent>
-      </Card>
-
-      <Card className="border-border/80 shadow-none">
-        <CardContent className="p-5">
-          <div className="flex flex-col gap-1 border-b border-border pb-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                Economía
-              </p>
-              <h2 className="mt-1 text-lg font-semibold">Inversión en mantenimiento</h2>
-              <p className="mt-1 text-xs text-muted-foreground">Costos históricos enlazados al activo.</p>
-            </div>
-            {economicLastCostDate ? (
-              <p className="text-xs text-muted-foreground">Corte {date(economicLastCostDate)}</p>
-            ) : null}
-          </div>
-
-          {economicLifetimeValue != null || economicHistory.length > 0 ? (
-            <>
-              <div className="grid gap-5 py-5 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)] lg:items-start">
-                <div className="border-b border-border pb-5 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-6">
-                  <p className="text-xs text-muted-foreground">Costo histórico acumulado</p>
-                  <p className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">{money(economicLifetimeValue)}</p>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    {economicFirstCostDate && economicLastCostDate
-                      ? `${date(economicFirstCostDate)} → ${date(economicLastCostDate)}`
-                      : economicFirstCostDate
-                        ? `Desde ${date(economicFirstCostDate)}`
-                        : 'Desde el primer registro disponible'}
-                  </p>
-                  <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                    <IdentityItem
-                      icon={Hash}
-                      label="Movimientos de costo"
-                      value={economicMovementCount || 'Sin base'}
-                    />
-                    <IdentityItem
-                      icon={Coins}
-                      label="Promedio anual"
-                      value={economicAnnualAverage != null ? money(economicAnnualAverage) : 'Sin base'}
-                      meta={economicYearsWithMovements > 0 ? `${economicYearsWithMovements} años con movimientos` : null}
-                    />
-                  </div>
-                </div>
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-                  <IdentityItem
-                    icon={Coins}
-                    label="Últimos 12 meses"
-                    value={economic12mValue != null ? money(economic12mValue) : 'Sin base'}
-                    meta={economicLastCostDate ? `Corte ${date(economicLastCostDate)}` : null}
-                  />
-                  <IdentityItem
-                    icon={CalendarDays}
-                    label="Año en curso"
-                    value={economicYtdValue != null ? money(economicYtdValue) : 'Sin base'}
-                    meta={economicLastCostDate ? `Corte ${date(economicLastCostDate)}` : null}
-                  />
-                  <IdentityItem
-                    icon={CalendarDays}
-                    label="Última imputación"
-                    value={date(economicLastCostDate)}
-                  />
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="py-5">
-              <p className="text-sm font-medium">Sin historial de costos enlazado</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                No se registra inversión histórica de mantenimiento para este activo en las fuentes disponibles. Esto no equivale a costo cero.
-              </p>
-            </div>
-          )}
-          {economicHistory.length > 0 ? (
-            <details className="border-t border-border pt-4">
-              <summary className="cursor-pointer list-none text-sm font-medium">
+            <details className="group border-t border-border">
+              <summary className="cursor-pointer list-none px-5 py-4">
                 <span className="flex items-center justify-between gap-4">
-                  <span>Evolución anual</span>
-                  <span className="text-xs font-normal text-muted-foreground">
-                    {economicHistory.length} años fiscales
+                  <span>
+                    <span className="block text-sm font-medium">Datos técnicos</span>
+                    <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
+                      Información secundaria del maestro del equipo
+                    </span>
+                  </span>
+                  <span className="flex items-center gap-2 text-xs font-normal text-muted-foreground">
+                    {assetDetails.length} datos
+                    <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
                   </span>
                 </span>
               </summary>
-              <div className="mt-3 divide-y divide-border">
-                {economicHistory.slice(0, 6).map((row) => (
-                  <div key={String(row.fiscal_year)} className="grid gap-3 py-3 sm:grid-cols-[100px_140px_minmax(0,1fr)] sm:items-center">
-                    <p className="text-sm font-semibold">{row.fiscal_year || 'Sin año'}</p>
-                    <p className="text-sm">{money(row.historical_total_cost)}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {number(row.movement_count || 0, 0)} movimientos · {date(row.first_cost_date)} → {date(row.last_cost_date)}
-                    </p>
-                  </div>
-                ))}
+              <div className="border-t border-border px-5 py-5">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+                  {assetDetails.map(([label, value, Icon, meta]) => (
+                    <IdentityItem key={label} icon={Icon} label={label} value={value} meta={meta || null} />
+                  ))}
+                </div>
+                <div className="mt-5 flex items-center justify-between gap-4 border-t border-border pt-4">
+                  <p className="text-xs text-muted-foreground">Identificación física del equipo</p>
+                  <Button asChild variant="ghost" size="sm">
+                    <Link href={`${basePath}/qr`}>
+                      Ver QR
+                      <ArrowRight className="ml-1 h-4 w-4" />
+                    </Link>
+                  </Button>
+                </div>
               </div>
             </details>
           ) : null}
         </CardContent>
       </Card>
+
+      {showAttentionDetail ? (
+        <Card className={`shadow-none ${attention.tone}`}>
+          <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Atención</p>
+              <p className="mt-1 text-lg font-semibold">{attention.title}</p>
+              {attention.detail ? <p className="mt-1 text-sm text-muted-foreground">{attention.detail}</p> : null}
+            </div>
+            {actionableWorkOrder ? (
+              <Button asChild size="sm">
+                <Link href={`/dashboard/mantenimiento/ordenes-trabajo/cierre?workOrderId=${encodeURIComponent(actionableWorkOrder.work_order_id)}`}>
+                  Continuar trabajo
+                  <ArrowRight className="ml-1 h-4 w-4" />
+                </Link>
+              </Button>
+            ) : null}
+            {!actionableWorkOrder && maintenancePriority ? (
+              <div className="text-right text-xs text-muted-foreground">
+                {maintenancePriority.remaining_meter != null ? (
+                  <p>
+                    Margen: {number(maintenancePriority.remaining_meter, 0)} {maintenancePriority.meter_unit || ''}
+                  </p>
+                ) : null}
+                {maintenancePriority.projected_due_at ? (
+                  <p className="mt-1">Proyección: {date(maintenancePriority.projected_due_at)}</p>
+                ) : maintenancePriority.scheduled_date ? (
+                  <p className="mt-1">Programado: {date(maintenancePriority.scheduled_date)}</p>
+                ) : null}
+              </div>
+            ) : null}
+          </CardContent>
+        </Card>
+      ) : null}
 
       <details className="group rounded-lg border border-border bg-card" open={maintenanceNeedsAttention}>
         <SectionSummary
@@ -1176,127 +1316,121 @@ export function Asset360Overview({
             ? `Próximo: ${nextPreventive.task_name || 'preventivo'}${nextPreventive.due_meter != null ? ` · ${number(nextPreventive.due_meter, 0)} h` : ''}`
             : 'Sin pauta horaria registrada'}
         />
-        <div className={`grid gap-4 border-t border-border p-4 ${showExecutionCard ? 'lg:grid-cols-3' : 'lg:grid-cols-2'}`}>
-        <Card className="shadow-none">
-          <CardContent className="p-5">
-            <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-              Próximo preventivo
-            </p>
-            {nextPreventive ? (
-              <>
-                <p className="mt-3 font-medium">{nextPreventive.task_name || 'Pauta configurada'}</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Actual{' '}
-                  {nextPreventive.effective_current_meter == null
-                    ? 'sin lectura'
-                    : `${number(nextPreventive.effective_current_meter, 1)} h`}{' '}
-                  · vence{' '}
-                  {nextPreventive.due_meter == null
-                    ? 'sin base'
-                    : `${number(nextPreventive.due_meter, 1)} h`}
-                </p>
-                <div className="mt-4 flex items-center gap-2">
-                  <Badge variant={nextPreventive.alert_due ? 'destructive' : 'outline'}>
-                    {nextPreventive.alert_due
-                      ? 'Vencido'
-                      : String(nextPreventive.hour_status || '').toLowerCase() === 'pending'
-                        ? 'Pendiente'
-                        : nextPreventive.hour_status || 'Pendiente'}
-                  </Badge>
-                  <Button asChild variant="ghost" size="sm">
+        <div className="border-t border-border">
+          <div className={`grid gap-px bg-border ${showExecutionCard ? 'lg:grid-cols-2' : 'lg:grid-cols-1'}`}>
+            <div className="bg-card p-5">
+              <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                Próxima intervención
+              </p>
+              {nextPreventive ? (
+                <>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <p className="font-medium">{nextPreventive.task_name || 'Pauta configurada'}</p>
+                    <Badge variant={nextPreventive.alert_due ? 'destructive' : 'outline'}>
+                      {nextPreventive.alert_due
+                        ? 'Vencido'
+                        : String(nextPreventive.hour_status || '').toLowerCase() === 'pending'
+                          ? 'Pendiente'
+                          : nextPreventive.hour_status || 'Pendiente'}
+                    </Badge>
+                  </div>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Horómetro actual:{' '}
+                    {nextPreventive.effective_current_meter == null
+                      ? 'sin lectura'
+                      : `${number(nextPreventive.effective_current_meter, 1)} h`}
+                    {' · '}
+                    Vence:{' '}
+                    {nextPreventive.due_meter == null
+                      ? 'sin base'
+                      : `${number(nextPreventive.due_meter, 1)} h`}
+                  </p>
+                  <Button asChild variant="ghost" size="sm" className="mt-4 px-0">
                     <Link href="/dashboard/mantenimiento/preventivo-horas">
                       Abrir pauta
                       <ArrowRight className="ml-1 h-4 w-4" />
                     </Link>
                   </Button>
-                </div>
-              </>
-            ) : (
-              <p className="mt-3 text-sm text-muted-foreground">
-                No hay pauta horaria configurada para este activo.
-              </p>
-            )}
-          </CardContent>
-        </Card>
+                </>
+              ) : (
+                <p className="mt-3 text-sm text-muted-foreground">
+                  No hay pauta horaria configurada para este equipo.
+                </p>
+              )}
+            </div>
 
-        <Card className="shadow-none">
-          <CardContent className="p-5">
-            <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-              Confiabilidad auditada
-            </p>
-            {hasReliabilityEvidence ? (
-              <div className="mt-3 grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs text-muted-foreground">MTBF real</p>
-                  <p className="mt-1 font-medium">{mtbf}</p>
+            {showExecutionCard ? (
+              <div className="bg-card p-5">
+                <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                  Trabajo en curso
+                </p>
+                <div className="mt-3 grid grid-cols-3 gap-4">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Pasos pendientes</p>
+                    <p className="mt-1 font-medium">{summary.pendingPlanSteps}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Listas para cerrar</p>
+                    <p className="mt-1 font-medium">{summary.readyToClose}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Críticas abiertas</p>
+                    <p className="mt-1 font-medium">{summary.criticalOpen}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">MTTR</p>
-                  <p className="mt-1 font-medium">{mttr}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Cierres auditados</p>
-                  <p className="mt-1 font-medium">{Number(reliability?.audited_closures || 0)}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Causas recurrentes</p>
-                  <p className="mt-1 font-medium">{Number(reliability?.recurring_cause_count || 0)}</p>
-                </div>
+                {actionableWorkOrder ? (
+                  <Button asChild size="sm" className="mt-4">
+                    <Link
+                      href={`/dashboard/mantenimiento/ordenes-trabajo/cierre?workOrderId=${encodeURIComponent(
+                        actionableWorkOrder.work_order_id,
+                      )}`}
+                    >
+                      Continuar trabajo
+                      <ArrowRight className="ml-1 h-4 w-4" />
+                    </Link>
+                  </Button>
+                ) : null}
               </div>
-            ) : (
-              <p className="mt-3 text-sm text-muted-foreground">Sin cierres auditados.</p>
-            )}
+            ) : null}
+          </div>
+
+          <details className="group border-t border-border px-5 py-4">
+            <summary className="cursor-pointer list-none">
+              <span className="flex items-center justify-between gap-4">
+                <span>
+                  <span className="block text-sm font-medium">Confiabilidad auditada</span>
+                  <span className="mt-0.5 block text-xs text-muted-foreground">
+                    {hasReliabilityEvidence
+                      ? `MTBF ${mtbf} · MTTR ${mttr}`
+                      : 'Sin cierres auditados suficientes para métricas de confiabilidad'}
+                  </span>
+                </span>
+                <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
+              </span>
+            </summary>
+            <div className="mt-4 grid gap-4 border-t border-border pt-4 sm:grid-cols-4">
+              <IdentityItem icon={Timer} label="MTBF real" value={mtbf} />
+              <IdentityItem icon={Timer} label="MTTR" value={mttr} />
+              <IdentityItem
+                icon={ShieldCheck}
+                label="Cierres auditados"
+                value={Number(reliability?.audited_closures || 0)}
+              />
+              <IdentityItem
+                icon={AlertTriangle}
+                label="Causas recurrentes"
+                value={Number(reliability?.recurring_cause_count || 0)}
+              />
+            </div>
             <Button asChild variant="ghost" size="sm" className="mt-4 px-0">
               <Link href="/dashboard/mantenimiento/confiabilidad">
                 Ver confiabilidad
                 <ArrowRight className="ml-1 h-4 w-4" />
               </Link>
             </Button>
-          </CardContent>
-        </Card>
-
-        {showExecutionCard ? (
-          <Card className="shadow-none">
-            <CardContent className="p-5">
-              <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                Cierre y ejecución
-              </p>
-              <div className="mt-3 grid gap-4 sm:grid-cols-3">
-                <div>
-                  <p className="text-xs text-muted-foreground">Pasos pendientes</p>
-                  <p className="mt-1 font-medium">{summary.pendingPlanSteps}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Listas para cerrar</p>
-                  <p className="mt-1 font-medium">{summary.readyToClose}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Críticas abiertas</p>
-                  <p className="mt-1 font-medium">{summary.criticalOpen}</p>
-                </div>
-              </div>
-              {actionableWorkOrder ? (
-                <Button asChild variant="ghost" size="sm" className="mt-4 px-0">
-                  <Link
-                    href={`/dashboard/mantenimiento/ordenes-trabajo/cierre?workOrderId=${encodeURIComponent(
-                      actionableWorkOrder.work_order_id,
-                    )}`}
-                  >
-                    Continuar trabajo
-                    <ArrowRight className="ml-1 h-4 w-4" />
-                  </Link>
-                </Button>
-              ) : (
-                <p className="mt-4 text-xs text-muted-foreground">
-                  No hay una OT activa con cierre pendiente para continuar.
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        ) : null}
+          </details>
         </div>
       </details>
-
 
       {hasAvailabilityEvidence ? (
       <details className="group rounded-lg border border-border bg-card">
@@ -1331,166 +1465,316 @@ export function Asset360Overview({
       </details>
       ) : null}
 
-      {hasPurchaseEvidence || supplyChain.length > 0 ? (
-      <details className="group rounded-lg border border-border bg-card">
-        <SectionSummary
-          title="Compras y abastecimiento"
-          hint={supplyChain.length > 0
-            ? `${supplyChain.length} OT con abastecimiento`
-            : purchaseHistorySummary?.lastSupplier
-              ? `${purchaseHistorySummary.lastSupplier} · última compra ${date(purchaseHistorySummary.lastOrderDate)}`
-              : 'Sin abastecimiento enlazado'}
-        />
-        <div className="border-t border-border">
-          {supplyChain.length > 0 ? (
-            <div className="p-4">
-              <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Estado de abastecimiento</p>
-              <div className="mt-3 divide-y divide-border">
-                {supplyChain.slice(0, 5).map((row) => (
-                  <div key={row.work_order_id} className="grid gap-3 py-4 lg:grid-cols-[150px_minmax(0,1fr)_150px_150px] lg:items-center">
-                    <div>
-                      <p className="font-mono text-xs">{row.work_order_number || 'OT sin número'}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">{date(row.scheduled_date)}</p>
-                    </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{row.title || 'Mantención'}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {row.supply_chain_status || 'Sin estado'} · {number(row.material_shortage_count || 0)} quiebres · {number(row.open_supply_need_count || 0)} necesidades abiertas
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Compras</p>
-                      <p className="mt-1 text-sm font-medium">{number(row.procurement_order_count || 0)} OC</p>
-                      <p className="mt-1 text-xs text-muted-foreground">{money(row.procurement_order_amount)}</p>
-                    </div>
-                    <div className="lg:text-right">
-                      <p className="text-xs text-muted-foreground">Materiales</p>
-                      <p className="mt-1 text-sm font-medium">{number(row.parts_installed || 0)} instalados</p>
-                      <p className="mt-1 text-xs text-muted-foreground">{money(row.parts_cost)}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : null}
-          <div className={supplyChain.length > 0 ? 'border-t border-border p-4' : 'p-4'}>
-            <p className="mb-3 text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Compras y proveedores</p>
-          {purchaseHistorySummary && Number(purchaseHistorySummary.purchaseLines || 0) > 0 ? (
-            <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <IdentityItem icon={Building2} label="Último proveedor" value={purchaseHistorySummary.lastSupplier} meta={purchaseHistorySummary.lastOrderDate ? `Última compra ${date(purchaseHistorySummary.lastOrderDate)}` : null} />
-              <IdentityItem icon={FileText} label="Órdenes históricas" value={purchaseHistorySummary.orders} meta={purchaseHistorySummary.lastOrderDate ? `Hasta ${date(purchaseHistorySummary.lastOrderDate)}` : null} />
-              <IdentityItem icon={Building2} label="Proveedores" value={purchaseHistorySummary.suppliers} meta={purchaseHistorySummary.lastOrderDate ? `Hasta ${date(purchaseHistorySummary.lastOrderDate)}` : null} />
-              <IdentityItem icon={Coins} label="Gasto histórico neto" value={purchaseHistorySummary.netSpend != null ? money(purchaseHistorySummary.netSpend) : null} meta={purchaseHistorySummary.lastOrderDate ? `Acumulado hasta ${date(purchaseHistorySummary.lastOrderDate)}` : null} />
-            </div>
-          ) : null}
-          {procurementOrders.length > 0 ? (
-            <div className="divide-y divide-border">
-              {procurementOrders.slice(0, 5).map((order) => {
-                const supplierName =
-                  order.supplier?.trade_name ||
-                  order.supplier?.legal_name ||
-                  order.supplierScore?.supplier_name ||
-                  'Proveedor no informado';
-                return (
-                  <div key={order.id} className="grid gap-3 py-4 lg:grid-cols-[150px_minmax(0,1fr)_150px_180px] lg:items-center">
-                    <div>
-                      <p className="font-mono text-xs">{order.order_number || 'OC sin número'}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">{date(order.issued_at)}</p>
-                    </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{supplierName}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {order.status || 'Estado no informado'}
-                        {order.expected_delivery_date ? ` · entrega esperada ${date(order.expected_delivery_date)}` : ''}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Monto OC</p>
-                      <p className="mt-1 text-sm font-medium">
-                        {order.total_amount != null ? `${order.currency || 'CLP'} ${number(order.total_amount, 0)}` : 'Sin monto'}
-                      </p>
-                    </div>
-                    <div className="lg:text-right">
-                      <p className="text-xs text-muted-foreground">Desempeño proveedor</p>
-                      <p className="mt-1 text-sm font-medium">
-                        {order.supplierScore?.operational_score != null
-                          ? `${number(order.supplierScore.operational_score, 0)}/100`
-                          : 'Sin score'}
-                      </p>
-                      {order.supplierScore?.delivery_score != null ? (
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          Entrega {order.supplierScore.delivery_score != null ? number(order.supplierScore.delivery_score, 0) : 'Sin base'} · Calidad {order.supplierScore.quality_score != null ? number(order.supplierScore.quality_score, 0) : 'Sin base'}
-                        </p>
-                      ) : null}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : costCenterPurchaseHistory.length > 0 ? (
+      <Card className="border-border/80 shadow-none">
+        <CardContent className="p-5">
+          <div className="flex flex-col gap-1 border-b border-border pb-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <div className="mb-3 rounded-md border border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
-                {purchaseHistorySummary?.matchBasis === 'cost_center' || purchaseHistorySummary?.matchBasis === 'cost_center_derived'
-                  ? `Historial recuperado desde el centro de costo ${asset.cost_center_code || ''}${purchaseHistorySummary?.matchBasis === 'cost_center_derived' ? ' resuelto de forma determinística' : ''}. Se muestra como contexto económico del equipo.`
-                  : 'Historial recuperado por coincidencia de nombre/modelo con centros de costo históricos. Se presenta como contexto del modelo/equipo y no como atribución unitaria cuando existen varias unidades similares.'}
+              <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">Economía</p>
+              <h2 className="mt-1 text-lg font-semibold">Inversión en mantenimiento</h2>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Gasto reconocido y enlazado al equipo. No equivale al costo total de propiedad.
+              </p>
+            </div>
+            {economicLastCostDate ? (
+              <p className="text-xs text-muted-foreground">Corte {date(economicLastCostDate)}</p>
+            ) : null}
+          </div>
+
+          {economicLifetimeValue != null || economicHistory.length > 0 ? (
+            <div>
+              <div className="grid gap-4 py-5 sm:grid-cols-3">
+                <IdentityItem
+                  icon={Coins}
+                  label="Histórico acumulado"
+                  value={economicLifetimeValue != null ? money(economicLifetimeValue) : 'Sin base'}
+                  meta={economicFirstCostDate ? `Desde ${date(economicFirstCostDate)}` : null}
+                />
+                <IdentityItem
+                  icon={CalendarDays}
+                  label="Últimos 12 meses"
+                  value={economic12mValue != null ? money(economic12mValue) : 'Sin base'}
+                  meta={economicLastCostDate ? `Corte ${date(economicLastCostDate)}` : null}
+                />
+                <IdentityItem
+                  icon={CalendarDays}
+                  label="Última imputación"
+                  value={date(economicLastCostDate)}
+                  meta={economicMovementCount > 0 ? `${economicMovementCount} movimientos reconocidos` : null}
+                />
               </div>
-              <div className="divide-y divide-border">
-                {costCenterPurchaseHistory.slice(0, 8).map((line) => (
-                  <div key={line.id} className="grid gap-3 py-4 lg:grid-cols-[150px_minmax(0,1fr)_180px_140px] lg:items-center">
-                    <div>
-                      <p className="font-mono text-xs">{line.order_number || 'OC sin número'}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">{date(line.order_date)}</p>
-                    </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{line.supplier_name || 'Proveedor no informado'}</p>
-                      <p className="mt-1 truncate text-xs text-muted-foreground">
-                        {line.product_code || 'Sin código'} · {line.description || 'Sin descripción'}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Cantidad / unidad</p>
-                      <p className="mt-1 text-sm font-medium">{line.quantity != null ? `${number(line.quantity, 1)} ${line.unit || ''}`.trim() : 'Sin cantidad'}</p>
-                    </div>
-                    <div className="lg:text-right">
-                      <p className="text-xs text-muted-foreground">Monto neto</p>
-                      <p className="mt-1 text-sm font-medium">{line.net_amount != null ? money(line.net_amount) : 'Sin monto'}</p>
-                    </div>
+
+              {(economicYtdValue != null || economicAnnualAverage != null || economicHistory.length > 0) ? (
+                <details className="group border-t border-border pt-4">
+                  <summary className="cursor-pointer list-none">
+                    <span className="flex items-center justify-between gap-4">
+                      <span className="text-sm font-medium">Detalle económico</span>
+                      <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
+                    </span>
+                  </summary>
+                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                    <IdentityItem
+                      icon={CalendarDays}
+                      label="Año en curso"
+                      value={economicYtdValue != null ? money(economicYtdValue) : 'Sin base'}
+                    />
+                    <IdentityItem
+                      icon={Coins}
+                      label="Promedio anual"
+                      value={economicAnnualAverage != null ? money(economicAnnualAverage) : 'Sin base'}
+                      meta={economicYearsWithMovements > 0 ? `${economicYearsWithMovements} años con movimientos` : null}
+                    />
                   </div>
-                ))}
-              </div>
+                  {economicHistory.length > 0 ? (
+                    <div className="mt-4 divide-y divide-border border-t border-border">
+                      {economicHistory.slice(0, 6).map((row) => (
+                        <div key={String(row.fiscal_year)} className="grid gap-3 py-3 sm:grid-cols-[100px_140px_minmax(0,1fr)] sm:items-center">
+                          <p className="text-sm font-semibold">{row.fiscal_year || 'Sin año'}</p>
+                          <p className="text-sm">{money(row.historical_total_cost)}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {number(row.movement_count || 0, 0)} movimientos · {date(row.first_cost_date)} → {date(row.last_cost_date)}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </details>
+              ) : null}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">Sin compras enlazadas al activo.</p>
+            <div className="py-5">
+              <p className="text-sm font-medium">Sin historial de costos enlazado</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                No se registra inversión histórica de mantenimiento para este equipo en las fuentes disponibles. Esto no equivale a costo cero.
+              </p>
+            </div>
           )}
+        </CardContent>
+      </Card>
+
+      {hasPurchaseEvidence || supplyChain.length > 0 ? (
+        <details className="group rounded-lg border border-border bg-card">
+          <SectionSummary
+            title="Compras y abastecimiento"
+            hint={openSupplyNeedsCount > 0
+              ? `${openSupplyNeedsCount} necesidades abiertas`
+              : purchaseHistorySummary?.lastSupplier
+                ? `Última compra: ${purchaseHistorySummary.lastSupplier}`
+                : 'Sin pendientes de abastecimiento'}
+          />
+          <div className="border-t border-border">
+            <div className="grid gap-4 p-4 sm:grid-cols-3">
+              <IdentityItem
+                icon={PackageCheck}
+                label="Necesidades abiertas"
+                value={openSupplyNeedsCount}
+                meta={materialShortageCount > 0 ? `${materialShortageCount} quiebres de material` : 'Sin quiebres registrados'}
+              />
+              <IdentityItem
+                icon={Coins}
+                label="Gasto histórico neto registrado"
+                value={purchaseHistorySummary?.netSpend != null ? money(purchaseHistorySummary.netSpend) : 'Sin base'}
+                meta={Number(purchaseHistorySummary?.unpricedLines || 0) > 0
+                  ? `${number(purchaseHistorySummary?.unpricedLines || 0, 0)} líneas sin monto · corte ${date(purchaseHistorySummary?.lastOrderDate)}`
+                  : purchaseHistorySummary?.lastOrderDate
+                    ? `Hasta ${date(purchaseHistorySummary.lastOrderDate)}`
+                    : null}
+              />
+              <IdentityItem
+                icon={Building2}
+                label="Último proveedor"
+                value={purchaseHistorySummary?.lastSupplier || procurementOrders[0]?.supplier?.trade_name || procurementOrders[0]?.supplier?.legal_name || null}
+                meta={purchaseHistorySummary?.lastOrderDate ? `Última compra ${date(purchaseHistorySummary.lastOrderDate)}` : null}
+              />
+            </div>
+
+            <details className="group border-t border-border px-4 py-4">
+              <summary className="cursor-pointer list-none">
+                <span className="flex items-center justify-between gap-4">
+                  <span>
+                    <span className="block text-sm font-medium">Detalle de abastecimiento y compras</span>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">
+                      OT, órdenes de compra, proveedores y trazabilidad histórica
+                    </span>
+                  </span>
+                  <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
+                </span>
+              </summary>
+
+              {supplyChain.length > 0 ? (
+                <div className="mt-4 border-t border-border pt-4">
+                  <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                    Abastecimiento por OT
+                  </p>
+                  <div className="mt-3 divide-y divide-border">
+                    {supplyChain.slice(0, 5).map((row) => (
+                      <div key={row.work_order_id} className="grid gap-3 py-4 lg:grid-cols-[150px_minmax(0,1fr)_150px_150px] lg:items-center">
+                        <div>
+                          <p className="font-mono text-xs">{row.work_order_number || 'OT sin número'}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">{date(row.scheduled_date)}</p>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">{row.title || 'Mantención'}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {row.supply_chain_status || 'Sin estado'} · {number(row.material_shortage_count || 0)} quiebres · {number(row.open_supply_need_count || 0)} necesidades abiertas
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Compras</p>
+                          <p className="mt-1 text-sm font-medium">{number(row.procurement_order_count || 0)} OC</p>
+                          <p className="mt-1 text-xs text-muted-foreground">{money(row.procurement_order_amount)}</p>
+                        </div>
+                        <div className="lg:text-right">
+                          <p className="text-xs text-muted-foreground">Materiales</p>
+                          <p className="mt-1 text-sm font-medium">{number(row.parts_installed || 0)} instalados</p>
+                          <p className="mt-1 text-xs text-muted-foreground">{money(row.parts_cost)}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              <div className={supplyChain.length > 0 ? 'border-t border-border pt-4' : 'mt-4 border-t border-border pt-4'}>
+                <div className="mb-3 flex items-center justify-between gap-4">
+                  <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                    Compras y proveedores
+                  </p>
+                  {purchaseHistorySummary && Number(purchaseHistorySummary.purchaseLines || 0) > 0 ? (
+                    <p className="text-xs text-muted-foreground">
+                      {number(purchaseHistorySummary.orders || 0)} órdenes · {number(purchaseHistorySummary.suppliers || 0)} proveedores
+                    </p>
+                  ) : null}
+                </div>
+
+                {procurementOrders.length > 0 ? (
+                  <div className="divide-y divide-border">
+                    {procurementOrders.slice(0, 5).map((order) => {
+                      const supplierName =
+                        order.supplier?.trade_name ||
+                        order.supplier?.legal_name ||
+                        order.supplierScore?.supplier_name ||
+                        'Proveedor no informado';
+                      return (
+                        <div key={order.id} className="grid gap-3 py-4 lg:grid-cols-[150px_minmax(0,1fr)_150px_180px] lg:items-center">
+                          <div>
+                            <p className="font-mono text-xs">{order.order_number || 'OC sin número'}</p>
+                            <p className="mt-1 text-xs text-muted-foreground">{date(order.issued_at)}</p>
+                          </div>
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium">{supplierName}</p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              {order.status || 'Estado no informado'}
+                              {order.expected_delivery_date ? ` · entrega esperada ${date(order.expected_delivery_date)}` : ''}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Monto OC</p>
+                            <p className="mt-1 text-sm font-medium">
+                              {order.total_amount != null ? `${order.currency || 'CLP'} ${number(order.total_amount, 0)}` : 'Sin monto'}
+                            </p>
+                          </div>
+                          <div className="lg:text-right">
+                            <p className="text-xs text-muted-foreground">Desempeño proveedor</p>
+                            <p className="mt-1 text-sm font-medium">
+                              {order.supplierScore?.operational_score != null
+                                ? `${number(order.supplierScore.operational_score, 0)}/100`
+                                : 'Sin score'}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : costCenterPurchaseHistory.length > 0 ? (
+                  <div>
+                    <div className="mb-3 rounded-md border border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+                      {purchaseHistorySummary?.matchBasis === 'cost_center' ||
+                      purchaseHistorySummary?.matchBasis === 'cost_center_derived' ||
+                      purchaseHistorySummary?.matchBasis === 'purchase_cost_center_exact_identity'
+                        ? `Historial recuperado desde el centro de costo ${asset.cost_center_code || ''}${
+                            purchaseHistorySummary?.matchBasis === 'cost_center_derived'
+                              ? ' resuelto de forma determinística'
+                              : purchaseHistorySummary?.matchBasis === 'purchase_cost_center_exact_identity'
+                                ? ' identificado de forma exacta en el histórico de compras'
+                                : ''
+                          }. Se muestra como contexto económico del equipo.`
+                        : 'Historial recuperado por coincidencia de nombre/modelo con centros de costo históricos. Se presenta como contexto del modelo/equipo y no como atribución unitaria cuando existen varias unidades similares.'}
+                    </div>
+                    <div className="divide-y divide-border">
+                      {costCenterPurchaseHistory.slice(0, 8).map((line) => (
+                        <div key={line.id} className="grid gap-3 py-4 lg:grid-cols-[150px_minmax(0,1fr)_180px_140px] lg:items-center">
+                          <div>
+                            <p className="font-mono text-xs">{line.order_number || 'OC sin número'}</p>
+                            <p className="mt-1 text-xs text-muted-foreground">{date(line.order_date)}</p>
+                          </div>
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium">{line.supplier_name || 'Proveedor no informado'}</p>
+                            <p className="mt-1 truncate text-xs text-muted-foreground">
+                              {line.product_code || 'Sin código'} · {line.description || 'Sin descripción'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Cantidad / unidad</p>
+                            <p className="mt-1 text-sm font-medium">{line.quantity != null ? `${number(line.quantity, 1)} ${line.unit || ''}`.trim() : 'Sin cantidad'}</p>
+                          </div>
+                          <div className="lg:text-right">
+                            <p className="text-xs text-muted-foreground">Monto neto</p>
+                            <p className="mt-1 text-sm font-medium">{line.net_amount != null ? money(line.net_amount) : 'Sin monto'}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Sin compras enlazadas al equipo.</p>
+                )}
+              </div>
+            </details>
           </div>
-        </div>
-      </details>
+        </details>
       ) : null}
 
       {maintenanceTaskCandidates.length > 0 || standardJobPlans.length > 0 ? (
         <details className="group rounded-lg border border-border bg-card">
           <SectionSummary
             title="Señales de intervención"
-            hint={`${maintenanceTaskCandidates.length} señales · ${standardJobPlans.length > 0 ? `${standardJobPlans.length} planes estándar` : 'sin plan estándar'}`}
+            hint={maintenanceTaskCandidates.length > 0
+              ? `${maintenanceTaskCandidates.length} señales observadas`
+              : `${standardJobPlans.length} planes estándar disponibles`}
           />
-          <div className="border-t border-border p-4">
+          <div className="border-t border-border">
             {maintenanceTaskCandidates.length > 0 ? (
-              <div>
-                <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                  Señales desde operación
-                </p>
-                <div className="mt-3 divide-y divide-border">
+              <div className="p-4">
+                <div className="mb-3">
+                  <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                    Evidencia operacional
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Observaciones que requieren revisión humana. No equivalen a diagnóstico ni a una OT autorizada.
+                  </p>
+                </div>
+                <div className="divide-y divide-border">
                   {maintenanceTaskCandidates.slice(0, 6).map((row, index) => (
-                    <div key={`${row.component_key || 'signal'}-${index}`} className="grid gap-3 py-3 lg:grid-cols-[160px_minmax(0,1fr)_150px] lg:items-center">
+                    <div key={`${row.component_key || 'signal'}-${index}`} className="grid gap-3 py-3 lg:grid-cols-[170px_minmax(0,1fr)_150px] lg:items-center">
                       <div>
                         <p className="text-sm font-medium">{row.component_key || 'Componente'}</p>
-                        <p className="mt-1 text-xs text-muted-foreground">{row.signal_status || row.latest_status || 'Señal'}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {row.signal_status || row.latest_status || 'Observado'}
+                        </p>
                       </div>
                       <div className="min-w-0">
-                        <p className="truncate text-sm">{row.suggested_task || row.latest_observation || 'Revisar condición observada'}</p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {number(row.observation_count || 0, 0)} observaciones · {number(row.out_of_service_count || 0, 0)} fuera de servicio
+                        <p className="text-sm">
+                          {row.latest_observation || 'Condición observada sin detalle adicional'}
                         </p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {number(row.observation_count || 0, 0)} observaciones
+                          {Number(row.out_of_service_count || 0) > 0
+                            ? ` · ${number(row.out_of_service_count || 0, 0)} fuera de servicio`
+                            : ''}
+                        </p>
+                        {row.suggested_task ? (
+                          <p className="mt-2 text-xs font-medium">Revisar: {row.suggested_task}</p>
+                        ) : null}
                       </div>
                       <div className="lg:text-right">
                         <p className="text-xs text-muted-foreground">Última evidencia</p>
@@ -1500,14 +1784,29 @@ export function Asset360Overview({
                   ))}
                 </div>
               </div>
-            ) : null}
+            ) : (
+              <div className="p-4 text-sm text-muted-foreground">
+                No hay señales operacionales enlazadas a este equipo.
+              </div>
+            )}
 
             {standardJobPlans.length > 0 ? (
-              <div className={maintenanceTaskCandidates.length > 0 ? 'mt-5 border-t border-border pt-4' : ''}>
-                <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                  Plan estándar
-                </p>
-                <div className="mt-3 divide-y divide-border">
+              <details className="group border-t border-border px-4 py-4">
+                <summary className="cursor-pointer list-none">
+                  <span className="flex items-center justify-between gap-4">
+                    <span>
+                      <span className="block text-sm font-medium">Planes estándar disponibles</span>
+                      <span className="mt-0.5 block text-xs text-muted-foreground">
+                        Referencias aprobadas para planificación; no implican ejecución automática.
+                      </span>
+                    </span>
+                    <span className="flex items-center gap-2 text-xs text-muted-foreground">
+                      {standardJobPlans.length}
+                      <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
+                    </span>
+                  </span>
+                </summary>
+                <div className="mt-4 divide-y divide-border border-t border-border pt-1">
                   {standardJobPlans.slice(0, 3).map((plan) => (
                     <div key={plan.id} className="grid gap-3 py-3 lg:grid-cols-[150px_minmax(0,1fr)_180px] lg:items-center">
                       <div>
@@ -1518,23 +1817,29 @@ export function Asset360Overview({
                         </p>
                       </div>
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-medium">{plan.name || plan.work_type || 'Plan de intervención'}</p>
+                        <p className="truncate text-sm font-medium">
+                          {plan.name || plan.work_type || 'Plan de intervención'}
+                        </p>
                         <p className="mt-1 text-xs text-muted-foreground">
                           {plan.skill_requirement || plan.reason || 'Sin requisito adicional'}
                         </p>
                       </div>
                       <div className="lg:text-right">
                         <p className="text-sm font-medium">
-                          {plan.estimated_duration_hours != null ? `${number(plan.estimated_duration_hours, 1)} h` : 'Sin duración'}
+                          {plan.estimated_duration_hours != null
+                            ? `${number(plan.estimated_duration_hours, 1)} h`
+                            : 'Sin duración'}
                         </p>
                         <p className="mt-1 text-xs text-muted-foreground">
-                          {plan.labor_people_required != null ? `${number(plan.labor_people_required, 0)} personas` : 'Dotación no informada'}
+                          {plan.labor_people_required != null
+                            ? `${number(plan.labor_people_required, 0)} personas`
+                            : 'Dotación no informada'}
                         </p>
                       </div>
                     </div>
                   ))}
                 </div>
-              </div>
+              </details>
             ) : null}
           </div>
         </details>
@@ -1543,162 +1848,208 @@ export function Asset360Overview({
       {hasRuntimeEvidence ? (
         <details className="group rounded-lg border border-border bg-card">
           <SectionSummary
-            title="Horómetro y costo por hora"
+            title={`${effectiveMeterDisplayLabel} y uso`}
             hint={runtimeCostIntelligence?.latest_meter_hours != null
-              ? `${number(runtimeCostIntelligence.latest_meter_hours, 1)} h${runtimeCostIntelligence.last_reading_at ? ` · registrado ${date(runtimeCostIntelligence.last_reading_at)}` : ' · sin fecha de lectura'}`
-              : 'Sin historial de horómetro'}
+              ? `${number(runtimeCostIntelligence.latest_meter_hours, 1)} ${effectiveMeterSuffix}${runtimeCostIntelligence.last_reading_at ? ` · ${date(runtimeCostIntelligence.last_reading_at)}` : ''}`.trim()
+              : 'Sin lectura actual'}
           />
-          <div className="grid gap-4 border-t border-border p-4 sm:grid-cols-2 lg:grid-cols-4">
-            <IdentityItem
-              icon={Gauge}
-              label="Último horómetro"
-              value={runtimeCostIntelligence?.latest_meter_hours != null ? `${number(runtimeCostIntelligence.latest_meter_hours, 1)} h` : null}
-              meta={[
-                runtimeCostIntelligence?.last_reading_at
-                  ? `Registrado el ${date(runtimeCostIntelligence.last_reading_at)}`
-                  : 'Sin fecha de lectura',
-                runtimeCostIntelligence?.meter_evidence_source
-                  ? `Fuente: ${runtimeCostIntelligence.meter_evidence_source}`
-                  : null,
-              ].filter(Boolean).join(' · ')}
-            />
-            <IdentityItem
-              icon={Timer}
-              label="Horas observadas"
-              value={runtimeCostIntelligence?.observed_operating_hours != null ? `${number(runtimeCostIntelligence.observed_operating_hours, 1)} h` : null}
-              meta={runtimeCostIntelligence?.first_reading_at && runtimeCostIntelligence?.last_reading_at ? `Período ${date(runtimeCostIntelligence.first_reading_at)} → ${date(runtimeCostIntelligence.last_reading_at)}` : null}
-            />
-            <IdentityItem
-              icon={Coins}
-              label="Costo auditado / hora"
-              value={runtimeCostIntelligence?.audited_cost_per_operating_hour != null ? `${money(runtimeCostIntelligence.audited_cost_per_operating_hour)}/h` : null}
-              meta={reliability?.last_audited_closure_at ? `Cierres auditados hasta ${date(reliability.last_audited_closure_at)}` : 'Sin cierre auditado con fecha'}
-            />
-            <IdentityItem
-              icon={FileText}
-              label="Lecturas"
-              value={runtimeCostIntelligence?.reading_count ?? meterHistory.length}
-              meta={[
-                runtimeCostIntelligence?.reset_count != null && Number(runtimeCostIntelligence.reset_count) > 0
-                  ? `${number(runtimeCostIntelligence.reset_count, 0)} reinicios detectados`
-                  : null,
-                runtimeCostIntelligence?.last_reading_at
-                  ? `Última el ${date(runtimeCostIntelligence.last_reading_at)}`
-                  : null,
-              ].filter(Boolean).join(' · ') || null}
-            />
-          </div>
-          {meterHistory.length > 0 ? (
-            <div className="border-t border-border px-4 py-4">
-              <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Últimas lecturas</p>
-              <div className="mt-3 divide-y divide-border">
-                {meterHistory.slice(0, 6).map((row) => (
-                  <div key={row.id} className="grid gap-2 py-2 sm:grid-cols-[140px_120px_minmax(0,1fr)] sm:items-center">
-                    <span className="text-xs text-muted-foreground">{date(row.recorded_at)}</span>
-                    <span className="text-sm font-medium">{row.meter_value != null ? `${number(row.meter_value, 1)} ${row.meter_unit || ''}`.trim() : 'Sin lectura'}</span>
-                    <span className="truncate text-xs text-muted-foreground">{row.source_kind || row.source_reference || 'Fuente operacional'}</span>
-                  </div>
-                ))}
+          <div className="border-t border-border">
+            <div className="grid gap-px bg-border sm:grid-cols-3">
+              <div className="bg-card p-4">
+                <p className="text-xs text-muted-foreground">{meterIsScheduleReference ? `${effectiveMeterLabel} referencial` : `${effectiveMeterLabel} actual`}</p>
+                <p className="mt-2 text-2xl font-semibold tracking-tight">
+                  {runtimeCostIntelligence?.latest_meter_hours != null
+                    ? `${number(runtimeCostIntelligence.latest_meter_hours, 1)} ${effectiveMeterSuffix}`.trim()
+                    : 'Sin lectura'}
+                </p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {runtimeCostIntelligence?.last_reading_at
+                    ? `Registrado el ${date(runtimeCostIntelligence.last_reading_at)}`
+                    : meterIsScheduleReference
+                      ? 'Referencia de pauta; sin lectura observada'
+                      : 'Sin fecha de lectura'}
+                </p>
+              </div>
+              <div className="bg-card p-4">
+                <p className="text-xs text-muted-foreground">Horas observadas</p>
+                <p className="mt-2 text-xl font-semibold">
+                  {Number(runtimeCostIntelligence?.reading_count || 0) >= 2 &&
+                  runtimeCostIntelligence?.observed_operating_hours != null
+                    ? `${number(runtimeCostIntelligence.observed_operating_hours, 1)} h`
+                    : 'Sin base'}
+                </p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {runtimeCostIntelligence?.first_reading_at && runtimeCostIntelligence?.last_reading_at
+                    ? `${date(runtimeCostIntelligence.first_reading_at)} → ${date(runtimeCostIntelligence.last_reading_at)}`
+                    : 'Período no consolidado'}
+                </p>
+              </div>
+              <div className="bg-card p-4">
+                <p className="text-xs text-muted-foreground">Costo auditado / hora</p>
+                <p className="mt-2 text-xl font-semibold">
+                  {runtimeCostIntelligence?.audited_cost_per_operating_hour != null
+                    ? `${money(runtimeCostIntelligence.audited_cost_per_operating_hour)}/h`
+                    : 'Sin base'}
+                </p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {runtimeCostIntelligence?.audited_cost_per_operating_hour != null
+                    ? 'Sólo cierres auditados y horas observadas'
+                    : 'Requiere cierres auditados y base horaria válida'}
+                </p>
               </div>
             </div>
-          ) : runtimeCostIntelligence?.latest_meter_hours != null ? (
-            <div className="border-t border-border px-4 py-4 text-sm text-muted-foreground">
-              Lectura actual disponible desde {runtimeCostIntelligence.meter_evidence_source || 'evidencia de pauta'}, sin historial cronológico de lecturas.
-            </div>
-          ) : (
-            <div className="border-t border-border px-4 py-4 text-sm text-muted-foreground">
-              Sin historial de horómetro.
-            </div>
-          )}
+
+            <details className="group border-t border-border px-4 py-4">
+              <summary className="cursor-pointer list-none">
+                <span className="flex items-center justify-between gap-4">
+                  <span>
+                    <span className="block text-sm font-medium">Historial de {effectiveMeterLabel.toLowerCase()}</span>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">
+                      {runtimeCostIntelligence?.reading_count ?? meterHistory.length} lecturas
+                      {Number(runtimeCostIntelligence?.material_meter_decrease_count || 0) > 0
+                        ? ` · ${number(runtimeCostIntelligence?.material_meter_decrease_count || 0, 0)} descenso material por revisar`
+                        : runtimeCostIntelligence?.reset_count != null && Number(runtimeCostIntelligence.reset_count) > 0
+                          ? ` · ${number(runtimeCostIntelligence.reset_count, 0)} reinicios detectados`
+                          : ''}
+                    </span>
+                  </span>
+                  <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
+                </span>
+              </summary>
+              <div className="mt-4 border-t border-border pt-3">
+                {meterHistory.length > 0 ? (
+                  <div className="divide-y divide-border">
+                    {meterHistory.slice(0, 6).map((row) => (
+                      <div key={row.id} className="grid gap-2 py-2 sm:grid-cols-[140px_120px_minmax(0,1fr)] sm:items-center">
+                        <span className="text-xs text-muted-foreground">{date(row.recorded_at)}</span>
+                        <span className="text-sm font-medium">
+                          {row.meter_value != null
+                            ? `${number(row.meter_value, 1)} ${row.meter_unit || ''}`.trim()
+                            : 'Sin lectura'}
+                        </span>
+                        <span className="truncate text-xs text-muted-foreground">
+                          {row.source_kind || row.source_reference || 'Fuente operacional'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Lectura actual disponible desde {runtimeCostIntelligence?.meter_evidence_source || 'evidencia operacional'}, sin historial cronológico enlazado.
+                  </p>
+                )}
+              </div>
+            </details>
+          </div>
         </details>
       ) : null}
 
       <details className="group rounded-lg border border-border bg-card" open={planningPriorityText.startsWith('P1') || planningPriorityText.startsWith('P2') || (!maintenancePriority && !latestPlan)}>
         <SectionSummary
-          title="Plan de mantenimiento"
+          title="Planificación"
           hint={maintenancePriority
-            ? maintenancePriority.recommended_action || 'Pauta configurada'
+            ? `${String(maintenancePriority.priority || '').toUpperCase().includes('SIN LÍNEA BASE') ? 'Base técnica sin programación' : maintenancePriority.priority || 'Sin prioridad'} · ${maintenancePriority.programming_status_raw || 'sin estado de programación'}`
             : latestPlan
-              ? 'Pauta disponible'
+              ? `${String(latestPlan.programming_status_raw || '').toLowerCase() === 'no programado' ? 'Pauta técnica · no programada' : latestPlan.programming_status_raw || 'Pauta disponible'}${latestPlan.parts_status_raw ? ` · repuestos ${String(latestPlan.parts_status_raw).toLowerCase()}` : ''}`
               : 'Sin planificación enlazada'}
         />
         {maintenancePriority ? (
-          <>
-            <>
-              <div className="grid gap-4 border-t border-border p-4 sm:grid-cols-2 lg:grid-cols-4">
-                <IdentityItem icon={Activity} label="Prioridad" value={maintenancePriority.priority} meta={maintenancePriority.current_reading_at ? `Calculada con lectura del ${date(maintenancePriority.current_reading_at)}` : latestPlan?.updated_at ? `Fuente actualizada ${date(latestPlan.updated_at)}` : null} />
-                <IdentityItem
-                  icon={Gauge}
-                  label="Lectura actual"
-                  value={maintenancePriority.current_reading != null ? `${number(maintenancePriority.current_reading, 1)} ${maintenancePriority.meter_unit || ''}` : null}
-                  meta={maintenancePriority.current_reading_at ? `Registrado el ${date(maintenancePriority.current_reading_at)}` : 'Sin fecha de lectura'}
-                />
-                <IdentityItem
-                  icon={Gauge}
-                  label="Próximo mantenimiento"
-                  value={maintenancePriority.next_due_meter != null ? `${number(maintenancePriority.next_due_meter, 1)} ${maintenancePriority.meter_unit || ''}` : null}
-                  meta={maintenancePriority.projected_due_at ? `Proyección ${date(maintenancePriority.projected_due_at)}` : maintenancePriority.scheduled_date ? `Programado ${date(maintenancePriority.scheduled_date)}` : null}
-                />
-                <IdentityItem
-                  icon={Timer}
-                  label="Margen"
-                  value={maintenancePriority.remaining_meter != null ? `${number(maintenancePriority.remaining_meter, 1)} ${maintenancePriority.meter_unit || ''}` : null}
-                  meta={maintenancePriority.current_reading_at ? `Con lectura del ${date(maintenancePriority.current_reading_at)}` : null}
-                />
-              </div>
-              <div className="grid gap-x-6 gap-y-3 border-t border-border px-4 py-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
-                <div>
-                  <p className="text-xs text-muted-foreground">Fecha proyectada</p>
-                  <p className="mt-1 font-medium">{date(maintenancePriority.projected_due_at || maintenancePriority.scheduled_date)}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Responsable</p>
-                  <p className="mt-1 font-medium">{maintenancePriority.responsible_raw || 'Sin responsable'}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Materiales</p>
-                  <p className="mt-1 font-medium">{maintenancePriority.parts_status_raw || 'Sin estado'}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Programación</p>
-                  <p className="mt-1 font-medium">{maintenancePriority.programming_status_raw || 'Sin estado'}</p>
-                </div>
-              </div>
-            </>
+          <div className="border-t border-border">
+            <div className="grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-4">
+              <IdentityItem
+                icon={Activity}
+                label="Prioridad"
+                value={maintenancePriority.priority}
+                meta={maintenancePriority.current_reading_at
+                  ? `Con lectura del ${date(maintenancePriority.current_reading_at)}`
+                  : latestPlan?.updated_at
+                    ? `Fuente actualizada ${date(latestPlan.updated_at)}`
+                    : null}
+              />
+              <IdentityItem
+                icon={Gauge}
+                label="Umbral de intervención"
+                value={maintenancePriority.next_due_meter != null
+                  ? `${number(maintenancePriority.next_due_meter, 1)} ${maintenancePriority.meter_unit || ''}`
+                  : null}
+                meta={maintenancePriority.projected_due_at
+                  ? `Proyección ${date(maintenancePriority.projected_due_at)}`
+                  : maintenancePriority.scheduled_date
+                    ? `Programado ${date(maintenancePriority.scheduled_date)}`
+                    : null}
+              />
+              <IdentityItem
+                icon={CalendarDays}
+                label="Estado de programación"
+                value={maintenancePriority.programming_status_raw || 'Sin estado'}
+                meta={maintenancePriority.responsible_raw ? `Responsable: ${maintenancePriority.responsible_raw}` : null}
+              />
+              <IdentityItem
+                icon={PackageCheck}
+                label="Repuestos en pauta"
+                value={maintenancePriority.parts_status_raw || 'Sin estado'}
+                meta="Estado de planificación; no equivale a quiebre de stock"
+              />
+            </div>
             {maintenancePriority.recommended_action ? (
               <div className="border-t border-border px-4 py-4">
-                <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Siguiente acción</p>
+                <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                  Siguiente acción
+                </p>
                 <p className="mt-2 text-sm font-medium">{maintenancePriority.recommended_action}</p>
                 {maintenancePriority.observations ? (
-                  <p className="mt-1 text-xs text-muted-foreground">{maintenancePriority.observations}</p>
+                  <details className="group mt-3">
+                    <summary className="cursor-pointer list-none text-xs text-muted-foreground">
+                      <span className="flex items-center gap-2">
+                        Ver observaciones
+                        <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" />
+                      </span>
+                    </summary>
+                    <p className="mt-2 text-xs text-muted-foreground">{maintenancePriority.observations}</p>
+                  </details>
                 ) : null}
               </div>
             ) : null}
-          </>
+          </div>
         ) : latestPlan ? (
-          <>
-            <div className="grid gap-4 border-t border-border p-4 sm:grid-cols-2 lg:grid-cols-4">
-              <IdentityItem icon={Gauge} label="Última MP" value={latestPlan.last_mp != null ? `${number(latestPlan.last_mp, 1)} ${latestPlan.meter_unit || ''}` : null} meta={latestPlan.current_reading_at ? `Lectura al ${date(latestPlan.current_reading_at)}` : latestPlan.updated_at ? `Fuente actualizada ${date(latestPlan.updated_at)}` : null} />
-              <IdentityItem icon={Timer} label="Intervalo MP" value={latestPlan.interval_mp != null ? `${number(latestPlan.interval_mp, 1)} ${latestPlan.meter_unit || ''}` : null} meta={latestPlan.updated_at ? `Fuente actualizada ${date(latestPlan.updated_at)}` : null} />
-              <IdentityItem icon={CalendarDays} label="Fecha programada" value={date(latestPlan.scheduled_date)} />
-              <IdentityItem icon={Wrench} label="Responsable" value={latestPlan.responsible_raw} meta={latestPlan.updated_at ? `Actualizado ${date(latestPlan.updated_at)}` : null} />
+          <div className="border-t border-border">
+            <div className="grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-4">
+              <IdentityItem
+                icon={Timer}
+                label="Intervalo"
+                value={latestPlan.interval_mp != null
+                  ? `${number(latestPlan.interval_mp, 1)} ${latestPlan.meter_unit || ''}`
+                  : null}
+                meta={latestPlan.updated_at ? `Fuente actualizada ${date(latestPlan.updated_at)}` : null}
+              />
+              <IdentityItem
+                icon={CalendarDays}
+                label="Estado de programación"
+                value={latestPlan.programming_status_raw || 'Sin estado'}
+                meta={latestPlan.scheduled_date
+                  ? `Programado ${date(latestPlan.scheduled_date)}`
+                  : latestPlan.responsible_raw
+                    ? `Responsable: ${latestPlan.responsible_raw}`
+                    : null}
+              />
+              {latestPlan.responsible_raw && latestPlan.scheduled_date ? (
+                <IdentityItem
+                  icon={Wrench}
+                  label="Responsable"
+                  value={latestPlan.responsible_raw}
+                />
+              ) : null}
+              <IdentityItem
+                icon={PackageCheck}
+                label="Repuestos en pauta"
+                value={latestPlan.parts_status_raw || 'Sin estado'}
+                meta="Estado de planificación; no equivale a quiebre de stock"
+              />
             </div>
-            <div className="grid gap-x-6 gap-y-3 border-t border-border px-4 py-3 text-sm sm:grid-cols-2">
-              <div>
-                <p className="text-xs text-muted-foreground">Programación</p>
-                <p className="mt-1 font-medium">{latestPlan.programming_status_raw || 'Sin estado'}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Materiales</p>
-                <p className="mt-1 font-medium">{latestPlan.parts_status_raw || 'Sin estado'}</p>
-              </div>
-            </div>
-          </>
+          </div>
         ) : (
           <div className="flex flex-col gap-4 border-t border-border p-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm font-medium">Sin planificación de mantenimiento enlazada</p>
-            </div>
+            <p className="text-sm font-medium">Sin planificación de mantenimiento enlazada</p>
             {data.canEdit ? (
               <Button asChild size="sm">
                 <Link
@@ -1717,217 +2068,349 @@ export function Asset360Overview({
 
       {drillingHistory.length > 0 ? (
         <details className="group rounded-lg border border-border bg-card">
-          <SectionSummary title="Producción" hint={drillingHistory[0]?.operation_date ? `${number(drillingMeters, 1)} m · ${drillingHistory.length} reportes · hasta ${date(drillingHistory[0].operation_date)}` : 'Sin producción reciente'} />
-          <div className="border-t border-border p-4">
-            <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <IdentityItem icon={Activity} label="Metros perforados" value={`${number(drillingMeters, 1)} m`} meta={drillingHistory[0]?.operation_date ? `${drillingHistory.length} reportes · hasta ${date(drillingHistory[0].operation_date)}` : `${drillingHistory.length} reportes`} />
-              <IdentityItem icon={CalendarDays} label="Última operación" value={date(drillingHistory[0]?.operation_date)} />
-              <IdentityItem icon={MapPin} label="Última faena" value={cleanEvidenceText(drillingHistory[0]?.mine_raw) || cleanEvidenceText(drillingHistory[0]?.site_raw)} />
+          <SectionSummary
+            title="Producción"
+            hint={consolidatedDrillingReports > 0
+              ? `${number(consolidatedDrillingMeters, 1)} m acumulados${operatingSpine?.last_drilling_date ? ` · última operación ${date(operatingSpine.last_drilling_date)}` : drillingHistory[0]?.operation_date ? ` · última operación ${date(drillingHistory[0].operation_date)}` : ''}`
+              : 'Sin producción enlazada'}
+          />
+          <div className="border-t border-border">
+            <div className="grid gap-4 p-4 sm:grid-cols-3">
+              <IdentityItem
+                icon={Activity}
+                label="Metros perforados acumulados"
+                value={`${number(consolidatedDrillingMeters, 1)} m`}
+                meta={`${number(consolidatedDrillingReports, 0)} reportes enlazados`}
+              />
+              <IdentityItem
+                icon={CalendarDays}
+                label="Última operación"
+                value={date(drillingHistory[0]?.operation_date)}
+              />
+              <IdentityItem
+                icon={MapPin}
+                label="Última faena"
+                value={cleanEvidenceText(drillingHistory[0]?.mine_raw) || cleanEvidenceText(drillingHistory[0]?.site_raw)}
+              />
             </div>
+
             {drillOperationalEvidence ? (
-              <div className="mb-4 grid gap-4 rounded-md border border-border bg-muted/20 p-4 sm:grid-cols-2 lg:grid-cols-3">
-                <IdentityItem icon={Activity} label="Operativo" value={drillOperationalEvidence.operational_reports} meta={drillOperationalEvidence.window_start && drillOperationalEvidence.window_end ? `Período ${date(drillOperationalEvidence.window_start)} → ${date(drillOperationalEvidence.window_end)}` : 'Período 90 días'} />
-                <IdentityItem icon={Activity} label="Fuera de servicio" value={drillOperationalEvidence.out_of_service_reports} meta={drillOperationalEvidence.window_start && drillOperationalEvidence.window_end ? `Período ${date(drillOperationalEvidence.window_start)} → ${date(drillOperationalEvidence.window_end)}` : 'Período 90 días'} />
-                <IdentityItem icon={Timer} label="Downtime 90 días" value={drillOperationalEvidence.recorded_downtime_hours != null ? `${number(drillOperationalEvidence.recorded_downtime_hours, 1)} h` : null} meta={drillOperationalEvidence.window_end ? `Corte ${date(drillOperationalEvidence.window_end)}` : null} />
+              <div className="grid gap-4 border-t border-border p-4 sm:grid-cols-3">
+                <IdentityItem
+                  icon={Activity}
+                  label="Operativo"
+                  value={drillOperationalEvidence.operational_reports}
+                  meta={drillOperationalEvidence.window_start && drillOperationalEvidence.window_end
+                    ? `${date(drillOperationalEvidence.window_start)} → ${date(drillOperationalEvidence.window_end)}`
+                    : 'Últimos 90 días'}
+                />
+                <IdentityItem
+                  icon={AlertTriangle}
+                  label="Fuera de servicio"
+                  value={drillOperationalEvidence.out_of_service_reports}
+                  meta={drillOperationalEvidence.window_start && drillOperationalEvidence.window_end
+                    ? `${date(drillOperationalEvidence.window_start)} → ${date(drillOperationalEvidence.window_end)}`
+                    : 'Últimos 90 días'}
+                />
+                <IdentityItem
+                  icon={Timer}
+                  label="Detención registrada"
+                  value={drillOperationalEvidence.recorded_downtime_hours != null
+                    ? `${number(drillOperationalEvidence.recorded_downtime_hours, 1)} h`
+                    : 'Sin base'}
+                  meta={drillOperationalEvidence.window_end ? `Corte ${date(drillOperationalEvidence.window_end)}` : null}
+                />
               </div>
             ) : null}
-            {drillEconomicsChange ? (
-              <div className="mb-4 grid gap-4 rounded-md border border-border bg-muted/20 p-4 sm:grid-cols-2 lg:grid-cols-3">
-                <IdentityItem icon={Coins} label="Costo/m mes actual" value={drillEconomicsChange.current_cost_clp_per_meter != null ? `${money(drillEconomicsChange.current_cost_clp_per_meter)}/m` : null} meta={drillEconomicsChange.current_month ? `Período ${date(drillEconomicsChange.current_month)}` : null} />
-                <IdentityItem icon={Coins} label="Cambio costo/m" value={drillEconomicsChange.cost_per_meter_change_pct != null ? `${number(drillEconomicsChange.cost_per_meter_change_pct, 1)}%` : null} meta={drillEconomicsChange.current_month && drillEconomicsChange.previous_month ? `${date(drillEconomicsChange.previous_month)} → ${date(drillEconomicsChange.current_month)}` : null} />
-                <IdentityItem icon={Activity} label="Cambio metros" value={drillEconomicsChange.drilled_meters_change_pct != null ? `${number(drillEconomicsChange.drilled_meters_change_pct, 1)}%` : null} meta={drillEconomicsChange.current_month && drillEconomicsChange.previous_month ? `${date(drillEconomicsChange.previous_month)} → ${date(drillEconomicsChange.current_month)}` : null} />
-              </div>
-            ) : null}
-            {drillEconomics ? (
-              <div className="mb-4 rounded-md border border-border bg-muted/20 p-4">
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  <IdentityItem icon={Coins} label="Costo 90 días" value={drillEconomics.recognized_cost_clp_90d != null ? money(drillEconomics.recognized_cost_clp_90d) : null} meta={drillEconomics.window_start && drillEconomics.window_end ? `Período ${date(drillEconomics.window_start)} → ${date(drillEconomics.window_end)}` : drillEconomics.last_cost_date ? `Último costo ${date(drillEconomics.last_cost_date)}` : null} />
-                  <IdentityItem icon={Activity} label="Metros 90 días" value={drillEconomics.drilled_meters_90d != null ? `${number(drillEconomics.drilled_meters_90d, 1)} m` : null} meta={drillEconomics.window_start && drillEconomics.window_end ? `Período ${date(drillEconomics.window_start)} → ${date(drillEconomics.window_end)}` : drillEconomics.last_drilling_date ? `Última perforación ${date(drillEconomics.last_drilling_date)}` : null} />
-                  <IdentityItem icon={Coins} label="Costo por metro" value={drillEconomics.cost_clp_per_meter_90d != null ? `${money(drillEconomics.cost_clp_per_meter_90d)}/m` : null} meta={drillEconomics.window_end ? `Fecha de corte ${date(drillEconomics.window_end)}` : null} />
-                </div>
-                {drillEconomics.evidence_status ? (
-                  <p className="mt-3 border-t border-border pt-3 text-xs text-muted-foreground">
-                    Evidencia: {drillEconomics.evidence_status}
-                  </p>
+
+            {(drillEconomicsChange || drillEconomics || drillingMaintenanceReview.length > 0 || drillingHistory.length > 0) ? (
+              <details className="group border-t border-border px-4 py-4">
+                <summary className="cursor-pointer list-none">
+                  <span className="flex items-center justify-between gap-4">
+                    <span>
+                      <span className="block text-sm font-medium">Detalle operacional y económico</span>
+                      <span className="mt-0.5 block text-xs text-muted-foreground">
+                        Costos por metro, variaciones, señales y reportes individuales
+                      </span>
+                    </span>
+                    <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
+                  </span>
+                </summary>
+
+                {drillEconomicsChange ? (
+                  <div className="mt-4 grid gap-4 border-t border-border pt-4 sm:grid-cols-3">
+                    <IdentityItem
+                      icon={Coins}
+                      label="Costo/m mes actual"
+                      value={drillEconomicsChange.current_cost_clp_per_meter != null
+                        ? `${money(drillEconomicsChange.current_cost_clp_per_meter)}/m`
+                        : null}
+                      meta={drillEconomicsChange.current_month ? `Período ${date(drillEconomicsChange.current_month)}` : null}
+                    />
+                    <IdentityItem
+                      icon={Coins}
+                      label="Cambio costo/m"
+                      value={drillEconomicsChange.cost_per_meter_change_pct != null
+                        ? `${number(drillEconomicsChange.cost_per_meter_change_pct, 1)}%`
+                        : null}
+                      meta={drillEconomicsChange.current_month && drillEconomicsChange.previous_month
+                        ? `${date(drillEconomicsChange.previous_month)} → ${date(drillEconomicsChange.current_month)}`
+                        : null}
+                    />
+                    <IdentityItem
+                      icon={Activity}
+                      label="Cambio metros"
+                      value={drillEconomicsChange.drilled_meters_change_pct != null
+                        ? `${number(drillEconomicsChange.drilled_meters_change_pct, 1)}%`
+                        : null}
+                      meta={drillEconomicsChange.current_month && drillEconomicsChange.previous_month
+                        ? `${date(drillEconomicsChange.previous_month)} → ${date(drillEconomicsChange.current_month)}`
+                        : null}
+                    />
+                  </div>
                 ) : null}
-              </div>
-            ) : null}
-            {drillingMaintenanceReview.length > 0 ? (
-              <div className="mb-4 rounded-md border border-border">
-                <div className="border-b border-border px-4 py-3">
-                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                    Señales para revisión de mantención
-                  </p>
-                </div>
-                <div className="divide-y divide-border">
-                  {drillingMaintenanceReview.slice(0, 4).map((row) => (
-                    <div key={row.source_report_id} className="grid gap-2 px-4 py-3 md:grid-cols-[120px_minmax(0,1fr)_160px] md:items-center">
-                      <div>
-                        <p className="text-xs text-muted-foreground">{date(row.operation_date)}</p>
-                        <p className="mt-1 text-xs font-medium">{row.review_status || 'Pendiente'}</p>
-                      </div>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium">{row.review_reason || 'Revisión requerida'}</p>
-                        <p className="mt-1 truncate text-xs text-muted-foreground">
-                          {row.machine_observations || row.equipment_status_raw || row.decision_note || 'Sin observación adicional'}
-                        </p>
-                      </div>
-                      <div className="md:text-right">
-                        <p className="text-xs text-muted-foreground">OT asociada</p>
-                        <p className="mt-1 text-sm font-medium">{row.has_linked_work_order ? 'Sí' : 'No'}</p>
-                      </div>
+
+                {drillEconomics ? (
+                  <div className="grid gap-4 border-t border-border py-4 sm:grid-cols-3">
+                    <IdentityItem
+                      icon={Coins}
+                      label="Costo 90 días"
+                      value={drillEconomics.recognized_cost_clp_90d != null ? money(drillEconomics.recognized_cost_clp_90d) : null}
+                      meta={drillEconomics.window_start && drillEconomics.window_end
+                        ? `${date(drillEconomics.window_start)} → ${date(drillEconomics.window_end)}`
+                        : null}
+                    />
+                    <IdentityItem
+                      icon={Activity}
+                      label="Metros 90 días"
+                      value={drillEconomics.drilled_meters_90d != null ? `${number(drillEconomics.drilled_meters_90d, 1)} m` : null}
+                    />
+                    <IdentityItem
+                      icon={Coins}
+                      label="Costo por metro"
+                      value={drillEconomics.cost_clp_per_meter_90d != null
+                        ? `${money(drillEconomics.cost_clp_per_meter_90d)}/m`
+                        : null}
+                      meta={drillEconomics.evidence_status || null}
+                    />
+                  </div>
+                ) : null}
+
+                {drillingMaintenanceReview.length > 0 ? (
+                  <div className="border-t border-border py-4">
+                    <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                      Señales para revisión de mantención
+                    </p>
+                    <div className="mt-3 divide-y divide-border">
+                      {drillingMaintenanceReview.slice(0, 4).map((row) => (
+                        <div key={row.source_report_id} className="grid gap-2 py-3 md:grid-cols-[120px_minmax(0,1fr)_160px] md:items-center">
+                          <div>
+                            <p className="text-xs text-muted-foreground">{date(row.operation_date)}</p>
+                            <p className="mt-1 text-xs font-medium">{row.review_status || 'Pendiente'}</p>
+                          </div>
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium">{row.review_reason || 'Revisión requerida'}</p>
+                            <p className="mt-1 truncate text-xs text-muted-foreground">
+                              {row.machine_observations || row.equipment_status_raw || row.decision_note || 'Sin observación adicional'}
+                            </p>
+                          </div>
+                          <div className="md:text-right">
+                            <p className="text-xs text-muted-foreground">OT asociada</p>
+                            <p className="mt-1 text-sm font-medium">{row.has_linked_work_order ? 'Sí' : 'No'}</p>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  </div>
+                ) : null}
+
+                <div className="border-t border-border py-4">
+                  <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                    Reportes recientes · {number(recentDrillingMeters, 1)} m en la muestra visible
+                  </p>
+                  <div className="mt-3 divide-y divide-border">
+                    {drillingHistory.slice(0, 8).map((row) => (
+                      <div key={row.id} className="grid gap-3 py-3 lg:grid-cols-[120px_120px_minmax(0,1fr)_140px] lg:items-center">
+                        <div>
+                          <p className="text-xs text-muted-foreground">{date(row.operation_date)}</p>
+                          <p className="mt-1 font-mono text-xs">{row.hole_code_raw || 'Sin sondaje'}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Producción</p>
+                          <p className="mt-1 text-sm font-medium">
+                            {row.drilled_meters != null ? `${number(row.drilled_meters, 1)} m` : 'Sin metros registrados'}
+                          </p>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">
+                            {row.operator_name_raw || 'Operador no informado'} · {row.shift_code_raw || 'Sin turno'}
+                          </p>
+                          <p className="mt-1 truncate text-xs text-muted-foreground">
+                            {row.machine_observations || row.drilling_observations || row.equipment_status_raw || 'Sin observaciones'}
+                          </p>
+                        </div>
+                        <div className="lg:text-right">
+                          <p className="text-xs text-muted-foreground">Ubicación</p>
+                          <p className="mt-1 text-sm font-medium">{row.sector_raw || row.site_raw || row.mine_raw || 'No informada'}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              </details>
             ) : null}
-            <div className="divide-y divide-border">
-              {drillingHistory.slice(0, 8).map((row) => (
-                <div key={row.id} className="grid gap-3 py-3 lg:grid-cols-[120px_120px_minmax(0,1fr)_140px] lg:items-center">
-                  <div>
-                    <p className="text-xs text-muted-foreground">{date(row.operation_date)}</p>
-                    <p className="mt-1 font-mono text-xs">{row.hole_code_raw || 'Sin sondaje'}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Producción</p>
-                    <p className="mt-1 text-sm font-medium">{row.drilled_meters != null ? `${number(row.drilled_meters, 1)} m` : 'Sin metros registrados'}</p>
-                  </div>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">
-                      {row.operator_name_raw || 'Operador no informado'} · {row.shift_code_raw || 'Sin turno'}
-                    </p>
-                    <p className="mt-1 truncate text-xs text-muted-foreground">
-                      {row.machine_observations || row.drilling_observations || row.equipment_status_raw || 'Sin observaciones'}
-                    </p>
-                  </div>
-                  <div className="lg:text-right">
-                    <p className="text-xs text-muted-foreground">Ubicación</p>
-                    <p className="mt-1 text-sm font-medium">{row.sector_raw || row.site_raw || row.mine_raw || 'No informada'}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
           </div>
         </details>
       ) : null}
 
       {auditedInterventions.length > 0 || recentEvents.length > 0 ? (
-      <details className="group rounded-lg border border-border bg-card">
-        <SectionSummary
-          title="Historial de mantención"
-          hint={auditedInterventions.length > 0
-            ? `${auditedInterventions.length} cierres auditados`
-            : recentEvents.length > 0
-              ? `${recentEvents.length} eventos recientes`
-              : 'Sin historial reciente'}
-        />
-        <div className="border-t border-border">
-          <div className="p-4">
-            <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Cierres auditados</p>
+        <details className="group rounded-lg border border-border bg-card">
+          <SectionSummary
+            title="Historial de mantención"
+            hint={auditedInterventions.length > 0
+              ? `${auditedInterventions.length} cierres auditados`
+              : `${recentEvents.length} eventos recientes`}
+          />
+          <div className="border-t border-border">
             {auditedInterventions.length > 0 ? (
-              <div className="mt-3 divide-y divide-border">
-                {auditedInterventions.slice(0, 5).map((item) => (
-                  <div key={item.id} className="grid gap-3 py-4 lg:grid-cols-[140px_minmax(0,1fr)_140px_140px] lg:items-center">
-                    <div>
-                      <p className="text-xs text-muted-foreground">{date(item.closed_at || item.workOrder?.completion_date)}</p>
-                      <p className="mt-1 font-mono text-xs">{item.workOrder?.work_order_number || 'OT sin número'}</p>
+              <div className="p-4">
+                <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                  Últimas intervenciones auditadas
+                </p>
+                <div className="mt-3 divide-y divide-border">
+                  {auditedInterventions.slice(0, 3).map((item) => (
+                    <div key={item.id} className="grid gap-3 py-4 lg:grid-cols-[140px_minmax(0,1fr)_140px] lg:items-center">
+                      <div>
+                        <p className="text-xs text-muted-foreground">{date(item.closed_at || item.workOrder?.completion_date)}</p>
+                        <p className="mt-1 font-mono text-xs">{item.workOrder?.work_order_number || 'OT sin número'}</p>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">
+                          {item.workOrder?.title || item.workOrder?.work_type || 'Mantención cerrada'}
+                        </p>
+                        <p className="mt-1 truncate text-xs text-muted-foreground">
+                          {item.workOrder?.root_cause || item.workOrder?.preventive_actions || 'Sin causa o acción documentada'}
+                        </p>
+                      </div>
+                      <div className="lg:text-right">
+                        <p className="text-xs text-muted-foreground">Costo</p>
+                        <p className="mt-1 text-sm font-medium">{money(item.total_cost)}</p>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{item.workOrder?.title || item.workOrder?.work_type || 'Mantención cerrada'}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {item.workOrder?.root_cause || item.workOrder?.preventive_actions || 'Sin causa o acción documentada'}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Duración</p>
-                      <p className="mt-1 text-sm font-medium">
-                        {item.workOrder?.actual_duration_hours != null ? `${number(item.workOrder.actual_duration_hours, 1)} h` : 'Sin base'}
-                      </p>
-                    </div>
-                    <div className="lg:text-right">
-                      <p className="text-xs text-muted-foreground">Costo</p>
-                      <p className="mt-1 text-sm font-medium">{money(item.total_cost)}</p>
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             ) : (
-              <p className="mt-3 text-sm text-muted-foreground">Sin cierres de mantención auditados para este activo.</p>
+              <div className="p-4 text-sm text-muted-foreground">Sin cierres auditados.</div>
             )}
-          </div>
-          {recentEvents.length > 0 ? (
-            <div className="border-t border-border p-4">
-              <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Actividad reciente</p>
-              <div className="mt-3 divide-y divide-border">
-                {recentEvents.slice(0, 5).map((event) => (
-                  <div key={event.id} className="grid gap-1 py-3 sm:grid-cols-[120px_minmax(0,1fr)_180px] sm:items-center">
-                    <span className="text-xs text-muted-foreground">{date(event.event_at)}</span>
-                    <span className="text-sm font-medium">{event.summary || event.event_type || 'Evento de mantenimiento'}</span>
-                    <span className="text-xs text-muted-foreground sm:text-right">{event.actor_name || 'Actor no informado'}</span>
+
+            {recentEvents.length > 0 || auditedInterventions.length > 3 ? (
+              <details className="group border-t border-border px-4 py-4">
+                <summary className="cursor-pointer list-none">
+                  <span className="flex items-center justify-between gap-4">
+                    <span>
+                      <span className="block text-sm font-medium">Más historial</span>
+                      <span className="mt-0.5 block text-xs text-muted-foreground">
+                        Eventos recientes y cierres anteriores
+                      </span>
+                    </span>
+                    <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
+                  </span>
+                </summary>
+                {auditedInterventions.length > 3 ? (
+                  <div className="mt-4 divide-y divide-border border-t border-border pt-1">
+                    {auditedInterventions.slice(3, 6).map((item) => (
+                      <div key={item.id} className="grid gap-3 py-3 sm:grid-cols-[120px_minmax(0,1fr)_120px] sm:items-center">
+                        <span className="text-xs text-muted-foreground">{date(item.closed_at || item.workOrder?.completion_date)}</span>
+                        <span className="truncate text-sm font-medium">{item.workOrder?.title || item.workOrder?.work_type || 'Mantención cerrada'}</span>
+                        <span className="text-sm font-medium sm:text-right">{money(item.total_cost)}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </div>
-          ) : null}
-        </div>
-      </details>
+                ) : null}
+                {recentEvents.length > 0 ? (
+                  <div className={auditedInterventions.length > 3 ? 'border-t border-border pt-3' : 'mt-4 border-t border-border pt-3'}>
+                    <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Actividad reciente</p>
+                    <div className="mt-2 divide-y divide-border">
+                      {recentEvents.slice(0, 5).map((event) => (
+                        <div key={event.id} className="grid gap-1 py-3 sm:grid-cols-[120px_minmax(0,1fr)_180px] sm:items-center">
+                          <span className="text-xs text-muted-foreground">{date(event.event_at)}</span>
+                          <span className="text-sm font-medium">{event.summary || event.event_type || 'Evento de mantenimiento'}</span>
+                          <span className="text-xs text-muted-foreground sm:text-right">{event.actor_name || 'Actor no informado'}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </details>
+            ) : null}
+          </div>
+        </details>
       ) : null}
 
       {hasMaterialEvidence ? (
-      <details className="group rounded-lg border border-border bg-card">
-        <SectionSummary
-          title="Materiales y repuestos"
-          hint={installedParts.length || pendingParts.length
-            ? `${installedParts.length} instalados · ${pendingParts.length} pendientes`
-            : 'Sin repuestos vinculados'}
-        />
-        <div className="border-t border-border">
-          <div className="p-4">
-            <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Pendientes</p>
-            {pendingParts.length > 0 ? (
-              <div className="mt-3 divide-y divide-border">
-                {pendingParts.slice(0, 8).map((part) => {
-                  const pending = Math.max(
-                    Number(part.quantity_requested || 0) -
-                      Number(part.quantity_installed || 0) -
-                      Number(part.quantity_returned || 0),
-                    0,
-                  );
-                  return (
-                    <div key={part.id} className="flex items-start justify-between gap-4 py-3">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium">
-                          {part.product?.name || part.product?.product_code || 'Repuesto sin nombre'}
-                        </p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {part.workOrder?.work_order_number || 'OT no informada'} · {part.status || 'Pendiente'}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-medium">{number(pending, 0)} {part.product?.unit || ''}</p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          Solicitado {number(part.quantity_requested || 0, 0)}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : latestPlan?.parts_status_raw ? (
-              <div className="mt-3 rounded-md border border-border bg-muted/20 p-3">
-                <p className="text-sm font-medium">{latestPlan.parts_status_raw}</p>
-                {latestPlan.observations ? (
-                  <p className="mt-1 text-xs text-muted-foreground">{latestPlan.observations}</p>
-                ) : null}
-              </div>
-            ) : (
-              <p className="mt-3 text-sm text-muted-foreground">No hay materiales pendientes asociados a este activo.</p>
-            )}
-          </div>
-          <div className="border-t border-border p-4">
-            <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Historial instalado</p>
-              {installedParts.length > 0 ? (
+        <details className="group rounded-lg border border-border bg-card" open={pendingParts.length > 0}>
+          <SectionSummary
+            title="Materiales y repuestos"
+            hint={pendingParts.length > 0
+              ? `${pendingParts.length} pendientes`
+              : installedParts.length > 0
+                ? `${installedParts.length} instalados`
+                : 'Sin repuestos vinculados'}
+          />
+          <div className="border-t border-border">
+            <div className="p-4">
+              <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Pendientes</p>
+              {pendingParts.length > 0 ? (
                 <div className="mt-3 divide-y divide-border">
+                  {pendingParts.slice(0, 4).map((part) => {
+                    const pending = Math.max(
+                      Number(part.quantity_requested || 0) -
+                        Number(part.quantity_installed || 0) -
+                        Number(part.quantity_returned || 0),
+                      0,
+                    );
+                    return (
+                      <div key={part.id} className="flex items-start justify-between gap-4 py-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">
+                            {part.product?.name || part.product?.product_code || 'Repuesto sin nombre'}
+                          </p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {part.workOrder?.work_order_number || 'OT no informada'} · {part.status || 'Pendiente'}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-medium">{number(pending, 0)} {part.product?.unit || ''}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            Solicitado {number(part.quantity_requested || 0, 0)}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : latestPlan?.parts_status_raw ? (
+                <p className="mt-3 text-sm">{latestPlan.parts_status_raw}</p>
+              ) : (
+                <p className="mt-3 text-sm text-muted-foreground">No hay materiales pendientes asociados al equipo.</p>
+              )}
+            </div>
+
+            {installedParts.length > 0 ? (
+              <details className="group border-t border-border px-4 py-4">
+                <summary className="cursor-pointer list-none">
+                  <span className="flex items-center justify-between gap-4">
+                    <span>
+                      <span className="block text-sm font-medium">Historial instalado</span>
+                      <span className="mt-0.5 block text-xs text-muted-foreground">
+                        {installedParts.length} registros de repuestos
+                      </span>
+                    </span>
+                    <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
+                  </span>
+                </summary>
+                <div className="mt-3 divide-y divide-border border-t border-border pt-1">
                   {installedParts.slice(0, 8).map((part) => (
                     <div key={part.id} className="flex items-start justify-between gap-4 py-3">
                       <div className="min-w-0">
@@ -1941,113 +2424,185 @@ export function Asset360Overview({
                       <div className="text-right">
                         <p className="text-sm font-medium">{number(part.quantity_installed || 0, 0)} {part.product?.unit || ''}</p>
                         <p className="mt-1 text-xs text-muted-foreground">
-                          {part.total_cost != null ? money(part.total_cost) : part.unit_cost != null ? money(Number(part.unit_cost) * Number(part.quantity_installed || 0)) : 'Sin costo'}
+                          {part.total_cost != null
+                            ? money(part.total_cost)
+                            : part.unit_cost != null
+                              ? money(Number(part.unit_cost) * Number(part.quantity_installed || 0))
+                              : 'Sin costo'}
                         </p>
                       </div>
                     </div>
                   ))}
                 </div>
-              ) : (
-                <p className="mt-3 text-sm text-muted-foreground">No hay repuestos instalados registrados para este activo.</p>
-              )}
+              </details>
+            ) : null}
           </div>
-        </div>
-      </details>
+        </details>
       ) : null}
 
       {hasLifecycleEvidence ? (
-      <details className="group rounded-lg border border-border bg-card">
-        <SectionSummary title="Ciclo de vida" hint={remainingLifeYears != null ? `${number(remainingLifeYears, 1)} años remanentes estimados` : 'Vida útil no informada'} />
-        <div className="grid gap-4 border-t border-border p-4 sm:grid-cols-2 lg:grid-cols-4">
-          <IdentityItem icon={CalendarDays} label="Fecha adquisición" value={date(asset.acquisition_date)} meta={asset.updated_at ? `Maestro actualizado ${date(asset.updated_at)}` : null} />
-          <IdentityItem
-            icon={Timer}
-            label="Edad estimada"
-            value={assetAgeYears != null ? `${number(assetAgeYears, 1)} años` : 'No informado'}
-            meta={asset.acquisition_date ? `Calculada desde ${date(asset.acquisition_date)}` : null}
+        <details className="group rounded-lg border border-border bg-card">
+          <SectionSummary
+            title="Ciclo de vida"
+            hint={remainingLifeYears != null
+              ? `${number(remainingLifeYears, 1)} años remanentes estimados`
+              : asset.acquisition_date
+                ? `Adquirido ${date(asset.acquisition_date)}`
+                : 'Vida útil no informada'}
           />
-          <IdentityItem
-            icon={Timer}
-            label="Vida útil esperada"
-            value={expectedLifespan != null ? `${number(expectedLifespan, 0)} años` : 'No informado'}
-            meta={asset.updated_at ? `Maestro actualizado ${date(asset.updated_at)}` : null}
-          />
-          <IdentityItem
-            icon={Activity}
-            label="Vida útil remanente"
-            value={remainingLifeYears != null ? `${number(remainingLifeYears, 1)} años` : 'No informado'}
-            meta={asset.acquisition_date && expectedLifespan != null ? `Calculada desde adquisición y vida esperada` : null}
-          />
-        </div>
-        {asset.acquisition_cost != null ? (
-          <div className="border-t border-border px-4 py-3">
-            <p className="text-xs text-muted-foreground">Costo de adquisición</p>
-            <p className="mt-1 text-sm font-medium">{money(asset.acquisition_cost)}</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {asset.acquisition_date
-                ? `Fecha de adquisición ${date(asset.acquisition_date)}`
-                : asset.updated_at
-                  ? `Maestro actualizado ${date(asset.updated_at)}`
-                  : 'Sin fecha de referencia'}
-            </p>
+          <div className="border-t border-border">
+            <div className="grid gap-4 p-4 sm:grid-cols-3">
+              <IdentityItem icon={CalendarDays} label="Adquisición" value={date(asset.acquisition_date)} />
+              <IdentityItem icon={Timer} label="Edad estimada" value={assetAgeYears != null ? `${number(assetAgeYears, 1)} años` : 'No informado'} />
+              <IdentityItem
+                icon={Activity}
+                label="Vida remanente"
+                value={remainingLifeYears != null ? `${number(remainingLifeYears, 1)} años` : 'No informado'}
+                meta={expectedLifespan != null ? `Vida esperada ${number(expectedLifespan, 0)} años` : null}
+              />
+            </div>
+            {asset.acquisition_cost != null ? (
+              <div className="border-t border-border px-4 py-3">
+                <p className="text-xs text-muted-foreground">Costo de adquisición</p>
+                <p className="mt-1 text-sm font-medium">{money(asset.acquisition_cost)}</p>
+              </div>
+            ) : null}
           </div>
-        ) : null}
-      </details>
+        </details>
       ) : null}
 
       <details className="group rounded-lg border border-border bg-card">
         <SectionSummary
           title="Cobertura y trazabilidad"
-          hint={coverageMissingCount > 0
-            ? `${coverageMissingCount} brechas · ${sourceLabel}`
-            : `Cobertura completa · ${sourceLabel}`}
+          hint={coverageMissingCount > 0 ? `${coverageMissingCount} brechas de evidencia` : 'Cobertura completa'}
         />
         <div className="border-t border-border">
-          <div className="p-4">
-            <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Cobertura</p>
-            {coverageMissingCount > 0 ? (
+          {coverageMissingCount > 0 ? (
+            <div className="p-4">
+              <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Brechas de evidencia</p>
               <div className="mt-3 divide-y divide-border">
-                {coverageItems
-                  .filter(([, available]) => !available)
-                  .map(([label, , status]) => (
-                    <div key={label} className="grid gap-1 py-3 sm:grid-cols-[minmax(0,1fr)_220px] sm:items-center">
-                      <p className="text-sm font-medium">{label}</p>
-                      <p className="text-xs text-muted-foreground sm:text-right">{status}</p>
-                    </div>
-                  ))}
+                {coverageItems.filter(([, available]) => !available).map(([label, , status]) => (
+                  <div key={label} className="grid gap-1 py-3 sm:grid-cols-[minmax(0,1fr)_220px] sm:items-center">
+                    <p className="text-sm font-medium">{label}</p>
+                    <p className="text-xs text-muted-foreground sm:text-right">{status}</p>
+                  </div>
+                ))}
               </div>
-            ) : (
-              <p className="mt-3 text-sm text-muted-foreground">
-                No hay brechas de cobertura en las capas evaluadas.
-              </p>
-            )}
-            <p className="mt-3 text-xs text-muted-foreground">
-              {coverageAvailableCount}/{coverageItems.length} capas con evidencia.
-            </p>
-          </div>
-          <div className="border-t border-border px-5 py-4">
-            <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Trazabilidad</p>
-            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-              Horómetro, MTBF y MTTR provienen de evidencia operacional disponible. Los costos históricos se muestran desde registros económicos enlazados al activo; los costos auditados, desde cierres cuando existen.
-            </p>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <IdentityItem icon={Database} label="Fuente" value={sourceLabel} />
-              <IdentityItem icon={FileText} label="Hoja" value={asset.source_sheet} />
-              <IdentityItem icon={Hash} label="Fila fuente" value={asset.source_row} />
-              <IdentityItem icon={CalendarDays} label="Última actualización" value={date(asset.updated_at || asset.imported_at)} />
+              <p className="mt-3 text-xs text-muted-foreground">{coverageAvailableCount}/{coverageItems.length} capas con evidencia.</p>
             </div>
-            {financeReconciliation ? (
-              <div className="mt-4 border-t border-border pt-3">
-                <p className="text-xs text-muted-foreground">Conciliación finanzas</p>
-                <p className="mt-1 text-sm font-medium">
-                  {financeReconciliation.reconciliation_status || 'Sin estado'} · {financeReconciliation.match_method || 'sin método'}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  La vista de conciliación actual no expone timestamp propio.
-                </p>
+          ) : (
+            <div className="p-4 text-sm text-muted-foreground">
+              {coverageAvailableCount}/{coverageItems.length} capas con evidencia. Sin brechas detectadas.
+            </div>
+          )}
+
+          <details className="group border-t border-border px-4 py-4">
+            <summary className="cursor-pointer list-none">
+              <span className="flex items-center justify-between gap-4">
+                <span>
+                  <span className="block text-sm font-medium">Trazabilidad técnica</span>
+                  <span className="mt-0.5 block text-xs text-muted-foreground">Fuente, hoja, fila y conciliación financiera</span>
+                </span>
+                <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
+              </span>
+            </summary>
+            <div className="mt-4 border-t border-border pt-4">
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                Horómetro, confiabilidad y costos se muestran sólo cuando existe evidencia operacional o económica enlazada.
+              </p>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <IdentityItem icon={Database} label="Fuente maestra" value={sourceLabel} />
+                <IdentityItem
+                  icon={ShieldCheck}
+                  label="Calidad del maestro"
+                  value={
+                    asset.validation_status === 'valid'
+                      ? 'Validado'
+                      : asset.validation_status === 'warning'
+                        ? 'Requiere enriquecimiento'
+                        : asset.validation_status || 'No informada'
+                  }
+                  meta={asset.validation_status === 'warning' ? 'Identidad preservada; pueden faltar atributos técnicos' : null}
+                />
+                <IdentityItem icon={MapPin} label="Ubicación" value={asset.location} meta={evidenceSourceLabel(asset.location_evidence_source)} />
+                <IdentityItem
+                  icon={ShieldCheck}
+                  label="Criticidad"
+                  value={displayCriticality}
+                  meta={asset.criticality_evidence_at
+                    ? `${evidenceSourceLabel(asset.criticality_evidence_source)} · ${date(asset.criticality_evidence_at)}`
+                    : evidenceSourceLabel(asset.criticality_evidence_source)}
+                />
+                <IdentityItem icon={Activity} label="Estado" value={displayStatus} meta={evidenceSourceLabel(asset.operational_status_evidence_source)} />
+                <IdentityItem icon={Building2} label="Centro de costo" value={asset.cost_center_code} meta={evidenceSourceLabel(asset.cost_center_evidence_source)} />
+                <IdentityItem icon={Hash} label="Patente" value={asset.license_plate} meta={asset.license_plate ? evidenceSourceLabel(asset.license_plate_evidence_source) : null} />
+                <IdentityItem icon={Wrench} label="Familia referencial" value={asset.reference_family} meta={asset.reference_family ? `${evidenceSourceLabel(asset.reference_family_evidence_source)} · no canónico` : null} />
+                <IdentityItem
+                  icon={Gauge}
+                  label={effectiveMeterLabel}
+                  value={runtimeCostIntelligence?.latest_meter_hours != null
+                    ? `${number(runtimeCostIntelligence.latest_meter_hours, 1)} ${effectiveMeterSuffix}`.trim()
+                    : usesAnnualControl
+                      ? 'Anual'
+                      : null}
+                  meta={evidenceSourceLabel(runtimeCostIntelligence?.meter_evidence_source)}
+                />
+                {hasAnnualReadingConflict ? (
+                  <IdentityItem
+                    icon={AlertTriangle}
+                    label="Lectura de control"
+                    value="Requiere validación"
+                    meta="Valor numérico con unidad anual en planificación"
+                  />
+                ) : null}
+                <IdentityItem
+                  icon={FileText}
+                  label="Hoja"
+                  value={asset.source_sheet}
+                  meta={asset.source_row != null ? `Fila ${asset.source_row}` : null}
+                />
+                <IdentityItem icon={CalendarDays} label="Última actualización" value={date(asset.updated_at || asset.imported_at)} />
+                <IdentityItem
+                  icon={Activity}
+                  label="Última evidencia"
+                  value={date(latestEvidence?.value)}
+                  meta={latestEvidence
+                    ? `${latestEvidence.source}${latestEvidence.source === 'Operación' && operatingSpine?.evidence_domain_count != null
+                        ? ` · ${number(operatingSpine.evidence_domain_count, 0)} dominios`
+                        : ''}`
+                    : null}
+                />
               </div>
-            ) : null}
-          </div>
+              {financeReconciliation ? (
+                <div className="mt-4 border-t border-border pt-3">
+                  <p className="text-xs text-muted-foreground">Conciliación financiera</p>
+                  <p className="mt-1 text-sm font-medium">
+                    {financeReconciliation.finance_asset_code || financeReconciliation.finance_asset_name
+                      ? `${financeReconciliation.finance_asset_code || ''}${financeReconciliation.finance_asset_code && financeReconciliation.finance_asset_name ? ' · ' : ''}${financeReconciliation.finance_asset_name || ''}`
+                      : 'Activo financiero sin identificación visible'}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {financeReconciliation.reconciliation_status || 'Sin estado'} · {financeReconciliation.match_method || 'sin método'}
+                  </p>
+                </div>
+              ) : null}
+              {identityHistory.length > 0 ? (
+                <div className="mt-4 border-t border-border pt-3">
+                  <p className="text-xs text-muted-foreground">Identidad consolidada</p>
+                  <p className="mt-1 text-sm font-medium">
+                    {identityHistory.length} {identityHistory.length === 1 ? 'alias histórico aprobado' : 'alias históricos aprobados'}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {identityHistory
+                      .slice(0, 3)
+                      .map((row) => row.source_asset_name || row.source_asset_code)
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </p>
+                </div>
+              ) : null}
+            </div>
+          </details>
         </div>
       </details>
     </div>

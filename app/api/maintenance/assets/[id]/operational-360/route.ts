@@ -3,34 +3,25 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getOrganizationContext } from '@/lib/api/organization-context';
 import { MODULE_KEYS, requireModuleAccess } from '@/lib/api/module-access';
-import { deriveMachinesFromCostCenters, getRedistributableMachineAssignment } from '@/lib/maintenance/cost-center-machines';
+import { deriveMachinesFromCostCenters, getRedistributableMachineAssignment, inferMachineFamilyFromText } from '@/lib/maintenance/cost-center-machines';
+import {
+  cleanCategoricalEvidence,
+  inferChileanPlateFromName,
+  inferManufacturerFromName,
+  isRoadVehicleIdentity,
+  normalizeAssetIdentity,
+  normalizeCriticalityEvidence,
+  normalizeLocationEvidence,
+} from '@/lib/maintenance/asset-identity-evidence';
 
 const OPTIONAL_SOURCE_TIMEOUT_MS = 2500;
 
-function normalizeAssetIdentity(value: unknown) {
-  return String(value || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toUpperCase()
-    .replace(/\b(SONDA|EQUIPO|MAQUINA|MÁQUINA)\b/g, ' ')
-    .replace(/[^A-Z0-9]+/g, '')
-    .trim();
-}
 
-function normalizeLocationEvidence(value: unknown) {
-  const normalized = String(value || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toUpperCase()
-    .replace(/^MINA\s+/, '')
-    .replace(/\s+/g, ' ')
-    .trim();
 
-  if (!normalized || ['#ERROR!', 'NO REGISTRADO', 'N/A', 'SIN MINA ASIGNADA', 'SIN ASIGNAR', 'NO ASIGNADO'].includes(normalized)) {
-    return '';
-  }
-  return normalized;
-}
+
+
+
+
 
 function withOptionalTimeout<T>(query: PromiseLike<T>, source: string): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -67,6 +58,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       .maybeSingle();
     if (assetError) throw assetError;
     if (!asset) return NextResponse.json({ error: 'Equipo no encontrado' }, { status: 404 });
+
+    const { data: canonicalCurrent, error: canonicalCurrentError } = await context.supabase
+      .from('canonical_assets_current')
+      .select('asset_type,location,operational_status,manufacturer,model,serial_number,criticality,mtbf_hours,acquisition_date,acquisition_cost,expected_lifespan_years,updated_at')
+      .eq('organization_id', context.organizationId)
+      .eq('id', id)
+      .maybeSingle();
+    if (canonicalCurrentError) throw canonicalCurrentError;
 
     const sourcePayload =
       asset.source_payload && typeof asset.source_payload === 'object'
@@ -105,6 +104,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         : Promise.resolve({ data: [], error: null });
     const isDrillRig = String(asset.asset_type || '').toLowerCase() === 'drill_rig';
 
+    const exactCostCenterDetailPromise = asset.cost_center_code
+      ? context.supabase
+          .from('cost_centers')
+          .select('id,code,name,description,status')
+          .eq('organization_id', context.organizationId)
+          .eq('code', asset.cost_center_code)
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null });
+
     const costCenterMatchPromise =
       !asset.cost_center_code && asset.name
         ? context.supabase
@@ -117,24 +125,24 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       id: asset.id,
       asset_code: asset.asset_code,
       name: asset.name,
-      asset_type: asset.asset_type,
+      asset_type: asset.asset_type || canonicalCurrent?.asset_type || null,
       category: asset.category,
-      manufacturer: asset.manufacturer || sourcePayload.manufacturer || null,
-      model: asset.model || sourcePayload.model || null,
-      serial_number: asset.serial_number || sourcePayload.serial_number || null,
+      manufacturer: asset.manufacturer || sourcePayload.manufacturer || canonicalCurrent?.manufacturer || null,
+      model: asset.model || sourcePayload.model || canonicalCurrent?.model || null,
+      serial_number: asset.serial_number || sourcePayload.serial_number || canonicalCurrent?.serial_number || null,
       license_plate: asset.license_plate,
       cost_center_code: asset.cost_center_code,
-      location: sourcePayload.location || sourcePayload.mine || null,
-      criticality: sourcePayload.criticality || sourcePayload.criticality_raw || null,
-      operational_status: sourcePayload.status || sourcePayload.operational_status || null,
+      location: sourcePayload.location || sourcePayload.mine || canonicalCurrent?.location || null,
+      criticality: sourcePayload.criticality || sourcePayload.criticality_raw || canonicalCurrent?.criticality || null,
+      operational_status: sourcePayload.status || sourcePayload.operational_status || canonicalCurrent?.operational_status || null,
       meter_unit: sourcePayload.meter_unit || null,
       mobility_class: sourcePayload.mobility_class || null,
       lifecycle_state: sourcePayload.lifecycle_state || null,
       lifecycle_reason: sourcePayload.lifecycle_reason || null,
-      acquisition_date: sourcePayload.acquisition_date || null,
-      acquisition_cost: sourcePayload.acquisition_cost ?? null,
-      expected_lifespan_years: sourcePayload.expected_lifespan_years ?? null,
-      baseline_mtbf_hours: sourcePayload.mtbf_hours ?? null,
+      acquisition_date: sourcePayload.acquisition_date || canonicalCurrent?.acquisition_date || null,
+      acquisition_cost: sourcePayload.acquisition_cost ?? canonicalCurrent?.acquisition_cost ?? null,
+      expected_lifespan_years: sourcePayload.expected_lifespan_years ?? canonicalCurrent?.expected_lifespan_years ?? null,
+      baseline_mtbf_hours: sourcePayload.mtbf_hours ?? canonicalCurrent?.mtbf_hours ?? null,
       source_file: asset.source_file,
       source_sheet: asset.source_sheet,
       source_row: asset.source_row,
@@ -144,7 +152,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       validation_status: asset.validation_status,
     };
 
-    const [ordersResult, closeResult, preventiveResult, runtimeResult, reliabilityResult, runtimeReliabilityResult, snapshotsResult, partsResult, eventsResult, planningResult, operationalStateResult, supplyChainResult, procurementOrdersResult, costCenterPurchaseHistoryResult, namePurchaseHistoryResult, economicHistoryResult, drillingHistoryResult, drillEconomicsResult, drillingReviewResult, maintenancePriorityResult, financeReconciliationResult, runtimeCostResult, meterHistoryResult, drillEvidenceResult, drillEconomicsChangeResult, taskCandidatesResult, standardPlanResult, costCenterMatchResult] = await Promise.all([
+    const [ordersResult, closeResult, preventiveResult, runtimeResult, reliabilityResult, runtimeReliabilityResult, snapshotsResult, partsResult, eventsResult, statusHistoryResult, planningResult, operationalStateResult, operatingSpineResult, supplyChainResult, procurementOrdersResult, costCenterPurchaseHistoryResult, namePurchaseHistoryResult, economicHistoryResult, drillingHistoryResult, drillEconomicsResult, drillingReviewResult, maintenancePriorityResult, financeReconciliationResult, runtimeCostResult, meterHistoryResult, drillEvidenceResult, drillEconomicsChangeResult, taskCandidatesResult, standardPlanResult, identityHistoryResult, exactCostCenterDetailResult, costCenterMatchResult] = await Promise.all([
       context.supabase
         .from('maintenance_operational_work_order_flow_v1')
         .select('work_order_id,work_order_number,status,priority,work_type,scheduled_date,assigned_person_name,flow_status,open_purchase_order_count,quantity_requested,quantity_issued,quantity_installed,total_cost')
@@ -203,6 +211,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         .order('event_at', { ascending: false })
         .limit(30),
       context.supabase
+        .from('maintenance_asset_status_history')
+        .select('previous_state,new_state,reason,changed_at,source')
+        .eq('organization_id', context.organizationId)
+        .eq('asset_id', id)
+        .order('changed_at', { ascending: false })
+        .limit(1),
+      context.supabase
         .from('planning_maintenance_source_rows')
         .select('id,source_row,mine_raw,asset_name_raw,meter_unit,interval_mp,last_mp,initial_reading_at,initial_reading,current_reading_at,current_reading,criticality_raw,scheduled_date,programming_status_raw,responsible_raw,parts_status_raw,observations,workbook_priority_raw,workbook_action_raw,updated_at')
         .eq('organization_id', context.organizationId)
@@ -212,6 +227,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       context.supabase
         .from('asset_operational_state_v1')
         .select('operational_status,criticality,location,recognized_cost_event_count,last_cost_at,recognized_cost_clp_lifetime,recognized_cost_clp_ytd,recognized_cost_clp_12m,work_order_count,open_work_order_count,recorded_downtime_hours,drilling_report_count,drilled_meters,sensor_count,sensor_reading_count,evidence_domain_count,availability_evidence_status,availability_pct,last_availability_date,availability_days_30d,scheduled_minutes_30d,downtime_minutes_30d')
+        .eq('organization_id', context.organizationId)
+        .eq('canonical_asset_id', id)
+        .maybeSingle(),
+      context.supabase
+        .from('asset_operating_spine_v1')
+        .select('last_work_order_at,last_drilling_date,last_cost_event_at,last_telemetry_at,evidence_domain_count')
         .eq('organization_id', context.organizationId)
         .eq('canonical_asset_id', id)
         .maybeSingle(),
@@ -288,12 +309,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         .eq('canonical_asset_id', id)
         .maybeSingle(),
       context.supabase
-        .from('planning_asset_meter_observations_v1')
-        .select('id,canonical_asset_id,recorded_at,meter_value,meter_unit,source_kind,source_reference,evidence_row_count')
+        .from('planning_asset_meter_readings')
+        .select('id,canonical_asset_id,recorded_at,meter_value,meter_unit,source_kind,source_reference')
         .eq('organization_id', context.organizationId)
         .eq('canonical_asset_id', id)
         .order('recorded_at', { ascending: false })
-        .limit(12),
+        .limit(24),
       isDrillRig
         ? withOptionalTimeout(
             context.supabase
@@ -332,6 +353,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         .eq('canonical_asset_id', id)
         .order('updated_at', { ascending: false })
         .limit(5),
+      context.supabase
+        .from('asset_identity_unified_preview_v1')
+        .select('source_asset_id,source_asset_code,source_asset_name,target_asset_id,target_asset_code,target_asset_name,evidence_rule,identity_status,canonicalized')
+        .eq('organization_id', context.organizationId)
+        .eq('target_asset_id', id)
+        .eq('canonicalized', true),
+      exactCostCenterDetailPromise,
       costCenterMatchPromise,
     ]);
 
@@ -345,8 +373,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       ['closureSnapshots', snapshotsResult],
       ['parts', partsResult],
       ['events', eventsResult],
+      ['statusHistory', statusHistoryResult],
       ['maintenancePlanning', planningResult],
       ['operationalState', operationalStateResult],
+      ['operatingSpine', operatingSpineResult],
       ['supplyChain', supplyChainResult],
       ['procurementOrders', procurementOrdersResult],
       ['purchaseHistoryCostCenter', costCenterPurchaseHistoryResult],
@@ -363,6 +393,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       ['drillEconomicsChange', drillEconomicsChangeResult],
       ['taskCandidates', taskCandidatesResult],
       ['standardPlans', standardPlanResult],
+      ['identityHistory', identityHistoryResult],
+      ['exactCostCenterDetail', exactCostCenterDetailResult],
       ['costCenterMatch', costCenterMatchResult],
     ] as const;
     const sourceErrors = sourceResults
@@ -480,6 +512,30 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           ? canonicalExactCostCenterMatches[0]
           : null;
 
+    const purchaseExactCostCenterMatches = new Map<string, { code: string; description: string }>();
+    if (!asset.cost_center_code && !exactCostCenter?.code && normalizedAssetIdentity) {
+      for (const row of namePurchaseHistoryResult.data || []) {
+        const rawCostCenter = String(row.cost_center_code || '').trim();
+        const match = rawCostCenter.match(/^(\S+)\s+(.+)$/);
+        if (!match) continue;
+        const [, code, description] = match;
+        if (normalizeAssetIdentity(description) !== normalizedAssetIdentity) continue;
+        if (!purchaseExactCostCenterMatches.has(code)) {
+          purchaseExactCostCenterMatches.set(code, { code, description });
+        }
+      }
+    }
+    const purchaseExactCostCenterCandidates = [...purchaseExactCostCenterMatches.values()];
+    const purchaseCanonicalCostCenterCandidates = purchaseExactCostCenterCandidates.filter(
+      (candidate) => !getRedistributableMachineAssignment(candidate.code),
+    );
+    const purchaseExactCostCenter =
+      purchaseExactCostCenterCandidates.length === 1
+        ? purchaseExactCostCenterCandidates[0]
+        : purchaseCanonicalCostCenterCandidates.length === 1
+          ? purchaseCanonicalCostCenterCandidates[0]
+          : null;
+
     const derivedCostCenterPurchaseHistoryResult =
       !asset.cost_center_code && exactCostCenter?.code
         ? await context.supabase
@@ -490,12 +546,22 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             .order('order_date', { ascending: false, nullsFirst: false })
             .limit(100)
         : { data: [], error: null };
+    const purchaseExactCostCenterHistoryResult =
+      !asset.cost_center_code && !exactCostCenter?.code && purchaseExactCostCenter?.code
+        ? await context.supabase
+            .from('canonical_purchase_order_lines_current')
+            .select(purchaseSelect)
+            .eq('organization_id', context.organizationId)
+            .ilike('cost_center_code', `${purchaseExactCostCenter.code} %`)
+            .order('order_date', { ascending: false, nullsFirst: false })
+            .limit(100)
+        : { data: [], error: null };
 
-    if (derivedCostCenterPurchaseHistoryResult.error) {
+    if (derivedCostCenterPurchaseHistoryResult.error || purchaseExactCostCenterHistoryResult.error) {
       console.warn('[asset-360] derived cost center purchase history unavailable', {
         assetId: id,
-        costCenterCode: exactCostCenter?.code || null,
-        error: derivedCostCenterPurchaseHistoryResult.error,
+        costCenterCode: exactCostCenter?.code || purchaseExactCostCenter?.code || null,
+        error: derivedCostCenterPurchaseHistoryResult.error || purchaseExactCostCenterHistoryResult.error,
       });
     }
 
@@ -503,12 +569,16 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       ? 'cost_center'
       : exactCostCenter?.code
         ? 'cost_center_derived'
-        : 'name_model';
+        : purchaseExactCostCenter?.code
+          ? 'purchase_cost_center_exact_identity'
+          : 'name_model';
     const purchaseHistoryRows = asset.cost_center_code
       ? costCenterPurchaseHistoryResult.data || []
       : exactCostCenter?.code && !derivedCostCenterPurchaseHistoryResult.error
         ? derivedCostCenterPurchaseHistoryResult.data || []
-        : namePurchaseHistoryResult.data || [];
+        : purchaseExactCostCenter?.code && !purchaseExactCostCenterHistoryResult.error
+          ? purchaseExactCostCenterHistoryResult.data || []
+          : namePurchaseHistoryResult.data || [];
     const seenPurchaseLineIds = new Set<number>();
     const costCenterPurchaseHistory = purchaseHistoryRows.filter((row: any) => {
       if (seenPurchaseLineIds.has(row.id)) return false;
@@ -518,9 +588,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const purchaseHistorySummary = {
       matchBasis: purchaseHistoryMatchBasis,
       purchaseLines: costCenterPurchaseHistory.length,
+      pricedLines: costCenterPurchaseHistory.filter((row: any) => row.net_amount != null).length,
+      unpricedLines: costCenterPurchaseHistory.filter((row: any) => row.net_amount == null).length,
       orders: new Set(costCenterPurchaseHistory.map((row: any) => row.order_number).filter(Boolean)).size,
       suppliers: new Set(costCenterPurchaseHistory.map((row: any) => row.supplier_name).filter(Boolean)).size,
-      netSpend: costCenterPurchaseHistory.reduce((sum: number, row: any) => sum + Number(row.net_amount || 0), 0),
+      netSpend: costCenterPurchaseHistory.reduce(
+        (sum: number, row: any) => row.net_amount != null ? sum + Number(row.net_amount) : sum,
+        0,
+      ),
       lastOrderDate: costCenterPurchaseHistory
         .map((row: any) => row.order_date)
         .filter(Boolean)
@@ -562,47 +637,252 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         ? [...planningCriticalities.values()][0]
         : null;
 
+    const planningMeterUnits = Array.from(
+      new Set(
+        (planningResult.data || [])
+          .map((row: any) => String(row.meter_unit || '').trim().toLowerCase())
+          .filter(Boolean),
+      ),
+    );
+    const planningMeterUnit = planningMeterUnits.length === 1 ? planningMeterUnits[0] : null;
+
+    const planningEvidenceAt = (planningResult.data || [])
+      .map((row: any) => row.updated_at)
+      .filter(Boolean)
+      .sort()
+      .reverse()[0] || null;
+    const drillingLocationEvidenceAt = (drillingHistoryResult.data || [])
+      .map((row: any) => row.operation_date)
+      .filter(Boolean)
+      .sort()
+      .reverse()[0] || null;
+
+    const operationalLocation = normalizeLocationEvidence(operationalStateResult.data?.location)
+      ? String(operationalStateResult.data?.location || '').trim()
+      : null;
+    const payloadLocation = normalizeLocationEvidence(normalizedAsset.location)
+      ? String(normalizedAsset.location || '').trim()
+      : null;
+    const operationalCriticality = cleanCategoricalEvidence(operationalStateResult.data?.criticality);
+    const payloadCriticality = cleanCategoricalEvidence(normalizedAsset.criticality);
+    const operationalStatus = cleanCategoricalEvidence(operationalStateResult.data?.operational_status);
+    const latestStatusEvent = (statusHistoryResult.data || [])[0] || null;
+    const eventStatus = cleanCategoricalEvidence(latestStatusEvent?.new_state);
+    const payloadStatus = cleanCategoricalEvidence(
+      sourcePayload.status || sourcePayload.operational_status,
+    );
+    const canonicalStatus = cleanCategoricalEvidence(canonicalCurrent?.operational_status);
+    const resolvedOperationalStatus = operationalStatus || eventStatus || payloadStatus || canonicalStatus || null;
+    const statusEventMatchesResolved =
+      eventStatus &&
+      resolvedOperationalStatus &&
+      String(eventStatus).trim().toLowerCase() === String(resolvedOperationalStatus).trim().toLowerCase();
+    const referenceFamily =
+      normalizedAsset.asset_type || normalizedAsset.category
+        ? null
+        : exactCostCenter?.family || inferMachineFamilyFromText(String(normalizedAsset.name || ''));
+    const referenceManufacturer =
+      normalizedAsset.manufacturer ? null : inferManufacturerFromName(normalizedAsset.name);
+    const inferredLicensePlate =
+      normalizedAsset.license_plate ||
+      !isRoadVehicleIdentity(
+        normalizedAsset.asset_type,
+        normalizedAsset.category,
+        referenceFamily,
+        normalizedAsset.name,
+      )
+        ? null
+        : inferChileanPlateFromName(normalizedAsset.name);
+
     const resolvedAsset = {
       ...normalizedAsset,
-      cost_center_code: normalizedAsset.cost_center_code || exactCostCenter?.code || null,
-      location:
-        operationalStateResult.data?.location ||
-        normalizedAsset.location ||
-        evidenceLocation ||
+      meter_unit: normalizedAsset.meter_unit || planningMeterUnit || null,
+      cost_center_code:
+        normalizedAsset.cost_center_code ||
+        exactCostCenter?.code ||
+        purchaseExactCostCenter?.code ||
         null,
-      criticality: normalizedAsset.criticality || evidenceCriticality || null,
+      cost_center_name:
+        exactCostCenterDetailResult.data?.name ||
+        exactCostCenter?.name ||
+        purchaseExactCostCenter?.description ||
+        null,
+      cost_center_evidence_source:
+        normalizedAsset.cost_center_code
+          ? 'maintenance_canonical_assets_v1'
+          : exactCostCenter?.code
+            ? 'cost_centers_exact_identity'
+            : purchaseExactCostCenter?.code
+              ? 'purchase_history_exact_identity'
+              : null,
+      location: operationalLocation || payloadLocation || evidenceLocation || null,
+      location_evidence_source:
+        operationalLocation
+          ? 'asset_operational_state_v1'
+          : payloadLocation
+            ? 'maintenance_canonical_assets_v1'
+            : evidenceLocation
+              ? 'planning_or_production_evidence'
+              : null,
+      location_evidence_at:
+        operationalLocation
+          ? evidenceLocation && normalizeLocationEvidence(operationalLocation) === normalizeLocationEvidence(evidenceLocation)
+            ? [planningEvidenceAt, drillingLocationEvidenceAt].filter(Boolean).sort().reverse()[0] || null
+            : null
+          : payloadLocation
+            ? normalizedAsset.updated_at || normalizedAsset.imported_at || null
+            : evidenceLocation
+              ? [planningEvidenceAt, drillingLocationEvidenceAt].filter(Boolean).sort().reverse()[0] || null
+              : null,
+      criticality: operationalCriticality || payloadCriticality || evidenceCriticality || null,
       criticality_evidence_source:
-        !normalizedAsset.criticality && evidenceCriticality
-          ? 'planning_maintenance_source_rows'
+        operationalCriticality
+          ? 'asset_operational_state_v1'
+          : payloadCriticality
+            ? 'maintenance_canonical_assets_v1'
+            : evidenceCriticality
+              ? 'planning_maintenance_source_rows'
+              : null,
+      criticality_evidence_at:
+        operationalCriticality
+          ? evidenceCriticality &&
+            normalizeCriticalityEvidence(operationalCriticality) === normalizeCriticalityEvidence(evidenceCriticality)
+            ? planningEvidenceAt
+            : null
+          : payloadCriticality
+            ? normalizedAsset.updated_at || normalizedAsset.imported_at || null
+            : evidenceCriticality
+              ? planningEvidenceAt
+              : null,
+      operational_status: resolvedOperationalStatus,
+      operational_status_evidence_source:
+        statusEventMatchesResolved
+          ? 'maintenance_asset_status_history'
+          : operationalStatus
+            ? 'asset_operational_state_v1'
+            : payloadStatus
+              ? 'maintenance_canonical_assets_v1'
+              : canonicalStatus
+                ? 'canonical_assets_current'
+                : null,
+      operational_status_evidence_at:
+        statusEventMatchesResolved
+          ? latestStatusEvent?.changed_at || null
+          : payloadStatus
+            ? normalizedAsset.updated_at || normalizedAsset.imported_at || null
+            : canonicalStatus
+              ? canonicalCurrent?.updated_at || null
+              : null,
+      operational_status_reason:
+        statusEventMatchesResolved ? latestStatusEvent?.reason || null : null,
+      reference_manufacturer: referenceManufacturer || null,
+      reference_manufacturer_evidence_source:
+        referenceManufacturer ? 'deterministic_name_brand' : null,
+      reference_manufacturer_evidence_at:
+        referenceManufacturer ? normalizedAsset.updated_at || normalizedAsset.imported_at || null : null,
+      reference_family: referenceFamily || null,
+      reference_family_evidence_source:
+        referenceFamily
+          ? exactCostCenter?.family
+            ? 'cost_center_family'
+            : 'deterministic_name_classifier'
+          : null,
+      reference_family_evidence_at:
+        referenceFamily ? normalizedAsset.updated_at || normalizedAsset.imported_at || null : null,
+      license_plate: normalizedAsset.license_plate || inferredLicensePlate || null,
+      license_plate_evidence_source:
+        normalizedAsset.license_plate
+          ? 'maintenance_canonical_assets_v1'
+          : inferredLicensePlate
+            ? 'deterministic_name_plate'
+            : null,
+      license_plate_evidence_at:
+        normalizedAsset.license_plate || inferredLicensePlate
+          ? normalizedAsset.updated_at || normalizedAsset.imported_at || null
           : null,
     };
 
-    const planningMeterHistory = meterHistoryResult.data || [];
+    const rawPlanningMeterHistory = meterHistoryResult.data || [];
+    const planningMeterSignature = (row: any) =>
+      [row.canonical_asset_id || id, row.recorded_at || '', row.meter_value ?? '', row.meter_unit || ''].join('|');
+    const planningMeterHistory = Array.from(
+      rawPlanningMeterHistory.reduce((map: Map<string, any>, row: any) => {
+        const signature = planningMeterSignature(row);
+        if (!map.has(signature)) map.set(signature, row);
+        return map;
+      }, new Map()).values(),
+    ).slice(0, 12);
+    const duplicatePlanningMeterRows = Math.max(rawPlanningMeterHistory.length - planningMeterHistory.length, 0);
     const latestPlanningMeter = planningMeterHistory[0] || null;
+    const chronologicalPlanningMeters = [...planningMeterHistory]
+      .filter((row: any) => row.meter_value != null && row.recorded_at)
+      .sort((a: any, b: any) => String(a.recorded_at).localeCompare(String(b.recorded_at)));
+    let materialMeterDecreaseCount = 0;
+    for (let index = 1; index < chronologicalPlanningMeters.length; index += 1) {
+      const previous = Number(chronologicalPlanningMeters[index - 1]?.meter_value);
+      const current = Number(chronologicalPlanningMeters[index]?.meter_value);
+      if (Number.isFinite(previous) && Number.isFinite(current) && previous - current > 1) {
+        materialMeterDecreaseCount += 1;
+      }
+    }
     const preventiveMeterValues = preventives
-      .map((row: any) => row.effective_current_meter)
-      .filter((value: any) => value !== null && value !== undefined && Number.isFinite(Number(value)))
-      .map((value: any) => Number(value));
+      .filter((row: any) => {
+        const value = Number(row.effective_current_meter);
+        if (!Number.isFinite(value)) return false;
+        return !(value === 0 && String(row.meter_evidence_source || '').toLowerCase() === 'schedule_snapshot');
+      })
+      .map((row: any) => Number(row.effective_current_meter));
     const uniquePreventiveMeters = Array.from(new Set(preventiveMeterValues));
     const preventiveMeterSnapshot = uniquePreventiveMeters.length === 1 ? uniquePreventiveMeters[0] : null;
+    const planningCurrentRows = (planningResult.data || []).filter((row: any) => {
+      const meterUnit = String(row.meter_unit || '').trim().toLowerCase();
+      return (
+        row.current_reading !== null &&
+        row.current_reading !== undefined &&
+        Number.isFinite(Number(row.current_reading)) &&
+        !['anual', 'annual'].includes(meterUnit)
+      );
+    });
+    const uniquePlanningCurrentMeters = Array.from(
+      new Set(planningCurrentRows.map((row: any) => Number(row.current_reading))),
+    );
+    const planningCurrentMeter = uniquePlanningCurrentMeters.length === 1 ? uniquePlanningCurrentMeters[0] : null;
+    const planningCurrentEvidence = planningCurrentMeter != null
+      ? planningCurrentRows
+          .filter((row: any) => Number(row.current_reading) === planningCurrentMeter)
+          .sort((a: any, b: any) => String(b.current_reading_at || b.updated_at || '').localeCompare(String(a.current_reading_at || a.updated_at || '')))[0] || null
+      : null;
     const baseRuntimeCost = runtimeCostResult.data || null;
     const resolvedLatestMeter =
       baseRuntimeCost?.latest_meter_hours ??
       latestPlanningMeter?.meter_value ??
+      planningCurrentMeter ??
       preventiveMeterSnapshot ??
       null;
     const resolvedLastReadingAt =
       baseRuntimeCost?.last_reading_at ??
       latestPlanningMeter?.recorded_at ??
+      planningCurrentEvidence?.current_reading_at ??
+      planningCurrentEvidence?.updated_at ??
       null;
+    const resolvedMeterUnit =
+      baseRuntimeCost?.latest_meter_hours != null
+        ? 'h'
+        : latestPlanningMeter?.meter_unit ||
+          planningCurrentEvidence?.meter_unit ||
+          normalizedAsset.meter_unit ||
+          planningMeterUnit ||
+          (preventiveMeterSnapshot != null ? 'h' : null);
     const resolvedMeterEvidenceSource =
       baseRuntimeCost?.latest_meter_hours != null
         ? 'asset_runtime_readings'
         : latestPlanningMeter?.meter_value != null
           ? latestPlanningMeter.source_kind || latestPlanningMeter.source_reference || 'planning_asset_meter_readings'
-          : preventiveMeterSnapshot != null
-            ? (preventives.find((row: any) => Number(row.effective_current_meter) === preventiveMeterSnapshot)?.meter_evidence_source || 'schedule_snapshot')
-            : null;
+          : planningCurrentMeter != null
+            ? 'planning_maintenance_source_rows'
+            : preventiveMeterSnapshot != null
+              ? (preventives.find((row: any) => Number(row.effective_current_meter) === preventiveMeterSnapshot)?.meter_evidence_source || 'schedule_snapshot')
+              : null;
     const resolvedRuntimeCostIntelligence =
       resolvedLatestMeter != null || baseRuntimeCost
         ? {
@@ -612,15 +892,22 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                 ? Number(baseRuntimeCost?.reading_count || 0)
                 : planningMeterHistory.length > 0
                   ? planningMeterHistory.length
-                  : preventiveMeterSnapshot != null
+                  : planningCurrentMeter != null
                     ? 1
-                    : 0,
+                    : preventiveMeterSnapshot != null
+                      ? 1
+                      : 0,
             first_reading_at:
               baseRuntimeCost?.first_reading_at ??
               (planningMeterHistory.length > 0 ? planningMeterHistory[planningMeterHistory.length - 1]?.recorded_at || null : null),
             last_reading_at: resolvedLastReadingAt,
             latest_meter_hours: resolvedLatestMeter,
+            latest_meter_unit: resolvedMeterUnit,
             meter_evidence_source: resolvedMeterEvidenceSource,
+            duplicate_meter_rows_ignored: duplicatePlanningMeterRows,
+            material_meter_decrease_count: materialMeterDecreaseCount,
+            meter_sequence_status:
+              materialMeterDecreaseCount > 0 ? 'review_required' : 'consistent',
           }
         : null;
 
@@ -651,8 +938,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       installedParts,
       pendingParts,
       recentEvents: eventsResult.data || [],
+      statusHistory: statusHistoryResult.data || [],
       maintenancePlanning: planningResult.data || [],
       operationalState: operationalStateResult.data || null,
+      operatingSpine: operatingSpineResult.data || null,
       supplyChain: supplyChainResult.data || [],
       procurementOrders,
       costCenterPurchaseHistory,
@@ -669,6 +958,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       drillEconomicsChange: drillEconomicsChangeResult.data || null,
       maintenanceTaskCandidates: taskCandidatesResult.data || [],
       standardJobPlans: standardPlanResult.data || [],
+      identityHistory: identityHistoryResult.data || [],
       canEdit: access.canWrite,
       unavailableSources: sourceErrors.map((item) => item.source),
       evidence: {

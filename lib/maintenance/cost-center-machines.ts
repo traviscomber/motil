@@ -294,6 +294,16 @@ export function inferMachineFamilyFromText(value: string) {
     ['horquilla', 'Otros Equipos'],
     ['forklift', 'Otros Equipos'],
     ['cpcd25', 'Otros Equipos'],
+    ['bomba', 'Bombas'],
+    ['ventilador', 'Ventiladores'],
+    ['manipulador telescopico', 'Manipuladores Telescopicos'],
+    ['560-80', 'Manipuladores Telescopicos'],
+    ['hilux', 'Camionetas'],
+    ['toyota hilux', 'Camionetas'],
+    ['ford transit', 'Buses'],
+    ['transit', 'Buses'],
+    ['rodillo', 'Compactadores'],
+    ['compactadora', 'Compactadores'],
   ];
 
   for (const [needle, label] of matches) {
