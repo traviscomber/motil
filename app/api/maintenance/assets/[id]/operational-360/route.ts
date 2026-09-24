@@ -60,6 +60,39 @@ function normalizeCriticalityEvidence(value: unknown) {
   return normalized || '';
 }
 
+function inferManufacturerFromName(value: unknown) {
+  const raw = String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase();
+
+  const brands: Array<[RegExp, string]> = [
+    [/\bATLAS COPCO\b/, 'Atlas Copco'],
+    [/\bCATERPILLAR\b/, 'Caterpillar'],
+    [/\bCAT\b/, 'Caterpillar'],
+    [/\bTOYOTA\b/, 'Toyota'],
+    [/\bWEICHAI\b/, 'Weichai'],
+    [/\bWILSON\b/, 'Wilson'],
+    [/\bVOLKSWAGEN\b/, 'Volkswagen'],
+    [/\bFORD\b/, 'Ford'],
+    [/\bNISSAN\b/, 'Nissan'],
+    [/\bMITSUBISHI\b/, 'Mitsubishi'],
+    [/\bCHEVROLET\b/, 'Chevrolet'],
+    [/\bDOOSAN\b/, 'Doosan'],
+    [/\bSULLAIR\b/, 'Sullair'],
+    [/\bJCB\b/, 'JCB'],
+    [/\bPOSITRON\b/, 'Positron'],
+    [/\bINGETROL\b/, 'Ingetrol'],
+    [/\bSANDVIK\b/, 'Sandvik'],
+    [/\bEPIROC\b/, 'Epiroc'],
+    [/\bPAUS\b/, 'Paus'],
+    [/\bXCMG\b/, 'XCMG'],
+    [/\bMANITOU\b/, 'Manitou'],
+  ];
+
+  return brands.find(([pattern]) => pattern.test(raw))?.[1] || null;
+}
+
 function inferChileanPlateFromName(value: unknown) {
   const raw = String(value || '').trim().toUpperCase();
   const match = raw.match(/(?:^|[\s-])([A-Z]{4}-[0-9]{2}|[A-Z]{2}-[0-9]{4})$/);
@@ -727,6 +760,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       normalizedAsset.asset_type || normalizedAsset.category
         ? null
         : exactCostCenter?.family || inferMachineFamilyFromText(String(normalizedAsset.name || ''));
+    const referenceManufacturer =
+      normalizedAsset.manufacturer ? null : inferManufacturerFromName(normalizedAsset.name);
     const inferredLicensePlate =
       normalizedAsset.license_plate ||
       !isRoadVehicleIdentity(
@@ -818,6 +853,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
               : null,
       operational_status_reason:
         statusEventMatchesResolved ? latestStatusEvent?.reason || null : null,
+      reference_manufacturer: referenceManufacturer || null,
+      reference_manufacturer_evidence_source:
+        referenceManufacturer ? 'deterministic_name_brand' : null,
+      reference_manufacturer_evidence_at:
+        referenceManufacturer ? normalizedAsset.updated_at || normalizedAsset.imported_at || null : null,
       reference_family: referenceFamily || null,
       reference_family_evidence_source:
         referenceFamily
