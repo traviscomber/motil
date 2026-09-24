@@ -1004,6 +1004,15 @@ export function Asset360Overview({
     .map((value) => ({ value, time: new Date(value).getTime() }))
     .filter((item) => !Number.isNaN(item.time))
     .sort((a, b) => b.time - a.time)[0]?.value || null;
+  const latestEvidence = [
+    { value: lastOperationalEvidenceAt, source: 'Operación' },
+    { value: latestPlan?.updated_at || null, source: 'Planificación' },
+    { value: runtimeCostIntelligence?.last_reading_at || null, source: effectiveMeterLabel },
+  ]
+    .filter((item): item is { value: string; source: string } => Boolean(item.value))
+    .map((item) => ({ ...item, time: new Date(item.value).getTime() }))
+    .filter((item) => !Number.isNaN(item.time))
+    .sort((a, b) => b.time - a.time)[0] || null;
 
   const unavailableSources = data.unavailableSources || [];
   const sourceLabel = asset.source_file?.startsWith('public.')
@@ -2517,9 +2526,13 @@ export function Asset360Overview({
                 <IdentityItem icon={CalendarDays} label="Última actualización" value={date(asset.updated_at || asset.imported_at)} />
                 <IdentityItem
                   icon={Activity}
-                  label="Última evidencia operacional"
-                  value={date(lastOperationalEvidenceAt)}
-                  meta={operatingSpine?.evidence_domain_count != null ? `${number(operatingSpine.evidence_domain_count, 0)} dominios con evidencia` : null}
+                  label="Última evidencia"
+                  value={date(latestEvidence?.value)}
+                  meta={latestEvidence
+                    ? `${latestEvidence.source}${latestEvidence.source === 'Operación' && operatingSpine?.evidence_domain_count != null
+                        ? ` · ${number(operatingSpine.evidence_domain_count, 0)} dominios`
+                        : ''}`
+                    : null}
                 />
               </div>
               {financeReconciliation ? (
