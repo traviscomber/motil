@@ -118,6 +118,7 @@ type Asset360Response = {
     frequency_hours?: number | string | null;
     due_meter?: number | string | null;
     effective_current_meter?: number | string | null;
+    meter_evidence_source?: string | null;
     hour_status?: string | null;
     remaining_hours?: number | string | null;
     alert_due?: boolean;
@@ -703,6 +704,13 @@ export function Asset360Overview({
     Number(rr?.audited_corrective_events || 0) > 0 && rr?.mttr_hours != null
       ? `${number(rr.mttr_hours, 1)} h`
       : 'Sin base';
+  const defendableNextPreventiveMeter = Boolean(
+    nextPreventive?.effective_current_meter != null &&
+    !(
+      Number(nextPreventive.effective_current_meter) === 0 &&
+      String(nextPreventive.meter_evidence_source || '').toLowerCase() === 'schedule_snapshot'
+    )
+  );
   const effectiveMeterUnit = String(
     data.runtimeCostIntelligence?.latest_meter_unit || asset.meter_unit || 'h',
   ).trim().toLowerCase();
@@ -756,8 +764,8 @@ export function Asset360Overview({
         ? `${number(runtime.latest_meter_hours, 1)} h`
         : data.runtimeCostIntelligence?.latest_meter_hours != null
           ? `${number(data.runtimeCostIntelligence.latest_meter_hours, 1)} ${effectiveMeterSuffix}`.trim()
-          : nextPreventive?.effective_current_meter != null
-            ? `${number(nextPreventive.effective_current_meter, 1)} ${asset.meter_unit || 'h'}`.trim()
+          : defendableNextPreventiveMeter
+            ? `${number(nextPreventive?.effective_current_meter, 1)} ${asset.meter_unit || 'h'}`.trim()
             : 'Sin lectura',
       Gauge,
     ],
@@ -979,7 +987,7 @@ export function Asset360Overview({
     meterHistory.length > 0 ||
     Number(runtimeCostIntelligence?.reading_count || 0) > 0 ||
     runtimeCostIntelligence?.latest_meter_hours != null ||
-    nextPreventive?.effective_current_meter != null;
+    defendableNextPreventiveMeter;
   const hasEconomicEvidence = economicHistory.length > 0 || Number(operationalState?.recognized_cost_event_count || 0) > 0;
   const hasAvailabilityEvidence = Boolean(
     operationalState?.last_availability_date ||
