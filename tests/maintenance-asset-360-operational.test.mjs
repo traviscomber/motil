@@ -23,14 +23,14 @@ test('asset 360 UI refuses legacy calendar MTBF and historical mixed cost', () =
   assert.match(ui, /MTBF real/);
   assert.match(ui, /valid_mtbf_intervals/);
   assert.match(ui, /Sin base/);
-  assert.match(ui, /costos históricos se muestran desde registros económicos enlazados al activo/);
-  assert.match(ui, /costos auditados, desde cierres cuando existen/);
+  assert.match(ui, /Gasto reconocido y enlazado al equipo/);
+  assert.match(ui, /Sólo cierres auditados y horas observadas/);
 });
 
 test('asset 360 surfaces next preventive closure and reliability in one view', () => {
-  assert.match(ui, /Próximo preventivo/);
+  assert.match(ui, /Próxima intervención/);
   assert.match(ui, /Confiabilidad auditada/);
-  assert.match(ui, /Cierre y ejecución/);
+  assert.match(ui, /Trabajo en curso/);
   assert.match(ui, /Continuar trabajo/);
   assert.match(ui, /preventivo-horas/);
   assert.match(ui, /ordenes-trabajo\/cierre/);
@@ -45,7 +45,7 @@ test('asset 360 keeps secondary evidence consolidated', () => {
   assert.doesNotMatch(ui, /SectionSummary title="Cobertura"/);
   assert.doesNotMatch(ui, /SectionSummary title="Trazabilidad"/);
 
-  assert.match(ui, /Evolución anual/);
+  assert.match(ui, /Detalle económico/);
   assert.doesNotMatch(ui, /SectionSummary title="Costos por año"/);
   assert.doesNotMatch(ui, /SectionSummary title="Actividad reciente"/);
   assert.doesNotMatch(ui, /label="OT históricas"/);
@@ -67,7 +67,7 @@ test('asset 360 surfaces planning or schedule horometer without inventing runtim
   assert.match(api, /preventiveMeterSnapshot/);
   assert.match(api, /meter_evidence_source: resolvedMeterEvidenceSource/);
   assert.match(ui, /runtimeCostIntelligence\?\.latest_meter_hours != null/);
-  assert.match(ui, /sin historial cronológico de lecturas/);
+  assert.match(ui, /sin historial cronológico enlazado/);
 });
 
 test('asset 360 does not render missing evidence as zero or raw source errors', () => {
