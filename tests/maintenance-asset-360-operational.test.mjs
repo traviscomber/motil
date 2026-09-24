@@ -102,6 +102,13 @@ test('asset 360 falls back to the canonical current asset for exact-id status ev
   assert.match(api, /canonical_assets_current/);
 });
 
+test('asset 360 suppresses operational placeholder values instead of presenting them as evidence', () => {
+  assert.match(ui, /SIN ASIGNAR/);
+  assert.match(ui, /NO ASIGNADO/);
+  assert.match(ui, /DESCONOCIDO/);
+  assert.match(ui, /cleanEvidenceText/);
+});
+
 test('asset 360 restricts inferred Chilean plates to road vehicle identities', () => {
   assert.match(api, /function isRoadVehicleIdentity/);
   assert.match(api, /CAMIONETA\|CAMIONETAS\|CAMION\|CAMIONES\|BUS\|BUSES\|FURGON\|VEHICULO\|VEHICLE\|TRUCK\|PICKUP/);
