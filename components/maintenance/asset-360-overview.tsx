@@ -1194,127 +1194,121 @@ export function Asset360Overview({
             ? `Próximo: ${nextPreventive.task_name || 'preventivo'}${nextPreventive.due_meter != null ? ` · ${number(nextPreventive.due_meter, 0)} h` : ''}`
             : 'Sin pauta horaria registrada'}
         />
-        <div className={`grid gap-4 border-t border-border p-4 ${showExecutionCard ? 'lg:grid-cols-3' : 'lg:grid-cols-2'}`}>
-        <Card className="shadow-none">
-          <CardContent className="p-5">
-            <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-              Próximo preventivo
-            </p>
-            {nextPreventive ? (
-              <>
-                <p className="mt-3 font-medium">{nextPreventive.task_name || 'Pauta configurada'}</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Actual{' '}
-                  {nextPreventive.effective_current_meter == null
-                    ? 'sin lectura'
-                    : `${number(nextPreventive.effective_current_meter, 1)} h`}{' '}
-                  · vence{' '}
-                  {nextPreventive.due_meter == null
-                    ? 'sin base'
-                    : `${number(nextPreventive.due_meter, 1)} h`}
-                </p>
-                <div className="mt-4 flex items-center gap-2">
-                  <Badge variant={nextPreventive.alert_due ? 'destructive' : 'outline'}>
-                    {nextPreventive.alert_due
-                      ? 'Vencido'
-                      : String(nextPreventive.hour_status || '').toLowerCase() === 'pending'
-                        ? 'Pendiente'
-                        : nextPreventive.hour_status || 'Pendiente'}
-                  </Badge>
-                  <Button asChild variant="ghost" size="sm">
+        <div className="border-t border-border">
+          <div className={`grid gap-px bg-border ${showExecutionCard ? 'lg:grid-cols-2' : 'lg:grid-cols-1'}`}>
+            <div className="bg-card p-5">
+              <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                Próxima intervención
+              </p>
+              {nextPreventive ? (
+                <>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <p className="font-medium">{nextPreventive.task_name || 'Pauta configurada'}</p>
+                    <Badge variant={nextPreventive.alert_due ? 'destructive' : 'outline'}>
+                      {nextPreventive.alert_due
+                        ? 'Vencido'
+                        : String(nextPreventive.hour_status || '').toLowerCase() === 'pending'
+                          ? 'Pendiente'
+                          : nextPreventive.hour_status || 'Pendiente'}
+                    </Badge>
+                  </div>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Horómetro actual:{' '}
+                    {nextPreventive.effective_current_meter == null
+                      ? 'sin lectura'
+                      : `${number(nextPreventive.effective_current_meter, 1)} h`}
+                    {' · '}
+                    Vence:{' '}
+                    {nextPreventive.due_meter == null
+                      ? 'sin base'
+                      : `${number(nextPreventive.due_meter, 1)} h`}
+                  </p>
+                  <Button asChild variant="ghost" size="sm" className="mt-4 px-0">
                     <Link href="/dashboard/mantenimiento/preventivo-horas">
                       Abrir pauta
                       <ArrowRight className="ml-1 h-4 w-4" />
                     </Link>
                   </Button>
-                </div>
-              </>
-            ) : (
-              <p className="mt-3 text-sm text-muted-foreground">
-                No hay pauta horaria configurada para este activo.
-              </p>
-            )}
-          </CardContent>
-        </Card>
+                </>
+              ) : (
+                <p className="mt-3 text-sm text-muted-foreground">
+                  No hay pauta horaria configurada para este equipo.
+                </p>
+              )}
+            </div>
 
-        <Card className="shadow-none">
-          <CardContent className="p-5">
-            <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-              Confiabilidad auditada
-            </p>
-            {hasReliabilityEvidence ? (
-              <div className="mt-3 grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs text-muted-foreground">MTBF real</p>
-                  <p className="mt-1 font-medium">{mtbf}</p>
+            {showExecutionCard ? (
+              <div className="bg-card p-5">
+                <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                  Trabajo en curso
+                </p>
+                <div className="mt-3 grid grid-cols-3 gap-4">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Pasos pendientes</p>
+                    <p className="mt-1 font-medium">{summary.pendingPlanSteps}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Listas para cerrar</p>
+                    <p className="mt-1 font-medium">{summary.readyToClose}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Críticas abiertas</p>
+                    <p className="mt-1 font-medium">{summary.criticalOpen}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">MTTR</p>
-                  <p className="mt-1 font-medium">{mttr}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Cierres auditados</p>
-                  <p className="mt-1 font-medium">{Number(reliability?.audited_closures || 0)}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Causas recurrentes</p>
-                  <p className="mt-1 font-medium">{Number(reliability?.recurring_cause_count || 0)}</p>
-                </div>
+                {actionableWorkOrder ? (
+                  <Button asChild size="sm" className="mt-4">
+                    <Link
+                      href={`/dashboard/mantenimiento/ordenes-trabajo/cierre?workOrderId=${encodeURIComponent(
+                        actionableWorkOrder.work_order_id,
+                      )}`}
+                    >
+                      Continuar trabajo
+                      <ArrowRight className="ml-1 h-4 w-4" />
+                    </Link>
+                  </Button>
+                ) : null}
               </div>
-            ) : (
-              <p className="mt-3 text-sm text-muted-foreground">Sin cierres auditados.</p>
-            )}
+            ) : null}
+          </div>
+
+          <details className="group border-t border-border px-5 py-4">
+            <summary className="cursor-pointer list-none">
+              <span className="flex items-center justify-between gap-4">
+                <span>
+                  <span className="block text-sm font-medium">Confiabilidad auditada</span>
+                  <span className="mt-0.5 block text-xs text-muted-foreground">
+                    {hasReliabilityEvidence
+                      ? `MTBF ${mtbf} · MTTR ${mttr}`
+                      : 'Sin cierres auditados suficientes para métricas de confiabilidad'}
+                  </span>
+                </span>
+                <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
+              </span>
+            </summary>
+            <div className="mt-4 grid gap-4 border-t border-border pt-4 sm:grid-cols-4">
+              <IdentityItem icon={Timer} label="MTBF real" value={mtbf} />
+              <IdentityItem icon={Timer} label="MTTR" value={mttr} />
+              <IdentityItem
+                icon={ShieldCheck}
+                label="Cierres auditados"
+                value={Number(reliability?.audited_closures || 0)}
+              />
+              <IdentityItem
+                icon={AlertTriangle}
+                label="Causas recurrentes"
+                value={Number(reliability?.recurring_cause_count || 0)}
+              />
+            </div>
             <Button asChild variant="ghost" size="sm" className="mt-4 px-0">
               <Link href="/dashboard/mantenimiento/confiabilidad">
                 Ver confiabilidad
                 <ArrowRight className="ml-1 h-4 w-4" />
               </Link>
             </Button>
-          </CardContent>
-        </Card>
-
-        {showExecutionCard ? (
-          <Card className="shadow-none">
-            <CardContent className="p-5">
-              <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                Cierre y ejecución
-              </p>
-              <div className="mt-3 grid gap-4 sm:grid-cols-3">
-                <div>
-                  <p className="text-xs text-muted-foreground">Pasos pendientes</p>
-                  <p className="mt-1 font-medium">{summary.pendingPlanSteps}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Listas para cerrar</p>
-                  <p className="mt-1 font-medium">{summary.readyToClose}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Críticas abiertas</p>
-                  <p className="mt-1 font-medium">{summary.criticalOpen}</p>
-                </div>
-              </div>
-              {actionableWorkOrder ? (
-                <Button asChild variant="ghost" size="sm" className="mt-4 px-0">
-                  <Link
-                    href={`/dashboard/mantenimiento/ordenes-trabajo/cierre?workOrderId=${encodeURIComponent(
-                      actionableWorkOrder.work_order_id,
-                    )}`}
-                  >
-                    Continuar trabajo
-                    <ArrowRight className="ml-1 h-4 w-4" />
-                  </Link>
-                </Button>
-              ) : (
-                <p className="mt-4 text-xs text-muted-foreground">
-                  No hay una OT activa con cierre pendiente para continuar.
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        ) : null}
+          </details>
         </div>
       </details>
-
 
       {hasAvailabilityEvidence ? (
       <details className="group rounded-lg border border-border bg-card">
