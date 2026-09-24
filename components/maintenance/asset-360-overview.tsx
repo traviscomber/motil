@@ -377,6 +377,17 @@ type Asset360Response = {
     reconciliation_status?: string | null;
     match_method?: string | null;
   } | null;
+  identityHistory?: Array<{
+    source_asset_id?: string | null;
+    source_asset_code?: string | null;
+    source_asset_name?: string | null;
+    target_asset_id?: string | null;
+    target_asset_code?: string | null;
+    target_asset_name?: string | null;
+    evidence_rule?: string | null;
+    identity_status?: string | null;
+    canonicalized?: boolean | null;
+  }>;
   operationalState?: {
     operational_status?: string | null;
     criticality?: string | null;
@@ -863,6 +874,7 @@ export function Asset360Overview({
   const drillOperationalEvidence = data.drillOperationalEvidence;
   const drillEconomicsChange = data.drillEconomicsChange;
   const financeReconciliation = data.financeReconciliation;
+  const identityHistory = data.identityHistory || [];
   const supplyChain = data.supplyChain || [];
   const procurementOrders = data.procurementOrders || [];
   const costCenterPurchaseHistory = data.costCenterPurchaseHistory || [];
@@ -2430,6 +2442,21 @@ export function Asset360Overview({
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {financeReconciliation.reconciliation_status || 'Sin estado'} · {financeReconciliation.match_method || 'sin método'}
+                  </p>
+                </div>
+              ) : null}
+              {identityHistory.length > 0 ? (
+                <div className="mt-4 border-t border-border pt-3">
+                  <p className="text-xs text-muted-foreground">Identidad consolidada</p>
+                  <p className="mt-1 text-sm font-medium">
+                    {identityHistory.length} {identityHistory.length === 1 ? 'alias histórico aprobado' : 'alias históricos aprobados'}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {identityHistory
+                      .slice(0, 3)
+                      .map((row) => row.source_asset_name || row.source_asset_code)
+                      .filter(Boolean)
+                      .join(' · ')}
                   </p>
                 </div>
               ) : null}
