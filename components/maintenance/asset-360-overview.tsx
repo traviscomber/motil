@@ -1526,26 +1526,43 @@ export function Asset360Overview({
         <details className="group rounded-lg border border-border bg-card">
           <SectionSummary
             title="Señales de intervención"
-            hint={`${maintenanceTaskCandidates.length} señales · ${standardJobPlans.length > 0 ? `${standardJobPlans.length} planes estándar` : 'sin plan estándar'}`}
+            hint={maintenanceTaskCandidates.length > 0
+              ? `${maintenanceTaskCandidates.length} señales observadas`
+              : `${standardJobPlans.length} planes estándar disponibles`}
           />
-          <div className="border-t border-border p-4">
+          <div className="border-t border-border">
             {maintenanceTaskCandidates.length > 0 ? (
-              <div>
-                <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                  Señales desde operación
-                </p>
-                <div className="mt-3 divide-y divide-border">
+              <div className="p-4">
+                <div className="mb-3">
+                  <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                    Evidencia operacional
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Observaciones que requieren revisión humana. No equivalen a diagnóstico ni a una OT autorizada.
+                  </p>
+                </div>
+                <div className="divide-y divide-border">
                   {maintenanceTaskCandidates.slice(0, 6).map((row, index) => (
-                    <div key={`${row.component_key || 'signal'}-${index}`} className="grid gap-3 py-3 lg:grid-cols-[160px_minmax(0,1fr)_150px] lg:items-center">
+                    <div key={`${row.component_key || 'signal'}-${index}`} className="grid gap-3 py-3 lg:grid-cols-[170px_minmax(0,1fr)_150px] lg:items-center">
                       <div>
                         <p className="text-sm font-medium">{row.component_key || 'Componente'}</p>
-                        <p className="mt-1 text-xs text-muted-foreground">{row.signal_status || row.latest_status || 'Señal'}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {row.signal_status || row.latest_status || 'Observado'}
+                        </p>
                       </div>
                       <div className="min-w-0">
-                        <p className="truncate text-sm">{row.suggested_task || row.latest_observation || 'Revisar condición observada'}</p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {number(row.observation_count || 0, 0)} observaciones · {number(row.out_of_service_count || 0, 0)} fuera de servicio
+                        <p className="text-sm">
+                          {row.latest_observation || 'Condición observada sin detalle adicional'}
                         </p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {number(row.observation_count || 0, 0)} observaciones
+                          {Number(row.out_of_service_count || 0) > 0
+                            ? ` · ${number(row.out_of_service_count || 0, 0)} fuera de servicio`
+                            : ''}
+                        </p>
+                        {row.suggested_task ? (
+                          <p className="mt-2 text-xs font-medium">Revisar: {row.suggested_task}</p>
+                        ) : null}
                       </div>
                       <div className="lg:text-right">
                         <p className="text-xs text-muted-foreground">Última evidencia</p>
@@ -1555,14 +1572,29 @@ export function Asset360Overview({
                   ))}
                 </div>
               </div>
-            ) : null}
+            ) : (
+              <div className="p-4 text-sm text-muted-foreground">
+                No hay señales operacionales enlazadas a este equipo.
+              </div>
+            )}
 
             {standardJobPlans.length > 0 ? (
-              <div className={maintenanceTaskCandidates.length > 0 ? 'mt-5 border-t border-border pt-4' : ''}>
-                <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                  Plan estándar
-                </p>
-                <div className="mt-3 divide-y divide-border">
+              <details className="group border-t border-border px-4 py-4">
+                <summary className="cursor-pointer list-none">
+                  <span className="flex items-center justify-between gap-4">
+                    <span>
+                      <span className="block text-sm font-medium">Planes estándar disponibles</span>
+                      <span className="mt-0.5 block text-xs text-muted-foreground">
+                        Referencias aprobadas para planificación; no implican ejecución automática.
+                      </span>
+                    </span>
+                    <span className="flex items-center gap-2 text-xs text-muted-foreground">
+                      {standardJobPlans.length}
+                      <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
+                    </span>
+                  </span>
+                </summary>
+                <div className="mt-4 divide-y divide-border border-t border-border pt-1">
                   {standardJobPlans.slice(0, 3).map((plan) => (
                     <div key={plan.id} className="grid gap-3 py-3 lg:grid-cols-[150px_minmax(0,1fr)_180px] lg:items-center">
                       <div>
@@ -1573,23 +1605,29 @@ export function Asset360Overview({
                         </p>
                       </div>
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-medium">{plan.name || plan.work_type || 'Plan de intervención'}</p>
+                        <p className="truncate text-sm font-medium">
+                          {plan.name || plan.work_type || 'Plan de intervención'}
+                        </p>
                         <p className="mt-1 text-xs text-muted-foreground">
                           {plan.skill_requirement || plan.reason || 'Sin requisito adicional'}
                         </p>
                       </div>
                       <div className="lg:text-right">
                         <p className="text-sm font-medium">
-                          {plan.estimated_duration_hours != null ? `${number(plan.estimated_duration_hours, 1)} h` : 'Sin duración'}
+                          {plan.estimated_duration_hours != null
+                            ? `${number(plan.estimated_duration_hours, 1)} h`
+                            : 'Sin duración'}
                         </p>
                         <p className="mt-1 text-xs text-muted-foreground">
-                          {plan.labor_people_required != null ? `${number(plan.labor_people_required, 0)} personas` : 'Dotación no informada'}
+                          {plan.labor_people_required != null
+                            ? `${number(plan.labor_people_required, 0)} personas`
+                            : 'Dotación no informada'}
                         </p>
                       </div>
                     </div>
                   ))}
                 </div>
-              </div>
+              </details>
             ) : null}
           </div>
         </details>
