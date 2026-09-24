@@ -900,6 +900,7 @@ export function Asset360Overview({
             : summary.pendingPlanSteps > 0
               ? { tone: 'border-border bg-muted/20', title: 'Trabajo pendiente', detail: 'Quedan pasos de ejecución antes del cierre.' }
               : { tone: 'border-border bg-muted/10', title: 'Sin alertas operacionales', detail: 'No hay excepciones abiertas en la evidencia disponible.' };
+  const showAttentionDetail = attention.title !== 'Sin alertas operacionales';
 
   return (
     <div className="space-y-5">
@@ -1027,11 +1028,11 @@ export function Asset360Overview({
       </Card>
 
       <Card className={`shadow-none ${attention.tone}`}>
-        <CardContent className={maintenanceNeedsAttention || maintenancePriority ? "flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between" : "flex items-center justify-between gap-4 px-5 py-3"}>
+        <CardContent className={showAttentionDetail ? "flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between" : "flex items-center justify-between gap-4 px-5 py-3"}>
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Atención</p>
-            <p className={maintenanceNeedsAttention || maintenancePriority ? "mt-1 text-lg font-semibold" : "mt-1 text-sm font-medium"}>{attention.title}</p>
-            {attention.detail && (maintenanceNeedsAttention || maintenancePriority) ? <p className="mt-1 text-sm text-muted-foreground">{attention.detail}</p> : null}
+            <p className={showAttentionDetail ? "mt-1 text-lg font-semibold" : "mt-1 text-sm font-medium"}>{attention.title}</p>
+            {attention.detail && showAttentionDetail ? <p className="mt-1 text-sm text-muted-foreground">{attention.detail}</p> : null}
           </div>
           {actionableWorkOrder ? (
             <Button asChild size="sm">
@@ -1781,6 +1782,7 @@ export function Asset360Overview({
         </details>
       ) : null}
 
+      {auditedInterventions.length > 0 || recentEvents.length > 0 ? (
       <details className="group rounded-lg border border-border bg-card">
         <SectionSummary
           title="Historial de mantención"
@@ -1840,6 +1842,7 @@ export function Asset360Overview({
           ) : null}
         </div>
       </details>
+      ) : null}
 
       {hasMaterialEvidence ? (
       <details className="group rounded-lg border border-border bg-card">
