@@ -91,7 +91,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     const { data: canonicalCurrent, error: canonicalCurrentError } = await context.supabase
       .from('canonical_assets_current')
-      .select('asset_type,location,operational_status,manufacturer,model,serial_number,criticality,mtbf_hours,acquisition_cost')
+      .select('asset_type,location,operational_status,manufacturer,model,serial_number,criticality,mtbf_hours,acquisition_date,acquisition_cost,expected_lifespan_years,updated_at')
       .eq('organization_id', context.organizationId)
       .eq('id', id)
       .maybeSingle();
@@ -160,9 +160,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       mobility_class: sourcePayload.mobility_class || null,
       lifecycle_state: sourcePayload.lifecycle_state || null,
       lifecycle_reason: sourcePayload.lifecycle_reason || null,
-      acquisition_date: sourcePayload.acquisition_date || null,
+      acquisition_date: sourcePayload.acquisition_date || canonicalCurrent?.acquisition_date || null,
       acquisition_cost: sourcePayload.acquisition_cost ?? canonicalCurrent?.acquisition_cost ?? null,
-      expected_lifespan_years: sourcePayload.expected_lifespan_years ?? null,
+      expected_lifespan_years: sourcePayload.expected_lifespan_years ?? canonicalCurrent?.expected_lifespan_years ?? null,
       baseline_mtbf_hours: sourcePayload.mtbf_hours ?? canonicalCurrent?.mtbf_hours ?? null,
       source_file: asset.source_file,
       source_sheet: asset.source_sheet,
@@ -173,7 +173,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       validation_status: asset.validation_status,
     };
 
-    const [ordersResult, closeResult, preventiveResult, runtimeResult, reliabilityResult, runtimeReliabilityResult, snapshotsResult, partsResult, eventsResult, planningResult, operationalStateResult, supplyChainResult, procurementOrdersResult, costCenterPurchaseHistoryResult, namePurchaseHistoryResult, economicHistoryResult, drillingHistoryResult, drillEconomicsResult, drillingReviewResult, maintenancePriorityResult, financeReconciliationResult, runtimeCostResult, meterHistoryResult, drillEvidenceResult, drillEconomicsChangeResult, taskCandidatesResult, standardPlanResult, costCenterMatchResult] = await Promise.all([
+    const [ordersResult, closeResult, preventiveResult, runtimeResult, reliabilityResult, runtimeReliabilityResult, snapshotsResult, partsResult, eventsResult, statusHistoryResult, planningResult, operationalStateResult, supplyChainResult, procurementOrdersResult, costCenterPurchaseHistoryResult, namePurchaseHistoryResult, economicHistoryResult, drillingHistoryResult, drillEconomicsResult, drillingReviewResult, maintenancePriorityResult, financeReconciliationResult, runtimeCostResult, meterHistoryResult, drillEvidenceResult, drillEconomicsChangeResult, taskCandidatesResult, standardPlanResult, costCenterMatchResult] = await Promise.all([
       context.supabase
         .from('maintenance_operational_work_order_flow_v1')
         .select('work_order_id,work_order_number,status,priority,work_type,scheduled_date,assigned_person_name,flow_status,open_purchase_order_count,quantity_requested,quantity_issued,quantity_installed,total_cost')
@@ -231,6 +231,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         .eq('canonical_asset_id', id)
         .order('event_at', { ascending: false })
         .limit(30),
+      context.supabase
+        .from('maintenance_asset_status_history')
+        .select('previous_state,new_state,reason,changed_at,source')
+        .eq('organization_id', context.organizationId)
+        .eq('asset_id', id)
+        .order('changed_at', { ascending: false })
+        .limit(1),
       context.supabase
         .from('planning_maintenance_source_rows')
         .select('id,source_row,mine_raw,asset_name_raw,meter_unit,interval_mp,last_mp,initial_reading_at,initial_reading,current_reading_at,current_reading,criticality_raw,scheduled_date,programming_status_raw,responsible_raw,parts_status_raw,observations,workbook_priority_raw,workbook_action_raw,updated_at')
@@ -374,6 +381,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       ['closureSnapshots', snapshotsResult],
       ['parts', partsResult],
       ['events', eventsResult],
+      ['statusHistory', statusHistoryResult],
       ['maintenancePlanning', planningResult],
       ['operationalState', operationalStateResult],
       ['supplyChain', supplyChainResult],
@@ -654,10 +662,17 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const operationalCriticality = cleanCategoricalEvidence(operationalStateResult.data?.criticality);
     const payloadCriticality = cleanCategoricalEvidence(normalizedAsset.criticality);
     const operationalStatus = cleanCategoricalEvidence(operationalStateResult.data?.operational_status);
+    const latestStatusEvent = (statusHistoryResult.data || [])[0] || null;
+    const eventStatus = cleanCategoricalEvidence(latestStatusEvent?.new_state);
     const payloadStatus = cleanCategoricalEvidence(
       sourcePayload.status || sourcePayload.operational_status,
     );
     const canonicalStatus = cleanCategoricalEvidence(canonicalCurrent?.operational_status);
+    const resolvedOperationalStatus = operationalStatus || eventStatus || payloadStatus || canonicalStatus || null;
+    const statusEventMatchesResolved =
+      eventStatus &&
+      resolvedOperationalStatus &&
+      String(eventStatus).trim().toLowerCase() === String(resolvedOperationalStatus).trim().toLowerCase();
     const referenceFamily =
       normalizedAsset.asset_type || normalizedAsset.category
         ? null
@@ -714,15 +729,27 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             : evidenceCriticality
               ? planningEvidenceAt
               : null,
-      operational_status: operationalStatus || payloadStatus || canonicalStatus || null,
+      operational_status: resolvedOperationalStatus,
       operational_status_evidence_source:
-        operationalStatus
-          ? 'asset_operational_state_v1'
+        statusEventMatchesResolved
+          ? 'maintenance_asset_status_history'
+          : operationalStatus
+            ? 'asset_operational_state_v1'
+            : payloadStatus
+              ? 'maintenance_canonical_assets_v1'
+              : canonicalStatus
+                ? 'canonical_assets_current'
+                : null,
+      operational_status_evidence_at:
+        statusEventMatchesResolved
+          ? latestStatusEvent?.changed_at || null
           : payloadStatus
-            ? 'maintenance_canonical_assets_v1'
+            ? normalizedAsset.updated_at || normalizedAsset.imported_at || null
             : canonicalStatus
-              ? 'canonical_assets_current'
+              ? canonicalCurrent?.updated_at || null
               : null,
+      operational_status_reason:
+        statusEventMatchesResolved ? latestStatusEvent?.reason || null : null,
       reference_family: referenceFamily || null,
       reference_family_evidence_source:
         referenceFamily
@@ -851,6 +878,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       installedParts,
       pendingParts,
       recentEvents: eventsResult.data || [],
+      statusHistory: statusHistoryResult.data || [],
       maintenancePlanning: planningResult.data || [],
       operationalState: operationalStateResult.data || null,
       supplyChain: supplyChainResult.data || [],
