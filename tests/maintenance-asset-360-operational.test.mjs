@@ -102,6 +102,14 @@ test('asset 360 surfaces planning or schedule horometer without inventing runtim
   assert.match(ui, /sin historial cronológico enlazado/);
 });
 
+test('asset 360 preserves meter units for hour meters and odometers', () => {
+  assert.match(api, /latest_meter_unit: resolvedMeterUnit/);
+  assert.match(api, /latestPlanningMeter\?\.meter_unit/);
+  assert.match(ui, /effectiveMeterUnit === 'km' \? 'Odómetro'/);
+  assert.match(ui, /effectiveMeterLabel/);
+  assert.match(ui, /effectiveMeterSuffix/);
+});
+
 test('asset 360 flags material planning meter decreases without calling them resets', () => {
   assert.match(api, /materialMeterDecreaseCount/);
   assert.match(api, /previous - current > 1/);
