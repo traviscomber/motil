@@ -1960,7 +1960,7 @@ export function Asset360Overview({
           <SectionSummary
             title="Producción"
             hint={consolidatedDrillingReports > 0
-              ? `${number(consolidatedDrillingMeters, 1)} m acumulados${operationalState?.last_drilling_date ? ` · última operación ${date(operationalState.last_drilling_date)}` : drillingHistory[0]?.operation_date ? ` · última operación ${date(drillingHistory[0].operation_date)}` : ''}`
+              ? `${number(consolidatedDrillingMeters, 1)} m acumulados${drillingHistory[0]?.operation_date ? ` · última operación ${date(drillingHistory[0].operation_date)}` : ''}`
               : 'Sin producción enlazada'}
           />
           <div className="border-t border-border">
