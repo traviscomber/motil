@@ -1177,16 +1177,12 @@ export function Asset360Overview({
             {hasReliabilityEvidence ? (
               <div className="mt-3 grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-xs text-muted-foreground">MTTR</p>
-                  <p className="mt-1 font-medium">{mttr}</p>
+                  <p className="text-xs text-muted-foreground">MTBF real</p>
+                  <p className="mt-1 font-medium">{mtbf}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Cobertura horómetro</p>
-                  <p className="mt-1 font-medium">
-                    {rr?.meter_event_coverage_percent != null
-                      ? `${number(rr.meter_event_coverage_percent, 0)}%`
-                      : 'Sin base'}
-                  </p>
+                  <p className="text-xs text-muted-foreground">MTTR</p>
+                  <p className="mt-1 font-medium">{mttr}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Cierres auditados</p>
