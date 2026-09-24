@@ -843,6 +843,9 @@ export function Asset360Overview({
       : null;
 
   const unavailableSources = data.unavailableSources || [];
+  const sourceLabel = asset.source_file?.startsWith('public.')
+    ? 'Maestro de activos'
+    : asset.source_file || 'Fuente no informada';
   const hasPurchaseEvidence = Number(purchaseHistorySummary?.purchaseLines || 0) > 0 || procurementOrders.length > 0;
   const hasMaintenanceEvidence = auditedInterventions.length > 0 || Number(operationalState?.work_order_count || 0) > 0;
   const hasMaterialEvidence = installedParts.length > 0 || pendingParts.length > 0 || supplyChain.length > 0;
@@ -1012,9 +1015,9 @@ export function Asset360Overview({
       <Card className={`shadow-none ${attention.tone}`}>
         <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Qué requiere atención</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Atención</p>
             <p className="mt-1 text-lg font-semibold">{attention.title}</p>
-            <p className="mt-1 text-sm text-muted-foreground">{attention.detail}</p>
+            {attention.detail ? <p className="mt-1 text-sm text-muted-foreground">{attention.detail}</p> : null}
           </div>
           {actionableWorkOrder ? (
             <Button asChild size="sm">
@@ -1046,12 +1049,10 @@ export function Asset360Overview({
           <div className="flex flex-col gap-1 border-b border-border pb-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                Economía del activo
+                Economía
               </p>
-              <h2 className="mt-1 text-lg font-semibold">Inversión histórica en mantenimiento</h2>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Este equipo se trata como una unidad económica propia. Los montos corresponden sólo a costos históricos enlazados al activo.
-              </p>
+              <h2 className="mt-1 text-lg font-semibold">Inversión en mantenimiento</h2>
+              <p className="mt-1 text-xs text-muted-foreground">Costos históricos enlazados al activo.</p>
             </div>
             {economicLastCostDate ? (
               <p className="text-xs text-muted-foreground">Corte {date(economicLastCostDate)}</p>
@@ -1118,12 +1119,17 @@ export function Asset360Overview({
       </Card>
 
       <details className="group rounded-lg border border-border bg-card" open>
-        <SectionSummary title="Operación, mantenimiento y confiabilidad" hint={`${summary.activeWorkOrders} OT activas · ${summary.overduePreventives} preventivos vencidos · ${summary.operationalBlockers} bloqueos`} />
+        <SectionSummary
+          title="Mantenimiento"
+          hint={nextPreventive
+            ? `Próximo: ${nextPreventive.task_name || 'preventivo'}${nextPreventive.due_meter != null ? ` · ${number(nextPreventive.due_meter, 0)} h` : ''}`
+            : 'Sin pauta horaria registrada'}
+        />
         <div className="grid gap-4 border-t border-border p-4 lg:grid-cols-3">
         <Card className="shadow-none">
           <CardContent className="p-5">
             <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-              Próximo preventivo por horas
+              Próximo preventivo
             </p>
             {nextPreventive ? (
               <>
@@ -1140,7 +1146,11 @@ export function Asset360Overview({
                 </p>
                 <div className="mt-4 flex items-center gap-2">
                   <Badge variant={nextPreventive.alert_due ? 'destructive' : 'outline'}>
-                    {nextPreventive.alert_due ? 'Vencido' : nextPreventive.hour_status || 'Pendiente'}
+                    {nextPreventive.alert_due
+                      ? 'Vencido'
+                      : String(nextPreventive.hour_status || '').toLowerCase() === 'pending'
+                        ? 'Pendiente'
+                        : nextPreventive.hour_status || 'Pendiente'}
                   </Badge>
                   <Button asChild variant="ghost" size="sm">
                     <Link href="/dashboard/mantenimiento/preventivo-horas">
@@ -1244,10 +1254,10 @@ export function Asset360Overview({
 
       <details className="group rounded-lg border border-border bg-card">
         <SectionSummary
-          title="Operación y disponibilidad"
+          title="Disponibilidad"
           hint={operationalState?.last_availability_date
-            ? `${operationalState.open_work_order_count || 0} OT abiertas · disponibilidad ${operationalState.availability_pct != null ? `${number(operationalState.availability_pct, 1)}%` : 'sin base'}`
-            : `${operationalState?.open_work_order_count || 0} OT abiertas · disponibilidad sin base`}
+            ? `${operationalState.availability_pct != null ? `${number(operationalState.availability_pct, 1)}%` : 'Sin base'} · ${operationalState.open_work_order_count || 0} OT abiertas`
+            : 'Sin base de disponibilidad'}
         />
         <div className="grid gap-4 border-t border-border p-4 sm:grid-cols-2 lg:grid-cols-4">
           <IdentityItem
@@ -1278,7 +1288,7 @@ export function Asset360Overview({
       </details>
 
       <details className="group rounded-lg border border-border bg-card">
-        <SectionSummary title="Compras y proveedores" hint={purchaseHistorySummary?.lastSupplier ? `${purchaseHistorySummary.lastSupplier} · última compra ${date(purchaseHistorySummary.lastOrderDate)}` : 'Sin compras directas o contexto histórico disponible'} />
+        <SectionSummary title="Compras y proveedores" hint={purchaseHistorySummary?.lastSupplier ? `${purchaseHistorySummary.lastSupplier} · última compra ${date(purchaseHistorySummary.lastOrderDate)}` : 'Sin compras enlazadas'} />
         <div className="border-t border-border p-4">
           {purchaseHistorySummary && Number(purchaseHistorySummary.purchaseLines || 0) > 0 ? (
             <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
@@ -1374,7 +1384,7 @@ export function Asset360Overview({
       </details>
 
       <details className="group rounded-lg border border-border bg-card">
-        <SectionSummary title="Cadena de suministro de mantención" hint={`${supplyChain.length} registros enlazados`} />
+        <SectionSummary title="Cadena de suministro de mantención" hint={supplyChain.length > 0 ? `${supplyChain.length} registros enlazados` : 'Sin movimientos enlazados'} />
         <div className="border-t border-border p-4">
           {supplyChain.length > 0 ? (
             <div className="divide-y divide-border">
@@ -1485,7 +1495,7 @@ export function Asset360Overview({
 
       {runtimeCostIntelligence || meterHistory.length > 0 ? (
         <details className="group rounded-lg border border-border bg-card">
-          <SectionSummary title="Uso, horómetro y costo por hora" hint={runtimeCostIntelligence?.latest_meter_hours != null ? `${number(runtimeCostIntelligence.latest_meter_hours, 1)} h · registrado ${date(runtimeCostIntelligence.last_reading_at)}` : 'Sin lectura de horómetro disponible'} />
+          <SectionSummary title="Uso, horómetro y costo por hora" hint={runtimeCostIntelligence?.latest_meter_hours != null ? `${number(runtimeCostIntelligence.latest_meter_hours, 1)} h · registrado ${date(runtimeCostIntelligence.last_reading_at)}` : 'Sin historial de horómetro'} />
           <div className="grid gap-4 border-t border-border p-4 sm:grid-cols-2 lg:grid-cols-4">
             <IdentityItem
               icon={Gauge}
@@ -1606,7 +1616,7 @@ export function Asset360Overview({
       </details>
 
       <details className="group rounded-lg border border-border bg-card">
-        <SectionSummary title="Evolución anual de costos" hint={economicHistory.length > 0 ? `${economicHistory.length} años fiscales · ${money(economicLifetime)} acumulados` : 'Sin historial de costos enlazado'} />
+        <SectionSummary title="Costos por año" hint={economicHistory.length > 0 ? `${economicHistory.length} años fiscales · ${money(economicLifetime)} acumulados` : 'Sin historial de costos enlazado'} />
         <div className="border-t border-border p-4">
           {economicHistory.length > 0 ? (
             <>
@@ -1640,7 +1650,7 @@ export function Asset360Overview({
 
       {drillingHistory.length > 0 ? (
         <details className="group rounded-lg border border-border bg-card">
-          <SectionSummary title="Producción y uso del equipo" hint={drillingHistory[0]?.operation_date ? `${number(drillingMeters, 1)} m en reportes mostrados · hasta ${date(drillingHistory[0].operation_date)}` : 'Sin producción reciente enlazada'} />
+          <SectionSummary title="Producción" hint={drillingHistory[0]?.operation_date ? `${number(drillingMeters, 1)} m · ${drillingHistory.length} reportes · hasta ${date(drillingHistory[0].operation_date)}` : 'Sin producción reciente'} />
           <div className="border-t border-border p-4">
             <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <IdentityItem icon={Gauge} label="Reportes recientes" value={drillingHistory.length} meta={drillingHistory[0]?.operation_date ? `Hasta ${date(drillingHistory[0].operation_date)}` : null} />
@@ -1930,7 +1940,7 @@ export function Asset360Overview({
       </details>
 
       <details className="group rounded-lg border border-border bg-card">
-        <SectionSummary title="Actividad reciente del activo" hint={`${recentEvents.length} eventos recientes`} />
+        <SectionSummary title="Actividad reciente del activo" hint={recentEvents.length > 0 ? `${recentEvents.length} eventos recientes` : 'Sin eventos recientes'} />
         <div className="border-t border-border p-4">
           {recentEvents.length > 0 ? (
             <div className="divide-y divide-border">
@@ -1951,7 +1961,7 @@ export function Asset360Overview({
       <details className="group rounded-lg border border-border bg-card">
         <SectionSummary
           title="Cobertura de la ficha"
-          hint={`${coverageAvailableCount} capas con evidencia · ${coverageMissingCount} sin registro`}
+          hint={`${coverageAvailableCount}/${coverageItems.length} capas con evidencia`}
         />
         <div className="grid gap-px border-t border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
           {coverageItems.map(([label, available, status]) => (
@@ -1967,13 +1977,13 @@ export function Asset360Overview({
       </details>
 
       <details className="group rounded-lg border border-border bg-card">
-        <SectionSummary title="Trazabilidad y criterio de evidencia" hint={asset.source_file ? `${asset.source_file} · actualizado ${date(asset.updated_at || asset.imported_at)}` : `Actualizado ${date(asset.updated_at || asset.imported_at)}`} />
+        <SectionSummary title="Trazabilidad" hint={`${sourceLabel} · ${date(asset.updated_at || asset.imported_at)}`} />
         <div className="border-t border-border px-5 py-4">
           <p className="text-sm leading-relaxed text-muted-foreground">
             Horómetro, MTBF y MTTR se muestran sólo desde evidencia operacional auditada. El costo se obtiene desde snapshots de cierre auditado. Los campos de identidad ausentes permanecen explícitamente como no informados.
           </p>
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <IdentityItem icon={Database} label="Fuente" value={asset.source_file} />
+            <IdentityItem icon={Database} label="Fuente" value={sourceLabel} />
             <IdentityItem icon={FileText} label="Hoja" value={asset.source_sheet} />
             <IdentityItem icon={Hash} label="Fila fuente" value={asset.source_row} />
             <IdentityItem icon={CalendarDays} label="Última actualización" value={date(asset.updated_at || asset.imported_at)} />
