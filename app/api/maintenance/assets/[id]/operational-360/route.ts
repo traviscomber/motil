@@ -47,6 +47,19 @@ function cleanCategoricalEvidence(value: unknown) {
   return raw;
 }
 
+function normalizeCriticalityEvidence(value: unknown) {
+  const normalized = String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
+  if (['alta', 'high'].includes(normalized)) return 'high';
+  if (['media', 'medium'].includes(normalized)) return 'medium';
+  if (['baja', 'low'].includes(normalized)) return 'low';
+  if (['critica', 'critical'].includes(normalized)) return 'critical';
+  return normalized || '';
+}
+
 function inferChileanPlateFromName(value: unknown) {
   const raw = String(value || '').trim().toUpperCase();
   const match = raw.match(/(?:^|[\s-])([A-Z]{4}-[0-9]{2}|[A-Z]{2}-[0-9]{4})$/);
@@ -748,7 +761,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
               : null,
       criticality_evidence_at:
         operationalCriticality
-          ? null
+          ? evidenceCriticality &&
+            normalizeCriticalityEvidence(operationalCriticality) === normalizeCriticalityEvidence(evidenceCriticality)
+            ? planningEvidenceAt
+            : null
           : payloadCriticality
             ? normalizedAsset.updated_at || normalizedAsset.imported_at || null
             : evidenceCriticality
