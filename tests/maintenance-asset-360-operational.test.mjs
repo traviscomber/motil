@@ -103,6 +103,15 @@ test('asset 360 flags material planning meter decreases without calling them res
   assert.match(ui, /descenso material por revisar/);
 });
 
+test('asset 360 separates consolidated drilling totals from the visible recent sample', () => {
+  assert.match(api, /last_drilling_date/);
+  assert.match(ui, /consolidatedDrillingMeters/);
+  assert.match(ui, /Metros perforados acumulados/);
+  assert.match(ui, /reportes enlazados/);
+  assert.match(ui, /recentDrillingMeters/);
+  assert.match(ui, /muestra visible/);
+});
+
 test('asset 360 does not render missing evidence as zero or raw source errors', () => {
   assert.match(ui, /cleanEvidenceText/);
   assert.match(ui, /Sin metros registrados/);
