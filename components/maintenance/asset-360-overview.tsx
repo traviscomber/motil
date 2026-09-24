@@ -724,12 +724,13 @@ export function Asset360Overview({
   const effectiveMeterUnit = String(
     data.runtimeCostIntelligence?.latest_meter_unit || asset.meter_unit || 'h',
   ).trim().toLowerCase();
+  const usesAnnualControl = ['anual', 'annual'].includes(effectiveMeterUnit);
   const effectiveMeterLabel =
     effectiveMeterUnit === 'km'
       ? 'Odómetro'
       : effectiveMeterUnit === 'h'
         ? 'Horómetro'
-        : ['anual', 'annual'].includes(effectiveMeterUnit)
+        : usesAnnualControl
           ? 'Periodicidad'
           : 'Medidor';
   const meterIsScheduleReference =
@@ -796,7 +797,7 @@ export function Asset360Overview({
           ? `${number(data.runtimeCostIntelligence.latest_meter_hours, 1)} ${effectiveMeterSuffix}`.trim()
           : defendableNextPreventiveMeter
             ? `${number(nextPreventive?.effective_current_meter, 1)} ${asset.meter_unit || 'h'}`.trim()
-            : ['anual', 'annual'].includes(effectiveMeterUnit)
+            : usesAnnualControl
               ? 'Anual'
               : 'Sin lectura',
       Gauge,
@@ -915,6 +916,10 @@ export function Asset360Overview({
   const installedParts = data.installedParts || [];
   const pendingParts = data.pendingParts || [];
   const maintenancePlanning = data.maintenancePlanning || [];
+  const hasAnnualReadingConflict = maintenancePlanning.some((row) => {
+    const unit = String(row.meter_unit || '').trim().toLowerCase();
+    return ['anual', 'annual'].includes(unit) && row.current_reading != null;
+  });
   const operationalState = data.operationalState;
   const operatingSpine = data.operatingSpine;
   const maintenancePriority = data.maintenancePriority;
@@ -1078,7 +1083,17 @@ export function Asset360Overview({
     ['Criticidad', Boolean(asset.criticality), asset.criticality ? 'Disponible' : 'No resuelta'],
     ['Estado operacional', Boolean(asset.operational_status), asset.operational_status ? 'Disponible' : 'Sin estado validado'],
     ['Plan de mantención', Boolean(maintenancePriority || latestPlan), maintenancePriority || latestPlan ? 'Disponible' : 'No registrado'],
-    ['Horómetro / uso', hasRuntimeEvidence, hasRuntimeEvidence ? 'Disponible' : 'Sin lectura defendible'],
+    [
+      usesAnnualControl ? 'Periodicidad de control' : 'Horómetro / uso',
+      usesAnnualControl || hasRuntimeEvidence,
+      hasAnnualReadingConflict
+        ? 'Anual · lectura numérica por validar'
+        : usesAnnualControl
+          ? 'Anual'
+          : hasRuntimeEvidence
+            ? 'Disponible'
+            : 'Sin lectura defendible',
+    ],
     ['Economía / costos', hasEconomicEvidence, hasEconomicEvidence ? 'Disponible' : 'Sin movimientos'],
     ['Compras / proveedores', hasPurchaseEvidence, hasPurchaseEvidence ? 'Disponible' : 'Sin compras enlazadas'],
     ['OT / mantenciones', hasMaintenanceEvidence, hasMaintenanceEvidence ? 'Disponible' : 'Sin OT enlazadas'],
@@ -2527,9 +2542,19 @@ export function Asset360Overview({
                   label={effectiveMeterLabel}
                   value={runtimeCostIntelligence?.latest_meter_hours != null
                     ? `${number(runtimeCostIntelligence.latest_meter_hours, 1)} ${effectiveMeterSuffix}`.trim()
-                    : null}
+                    : usesAnnualControl
+                      ? 'Anual'
+                      : null}
                   meta={evidenceSourceLabel(runtimeCostIntelligence?.meter_evidence_source)}
                 />
+                {hasAnnualReadingConflict ? (
+                  <IdentityItem
+                    icon={AlertTriangle}
+                    label="Lectura de control"
+                    value="Requiere validación"
+                    meta="Valor numérico con unidad anual en planificación"
+                  />
+                ) : null}
                 <IdentityItem
                   icon={FileText}
                   label="Hoja"
