@@ -66,7 +66,9 @@ test('asset 360 resolves canonical location and exact cost center evidence', () 
   assert.match(api, /normalizeLocationEvidence/);
   assert.match(api, /normalizedLocations\.size === 1/);
   assert.match(api, /operationalLocation \|\| payloadLocation \|\| evidenceLocation \|\| null/);
-  assert.match(api, /cost_center_code: normalizedAsset\.cost_center_code \|\| exactCostCenter\?\.code \|\| null/);
+  assert.match(api, /normalizedAsset\.cost_center_code/);
+  assert.match(api, /exactCostCenter\?\.code/);
+  assert.match(api, /purchaseExactCostCenter\?\.code/);
   assert.match(api, /cost_center_evidence_source/);
   assert.match(api, /location_evidence_source/);
 });
