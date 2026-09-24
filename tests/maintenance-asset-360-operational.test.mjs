@@ -61,7 +61,10 @@ test('asset 360 keeps secondary evidence consolidated', () => {
 test('asset 360 operational state query only selects columns present in the live view', () => {
   assert.match(api, /from\('asset_operational_state_v1'\)/);
   assert.doesNotMatch(api, /drilled_meters,last_drilling_date,sensor_count/);
+  assert.doesNotMatch(ui, /operationalState\?\.last_drilling_date/);
   assert.match(api, /drilling_report_count,drilled_meters,sensor_count/);
+  assert.match(ui, /consolidatedDrillingMeters/);
+  assert.match(ui, /consolidatedDrillingReports/);
 });
 
 test('asset 360 attaches dated status history when the event matches the resolved state', () => {
