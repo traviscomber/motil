@@ -579,7 +579,7 @@ const cleanEvidenceText = (value: unknown) => {
   const text = String(value || '').trim();
   if (!text) return null;
   const normalized = text.toUpperCase();
-  if (normalized === '#ERROR!' || normalized === 'NO REGISTRADO' || normalized === 'N/A') return null;
+  if (['#ERROR!', 'NO REGISTRADO', 'N/A', 'SIN ASIGNAR', 'NO ASIGNADO', 'DESCONOCIDO', '-'].includes(normalized)) return null;
   return text;
 };
 
