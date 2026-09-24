@@ -685,8 +685,8 @@ export function Asset360Overview({
   ];
 
   const links = [
-    { href: `${basePath}/documentos`, label: 'Documentos', icon: FileText },
     { href: `${basePath}/ficha-tecnica`, label: 'Ficha técnica', icon: Gauge },
+    { href: `${basePath}/documentos`, label: 'Documentos', icon: FileText },
   ];
 
   const assetTypeLabel: Record<string, string> = {
@@ -919,18 +919,18 @@ export function Asset360Overview({
     <div className="space-y-5">
       <Card className="overflow-hidden border-border/80 shadow-none">
         <CardContent className="p-0">
-          <div className="grid lg:grid-cols-[minmax(230px,0.75fr)_minmax(0,2fr)_220px]">
+          <div className="grid lg:grid-cols-[220px_minmax(0,1fr)]">
             <div className="border-b border-border bg-muted/20 p-4 lg:border-b-0 lg:border-r">
               <div className="overflow-hidden rounded-md border border-border/70 bg-background">
                 {equipmentImage && !imageFailed ? (
                   <img
                     src={equipmentImage.image}
                     alt={`Imagen referencial de ${asset.name || 'equipo'}`}
-                    className="h-48 w-full object-cover"
+                    className="h-40 w-full object-cover lg:h-full lg:min-h-52"
                     onError={() => setFailedImageSrc(equipmentImage.image)}
                   />
                 ) : (
-                  <div className="flex h-48 items-center justify-center px-5 text-center text-xs text-muted-foreground">
+                  <div className="flex h-40 items-center justify-center px-5 text-center text-xs text-muted-foreground lg:h-full lg:min-h-52">
                     Imagen no disponible. La ficha sigue operativa.
                   </div>
                 )}
@@ -999,18 +999,6 @@ export function Asset360Overview({
               </div>
             </div>
 
-            <div className="flex flex-col items-center justify-center border-t border-border bg-muted/10 p-5 lg:border-l lg:border-t-0">
-              <Link href={`${basePath}/qr`} className="group">
-                <div className="rounded-lg border bg-white p-3">
-                  <img
-                    src={qrImageUrl}
-                    alt={`QR de ${asset.asset_code || asset.name || 'activo'}`}
-                    className="h-32 w-32 object-contain"
-                  />
-                </div>
-              </Link>
-              <p className="mt-3 text-xs font-medium text-muted-foreground">QR</p>
-            </div>
           </div>
 
           <div className="grid gap-px border-t bg-border sm:grid-cols-2 xl:grid-cols-4">
@@ -1026,16 +1014,38 @@ export function Asset360Overview({
           </div>
 
           {assetDetails.length > 0 ? (
-            <div className="border-t border-border px-5 py-5">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                Datos del activo
-              </p>
-              <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-                {assetDetails.map(([label, value, Icon]) => (
-                  <IdentityItem key={label} icon={Icon} label={label} value={value} />
-                ))}
+            <details className="group border-t border-border">
+              <summary className="cursor-pointer list-none px-5 py-4">
+                <span className="flex items-center justify-between gap-4">
+                  <span>
+                    <span className="block text-sm font-medium">Datos técnicos y ciclo de vida</span>
+                    <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
+                      Información secundaria del maestro del equipo
+                    </span>
+                  </span>
+                  <span className="flex items-center gap-2 text-xs font-normal text-muted-foreground">
+                    {assetDetails.length} datos
+                    <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
+                  </span>
+                </span>
+              </summary>
+              <div className="border-t border-border px-5 py-5">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+                  {assetDetails.map(([label, value, Icon]) => (
+                    <IdentityItem key={label} icon={Icon} label={label} value={value} />
+                  ))}
+                </div>
+                <div className="mt-5 flex items-center justify-between gap-4 border-t border-border pt-4">
+                  <p className="text-xs text-muted-foreground">Identificación física del equipo</p>
+                  <Button asChild variant="ghost" size="sm">
+                    <Link href={`${basePath}/qr`}>
+                      Ver QR
+                      <ArrowRight className="ml-1 h-4 w-4" />
+                    </Link>
+                  </Button>
+                </div>
               </div>
-            </div>
+            </details>
           ) : null}
         </CardContent>
       </Card>
