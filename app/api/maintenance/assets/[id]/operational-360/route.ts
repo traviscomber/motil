@@ -922,9 +922,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       .map((row: any) => Number(row.effective_current_meter));
     const uniquePreventiveMeters = Array.from(new Set(preventiveMeterValues));
     const preventiveMeterSnapshot = uniquePreventiveMeters.length === 1 ? uniquePreventiveMeters[0] : null;
-    const planningCurrentRows = (planningResult.data || []).filter(
-      (row: any) => row.current_reading !== null && row.current_reading !== undefined && Number.isFinite(Number(row.current_reading)),
-    );
+    const planningCurrentRows = (planningResult.data || []).filter((row: any) => {
+      const meterUnit = String(row.meter_unit || '').trim().toLowerCase();
+      return (
+        row.current_reading !== null &&
+        row.current_reading !== undefined &&
+        Number.isFinite(Number(row.current_reading)) &&
+        !['anual', 'annual'].includes(meterUnit)
+      );
+    });
     const uniquePlanningCurrentMeters = Array.from(
       new Set(planningCurrentRows.map((row: any) => Number(row.current_reading))),
     );
