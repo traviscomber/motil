@@ -77,6 +77,12 @@ test('asset 360 recovers a unique current meter from planning when stronger mete
   assert.match(api, /planningCurrentEvidence\?\.current_reading_at/);
 });
 
+test('asset 360 does not present zero observed runtime without a measured interval', () => {
+  assert.match(ui, /Number\(runtimeCostIntelligence\?\.reading_count \|\| 0\) >= 2/);
+  assert.match(ui, /observed_operating_hours != null/);
+  assert.match(ui, /'Sin base'/);
+});
+
 test('asset 360 prefers observed meter evidence over schedule snapshots', () => {
   assert.match(api, /latestPlanningMeter\?\.meter_value \?\?\s*planningCurrentMeter \?\?\s*preventiveMeterSnapshot/);
   assert.match(api, /planningCurrentMeter != null\s*\? 'planning_maintenance_source_rows'/);
