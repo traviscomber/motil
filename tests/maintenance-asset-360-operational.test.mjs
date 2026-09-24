@@ -96,6 +96,13 @@ test('asset 360 surfaces planning or schedule horometer without inventing runtim
   assert.match(ui, /sin historial cronológico enlazado/);
 });
 
+test('asset 360 flags material planning meter decreases without calling them resets', () => {
+  assert.match(api, /materialMeterDecreaseCount/);
+  assert.match(api, /previous - current > 1/);
+  assert.match(api, /meter_sequence_status/);
+  assert.match(ui, /descenso material por revisar/);
+});
+
 test('asset 360 does not render missing evidence as zero or raw source errors', () => {
   assert.match(ui, /cleanEvidenceText/);
   assert.match(ui, /Sin metros registrados/);
