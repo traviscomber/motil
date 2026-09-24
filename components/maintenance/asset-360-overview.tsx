@@ -1026,7 +1026,7 @@ export function Asset360Overview({
               <summary className="cursor-pointer list-none px-5 py-4">
                 <span className="flex items-center justify-between gap-4">
                   <span>
-                    <span className="block text-sm font-medium">Datos técnicos y ciclo de vida</span>
+                    <span className="block text-sm font-medium">Datos técnicos</span>
                     <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
                       Información secundaria del maestro del equipo
                     </span>
@@ -1087,92 +1087,6 @@ export function Asset360Overview({
               ) : null}
             </div>
           ) : null}
-        </CardContent>
-      </Card>
-
-      <Card className="border-border/80 shadow-none">
-        <CardContent className="p-5">
-          <div className="flex flex-col gap-1 border-b border-border pb-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">Economía</p>
-              <h2 className="mt-1 text-lg font-semibold">Inversión en mantenimiento</h2>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Gasto reconocido y enlazado al equipo. No equivale al costo total de propiedad.
-              </p>
-            </div>
-            {economicLastCostDate ? (
-              <p className="text-xs text-muted-foreground">Corte {date(economicLastCostDate)}</p>
-            ) : null}
-          </div>
-
-          {economicLifetimeValue != null || economicHistory.length > 0 ? (
-            <div>
-              <div className="grid gap-4 py-5 sm:grid-cols-3">
-                <IdentityItem
-                  icon={Coins}
-                  label="Histórico acumulado"
-                  value={economicLifetimeValue != null ? money(economicLifetimeValue) : 'Sin base'}
-                  meta={economicFirstCostDate ? `Desde ${date(economicFirstCostDate)}` : null}
-                />
-                <IdentityItem
-                  icon={CalendarDays}
-                  label="Últimos 12 meses"
-                  value={economic12mValue != null ? money(economic12mValue) : 'Sin base'}
-                  meta={economicLastCostDate ? `Corte ${date(economicLastCostDate)}` : null}
-                />
-                <IdentityItem
-                  icon={CalendarDays}
-                  label="Última imputación"
-                  value={date(economicLastCostDate)}
-                  meta={economicMovementCount > 0 ? `${economicMovementCount} movimientos reconocidos` : null}
-                />
-              </div>
-
-              {(economicYtdValue != null || economicAnnualAverage != null || economicHistory.length > 0) ? (
-                <details className="group border-t border-border pt-4">
-                  <summary className="cursor-pointer list-none">
-                    <span className="flex items-center justify-between gap-4">
-                      <span className="text-sm font-medium">Detalle económico</span>
-                      <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
-                    </span>
-                  </summary>
-                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                    <IdentityItem
-                      icon={CalendarDays}
-                      label="Año en curso"
-                      value={economicYtdValue != null ? money(economicYtdValue) : 'Sin base'}
-                    />
-                    <IdentityItem
-                      icon={Coins}
-                      label="Promedio anual"
-                      value={economicAnnualAverage != null ? money(economicAnnualAverage) : 'Sin base'}
-                      meta={economicYearsWithMovements > 0 ? `${economicYearsWithMovements} años con movimientos` : null}
-                    />
-                  </div>
-                  {economicHistory.length > 0 ? (
-                    <div className="mt-4 divide-y divide-border border-t border-border">
-                      {economicHistory.slice(0, 6).map((row) => (
-                        <div key={String(row.fiscal_year)} className="grid gap-3 py-3 sm:grid-cols-[100px_140px_minmax(0,1fr)] sm:items-center">
-                          <p className="text-sm font-semibold">{row.fiscal_year || 'Sin año'}</p>
-                          <p className="text-sm">{money(row.historical_total_cost)}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {number(row.movement_count || 0, 0)} movimientos · {date(row.first_cost_date)} → {date(row.last_cost_date)}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
-                </details>
-              ) : null}
-            </div>
-          ) : (
-            <div className="py-5">
-              <p className="text-sm font-medium">Sin historial de costos enlazado</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                No se registra inversión histórica de mantenimiento para este equipo en las fuentes disponibles. Esto no equivale a costo cero.
-              </p>
-            </div>
-          )}
         </CardContent>
       </Card>
 
@@ -1331,6 +1245,92 @@ export function Asset360Overview({
         </div>
       </details>
       ) : null}
+
+      <Card className="border-border/80 shadow-none">
+        <CardContent className="p-5">
+          <div className="flex flex-col gap-1 border-b border-border pb-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">Economía</p>
+              <h2 className="mt-1 text-lg font-semibold">Inversión en mantenimiento</h2>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Gasto reconocido y enlazado al equipo. No equivale al costo total de propiedad.
+              </p>
+            </div>
+            {economicLastCostDate ? (
+              <p className="text-xs text-muted-foreground">Corte {date(economicLastCostDate)}</p>
+            ) : null}
+          </div>
+
+          {economicLifetimeValue != null || economicHistory.length > 0 ? (
+            <div>
+              <div className="grid gap-4 py-5 sm:grid-cols-3">
+                <IdentityItem
+                  icon={Coins}
+                  label="Histórico acumulado"
+                  value={economicLifetimeValue != null ? money(economicLifetimeValue) : 'Sin base'}
+                  meta={economicFirstCostDate ? `Desde ${date(economicFirstCostDate)}` : null}
+                />
+                <IdentityItem
+                  icon={CalendarDays}
+                  label="Últimos 12 meses"
+                  value={economic12mValue != null ? money(economic12mValue) : 'Sin base'}
+                  meta={economicLastCostDate ? `Corte ${date(economicLastCostDate)}` : null}
+                />
+                <IdentityItem
+                  icon={CalendarDays}
+                  label="Última imputación"
+                  value={date(economicLastCostDate)}
+                  meta={economicMovementCount > 0 ? `${economicMovementCount} movimientos reconocidos` : null}
+                />
+              </div>
+
+              {(economicYtdValue != null || economicAnnualAverage != null || economicHistory.length > 0) ? (
+                <details className="group border-t border-border pt-4">
+                  <summary className="cursor-pointer list-none">
+                    <span className="flex items-center justify-between gap-4">
+                      <span className="text-sm font-medium">Detalle económico</span>
+                      <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
+                    </span>
+                  </summary>
+                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                    <IdentityItem
+                      icon={CalendarDays}
+                      label="Año en curso"
+                      value={economicYtdValue != null ? money(economicYtdValue) : 'Sin base'}
+                    />
+                    <IdentityItem
+                      icon={Coins}
+                      label="Promedio anual"
+                      value={economicAnnualAverage != null ? money(economicAnnualAverage) : 'Sin base'}
+                      meta={economicYearsWithMovements > 0 ? `${economicYearsWithMovements} años con movimientos` : null}
+                    />
+                  </div>
+                  {economicHistory.length > 0 ? (
+                    <div className="mt-4 divide-y divide-border border-t border-border">
+                      {economicHistory.slice(0, 6).map((row) => (
+                        <div key={String(row.fiscal_year)} className="grid gap-3 py-3 sm:grid-cols-[100px_140px_minmax(0,1fr)] sm:items-center">
+                          <p className="text-sm font-semibold">{row.fiscal_year || 'Sin año'}</p>
+                          <p className="text-sm">{money(row.historical_total_cost)}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {number(row.movement_count || 0, 0)} movimientos · {date(row.first_cost_date)} → {date(row.last_cost_date)}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </details>
+              ) : null}
+            </div>
+          ) : (
+            <div className="py-5">
+              <p className="text-sm font-medium">Sin historial de costos enlazado</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                No se registra inversión histórica de mantenimiento para este equipo en las fuentes disponibles. Esto no equivale a costo cero.
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {hasPurchaseEvidence || supplyChain.length > 0 ? (
         <details className="group rounded-lg border border-border bg-card">
