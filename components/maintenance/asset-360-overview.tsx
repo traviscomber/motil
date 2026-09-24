@@ -530,7 +530,15 @@ const show = (value: unknown) => {
 
 const date = (value: unknown) => {
   if (!value) return 'No informado';
-  const parsed = new Date(String(value));
+  const raw = String(value);
+  const dateOnly = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dateOnly) {
+    const [, year, month, day] = dateOnly;
+    return new Intl.DateTimeFormat('es-CL', { dateStyle: 'medium' }).format(
+      new Date(Number(year), Number(month) - 1, Number(day)),
+    );
+  }
+  const parsed = new Date(raw);
   if (Number.isNaN(parsed.getTime())) return show(value);
   return new Intl.DateTimeFormat('es-CL', { dateStyle: 'medium' }).format(parsed);
 };
