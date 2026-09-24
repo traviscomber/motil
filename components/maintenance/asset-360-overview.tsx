@@ -1116,6 +1116,29 @@ export function Asset360Overview({
               </p>
             </div>
           )}
+          {economicHistory.length > 0 ? (
+            <details className="border-t border-border pt-4">
+              <summary className="cursor-pointer list-none text-sm font-medium">
+                <span className="flex items-center justify-between gap-4">
+                  <span>Evolución anual</span>
+                  <span className="text-xs font-normal text-muted-foreground">
+                    {economicHistory.length} años fiscales
+                  </span>
+                </span>
+              </summary>
+              <div className="mt-3 divide-y divide-border">
+                {economicHistory.slice(0, 6).map((row) => (
+                  <div key={String(row.fiscal_year)} className="grid gap-3 py-3 sm:grid-cols-[100px_140px_minmax(0,1fr)] sm:items-center">
+                    <p className="text-sm font-semibold">{row.fiscal_year || 'Sin año'}</p>
+                    <p className="text-sm">{money(row.historical_total_cost)}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {number(row.movement_count || 0, 0)} movimientos · {date(row.first_cost_date)} → {date(row.last_cost_date)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </details>
+          ) : null}
         </CardContent>
       </Card>
 
@@ -1648,29 +1671,6 @@ export function Asset360Overview({
             )}
           </div>
         )}
-      </details>
-
-      <details className="group rounded-lg border border-border bg-card">
-        <SectionSummary title="Costos por año" hint={economicHistory.length > 0 ? `${economicHistory.length} años fiscales · ${money(economicLifetime)} acumulados` : 'Sin historial de costos enlazado'} />
-        <div className="border-t border-border p-4">
-          {economicHistory.length > 0 ? (
-            <>
-              <div className="divide-y divide-border">
-                {economicHistory.slice(0, 6).map((row) => (
-                  <div key={String(row.fiscal_year)} className="grid gap-3 py-3 sm:grid-cols-[100px_140px_minmax(0,1fr)] sm:items-center">
-                    <p className="text-sm font-semibold">{row.fiscal_year || 'Sin año'}</p>
-                    <p className="text-sm">{money(row.historical_total_cost)}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {number(row.movement_count || 0, 0)} movimientos · {date(row.first_cost_date)} → {date(row.last_cost_date)}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </>
-          ) : (
-            <p className="text-sm text-muted-foreground">No hay historial de costos enlazado a este activo. Esto no equivale a costo cero.</p>
-          )}
-        </div>
       </details>
 
       {drillingHistory.length > 0 ? (
