@@ -51,6 +51,11 @@ export async function GET(request: NextRequest) {
       poQuality,
       procurementExceptions,
       exceptionCenter,
+      activeMaintenanceAssets,
+      deterministicReconciliation,
+      reviewRequiredReconciliation,
+      rawMeterRows,
+      meterObservations,
     ] = await Promise.all([
       productionAllowed ? context.supabase.from('production_canonical_package_quality_v1').select('status').eq('organization_id', org) : emptyRows(),
       productionAllowed ? context.supabase.from('production_material_movements').select('movement_date').eq('organization_id', org).order('movement_date', { ascending: false }).limit(1) : emptyRows(),
@@ -63,9 +68,14 @@ export async function GET(request: NextRequest) {
       procurementAllowed ? context.supabase.from('purchase_order_quality').select('quality_status').eq('organization_id', org) : emptyRows(),
       procurementAllowed ? context.supabase.from('procurement_match_exceptions').select('status').eq('organization_id', org) : emptyRows(),
       maintenanceAllowed ? context.supabase.from('operational_exception_center_summary_v1').select('*').eq('organization_id', org).maybeSingle() : emptyOne(),
+      maintenanceAllowed ? context.supabase.from('canonical_assets_current').select('id', { count: 'exact', head: true }).eq('organization_id', org).eq('is_active', true) : emptyRows(),
+      maintenanceAllowed ? context.supabase.from('maintenance_asset_reconciliation_v1').select('canonical_asset_id', { count: 'exact', head: true }).eq('organization_id', org).eq('reconciliation_status', 'deterministic_candidate') : emptyRows(),
+      maintenanceAllowed ? context.supabase.from('maintenance_asset_reconciliation_v1').select('canonical_asset_id', { count: 'exact', head: true }).eq('organization_id', org).eq('reconciliation_status', 'review_required') : emptyRows(),
+      maintenanceAllowed ? context.supabase.from('planning_asset_meter_readings').select('id', { count: 'exact', head: true }).eq('organization_id', org) : emptyRows(),
+      maintenanceAllowed ? context.supabase.from('planning_asset_meter_observations_v1').select('id', { count: 'exact', head: true }).eq('organization_id', org) : emptyRows(),
     ] as Promise<QueryResult>[]);
 
-    const failures = [productionChecks, transportLatest, metallurgyLatest, drillingLatest, drillingQueue, inventoryOverview, inventorySnapshot, workOrders, poQuality, procurementExceptions, exceptionCenter]
+    const failures = [productionChecks, transportLatest, metallurgyLatest, drillingLatest, drillingQueue, inventoryOverview, inventorySnapshot, workOrders, poQuality, procurementExceptions, exceptionCenter, activeMaintenanceAssets, deterministicReconciliation, reviewRequiredReconciliation, rawMeterRows, meterObservations]
       .map((result: QueryResult) => result.error)
       .filter(Boolean);
     if (failures.length) throw failures[0];
@@ -123,7 +133,25 @@ export async function GET(request: NextRequest) {
       const openWorkOrders = allWorkOrders.filter((row: any) => !closedStatuses.has(String(row.status || '').toLowerCase()));
       const openMissingAsset = openWorkOrders.filter((row: any) => !row.canonical_asset_id).length;
       const historicalMissingAsset = allWorkOrders.filter((row: any) => !row.canonical_asset_id).length;
-      const maintenanceStatus: HealthStatus = openMissingAsset > 0 ? 'critical' : allWorkOrders.length === 0 ? 'unknown' : 'healthy';
+      const activeAssetCount = activeMaintenanceAssets.count ?? null;
+      const deterministicCandidateCount = deterministicReconciliation.count ?? null;
+      const reviewRequiredCount = reviewRequiredReconciliation.count ?? null;
+      const rawMeterCount = rawMeterRows.count ?? null;
+      const observationCount = meterObservations.count ?? null;
+      const absorbedDuplicateRows =
+        rawMeterCount !== null && observationCount !== null
+          ? Math.max(0, rawMeterCount - observationCount)
+          : null;
+      const maintenanceStatus: HealthStatus =
+        openMissingAsset > 0
+          ? 'critical'
+          : allWorkOrders.length === 0
+            ? 'unknown'
+            : reviewRequiredCount !== null && reviewRequiredCount > 0
+              ? 'watch'
+              : activeAssetCount === null || activeAssetCount === 0
+                ? 'unknown'
+                : 'healthy';
 
       domains.push({
         key: 'maintenance',
@@ -131,20 +159,27 @@ export async function GET(request: NextRequest) {
         status: maintenanceStatus,
         headline: openMissingAsset > 0
           ? `${openMissingAsset} OT activa(s) sin activo canónico`
-          : allWorkOrders.length === 0
-            ? 'Sin OT evaluables para acreditar identidad de activos'
-            : 'OT activas con identidad de equipo consistente',
+          : reviewRequiredCount !== null && reviewRequiredCount > 0
+            ? `${reviewRequiredCount} activo(s) requieren revisión humana de datos`
+            : activeAssetCount === null || activeAssetCount === 0
+              ? 'Sin activos canónicos evaluables'
+              : 'Identidad y evidencia de Mantención bajo control',
         metrics: [
+          { label: 'Activos canónicos activos', value: activeAssetCount },
           { label: 'OT abiertas', value: allWorkOrders.length === 0 ? null : openWorkOrders.length },
           { label: 'OT activas sin equipo', value: allWorkOrders.length === 0 ? null : openMissingAsset },
-          { label: 'Deuda histórica sin equipo', value: allWorkOrders.length === 0 ? null : historicalMissingAsset },
+          { label: 'Conciliaciones determinísticas pendientes', value: deterministicCandidateCount },
+          { label: 'Casos que requieren revisión humana', value: reviewRequiredCount },
+          { label: 'Filas duplicadas de medidor absorbidas', value: absorbedDuplicateRows },
           { label: 'Excepciones operacionales Mantención', value: exceptionCenter.data ? Number((exceptionCenter.data as any).maintenance_items || 0) : null },
         ],
         action: openMissingAsset > 0
           ? 'Resolver identidad del equipo en las OT activas.'
-          : allWorkOrders.length === 0
-            ? 'Recuperar evidencia de OT antes de declarar la identidad de activos confiable.'
-            : 'Mantener conciliación de activos en nuevas OT.',
+          : reviewRequiredCount !== null && reviewRequiredCount > 0
+            ? 'Revisar sólo los casos contradictorios; no inferir el maestro.'
+            : deterministicCandidateCount !== null && deterministicCandidateCount > 0
+              ? 'Validar las conciliaciones determinísticas antes de materializarlas.'
+              : 'Mantener conciliación y evidencia canónica en nuevas OT y lecturas.',
         href: '/dashboard/mantenimiento/inteligencia',
       });
     }
