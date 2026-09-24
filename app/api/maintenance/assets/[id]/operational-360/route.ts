@@ -134,6 +134,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         : Promise.resolve({ data: [], error: null });
     const isDrillRig = String(asset.asset_type || '').toLowerCase() === 'drill_rig';
 
+    const exactCostCenterDetailPromise = asset.cost_center_code
+      ? context.supabase
+          .from('cost_centers')
+          .select('id,code,name,description,status')
+          .eq('organization_id', context.organizationId)
+          .eq('code', asset.cost_center_code)
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null });
+
     const costCenterMatchPromise =
       !asset.cost_center_code && asset.name
         ? context.supabase
@@ -173,7 +182,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       validation_status: asset.validation_status,
     };
 
-    const [ordersResult, closeResult, preventiveResult, runtimeResult, reliabilityResult, runtimeReliabilityResult, snapshotsResult, partsResult, eventsResult, statusHistoryResult, planningResult, operationalStateResult, supplyChainResult, procurementOrdersResult, costCenterPurchaseHistoryResult, namePurchaseHistoryResult, economicHistoryResult, drillingHistoryResult, drillEconomicsResult, drillingReviewResult, maintenancePriorityResult, financeReconciliationResult, runtimeCostResult, meterHistoryResult, drillEvidenceResult, drillEconomicsChangeResult, taskCandidatesResult, standardPlanResult, costCenterMatchResult] = await Promise.all([
+    const [ordersResult, closeResult, preventiveResult, runtimeResult, reliabilityResult, runtimeReliabilityResult, snapshotsResult, partsResult, eventsResult, statusHistoryResult, planningResult, operationalStateResult, supplyChainResult, procurementOrdersResult, costCenterPurchaseHistoryResult, namePurchaseHistoryResult, economicHistoryResult, drillingHistoryResult, drillEconomicsResult, drillingReviewResult, maintenancePriorityResult, financeReconciliationResult, runtimeCostResult, meterHistoryResult, drillEvidenceResult, drillEconomicsChangeResult, taskCandidatesResult, standardPlanResult, exactCostCenterDetailResult, costCenterMatchResult] = await Promise.all([
       context.supabase
         .from('maintenance_operational_work_order_flow_v1')
         .select('work_order_id,work_order_number,status,priority,work_type,scheduled_date,assigned_person_name,flow_status,open_purchase_order_count,quantity_requested,quantity_issued,quantity_installed,total_cost')
@@ -368,6 +377,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         .eq('canonical_asset_id', id)
         .order('updated_at', { ascending: false })
         .limit(5),
+      exactCostCenterDetailPromise,
       costCenterMatchPromise,
     ]);
 
@@ -400,6 +410,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       ['drillEconomicsChange', drillEconomicsChangeResult],
       ['taskCandidates', taskCandidatesResult],
       ['standardPlans', standardPlanResult],
+      ['exactCostCenterDetail', exactCostCenterDetailResult],
       ['costCenterMatch', costCenterMatchResult],
     ] as const;
     const sourceErrors = sourceResults
@@ -686,6 +697,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         normalizedAsset.cost_center_code ||
         exactCostCenter?.code ||
         purchaseExactCostCenter?.code ||
+        null,
+      cost_center_name:
+        exactCostCenterDetailResult.data?.name ||
+        exactCostCenter?.name ||
+        purchaseExactCostCenter?.description ||
         null,
       cost_center_evidence_source:
         normalizedAsset.cost_center_code
