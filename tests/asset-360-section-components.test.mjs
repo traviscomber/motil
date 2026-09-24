@@ -5,6 +5,10 @@ import fs from 'node:fs';
 const overview = fs.readFileSync('components/maintenance/asset-360-overview.tsx', 'utf8');
 const format = fs.readFileSync('components/maintenance/asset-360/format.ts', 'utf8');
 const primitives = fs.readFileSync('components/maintenance/asset-360/primitives.tsx', 'utf8');
+const purchaseSection = fs.readFileSync(
+  'components/maintenance/asset-360/purchase-section.tsx',
+  'utf8',
+);
 
 test('asset 360 format helpers live in the shared format module', () => {
   assert.match(format, /export const number = \(value: unknown, digits = 0\)/);
@@ -27,6 +31,42 @@ test('asset 360 presentation primitives live in the shared primitives module', (
   assert.match(primitives, /hint\?: string \| null/);
   assert.match(primitives, /Ver detalle/);
   assert.match(primitives, /group-open:rotate-180/);
+});
+
+test('asset 360 purchase section owns the purchase and supply chain types', () => {
+  assert.match(purchaseSection, /export type Asset360SupplyChainRow = \{/);
+  assert.match(purchaseSection, /work_order_id: string;/);
+  assert.match(purchaseSection, /supply_chain_status\?: string \| null;/);
+  assert.match(purchaseSection, /export type Asset360PurchaseHistorySummary = \{/);
+  assert.match(purchaseSection, /matchBasis\?: 'cost_center' \| 'name_model' \| string \| null;/);
+  assert.match(purchaseSection, /export type Asset360CostCenterPurchaseLine = \{/);
+  assert.match(purchaseSection, /export type Asset360ProcurementOrder = \{/);
+  assert.match(purchaseSection, /supplierScore\?: \{/);
+});
+
+test('asset 360 purchase section renders the purchase and supply evidence', () => {
+  assert.match(purchaseSection, /export function Asset360PurchaseSection\(/);
+  assert.match(purchaseSection, /if \(!hasPurchaseEvidence && supplyChain\.length === 0\) return null;/);
+  assert.match(purchaseSection, /title="Compras y abastecimiento"/);
+  assert.match(purchaseSection, /Abastecimiento por OT/);
+  assert.match(purchaseSection, /Detalle de abastecimiento y compras/);
+  assert.match(purchaseSection, /Gasto histórico neto registrado/);
+  assert.match(purchaseSection, /Último proveedor/);
+  assert.match(purchaseSection, /identificado de forma exacta en el histórico de compras/);
+  assert.match(purchaseSection, /Sin compras enlazadas al equipo\./);
+});
+
+test('asset 360 overview delegates purchase rendering to the purchase section', () => {
+  assert.match(overview, /from '@\/components\/maintenance\/asset-360\/purchase-section'/);
+  assert.match(overview, /<Asset360PurchaseSection[ \n]/);
+  assert.match(overview, /supplyChain=\{supplyChain\}/);
+  assert.match(overview, /purchaseHistorySummary=\{purchaseHistorySummary\}/);
+  assert.match(overview, /costCenterCode=\{asset\.cost_center_code\}/);
+  assert.match(overview, /supplyChain\?: Asset360SupplyChainRow\[\]/);
+  assert.match(overview, /procurementOrders\?: Asset360ProcurementOrder\[\]/);
+  assert.doesNotMatch(overview, /Abastecimiento por OT/);
+  assert.doesNotMatch(overview, /Detalle de abastecimiento y compras/);
+  assert.doesNotMatch(overview, /supplierScore\?: \{/);
 });
 
 test('asset 360 overview imports the shared helpers instead of defining them', () => {
