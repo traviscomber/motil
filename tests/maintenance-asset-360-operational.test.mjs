@@ -77,6 +77,11 @@ test('asset 360 recovers a unique current meter from planning when stronger mete
   assert.match(api, /planningCurrentEvidence\?\.current_reading_at/);
 });
 
+test('asset 360 prefers observed meter evidence over schedule snapshots', () => {
+  assert.match(api, /latestPlanningMeter\?\.meter_value \?\?\s*planningCurrentMeter \?\?\s*preventiveMeterSnapshot/);
+  assert.match(api, /planningCurrentMeter != null\s*\? 'planning_maintenance_source_rows'/);
+});
+
 test('asset 360 exposes master data validation separately from operational state', () => {
   assert.match(ui, /Calidad del maestro/);
   assert.match(ui, /Requiere enriquecimiento/);
