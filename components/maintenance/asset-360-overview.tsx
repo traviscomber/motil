@@ -542,6 +542,14 @@ const date = (value: unknown) => {
   if (Number.isNaN(parsed.getTime())) return show(value);
   return new Intl.DateTimeFormat('es-CL', { dateStyle: 'medium' }).format(parsed);
 };
+const cleanEvidenceText = (value: unknown) => {
+  const text = String(value || '').trim();
+  if (!text) return null;
+  const normalized = text.toUpperCase();
+  if (normalized === '#ERROR!' || normalized === 'NO REGISTRADO' || normalized === 'N/A') return null;
+  return text;
+};
+
 
 function IdentityItem({
   icon: Icon,
@@ -1411,7 +1419,7 @@ export function Asset360Overview({
                       </p>
                       {order.supplierScore?.delivery_score != null ? (
                         <p className="mt-1 text-xs text-muted-foreground">
-                          Entrega {number(order.supplierScore.delivery_score, 0)} · Calidad {number(order.supplierScore.quality_score || 0, 0)}
+                          Entrega {order.supplierScore.delivery_score != null ? number(order.supplierScore.delivery_score, 0) : 'Sin base'} · Calidad {order.supplierScore.quality_score != null ? number(order.supplierScore.quality_score, 0) : 'Sin base'}
                         </p>
                       ) : null}
                     </div>
@@ -1441,7 +1449,7 @@ export function Asset360Overview({
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Cantidad / unidad</p>
-                      <p className="mt-1 text-sm font-medium">{number(line.quantity || 0, 1)} {line.unit || ''}</p>
+                      <p className="mt-1 text-sm font-medium">{line.quantity != null ? `${number(line.quantity, 1)} ${line.unit || ''}`.trim() : 'Sin cantidad'}</p>
                     </div>
                     <div className="lg:text-right">
                       <p className="text-xs text-muted-foreground">Monto neto</p>
@@ -1587,7 +1595,7 @@ export function Asset360Overview({
                 {meterHistory.slice(0, 6).map((row) => (
                   <div key={row.id} className="grid gap-2 py-2 sm:grid-cols-[140px_120px_minmax(0,1fr)] sm:items-center">
                     <span className="text-xs text-muted-foreground">{date(row.recorded_at)}</span>
-                    <span className="text-sm font-medium">{number(row.meter_value || 0, 1)} {row.meter_unit || ''}</span>
+                    <span className="text-sm font-medium">{row.meter_value != null ? `${number(row.meter_value, 1)} ${row.meter_unit || ''}`.trim() : 'Sin lectura'}</span>
                     <span className="truncate text-xs text-muted-foreground">{row.source_kind || row.source_reference || 'Fuente operacional'}</span>
                   </div>
                 ))}
@@ -1714,7 +1722,7 @@ export function Asset360Overview({
             <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <IdentityItem icon={Activity} label="Metros perforados" value={`${number(drillingMeters, 1)} m`} meta={drillingHistory[0]?.operation_date ? `${drillingHistory.length} reportes · hasta ${date(drillingHistory[0].operation_date)}` : `${drillingHistory.length} reportes`} />
               <IdentityItem icon={CalendarDays} label="Última operación" value={date(drillingHistory[0]?.operation_date)} />
-              <IdentityItem icon={MapPin} label="Última faena" value={drillingHistory[0]?.mine_raw || drillingHistory[0]?.site_raw} />
+              <IdentityItem icon={MapPin} label="Última faena" value={cleanEvidenceText(drillingHistory[0]?.mine_raw) || cleanEvidenceText(drillingHistory[0]?.site_raw)} />
             </div>
             {drillOperationalEvidence ? (
               <div className="mb-4 grid gap-4 rounded-md border border-border bg-muted/20 p-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -1782,7 +1790,7 @@ export function Asset360Overview({
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Producción</p>
-                    <p className="mt-1 text-sm font-medium">{number(row.drilled_meters || 0, 1)} m</p>
+                    <p className="mt-1 text-sm font-medium">{row.drilled_meters != null ? `${number(row.drilled_meters, 1)} m` : 'Sin metros registrados'}</p>
                   </div>
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">
