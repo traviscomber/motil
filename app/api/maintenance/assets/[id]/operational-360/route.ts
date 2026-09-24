@@ -207,7 +207,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       validation_status: asset.validation_status,
     };
 
-    const [ordersResult, closeResult, preventiveResult, runtimeResult, reliabilityResult, runtimeReliabilityResult, snapshotsResult, partsResult, eventsResult, statusHistoryResult, planningResult, operationalStateResult, supplyChainResult, procurementOrdersResult, costCenterPurchaseHistoryResult, namePurchaseHistoryResult, economicHistoryResult, drillingHistoryResult, drillEconomicsResult, drillingReviewResult, maintenancePriorityResult, financeReconciliationResult, runtimeCostResult, meterHistoryResult, drillEvidenceResult, drillEconomicsChangeResult, taskCandidatesResult, standardPlanResult, identityHistoryResult, exactCostCenterDetailResult, costCenterMatchResult] = await Promise.all([
+    const [ordersResult, closeResult, preventiveResult, runtimeResult, reliabilityResult, runtimeReliabilityResult, snapshotsResult, partsResult, eventsResult, statusHistoryResult, planningResult, operationalStateResult, operatingSpineResult, supplyChainResult, procurementOrdersResult, costCenterPurchaseHistoryResult, namePurchaseHistoryResult, economicHistoryResult, drillingHistoryResult, drillEconomicsResult, drillingReviewResult, maintenancePriorityResult, financeReconciliationResult, runtimeCostResult, meterHistoryResult, drillEvidenceResult, drillEconomicsChangeResult, taskCandidatesResult, standardPlanResult, identityHistoryResult, exactCostCenterDetailResult, costCenterMatchResult] = await Promise.all([
       context.supabase
         .from('maintenance_operational_work_order_flow_v1')
         .select('work_order_id,work_order_number,status,priority,work_type,scheduled_date,assigned_person_name,flow_status,open_purchase_order_count,quantity_requested,quantity_issued,quantity_installed,total_cost')
@@ -282,6 +282,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       context.supabase
         .from('asset_operational_state_v1')
         .select('operational_status,criticality,location,recognized_cost_event_count,last_cost_at,recognized_cost_clp_lifetime,recognized_cost_clp_ytd,recognized_cost_clp_12m,work_order_count,open_work_order_count,recorded_downtime_hours,drilling_report_count,drilled_meters,sensor_count,sensor_reading_count,evidence_domain_count,availability_evidence_status,availability_pct,last_availability_date,availability_days_30d,scheduled_minutes_30d,downtime_minutes_30d')
+        .eq('organization_id', context.organizationId)
+        .eq('canonical_asset_id', id)
+        .maybeSingle(),
+      context.supabase
+        .from('asset_operating_spine_v1')
+        .select('last_work_order_at,last_drilling_date,last_cost_event_at,last_telemetry_at,evidence_domain_count')
         .eq('organization_id', context.organizationId)
         .eq('canonical_asset_id', id)
         .maybeSingle(),
@@ -425,6 +431,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       ['statusHistory', statusHistoryResult],
       ['maintenancePlanning', planningResult],
       ['operationalState', operationalStateResult],
+      ['operatingSpine', operatingSpineResult],
       ['supplyChain', supplyChainResult],
       ['procurementOrders', procurementOrdersResult],
       ['purchaseHistoryCostCenter', costCenterPurchaseHistoryResult],
@@ -963,6 +970,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       statusHistory: statusHistoryResult.data || [],
       maintenancePlanning: planningResult.data || [],
       operationalState: operationalStateResult.data || null,
+      operatingSpine: operatingSpineResult.data || null,
       supplyChain: supplyChainResult.data || [],
       procurementOrders,
       costCenterPurchaseHistory,
