@@ -67,6 +67,8 @@ type Asset360Response = {
     criticality_evidence_source?: string | null;
     criticality_evidence_at?: string | null;
     operational_status_evidence_source?: string | null;
+    operational_status_evidence_at?: string | null;
+    operational_status_reason?: string | null;
     reference_family?: string | null;
     reference_family_evidence_source?: string | null;
     reference_family_evidence_at?: string | null;
@@ -1084,6 +1086,12 @@ export function Asset360Overview({
                   </div>
                   {technicalIdentity ? (
                     <p className="mt-3 text-sm text-muted-foreground">{technicalIdentity}</p>
+                  ) : null}
+                  {asset.operational_status_evidence_at ? (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Estado {asset.operational_status_evidence_source === 'maintenance_asset_status_history' ? 'registrado' : 'actualizado'} el {date(asset.operational_status_evidence_at)}
+                      {asset.operational_status_reason ? ` · ${asset.operational_status_reason}` : ''}
+                    </p>
                   ) : null}
                 </div>
 
