@@ -63,11 +63,15 @@ type Asset360Response = {
     validation_status?: string | null;
     cost_center_evidence_source?: string | null;
     location_evidence_source?: string | null;
+    location_evidence_at?: string | null;
     criticality_evidence_source?: string | null;
+    criticality_evidence_at?: string | null;
     operational_status_evidence_source?: string | null;
     reference_family?: string | null;
     reference_family_evidence_source?: string | null;
+    reference_family_evidence_at?: string | null;
     license_plate_evidence_source?: string | null;
+    license_plate_evidence_at?: string | null;
   };
   summary?: {
     activeWorkOrders: number;
@@ -707,7 +711,7 @@ export function Asset360Overview({
           asset.location,
           MapPin,
           asset.location_evidence_source === 'planning_or_production_evidence'
-            ? 'Recuperada desde evidencia operacional'
+            ? `Recuperada desde evidencia operacional${asset.location_evidence_at ? ` · ${date(asset.location_evidence_at)}` : ''}`
             : null,
         ] as const
       : null,
@@ -717,7 +721,7 @@ export function Asset360Overview({
           asset.license_plate,
           ShieldCheck,
           asset.license_plate_evidence_source === 'deterministic_name_plate'
-            ? 'Recuperada desde el nombre del activo'
+            ? `Recuperada desde el nombre del activo${asset.license_plate_evidence_at ? ` · ${date(asset.license_plate_evidence_at)}` : ''}`
             : null,
         ] as const
       : asset.serial_number
@@ -820,7 +824,12 @@ export function Asset360Overview({
     displayMobility ? ['Movilidad', displayMobility, MapPin] as const : null,
     displayLifecycle ? ['Ciclo de vida', displayLifecycle, Activity] as const : null,
     !displayAssetType && asset.reference_family
-      ? ['Familia referencial', asset.reference_family, Wrench] as const
+      ? [
+          'Familia referencial',
+          asset.reference_family,
+          Wrench,
+          asset.reference_family_evidence_at ? `Derivada del nombre · ${date(asset.reference_family_evidence_at)}` : 'Derivada del nombre',
+        ] as const
       : null,
     asset.acquisition_date ? ['Adquisición', date(asset.acquisition_date), CalendarDays] as const : null,
     asset.expected_lifespan_years != null
@@ -832,7 +841,7 @@ export function Asset360Overview({
     asset.baseline_mtbf_hours != null
       ? ['MTBF base', `${number(asset.baseline_mtbf_hours, 0)} h`, Timer] as const
       : null,
-  ].filter(Boolean) as Array<readonly [string, string, LucideIcon]>;
+  ].filter(Boolean) as Array<readonly [string, string, LucideIcon, string?]>;
   const recentEvents = data.recentEvents || [];
   const auditedInterventions = data.auditedInterventions || [];
   const installedParts = data.installedParts || [];
@@ -1129,8 +1138,8 @@ export function Asset360Overview({
               </summary>
               <div className="border-t border-border px-5 py-5">
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-                  {assetDetails.map(([label, value, Icon]) => (
-                    <IdentityItem key={label} icon={Icon} label={label} value={value} />
+                  {assetDetails.map(([label, value, Icon, meta]) => (
+                    <IdentityItem key={label} icon={Icon} label={label} value={value} meta={meta || null} />
                   ))}
                 </div>
                 <div className="mt-5 flex items-center justify-between gap-4 border-t border-border pt-4">
