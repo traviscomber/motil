@@ -738,7 +738,13 @@ export function Asset360Overview({
           asset.location_evidence_source === 'planning_or_production_evidence'
             ? `Recuperada desde evidencia operacional${asset.location_evidence_at ? ` · ${date(asset.location_evidence_at)}` : ''}`
             : asset.location_evidence_at
-              ? `${evidenceSourceLabel(asset.location_evidence_source)} · ${date(asset.location_evidence_at)}`
+              ? `${
+                  asset.location_evidence_source === 'asset_operational_state_v1'
+                    ? 'Estado operacional consolidado'
+                    : asset.location_evidence_source === 'maintenance_canonical_assets_v1'
+                      ? 'Maestro canónico'
+                      : 'Evidencia operacional'
+                } · ${date(asset.location_evidence_at)}`
               : null,
         ] as const
       : null,
