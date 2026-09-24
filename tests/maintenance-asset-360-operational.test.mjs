@@ -135,7 +135,7 @@ test('asset 360 surfaces dated operational freshness from the canonical operatin
   assert.match(api, /from\('asset_operating_spine_v1'\)/);
   assert.match(api, /last_work_order_at,last_drilling_date,last_cost_event_at,last_telemetry_at,evidence_domain_count/);
   assert.match(api, /operatingSpine: operatingSpineResult\.data \|\| null/);
-  assert.match(ui, /Última evidencia operacional/);
+  assert.match(ui, /label="Última evidencia"/);
   assert.match(ui, /operatingSpine\?\.last_cost_event_at/);
   assert.match(ui, /operatingSpine\?\.last_drilling_date/);
 });
@@ -269,7 +269,11 @@ test('asset 360 surfaces planning or schedule horometer without inventing runtim
 test('asset 360 preserves meter units for hour meters and odometers', () => {
   assert.match(api, /latest_meter_unit: resolvedMeterUnit/);
   assert.match(api, /latestPlanningMeter\?\.meter_unit/);
-  assert.match(ui, /effectiveMeterUnit === 'km' \? 'Odómetro'/);
+  assert.match(ui, /effectiveMeterUnit === 'km'/);
+  assert.match(ui, /\? 'Odómetro'/);
+  assert.match(ui, /effectiveMeterUnit === 'h'/);
+  assert.match(ui, /\? 'Horómetro'/);
+  assert.match(ui, /usesAnnualControl/);
   assert.match(ui, /effectiveMeterLabel/);
   assert.match(ui, /effectiveMeterSuffix/);
 });
