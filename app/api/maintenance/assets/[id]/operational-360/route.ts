@@ -14,6 +14,13 @@ import {
   normalizeLocationEvidence,
 } from '@/lib/maintenance/asset-identity-evidence';
 import { resolveEvidenceField } from '@/lib/maintenance/evidence-field-resolution';
+import {
+  buildRuntimeCostIntelligence,
+  countMaterialMeterDecreases,
+  dedupeMeterReadings,
+  resolvePlanningCurrentMeter,
+  resolvePreventiveMeterSnapshot,
+} from '@/lib/maintenance/meter-evidence-resolution';
 
 const OPTIONAL_SOURCE_TIMEOUT_MS = 2500;
 
@@ -793,114 +800,29 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           : null,
     };
 
-    const rawPlanningMeterHistory = meterHistoryResult.data || [];
-    const planningMeterSignature = (row: any) =>
-      [row.canonical_asset_id || id, row.recorded_at || '', row.meter_value ?? '', row.meter_unit || ''].join('|');
-    const planningMeterHistory = Array.from(
-      rawPlanningMeterHistory.reduce((map: Map<string, any>, row: any) => {
-        const signature = planningMeterSignature(row);
-        if (!map.has(signature)) map.set(signature, row);
-        return map;
-      }, new Map()).values(),
-    ).slice(0, 12);
-    const duplicatePlanningMeterRows = Math.max(rawPlanningMeterHistory.length - planningMeterHistory.length, 0);
-    const latestPlanningMeter = planningMeterHistory[0] || null;
-    const chronologicalPlanningMeters = [...planningMeterHistory]
-      .filter((row: any) => row.meter_value != null && row.recorded_at)
-      .sort((a: any, b: any) => String(a.recorded_at).localeCompare(String(b.recorded_at)));
-    let materialMeterDecreaseCount = 0;
-    for (let index = 1; index < chronologicalPlanningMeters.length; index += 1) {
-      const previous = Number(chronologicalPlanningMeters[index - 1]?.meter_value);
-      const current = Number(chronologicalPlanningMeters[index]?.meter_value);
-      if (Number.isFinite(previous) && Number.isFinite(current) && previous - current > 1) {
-        materialMeterDecreaseCount += 1;
-      }
-    }
-    const preventiveMeterValues = preventives
-      .filter((row: any) => {
-        const value = Number(row.effective_current_meter);
-        if (!Number.isFinite(value)) return false;
-        return !(value === 0 && String(row.meter_evidence_source || '').toLowerCase() === 'schedule_snapshot');
-      })
-      .map((row: any) => Number(row.effective_current_meter));
-    const uniquePreventiveMeters = Array.from(new Set(preventiveMeterValues));
-    const preventiveMeterSnapshot = uniquePreventiveMeters.length === 1 ? uniquePreventiveMeters[0] : null;
-    const planningCurrentRows = (planningResult.data || []).filter((row: any) => {
-      const meterUnit = String(row.meter_unit || '').trim().toLowerCase();
-      return (
-        row.current_reading !== null &&
-        row.current_reading !== undefined &&
-        Number.isFinite(Number(row.current_reading)) &&
-        !['anual', 'annual'].includes(meterUnit)
-      );
-    });
-    const uniquePlanningCurrentMeters = Array.from(
-      new Set(planningCurrentRows.map((row: any) => Number(row.current_reading))),
+    const { history: planningMeterHistory, duplicateRowsIgnored: duplicatePlanningMeterRows } = dedupeMeterReadings(
+      meterHistoryResult.data || [],
+      id,
     );
-    const planningCurrentMeter = uniquePlanningCurrentMeters.length === 1 ? uniquePlanningCurrentMeters[0] : null;
-    const planningCurrentEvidence = planningCurrentMeter != null
-      ? planningCurrentRows
-          .filter((row: any) => Number(row.current_reading) === planningCurrentMeter)
-          .sort((a: any, b: any) => String(b.current_reading_at || b.updated_at || '').localeCompare(String(a.current_reading_at || a.updated_at || '')))[0] || null
-      : null;
-    const baseRuntimeCost = runtimeCostResult.data || null;
-    const resolvedLatestMeter =
-      baseRuntimeCost?.latest_meter_hours ??
-      latestPlanningMeter?.meter_value ??
-      planningCurrentMeter ??
-      preventiveMeterSnapshot ??
-      null;
-    const resolvedLastReadingAt =
-      baseRuntimeCost?.last_reading_at ??
-      latestPlanningMeter?.recorded_at ??
-      planningCurrentEvidence?.current_reading_at ??
-      planningCurrentEvidence?.updated_at ??
-      null;
-    const resolvedMeterUnit =
-      baseRuntimeCost?.latest_meter_hours != null
-        ? 'h'
-        : latestPlanningMeter?.meter_unit ||
-          planningCurrentEvidence?.meter_unit ||
-          normalizedAsset.meter_unit ||
-          planningMeterUnit ||
-          (preventiveMeterSnapshot != null ? 'h' : null);
-    const resolvedMeterEvidenceSource =
-      baseRuntimeCost?.latest_meter_hours != null
-        ? 'asset_runtime_readings'
-        : latestPlanningMeter?.meter_value != null
-          ? latestPlanningMeter.source_kind || latestPlanningMeter.source_reference || 'planning_asset_meter_readings'
-          : planningCurrentMeter != null
-            ? 'planning_maintenance_source_rows'
-            : preventiveMeterSnapshot != null
-              ? (preventives.find((row: any) => Number(row.effective_current_meter) === preventiveMeterSnapshot)?.meter_evidence_source || 'schedule_snapshot')
-              : null;
-    const resolvedRuntimeCostIntelligence =
-      resolvedLatestMeter != null || baseRuntimeCost
-        ? {
-            ...(baseRuntimeCost || {}),
-            reading_count:
-              Number(baseRuntimeCost?.reading_count || 0) > 0
-                ? Number(baseRuntimeCost?.reading_count || 0)
-                : planningMeterHistory.length > 0
-                  ? planningMeterHistory.length
-                  : planningCurrentMeter != null
-                    ? 1
-                    : preventiveMeterSnapshot != null
-                      ? 1
-                      : 0,
-            first_reading_at:
-              baseRuntimeCost?.first_reading_at ??
-              (planningMeterHistory.length > 0 ? planningMeterHistory[planningMeterHistory.length - 1]?.recorded_at || null : null),
-            last_reading_at: resolvedLastReadingAt,
-            latest_meter_hours: resolvedLatestMeter,
-            latest_meter_unit: resolvedMeterUnit,
-            meter_evidence_source: resolvedMeterEvidenceSource,
-            duplicate_meter_rows_ignored: duplicatePlanningMeterRows,
-            material_meter_decrease_count: materialMeterDecreaseCount,
-            meter_sequence_status:
-              materialMeterDecreaseCount > 0 ? 'review_required' : 'consistent',
-          }
-        : null;
+    const materialMeterDecreaseCount = countMaterialMeterDecreases(planningMeterHistory);
+    const latestPlanningMeter = planningMeterHistory[0] || null;
+    const preventiveMeterSnapshot = resolvePreventiveMeterSnapshot(preventives);
+    const { meter: planningCurrentMeter, evidence: planningCurrentEvidence } = resolvePlanningCurrentMeter(
+      planningResult.data || [],
+    );
+    const resolvedRuntimeCostIntelligence = buildRuntimeCostIntelligence({
+      base: runtimeCostResult.data || null,
+      planningMeterHistory,
+      latestPlanningMeter,
+      planningCurrentMeter,
+      planningCurrentEvidence,
+      preventiveMeterSnapshot,
+      preventives,
+      normalizedMeterUnit: normalizedAsset.meter_unit == null ? null : String(normalizedAsset.meter_unit),
+      planningMeterUnit,
+      duplicateRowsIgnored: duplicatePlanningMeterRows,
+      materialMeterDecreases: materialMeterDecreaseCount,
+    });
 
     const summary = {
       activeWorkOrders: (ordersResult.data || []).length,

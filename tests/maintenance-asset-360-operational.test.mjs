@@ -7,6 +7,7 @@ const ui = fs.readFileSync('components/maintenance/asset-360-overview.tsx', 'utf
 const assetsApi = fs.readFileSync('app/api/maintenance/assets/route.ts', 'utf8');
 const costCenterMachines = fs.readFileSync('lib/maintenance/cost-center-machines.ts', 'utf8');
 const identityEvidence = fs.readFileSync('lib/maintenance/asset-identity-evidence.ts', 'utf8');
+const meterEvidence = fs.readFileSync('lib/maintenance/meter-evidence-resolution.ts', 'utf8');
 
 test('asset 360 API is maintenance authorized tenant scoped and composes existing evidence', () => {
   assert.match(api, /requireModuleAccess\(request, MODULE_KEYS\.MANT_OPERACIONES\)/);
@@ -66,20 +67,20 @@ test('asset 360 labels schedule meter snapshots as references rather than observ
 });
 
 test('asset 360 rejects zero schedule snapshots as current meter evidence', () => {
-  assert.match(api, /value === 0 && String\(row\.meter_evidence_source \|\| ''\)\.toLowerCase\(\) === 'schedule_snapshot'/);
+  assert.match(meterEvidence, /value === 0 && String\(row\.meter_evidence_source \|\| ''\)\.toLowerCase\(\) === 'schedule_snapshot'/);
   assert.match(ui, /defendableNextPreventiveMeter/);
   assert.match(ui, /Sin lectura/);
 });
 
 test('asset 360 recovers a unique current meter from planning when stronger meter evidence is absent', () => {
-  assert.match(api, /uniquePlanningCurrentMeters/);
+  assert.match(meterEvidence, /uniqueMeters/);
   assert.match(api, /planningCurrentMeter/);
   assert.match(api, /planning_maintenance_source_rows/);
-  assert.match(api, /planningCurrentEvidence\?\.current_reading_at/);
+  assert.match(meterEvidence, /planningCurrentEvidence\?\.current_reading_at/);
 });
 
 test('asset 360 rejects numeric readings whose planning unit is annual and flags them for review', () => {
-  assert.match(api, /!\['anual', 'annual'\]\.includes\(meterUnit\)/);
+  assert.match(meterEvidence, /!\['anual', 'annual'\]\.includes\(meterUnit\)/);
   assert.match(ui, /hasAnnualReadingConflict/);
   assert.match(ui, /Anual · lectura numérica por validar/);
   assert.match(ui, /Valor numérico con unidad anual en planificación/);
@@ -132,8 +133,8 @@ test('asset 360 does not present zero observed runtime without a measured interv
 });
 
 test('asset 360 prefers observed meter evidence over schedule snapshots', () => {
-  assert.match(api, /latestPlanningMeter\?\.meter_value \?\?\s*planningCurrentMeter \?\?\s*preventiveMeterSnapshot/);
-  assert.match(api, /planningCurrentMeter != null\s*\? 'planning_maintenance_source_rows'/);
+  assert.match(meterEvidence, /latestPlanningMeter\?\.meter_value \?\?\s*planningCurrentMeter \?\?\s*preventiveMeterSnapshot/);
+  assert.match(meterEvidence, /planningCurrentMeter != null\s*\? 'planning_maintenance_source_rows'/);
 });
 
 test('asset 360 exposes master data validation separately from operational state', () => {
@@ -283,15 +284,15 @@ test('asset 360 can recover a strongly formatted Chilean plate without overwriti
 test('asset 360 surfaces planning or schedule horometer without inventing runtime history', () => {
   assert.match(api, /planningMeterHistory/);
   assert.match(api, /preventiveMeterSnapshot/);
-  assert.match(api, /meter_evidence_source: resolvedMeterEvidenceSource/);
+  assert.match(meterEvidence, /meter_evidence_source: meterEvidenceSource/);
   assert.match(ui, /data\.runtimeCostIntelligence\?\.latest_meter_hours != null/);
   assert.match(ui, /runtimeCostIntelligence\?\.latest_meter_hours != null/);
   assert.match(ui, /sin historial cronológico enlazado/);
 });
 
 test('asset 360 preserves meter units for hour meters and odometers', () => {
-  assert.match(api, /latest_meter_unit: resolvedMeterUnit/);
-  assert.match(api, /latestPlanningMeter\?\.meter_unit/);
+  assert.match(meterEvidence, /latest_meter_unit: meterUnit/);
+  assert.match(meterEvidence, /latestPlanningMeter\?\.meter_unit/);
   assert.match(ui, /effectiveMeterUnit === 'km'/);
   assert.match(ui, /\? 'Odómetro'/);
   assert.match(ui, /effectiveMeterUnit === 'h'/);
@@ -312,8 +313,8 @@ test('asset 360 keeps traceability meter units and exact finance reconciliation 
 
 test('asset 360 flags material planning meter decreases without calling them resets', () => {
   assert.match(api, /materialMeterDecreaseCount/);
-  assert.match(api, /previous - current > 1/);
-  assert.match(api, /meter_sequence_status/);
+  assert.match(meterEvidence, /previous - current > 1/);
+  assert.match(meterEvidence, /meter_sequence_status/);
   assert.match(ui, /descenso material por revisar/);
 });
 
@@ -349,11 +350,22 @@ test('equipment list trusts the canonical active state for deduplicated fleet id
   assert.doesNotMatch(assetsApi, /deduplicatedAliases/);
 });
 
+test('asset 360 resolves meter evidence through the shared meter lib', () => {
+  assert.match(api, /from '@\/lib\/maintenance\/meter-evidence-resolution'/);
+  assert.match(api, /dedupeMeterReadings\(\s*meterHistoryResult\.data \|\| \[\],/);
+  assert.match(api, /countMaterialMeterDecreases\(planningMeterHistory\)/);
+  assert.match(api, /resolvePreventiveMeterSnapshot\(preventives\)/);
+  assert.match(api, /resolvePlanningCurrentMeter\(\s*planningResult\.data \|\| \[\],?\s*\)/);
+  assert.match(api, /buildRuntimeCostIntelligence\(\{/);
+  assert.doesNotMatch(api, /function dedupeMeterReadings/);
+  assert.doesNotMatch(api, /planningMeterSignature/);
+});
+
 test('asset 360 consumes the canonical deduplicated meter observation model', () => {
   assert.match(api, /planning_asset_meter_readings/);
-  assert.match(api, /planningMeterSignature/);
-  assert.match(api, /duplicate_meter_rows_ignored/);
-  assert.match(api, /\.slice\(0, 12\)/);
+  assert.match(meterEvidence, /const signature = \(row: MeterReadingRow\)/);
+  assert.match(meterEvidence, /duplicate_meter_rows_ignored/);
+  assert.match(meterEvidence, /\.slice\(0, limit\)/);
   assert.match(api, /\.limit\(24\)/);
 });
 
