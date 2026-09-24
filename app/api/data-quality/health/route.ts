@@ -145,11 +145,13 @@ export async function GET(request: NextRequest) {
       const maintenanceStatus: HealthStatus =
         openMissingAsset > 0
           ? 'critical'
-          : reviewRequiredCount !== null && reviewRequiredCount > 0
-            ? 'watch'
-            : activeAssetCount === null || activeAssetCount === 0
-              ? 'unknown'
-              : 'healthy';
+          : allWorkOrders.length === 0
+            ? 'unknown'
+            : reviewRequiredCount !== null && reviewRequiredCount > 0
+              ? 'watch'
+              : activeAssetCount === null || activeAssetCount === 0
+                ? 'unknown'
+                : 'healthy';
 
       domains.push({
         key: 'maintenance',
