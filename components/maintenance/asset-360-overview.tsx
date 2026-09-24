@@ -2522,7 +2522,12 @@ export function Asset360Overview({
                     : null}
                   meta={evidenceSourceLabel(runtimeCostIntelligence?.meter_evidence_source)}
                 />
-                <IdentityItem icon={FileText} label="Hoja" value={asset.source_sheet} />
+                <IdentityItem
+                  icon={FileText}
+                  label="Hoja"
+                  value={asset.source_sheet}
+                  meta={asset.source_row != null ? `Fila ${asset.source_row}` : null}
+                />
                 <IdentityItem icon={CalendarDays} label="Última actualización" value={date(asset.updated_at || asset.imported_at)} />
                 <IdentityItem
                   icon={Activity}
