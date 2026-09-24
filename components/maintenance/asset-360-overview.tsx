@@ -684,16 +684,39 @@ export function Asset360Overview({
       ? `${number(rr.mttr_hours, 1)} h`
       : 'Sin base';
   const primaryIdentity = [
-    asset.cost_center_code ? ['Centro de costo', asset.cost_center_code, Building2] as const : null,
-    asset.location ? ['Ubicación', asset.location, MapPin] as const : null,
-    (scope === 'vehiculos' ? asset.license_plate || asset.serial_number : asset.serial_number)
+    asset.cost_center_code
       ? [
-          scope === 'vehiculos' ? 'Patente / serie' : 'N° de serie',
-          scope === 'vehiculos' ? asset.license_plate || asset.serial_number : asset.serial_number,
-          ShieldCheck,
+          'Centro de costo',
+          asset.cost_center_code,
+          Building2,
+          asset.cost_center_evidence_source === 'cost_centers_exact_identity'
+            ? 'Resuelto por identidad exacta'
+            : null,
         ] as const
       : null,
-  ].filter(Boolean) as Array<readonly [string, string, LucideIcon]>;
+    asset.location
+      ? [
+          'Ubicación',
+          asset.location,
+          MapPin,
+          asset.location_evidence_source === 'planning_or_production_evidence'
+            ? 'Recuperada desde evidencia operacional'
+            : null,
+        ] as const
+      : null,
+    asset.license_plate
+      ? [
+          'Patente',
+          asset.license_plate,
+          ShieldCheck,
+          asset.license_plate_evidence_source === 'deterministic_name_plate'
+            ? 'Recuperada desde el nombre del activo'
+            : null,
+        ] as const
+      : asset.serial_number
+        ? ['N° de serie', asset.serial_number, ShieldCheck, null] as const
+        : null,
+  ].filter(Boolean) as Array<readonly [string, string, LucideIcon, string | null]>;
 
   const metrics: Metric[] = [
     ['OT activas', summary.activeWorkOrders, Wrench],
@@ -732,7 +755,7 @@ export function Asset360Overview({
   const technicalIdentity = [
     asset.manufacturer,
     asset.model,
-    displayAssetType,
+    displayAssetType || (asset.reference_family ? `Familia: ${asset.reference_family}` : null),
   ]
     .filter(Boolean)
     .join(' · ');
@@ -1060,8 +1083,8 @@ export function Asset360Overview({
 
               {primaryIdentity.length > 0 ? (
                 <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {primaryIdentity.map(([label, value, Icon]) => (
-                    <IdentityItem key={label} icon={Icon} label={label} value={value} />
+                  {primaryIdentity.map(([label, value, Icon, meta]) => (
+                    <IdentityItem key={label} icon={Icon} label={label} value={value} meta={meta} />
                   ))}
                 </div>
               ) : null}
