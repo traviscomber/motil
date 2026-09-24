@@ -694,6 +694,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       baseRuntimeCost?.last_reading_at ??
       latestPlanningMeter?.recorded_at ??
       null;
+    const resolvedMeterUnit =
+      baseRuntimeCost?.latest_meter_hours != null
+        ? 'h'
+        : latestPlanningMeter?.meter_unit ||
+          normalizedAsset.meter_unit ||
+          (preventiveMeterSnapshot != null ? 'h' : null);
     const resolvedMeterEvidenceSource =
       baseRuntimeCost?.latest_meter_hours != null
         ? 'asset_runtime_readings'
@@ -719,6 +725,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
               (planningMeterHistory.length > 0 ? planningMeterHistory[planningMeterHistory.length - 1]?.recorded_at || null : null),
             last_reading_at: resolvedLastReadingAt,
             latest_meter_hours: resolvedLatestMeter,
+            latest_meter_unit: resolvedMeterUnit,
             meter_evidence_source: resolvedMeterEvidenceSource,
             duplicate_meter_rows_ignored: duplicatePlanningMeterRows,
             material_meter_decrease_count: materialMeterDecreaseCount,
