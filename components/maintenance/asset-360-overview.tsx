@@ -679,8 +679,6 @@ export function Asset360Overview({
         : 'Sin lectura',
       Gauge,
     ],
-    ['MTBF real', mtbf, Timer],
-    ['Costo auditado', auditedCost, Activity],
   ];
 
   const links = [
@@ -985,7 +983,7 @@ export function Asset360Overview({
             </div>
           </div>
 
-          <div className="grid gap-px border-t bg-border sm:grid-cols-2 xl:grid-cols-6">
+          <div className="grid gap-px border-t bg-border sm:grid-cols-2 xl:grid-cols-4">
             {metrics.map(([label, value, Icon]) => (
               <div key={label} className="bg-card p-4">
                 <div className="flex items-center justify-between gap-2 text-muted-foreground">
@@ -1063,37 +1061,50 @@ export function Asset360Overview({
 
           {economicLifetimeValue != null || economicHistory.length > 0 ? (
             <>
-              <div className="grid gap-4 py-5 sm:grid-cols-2 lg:grid-cols-4">
-                <div>
+              <div className="grid gap-5 py-5 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)] lg:items-start">
+                <div className="border-b border-border pb-5 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-6">
                   <p className="text-xs text-muted-foreground">Costo histórico acumulado</p>
-                  <p className="mt-1 text-2xl font-semibold tracking-tight">{money(economicLifetimeValue)}</p>
-                  <p className="mt-1 text-[11px] text-muted-foreground">
-                    {economicFirstCostDate ? `Desde ${date(economicFirstCostDate)}` : 'Desde el primer registro disponible'}
+                  <p className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">{money(economicLifetimeValue)}</p>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {economicFirstCostDate && economicLastCostDate
+                      ? `${date(economicFirstCostDate)} → ${date(economicLastCostDate)}`
+                      : economicFirstCostDate
+                        ? `Desde ${date(economicFirstCostDate)}`
+                        : 'Desde el primer registro disponible'}
                   </p>
+                  <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                    <IdentityItem
+                      icon={Hash}
+                      label="Movimientos de costo"
+                      value={economicMovementCount || 'Sin base'}
+                    />
+                    <IdentityItem
+                      icon={Coins}
+                      label="Promedio anual"
+                      value={economicAnnualAverage != null ? money(economicAnnualAverage) : 'Sin base'}
+                      meta={economicYearsWithMovements > 0 ? `${economicYearsWithMovements} años con movimientos` : null}
+                    />
+                  </div>
                 </div>
-                <IdentityItem
-                  icon={Coins}
-                  label="Últimos 12 meses"
-                  value={economic12mValue != null ? money(economic12mValue) : 'Sin base'}
-                  meta={economicLastCostDate ? `Corte ${date(economicLastCostDate)}` : null}
-                />
-                <IdentityItem
-                  icon={CalendarDays}
-                  label="Año en curso"
-                  value={economicYtdValue != null ? money(economicYtdValue) : 'Sin base'}
-                  meta={economicLastCostDate ? `Corte ${date(economicLastCostDate)}` : null}
-                />
-                <IdentityItem
-                  icon={Coins}
-                  label="Promedio anual histórico"
-                  value={economicAnnualAverage != null ? money(economicAnnualAverage) : 'Sin base'}
-                  meta={economicYearsWithMovements > 0 ? `${economicYearsWithMovements} años con movimientos` : null}
-                />
-              </div>
-              <div className="grid gap-3 border-t border-border pt-4 sm:grid-cols-3">
-                <IdentityItem icon={Hash} label="Movimientos de costo" value={economicMovementCount || 'Sin base'} />
-                <IdentityItem icon={CalendarDays} label="Primer costo registrado" value={date(economicFirstCostDate)} />
-                <IdentityItem icon={CalendarDays} label="Última imputación" value={date(economicLastCostDate)} />
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+                  <IdentityItem
+                    icon={Coins}
+                    label="Últimos 12 meses"
+                    value={economic12mValue != null ? money(economic12mValue) : 'Sin base'}
+                    meta={economicLastCostDate ? `Corte ${date(economicLastCostDate)}` : null}
+                  />
+                  <IdentityItem
+                    icon={CalendarDays}
+                    label="Año en curso"
+                    value={economicYtdValue != null ? money(economicYtdValue) : 'Sin base'}
+                    meta={economicLastCostDate ? `Corte ${date(economicLastCostDate)}` : null}
+                  />
+                  <IdentityItem
+                    icon={CalendarDays}
+                    label="Última imputación"
+                    value={date(economicLastCostDate)}
+                  />
+                </div>
               </div>
             </>
           ) : (
@@ -1106,24 +1117,6 @@ export function Asset360Overview({
           )}
         </CardContent>
       </Card>
-
-      <details className="group rounded-lg border border-border bg-card">
-        <SectionSummary
-          title="Cobertura de la ficha"
-          hint={`${coverageAvailableCount} capas con evidencia · ${coverageMissingCount} sin registro`}
-        />
-        <div className="grid gap-px border-t border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
-          {coverageItems.map(([label, available, status]) => (
-            <div key={label} className="bg-card px-4 py-3">
-              <p className="text-xs text-muted-foreground">{label}</p>
-              <p className="mt-1 text-sm font-medium">{status}</p>
-              {!available ? (
-                <p className="mt-1 text-[11px] text-muted-foreground">La fuente actual no contiene información enlazada para este activo.</p>
-              ) : null}
-            </div>
-          ))}
-        </div>
-      </details>
 
       <details className="group rounded-lg border border-border bg-card" open>
         <SectionSummary title="Operación, mantenimiento y confiabilidad" hint={`${summary.activeWorkOrders} OT activas · ${summary.overduePreventives} preventivos vencidos · ${summary.operationalBlockers} bloqueos`} />
@@ -1251,31 +1244,13 @@ export function Asset360Overview({
 
 
       <details className="group rounded-lg border border-border bg-card">
-        <SectionSummary title="Estado económico-operacional" hint={operationalState?.last_cost_at ? `Costo 12m ${money(operationalState.recognized_cost_clp_12m)} · corte ${date(operationalState.last_cost_at)}` : 'Costos, OT y disponibilidad del activo'} />
+        <SectionSummary
+          title="Operación y disponibilidad"
+          hint={operationalState?.last_availability_date
+            ? `${operationalState.open_work_order_count || 0} OT abiertas · disponibilidad ${operationalState.availability_pct != null ? `${number(operationalState.availability_pct, 1)}%` : 'sin base'}`
+            : `${operationalState?.open_work_order_count || 0} OT abiertas · disponibilidad sin base`}
+        />
         <div className="grid gap-4 border-t border-border p-4 sm:grid-cols-2 lg:grid-cols-4">
-          <IdentityItem
-            icon={Coins}
-            label="Costo reconocido vida"
-            value={operationalState?.recognized_cost_clp_lifetime != null ? money(operationalState.recognized_cost_clp_lifetime) : null}
-            meta={operationalState?.last_cost_at ? `Acumulado hasta ${date(operationalState.last_cost_at)}` : 'Sin fecha de último costo'}
-          />
-          <IdentityItem
-            icon={Coins}
-            label="Costo últimos 12 meses"
-            value={operationalState?.recognized_cost_clp_12m != null ? money(operationalState.recognized_cost_clp_12m) : null}
-            meta={operationalState?.last_cost_at ? `Período móvil a ${date(operationalState.last_cost_at)}` : null}
-          />
-          <IdentityItem
-            icon={Coins}
-            label="Costo año"
-            value={operationalState?.recognized_cost_clp_ytd != null ? money(operationalState.recognized_cost_clp_ytd) : null}
-            meta={operationalState?.last_cost_at ? `Año a ${date(operationalState.last_cost_at)}` : null}
-          />
-          <IdentityItem
-            icon={CalendarDays}
-            label="Último costo"
-            value={date(operationalState?.last_cost_at)}
-          />
           <IdentityItem
             icon={Wrench}
             label="OT históricas"
@@ -1291,13 +1266,13 @@ export function Asset360Overview({
           <IdentityItem
             icon={Timer}
             label="Detención registrada"
-            value={operationalState?.recorded_downtime_hours != null ? `${number(operationalState.recorded_downtime_hours, 1)} h` : null}
+            value={operationalState?.recorded_downtime_hours != null ? `${number(operationalState.recorded_downtime_hours, 1)} h` : 'Sin base'}
             meta={generatedAt ? `Acumulado al corte ${date(generatedAt)}` : null}
           />
           <IdentityItem
             icon={Activity}
             label="Disponibilidad"
-            value={operationalState?.availability_pct != null ? `${number(operationalState.availability_pct, 1)}%` : operationalState?.availability_evidence_status}
+            value={operationalState?.availability_pct != null ? `${number(operationalState.availability_pct, 1)}%` : operationalState?.availability_evidence_status || 'Sin base'}
             meta={operationalState?.last_availability_date ? `Fecha de corte ${date(operationalState.last_availability_date)}` : operationalState?.availability_days_30d ? 'Período: últimos 30 días' : 'Sin fecha de corte'}
           />
         </div>
@@ -1971,6 +1946,24 @@ export function Asset360Overview({
           ) : (
             <p className="text-sm text-muted-foreground">No hay eventos recientes registrados para este activo.</p>
           )}
+        </div>
+      </details>
+
+      <details className="group rounded-lg border border-border bg-card">
+        <SectionSummary
+          title="Cobertura de la ficha"
+          hint={`${coverageAvailableCount} capas con evidencia · ${coverageMissingCount} sin registro`}
+        />
+        <div className="grid gap-px border-t border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
+          {coverageItems.map(([label, available, status]) => (
+            <div key={label} className="bg-card px-4 py-3">
+              <p className="text-xs text-muted-foreground">{label}</p>
+              <p className="mt-1 text-sm font-medium">{status}</p>
+              {!available ? (
+                <p className="mt-1 text-[11px] text-muted-foreground">La fuente actual no contiene información enlazada para este activo.</p>
+              ) : null}
+            </div>
+          ))}
         </div>
       </details>
 
