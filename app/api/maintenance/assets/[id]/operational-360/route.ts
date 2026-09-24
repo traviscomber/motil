@@ -522,6 +522,53 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         null,
     };
 
+    const planningMeterHistory = meterHistoryResult.data || [];
+    const latestPlanningMeter = planningMeterHistory[0] || null;
+    const preventiveMeterValues = preventives
+      .map((row: any) => row.effective_current_meter)
+      .filter((value: any) => value !== null && value !== undefined && Number.isFinite(Number(value)))
+      .map((value: any) => Number(value));
+    const uniquePreventiveMeters = Array.from(new Set(preventiveMeterValues));
+    const preventiveMeterSnapshot = uniquePreventiveMeters.length === 1 ? uniquePreventiveMeters[0] : null;
+    const baseRuntimeCost = runtimeCostResult.data || null;
+    const resolvedLatestMeter =
+      baseRuntimeCost?.latest_meter_hours ??
+      latestPlanningMeter?.meter_value ??
+      preventiveMeterSnapshot ??
+      null;
+    const resolvedLastReadingAt =
+      baseRuntimeCost?.last_reading_at ??
+      latestPlanningMeter?.recorded_at ??
+      null;
+    const resolvedMeterEvidenceSource =
+      baseRuntimeCost?.latest_meter_hours != null
+        ? 'asset_runtime_readings'
+        : latestPlanningMeter?.meter_value != null
+          ? latestPlanningMeter.source_kind || latestPlanningMeter.source_reference || 'planning_asset_meter_readings'
+          : preventiveMeterSnapshot != null
+            ? (preventives.find((row: any) => Number(row.effective_current_meter) === preventiveMeterSnapshot)?.meter_evidence_source || 'schedule_snapshot')
+            : null;
+    const resolvedRuntimeCostIntelligence =
+      resolvedLatestMeter != null || baseRuntimeCost
+        ? {
+            ...(baseRuntimeCost || {}),
+            reading_count:
+              Number(baseRuntimeCost?.reading_count || 0) > 0
+                ? Number(baseRuntimeCost.reading_count)
+                : planningMeterHistory.length > 0
+                  ? planningMeterHistory.length
+                  : preventiveMeterSnapshot != null
+                    ? 1
+                    : 0,
+            first_reading_at:
+              baseRuntimeCost?.first_reading_at ??
+              (planningMeterHistory.length > 0 ? planningMeterHistory[planningMeterHistory.length - 1]?.recorded_at || null : null),
+            last_reading_at: resolvedLastReadingAt,
+            latest_meter_hours: resolvedLatestMeter,
+            meter_evidence_source: resolvedMeterEvidenceSource,
+          }
+        : null;
+
     const summary = {
       activeWorkOrders: (ordersResult.data || []).length,
       criticalOpen: (ordersResult.data || []).filter((row: any) => String(row.priority || '').toLowerCase() === 'critical').length,
@@ -561,8 +608,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       drillingMaintenanceReview: drillingReviewResult.data || [],
       maintenancePriority: maintenancePriorityResult.data || null,
       financeReconciliation: financeReconciliationResult.data || null,
-      runtimeCostIntelligence: runtimeCostResult.data || null,
-      meterHistory: meterHistoryResult.data || [],
+      runtimeCostIntelligence: resolvedRuntimeCostIntelligence,
+      meterHistory: planningMeterHistory,
       drillOperationalEvidence: drillEvidenceResult.data || null,
       drillEconomicsChange: drillEconomicsChangeResult.data || null,
       maintenanceTaskCandidates: taskCandidatesResult.data || [],
