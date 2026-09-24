@@ -888,8 +888,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const resolvedLatestMeter =
       baseRuntimeCost?.latest_meter_hours ??
       latestPlanningMeter?.meter_value ??
-      preventiveMeterSnapshot ??
       planningCurrentMeter ??
+      preventiveMeterSnapshot ??
       null;
     const resolvedLastReadingAt =
       baseRuntimeCost?.last_reading_at ??
@@ -909,10 +909,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         ? 'asset_runtime_readings'
         : latestPlanningMeter?.meter_value != null
           ? latestPlanningMeter.source_kind || latestPlanningMeter.source_reference || 'planning_asset_meter_readings'
-          : preventiveMeterSnapshot != null
-            ? (preventives.find((row: any) => Number(row.effective_current_meter) === preventiveMeterSnapshot)?.meter_evidence_source || 'schedule_snapshot')
-            : planningCurrentMeter != null
-              ? 'planning_maintenance_source_rows'
+          : planningCurrentMeter != null
+            ? 'planning_maintenance_source_rows'
+            : preventiveMeterSnapshot != null
+              ? (preventives.find((row: any) => Number(row.effective_current_meter) === preventiveMeterSnapshot)?.meter_evidence_source || 'schedule_snapshot')
               : null;
     const resolvedRuntimeCostIntelligence =
       resolvedLatestMeter != null || baseRuntimeCost
@@ -923,9 +923,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                 ? Number(baseRuntimeCost?.reading_count || 0)
                 : planningMeterHistory.length > 0
                   ? planningMeterHistory.length
-                  : preventiveMeterSnapshot != null
+                  : planningCurrentMeter != null
                     ? 1
-                    : 0,
+                    : preventiveMeterSnapshot != null
+                      ? 1
+                      : 0,
             first_reading_at:
               baseRuntimeCost?.first_reading_at ??
               (planningMeterHistory.length > 0 ? planningMeterHistory[planningMeterHistory.length - 1]?.recorded_at || null : null),
