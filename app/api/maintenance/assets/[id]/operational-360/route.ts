@@ -79,6 +79,17 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         : Promise.resolve({ data: [], error: null });
     const isDrillRig = String(asset.asset_type || '').toLowerCase() === 'drill_rig';
 
+    const costCenterMatchPromise =
+      !asset.cost_center_code && asset.name
+        ? context.supabase
+            .from('canonical_cost_centers_current')
+            .select('cost_center_code,name,full_path,center_type,is_active')
+            .eq('organization_id', context.organizationId)
+            .ilike('name', String(asset.name).trim())
+            .eq('is_active', true)
+            .limit(2)
+        : Promise.resolve({ data: [], error: null });
+
     const normalizedAsset = {
       id: asset.id,
       asset_code: asset.asset_code,
@@ -110,7 +121,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       validation_status: asset.validation_status,
     };
 
-    const [ordersResult, closeResult, preventiveResult, runtimeResult, reliabilityResult, runtimeReliabilityResult, snapshotsResult, partsResult, eventsResult, planningResult, operationalStateResult, supplyChainResult, procurementOrdersResult, costCenterPurchaseHistoryResult, namePurchaseHistoryResult, economicHistoryResult, drillingHistoryResult, drillEconomicsResult, drillingReviewResult, maintenancePriorityResult, financeReconciliationResult, runtimeCostResult, meterHistoryResult, drillEvidenceResult, drillEconomicsChangeResult, taskCandidatesResult, standardPlanResult] = await Promise.all([
+    const [ordersResult, closeResult, preventiveResult, runtimeResult, reliabilityResult, runtimeReliabilityResult, snapshotsResult, partsResult, eventsResult, planningResult, operationalStateResult, supplyChainResult, procurementOrdersResult, costCenterPurchaseHistoryResult, namePurchaseHistoryResult, economicHistoryResult, drillingHistoryResult, drillEconomicsResult, drillingReviewResult, maintenancePriorityResult, financeReconciliationResult, runtimeCostResult, meterHistoryResult, drillEvidenceResult, drillEconomicsChangeResult, taskCandidatesResult, standardPlanResult, costCenterMatchResult] = await Promise.all([
       context.supabase
         .from('maintenance_operational_work_order_flow_v1')
         .select('work_order_id,work_order_number,status,priority,work_type,scheduled_date,assigned_person_name,flow_status,open_purchase_order_count,quantity_requested,quantity_issued,quantity_installed,total_cost')
@@ -298,6 +309,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         .eq('canonical_asset_id', id)
         .order('updated_at', { ascending: false })
         .limit(5),
+      costCenterMatchPromise,
     ]);
 
     const sourceResults = [
@@ -328,6 +340,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       ['drillEconomicsChange', drillEconomicsChangeResult],
       ['taskCandidates', taskCandidatesResult],
       ['standardPlans', standardPlanResult],
+      ['costCenterMatch', costCenterMatchResult],
     ] as const;
     const sourceErrors = sourceResults
       .filter(([, result]) => Boolean(result.error))
@@ -444,6 +457,29 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       workOrder: workOrdersById.get(row.work_order_id) || null,
     }));
 
+    const exactCostCenterMatches = costCenterMatchResult.data || [];
+    const exactCostCenter =
+      !asset.cost_center_code && exactCostCenterMatches.length === 1
+        ? exactCostCenterMatches[0]
+        : null;
+    const costCenterPath = exactCostCenter?.full_path
+      ? String(exactCostCenter.full_path)
+          .split('>')
+          .map((part) => part.trim())
+          .filter(Boolean)
+      : [];
+    const costCenterLocation =
+      costCenterPath.length > 1 ? costCenterPath.slice(0, -1).join(' > ') : null;
+    const resolvedAsset = {
+      ...normalizedAsset,
+      cost_center_code: normalizedAsset.cost_center_code || exactCostCenter?.cost_center_code || null,
+      location:
+        operationalStateResult.data?.location ||
+        normalizedAsset.location ||
+        costCenterLocation ||
+        null,
+    };
+
     const summary = {
       activeWorkOrders: (ordersResult.data || []).length,
       criticalOpen: (ordersResult.data || []).filter((row: any) => String(row.priority || '').toLowerCase() === 'critical').length,
@@ -458,7 +494,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     return NextResponse.json({
       generatedAt: new Date().toISOString(),
-      asset: normalizedAsset,
+      asset: resolvedAsset,
       summary,
       workOrders: ordersResult.data || [],
       closeReadiness: closeRows,
