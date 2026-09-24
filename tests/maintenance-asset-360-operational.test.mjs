@@ -4,6 +4,7 @@ import fs from 'node:fs';
 
 const api = fs.readFileSync('app/api/maintenance/assets/[id]/operational-360/route.ts', 'utf8');
 const ui = fs.readFileSync('components/maintenance/asset-360-overview.tsx', 'utf8');
+const assetsApi = fs.readFileSync('app/api/maintenance/assets/route.ts', 'utf8');
 
 test('asset 360 API is maintenance authorized tenant scoped and composes existing evidence', () => {
   assert.match(api, /requireModuleAccess\(request, MODULE_KEYS\.MANT_OPERACIONES\)/);
@@ -59,5 +60,29 @@ test('asset 360 resolves canonical location and exact cost center evidence', () 
   assert.match(api, /normalizedLocations\.size === 1/);
   assert.match(api, /operationalStateResult\.data\?\.location/);
   assert.match(api, /cost_center_code: normalizedAsset\.cost_center_code \|\| exactCostCenter\?\.code \|\| null/);
+});
+
+test('asset 360 surfaces planning or schedule horometer without inventing runtime history', () => {
+  assert.match(api, /planningMeterHistory/);
+  assert.match(api, /preventiveMeterSnapshot/);
+  assert.match(api, /meter_evidence_source: resolvedMeterEvidenceSource/);
+  assert.match(ui, /runtimeCostIntelligence\?\.latest_meter_hours != null/);
+  assert.match(ui, /sin historial cronológico de lecturas/);
+});
+
+test('asset 360 does not render missing evidence as zero or raw source errors', () => {
+  assert.match(ui, /cleanEvidenceText/);
+  assert.match(ui, /Sin metros registrados/);
+  assert.match(ui, /Sin cantidad/);
+  assert.match(ui, /Sin lectura/);
+  assert.doesNotMatch(ui, /number\(row\.drilled_meters \|\| 0/);
+  assert.doesNotMatch(ui, /number\(row\.meter_value \|\| 0/);
+});
+
+test('equipment list hides active canonical aliases instead of deleting evidence', () => {
+  assert.match(assetsApi, /asset_identity_unified_preview_v1/);
+  assert.match(assetsApi, /canonicalized/);
+  assert.match(assetsApi, /aliasedSourceIds/);
+  assert.match(assetsApi, /deduplicatedAliases/);
 });
 
