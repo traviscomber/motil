@@ -70,6 +70,9 @@ type Asset360Response = {
     operational_status_evidence_source?: string | null;
     operational_status_evidence_at?: string | null;
     operational_status_reason?: string | null;
+    reference_manufacturer?: string | null;
+    reference_manufacturer_evidence_source?: string | null;
+    reference_manufacturer_evidence_at?: string | null;
     reference_family?: string | null;
     reference_family_evidence_source?: string | null;
     reference_family_evidence_at?: string | null;
@@ -810,7 +813,7 @@ export function Asset360Overview({
     ? assetTypeLabel[String(asset.asset_type).toLowerCase()] || asset.category || asset.asset_type
     : asset.category || null;
   const technicalIdentity = [
-    asset.manufacturer,
+    asset.manufacturer || (asset.reference_manufacturer ? `${asset.reference_manufacturer} (referencial)` : null),
     asset.model,
     displayAssetType || (asset.reference_family ? `Familia: ${asset.reference_family}` : null),
   ]
@@ -863,7 +866,18 @@ export function Asset360Overview({
     ? mobilityLabel[String(asset.mobility_class).toLowerCase()] || asset.mobility_class
     : null;
   const assetDetails = [
-    asset.manufacturer ? ['Fabricante', asset.manufacturer, Building2] as const : null,
+    asset.manufacturer
+      ? ['Fabricante', asset.manufacturer, Building2] as const
+      : asset.reference_manufacturer
+        ? [
+            'Fabricante referencial',
+            asset.reference_manufacturer,
+            Building2,
+            asset.reference_manufacturer_evidence_at
+              ? `Extraído del nombre · ${date(asset.reference_manufacturer_evidence_at)}`
+              : 'Extraído del nombre',
+          ] as const
+        : null,
     asset.model ? ['Modelo', asset.model, Hash] as const : null,
     asset.license_plate ? ['Patente', asset.license_plate, Hash] as const : null,
     asset.meter_unit ? ['Unidad de control', asset.meter_unit, Gauge] as const : null,
@@ -1011,6 +1025,7 @@ export function Asset360Overview({
       schedule_snapshot: 'Pauta preventiva',
       cost_center_family: 'Familia del centro de costo',
       deterministic_name_classifier: 'Clasificador determinístico del nombre',
+      deterministic_name_brand: 'Marca explícita extraída del nombre',
       deterministic_name_plate: 'Patente extraída del nombre con formato validado',
     };
     return labels[source] || source;
