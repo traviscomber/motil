@@ -17,6 +17,41 @@ const runtimeSection = fs.readFileSync(
   'components/maintenance/asset-360/runtime-section.tsx',
   'utf8',
 );
+const planningSection = fs.readFileSync(
+  'components/maintenance/asset-360/planning-section.tsx',
+  'utf8',
+);
+
+test('asset 360 planning section owns the maintenance priority and planning row types', () => {
+  assert.match(planningSection, /export type Asset360MaintenancePriority = \{/);
+  assert.match(planningSection, /next_due_meter\?: number \| string \| null;/);
+  assert.match(planningSection, /recommended_action\?: string \| null;/);
+  assert.match(planningSection, /export type Asset360MaintenancePlanningRow = \{/);
+  assert.match(planningSection, /programming_status_raw\?: string \| null;/);
+  assert.match(planningSection, /parts_status_raw\?: string \| null;/);
+});
+
+test('asset 360 planning section renders priority, threshold and fallback plan', () => {
+  assert.match(planningSection, /export function Asset360PlanningSection\(/);
+  assert.match(planningSection, /title="Planificación"/);
+  assert.match(planningSection, /Umbral de intervención/);
+  assert.match(planningSection, /Siguiente acción/);
+  assert.match(planningSection, /Estado de planificación; no equivale a quiebre de stock/);
+  assert.match(planningSection, /Sin planificación de mantenimiento enlazada/);
+  assert.match(planningSection, /Crear plan estándar/);
+  assert.match(planningSection, /planes-estandar\?new=1/);
+});
+
+test('asset 360 overview delegates planning rendering to the planning section', () => {
+  assert.match(overview, /from '@\/components\/maintenance\/asset-360\/planning-section'/);
+  assert.match(overview, /<Asset360PlanningSection[ \n]/);
+  assert.match(overview, /planningPriorityText=\{planningPriorityText\}/);
+  assert.match(overview, /latestPlan=\{latestPlan\}/);
+  assert.match(overview, /maintenancePriority\?: Asset360MaintenancePriority;/);
+  assert.match(overview, /maintenancePlanning\?: Asset360MaintenancePlanningRow\[\];/);
+  assert.doesNotMatch(overview, /Umbral de intervención/);
+  assert.doesNotMatch(overview, /Crear plan estándar/);
+});
 
 test('asset 360 runtime section owns the runtime intelligence and meter history types', () => {
   assert.match(runtimeSection, /export type Asset360RuntimeCostIntelligence = \{/);
