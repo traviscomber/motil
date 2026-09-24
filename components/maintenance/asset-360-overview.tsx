@@ -382,6 +382,7 @@ type Asset360Response = {
     recorded_downtime_hours?: number | string | null;
     drilling_report_count?: number | string | null;
     drilled_meters?: number | string | null;
+    last_drilling_date?: string | null;
     sensor_count?: number | string | null;
     sensor_reading_count?: number | string | null;
     evidence_domain_count?: number | string | null;
@@ -859,10 +860,21 @@ export function Asset360Overview({
   const economic12mValue = operationalState?.recognized_cost_clp_12m != null
     ? Number(operationalState.recognized_cost_clp_12m)
     : null;
-  const drillingMeters = drillingHistory.reduce(
-    (sum, row) => sum + Number(row.drilled_meters || 0),
+  const recentDrillingMeters = drillingHistory.reduce(
+    (sum, row) => {
+      const value = Number(row.drilled_meters);
+      return Number.isFinite(value) && value > 0 ? sum + value : sum;
+    },
     0,
   );
+  const consolidatedDrillingMeters =
+    operationalState?.drilled_meters != null
+      ? Math.max(Number(operationalState.drilled_meters) || 0, 0)
+      : recentDrillingMeters;
+  const consolidatedDrillingReports =
+    operationalState?.drilling_report_count != null
+      ? Number(operationalState.drilling_report_count) || 0
+      : drillingHistory.length;
   const latestPlan = maintenancePlanning[0] || null;
   const acquisitionDate = asset.acquisition_date ? new Date(String(asset.acquisition_date)) : null;
   const assetAgeYears =
@@ -1876,17 +1888,17 @@ export function Asset360Overview({
         <details className="group rounded-lg border border-border bg-card">
           <SectionSummary
             title="Producción"
-            hint={drillingHistory[0]?.operation_date
-              ? `${number(drillingMeters, 1)} m · última operación ${date(drillingHistory[0].operation_date)}`
-              : 'Sin producción reciente'}
+            hint={consolidatedDrillingReports > 0
+              ? `${number(consolidatedDrillingMeters, 1)} m acumulados${operationalState?.last_drilling_date ? ` · última operación ${date(operationalState.last_drilling_date)}` : drillingHistory[0]?.operation_date ? ` · última operación ${date(drillingHistory[0].operation_date)}` : ''}`
+              : 'Sin producción enlazada'}
           />
           <div className="border-t border-border">
             <div className="grid gap-4 p-4 sm:grid-cols-3">
               <IdentityItem
                 icon={Activity}
-                label="Metros perforados"
-                value={`${number(drillingMeters, 1)} m`}
-                meta={`${drillingHistory.length} reportes`}
+                label="Metros perforados acumulados"
+                value={`${number(consolidatedDrillingMeters, 1)} m`}
+                meta={`${number(consolidatedDrillingReports, 0)} reportes enlazados`}
               />
               <IdentityItem
                 icon={CalendarDays}
@@ -2032,7 +2044,7 @@ export function Asset360Overview({
 
                 <div className="border-t border-border py-4">
                   <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                    Reportes recientes
+                    Reportes recientes · ${number(recentDrillingMeters, 1)} m en la muestra visible
                   </p>
                   <div className="mt-3 divide-y divide-border">
                     {drillingHistory.slice(0, 8).map((row) => (
