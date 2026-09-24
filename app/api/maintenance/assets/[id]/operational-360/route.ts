@@ -181,8 +181,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         .select('fiscal_year,movement_count,historical_total_cost,first_cost_date,last_cost_date')
         .eq('organization_id', context.organizationId)
         .eq('canonical_asset_id', id)
-        .order('fiscal_year', { ascending: false })
-        .limit(10),
+        .order('fiscal_year', { ascending: false }),
       isDrillRig
         ? context.supabase
             .from('production_drilling_source_reports')
