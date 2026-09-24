@@ -1383,49 +1383,55 @@ export function Asset360Overview({
         </div>
       </details>
 
-      <details className="group rounded-lg border border-border bg-card">
-        <SectionSummary title="Cadena de suministro de mantención" hint={supplyChain.length > 0 ? `${supplyChain.length} registros enlazados` : 'Sin movimientos enlazados'} />
-        <div className="border-t border-border p-4">
-          {supplyChain.length > 0 ? (
-            <div className="divide-y divide-border">
-              {supplyChain.slice(0, 5).map((row) => (
-                <div key={row.work_order_id} className="grid gap-3 py-4 lg:grid-cols-[150px_minmax(0,1fr)_150px_150px] lg:items-center">
-                  <div>
-                    <p className="font-mono text-xs">{row.work_order_number || 'OT sin número'}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{date(row.scheduled_date)}</p>
+      {supplyChain.length > 0 ? (
+        <details className="group rounded-lg border border-border bg-card">
+          <SectionSummary title="Cadena de suministro de mantención" hint={supplyChain.length > 0 ? `${supplyChain.length} registros enlazados` : 'Sin movimientos enlazados'} />
+          <div className="border-t border-border p-4">
+            {supplyChain.length > 0 ? (
+              <div className="divide-y divide-border">
+                {supplyChain.slice(0, 5).map((row) => (
+                  <div key={row.work_order_id} className="grid gap-3 py-4 lg:grid-cols-[150px_minmax(0,1fr)_150px_150px] lg:items-center">
+                    <div>
+                      <p className="font-mono text-xs">{row.work_order_number || 'OT sin número'}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{date(row.scheduled_date)}</p>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{row.title || 'Mantención'}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {row.supply_chain_status || 'Sin estado'} · {number(row.material_shortage_count || 0)} quiebres · {number(row.open_supply_need_count || 0)} necesidades abiertas
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Compras</p>
+                      <p className="mt-1 text-sm font-medium">{number(row.procurement_order_count || 0)} OC</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{money(row.procurement_order_amount)}</p>
+                    </div>
+                    <div className="lg:text-right">
+                      <p className="text-xs text-muted-foreground">Materiales</p>
+                      <p className="mt-1 text-sm font-medium">
+                        {number(row.parts_installed || 0)} instalados
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">{money(row.parts_cost)}</p>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{row.title || 'Mantención'}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {row.supply_chain_status || 'Sin estado'} · {number(row.material_shortage_count || 0)} quiebres · {number(row.open_supply_need_count || 0)} necesidades abiertas
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Compras</p>
-                    <p className="mt-1 text-sm font-medium">{number(row.procurement_order_count || 0)} OC</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{money(row.procurement_order_amount)}</p>
-                  </div>
-                  <div className="lg:text-right">
-                    <p className="text-xs text-muted-foreground">Materiales</p>
-                    <p className="mt-1 text-sm font-medium">
-                      {number(row.parts_installed || 0)} instalados
-                    </p>
-                    <p className="mt-1 text-xs text-muted-foreground">{money(row.parts_cost)}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              No hay movimientos de cadena de suministro enlazados a este activo.
-            </p>
-          )}
-        </div>
-      </details>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No hay movimientos de cadena de suministro enlazados a este activo.
+              </p>
+            )}
+          </div>
+        </details>
+
+      ) : null}
 
       {maintenanceTaskCandidates.length > 0 || standardJobPlans.length > 0 ? (
         <details className="group rounded-lg border border-border bg-card">
-          <SectionSummary title="Señales y planes de intervención" hint={`${maintenanceTaskCandidates.length} señales · ${standardJobPlans.length} planes estándar`} />
+          <SectionSummary
+            title="Señales de intervención"
+            hint={`${maintenanceTaskCandidates.length} señales · ${standardJobPlans.length > 0 ? `${standardJobPlans.length} planes estándar` : 'sin plan estándar'}`}
+          />
           <div className="border-t border-border p-4">
             {maintenanceTaskCandidates.length > 0 ? (
               <div>
@@ -1495,7 +1501,7 @@ export function Asset360Overview({
 
       {runtimeCostIntelligence || meterHistory.length > 0 ? (
         <details className="group rounded-lg border border-border bg-card">
-          <SectionSummary title="Uso, horómetro y costo por hora" hint={runtimeCostIntelligence?.latest_meter_hours != null ? `${number(runtimeCostIntelligence.latest_meter_hours, 1)} h · registrado ${date(runtimeCostIntelligence.last_reading_at)}` : 'Sin historial de horómetro'} />
+          <SectionSummary title="Horómetro y costo por hora" hint={runtimeCostIntelligence?.latest_meter_hours != null ? `${number(runtimeCostIntelligence.latest_meter_hours, 1)} h · registrado ${date(runtimeCostIntelligence.last_reading_at)}` : 'Sin historial de horómetro'} />
           <div className="grid gap-4 border-t border-border p-4 sm:grid-cols-2 lg:grid-cols-4">
             <IdentityItem
               icon={Gauge}
@@ -1537,14 +1543,21 @@ export function Asset360Overview({
             </div>
           ) : (
             <div className="border-t border-border px-4 py-4 text-sm text-muted-foreground">
-              Sin historial de lecturas de horómetro/medidor enlazado a este activo.
+              Sin historial de horómetro.
             </div>
           )}
         </details>
       ) : null}
 
       <details className="group rounded-lg border border-border bg-card" open={planningPriorityText.startsWith('P1') || planningPriorityText.startsWith('P2') || (!maintenancePriority && !latestPlan)}>
-        <SectionSummary title="Planificación de mantenimiento" hint={maintenancePriority ? `${maintenancePriority.priority || 'Con pauta'} · ${maintenancePriority.recommended_action || 'plan configurado'}` : latestPlan ? 'Pauta disponible' : 'Sin plan de mantención registrado'} />
+        <SectionSummary
+          title="Plan de mantenimiento"
+          hint={maintenancePriority
+            ? maintenancePriority.recommended_action || 'Pauta configurada'
+            : latestPlan
+              ? 'Pauta disponible'
+              : 'Sin planificación enlazada'}
+        />
         {maintenancePriority ? (
           <>
             <div className="grid gap-4 border-t border-border p-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -1557,7 +1570,7 @@ export function Asset360Overview({
               />
               <IdentityItem
                 icon={Gauge}
-                label="Próximo MP"
+                label="Próximo mantenimiento"
                 value={maintenancePriority.next_due_meter != null ? `${number(maintenancePriority.next_due_meter, 1)} ${maintenancePriority.meter_unit || ''}` : null}
                 meta={maintenancePriority.projected_due_at ? `Proyección ${date(maintenancePriority.projected_due_at)}` : maintenancePriority.scheduled_date ? `Programado ${date(maintenancePriority.scheduled_date)}` : null}
               />
@@ -1574,7 +1587,7 @@ export function Asset360Overview({
             </div>
             {maintenancePriority.recommended_action ? (
               <div className="border-t border-border px-4 py-4">
-                <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Acción recomendada</p>
+                <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Siguiente acción</p>
                 <p className="mt-2 text-sm font-medium">{maintenancePriority.recommended_action}</p>
                 {maintenancePriority.observations ? (
                   <p className="mt-1 text-xs text-muted-foreground">{maintenancePriority.observations}</p>
@@ -1594,10 +1607,7 @@ export function Asset360Overview({
         ) : (
           <div className="flex flex-col gap-4 border-t border-border p-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm font-medium">Sin plan de mantención registrado</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                No existe una pauta o planificación de mantenimiento enlazada a este activo en la fuente actual.
-              </p>
+              <p className="text-sm font-medium">Sin planificación de mantenimiento enlazada</p>
             </div>
             {data.canEdit ? (
               <Button asChild size="sm">
@@ -1605,7 +1615,7 @@ export function Asset360Overview({
                   href={`/dashboard/mantenimiento/planes-estandar?new=1&assetCode=${encodeURIComponent(asset.asset_code || '')}&assetName=${encodeURIComponent(asset.name || '')}`}
                 >
                   <Wrench className="mr-1 h-4 w-4" />
-                  Crear plan de mantención
+                  Crear plan estándar
                 </Link>
               </Button>
             ) : (
@@ -1620,16 +1630,6 @@ export function Asset360Overview({
         <div className="border-t border-border p-4">
           {economicHistory.length > 0 ? (
             <>
-              <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <IdentityItem icon={Coins} label="Años con movimientos" value={economicHistory.length} />
-                <IdentityItem icon={Coins} label="Costo histórico" value={money(economicLifetime)} meta={economicHistory[0]?.last_cost_date ? `Corte ${date(economicHistory[0].last_cost_date)}` : null} />
-                <IdentityItem
-                  icon={CalendarDays}
-                  label="Primer costo"
-                  value={date(economicHistory[economicHistory.length - 1]?.first_cost_date)}
-                />
-                <IdentityItem icon={CalendarDays} label="Último costo" value={date(economicHistory[0]?.last_cost_date)} />
-              </div>
               <div className="divide-y divide-border">
                 {economicHistory.slice(0, 6).map((row) => (
                   <div key={String(row.fiscal_year)} className="grid gap-3 py-3 sm:grid-cols-[100px_140px_minmax(0,1fr)] sm:items-center">
@@ -1741,7 +1741,12 @@ export function Asset360Overview({
       ) : null}
 
       <details className="group rounded-lg border border-border bg-card">
-        <SectionSummary title="Últimas mantenciones" hint={auditedInterventions.length > 0 ? `${auditedInterventions.length} cierres auditados disponibles` : latestPlan ? `Plan disponible · ${latestMpSummary}` : 'Sin mantenciones auditadas registradas'} />
+        <SectionSummary
+          title="Historial de mantención"
+          hint={auditedInterventions.length > 0
+            ? `${auditedInterventions.length} cierres auditados`
+            : 'Sin cierres auditados'}
+        />
         <div className="border-t border-border p-4">
           {auditedInterventions.length > 0 ? (
             <div className="divide-y divide-border">
@@ -1754,82 +1759,35 @@ export function Asset360Overview({
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">{item.workOrder?.title || item.workOrder?.work_type || 'Mantención cerrada'}</p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {item.workOrder?.root_cause || item.workOrder?.preventive_actions || 'Sin causa o acción documentada.'}
+                      {item.workOrder?.root_cause || item.workOrder?.preventive_actions || 'Sin causa o acción documentada'}
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Duración real</p>
+                    <p className="text-xs text-muted-foreground">Duración</p>
                     <p className="mt-1 text-sm font-medium">
                       {item.workOrder?.actual_duration_hours != null ? `${number(item.workOrder.actual_duration_hours, 1)} h` : 'Sin base'}
                     </p>
                   </div>
                   <div className="lg:text-right">
-                    <p className="text-xs text-muted-foreground">Costo auditado</p>
+                    <p className="text-xs text-muted-foreground">Costo</p>
                     <p className="mt-1 text-sm font-medium">{money(item.total_cost)}</p>
                   </div>
                 </div>
               ))}
             </div>
-          ) : latestPlan ? (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <IdentityItem
-                icon={Gauge}
-                label="Última MP"
-                value={latestPlan.last_mp != null ? `${number(latestPlan.last_mp, 1)} ${latestPlan.meter_unit || ''}` : null}
-                meta={latestPlan.current_reading_at ? `Lectura al ${date(latestPlan.current_reading_at)}` : latestPlan.updated_at ? `Fuente actualizada ${date(latestPlan.updated_at)}` : null}
-              />
-              <IdentityItem
-                icon={Timer}
-                label="Intervalo MP"
-                value={latestPlan.interval_mp != null ? `${number(latestPlan.interval_mp, 1)} ${latestPlan.meter_unit || ''}` : null}
-                meta={latestPlan.updated_at ? `Fuente actualizada ${date(latestPlan.updated_at)}` : null}
-              />
-              <IdentityItem
-                icon={CalendarDays}
-                label="Próxima programación"
-                value={date(latestPlan.scheduled_date)}
-              />
-              <IdentityItem
-                icon={Wrench}
-                label="Responsable"
-                value={latestPlan.responsible_raw}
-                meta={latestPlan.updated_at ? `Actualizado ${date(latestPlan.updated_at)}` : null}
-              />
-              <IdentityItem
-                icon={Gauge}
-                label="Lectura actual"
-                value={latestPlan.current_reading != null ? `${number(latestPlan.current_reading, 1)} ${latestPlan.meter_unit || ''}` : null}
-                meta={latestPlan.current_reading_at ? `Registrado el ${date(latestPlan.current_reading_at)}` : 'Sin fecha de lectura'}
-              />
-              <IdentityItem
-                icon={Activity}
-                label="Estado programación"
-                value={latestPlan.programming_status_raw}
-                meta={latestPlan.updated_at ? `Actualizado ${date(latestPlan.updated_at)}` : null}
-              />
-              <IdentityItem
-                icon={PackageCheck}
-                label="Estado materiales"
-                value={latestPlan.parts_status_raw}
-                meta={latestPlan.updated_at ? `Estado al ${date(latestPlan.updated_at)}` : null}
-              />
-              <IdentityItem
-                icon={FileText}
-                label="Acción programa"
-                value={latestPlan.workbook_action_raw || latestPlan.observations}
-                meta={latestPlan.updated_at ? `Fuente actualizada ${date(latestPlan.updated_at)}` : null}
-              />
-            </div>
           ) : (
-            <p className="text-sm text-muted-foreground">
-              No hay cierres auditados ni una pauta de mantenimiento enlazada a este activo.
-            </p>
+            <p className="text-sm text-muted-foreground">Sin cierres de mantención auditados para este activo.</p>
           )}
         </div>
       </details>
 
       <details className="group rounded-lg border border-border bg-card">
-        <SectionSummary title="Materiales y repuestos" hint={`${data.installedParts?.length ?? 0} instalados · ${data.pendingParts?.length ?? 0} pendientes`} />
+        <SectionSummary
+          title="Materiales y repuestos"
+          hint={installedParts.length || pendingParts.length
+            ? `${installedParts.length} instalados · ${pendingParts.length} pendientes`
+            : 'Sin repuestos vinculados'}
+        />
         <div className="grid gap-4 border-t border-border p-4 lg:grid-cols-2">
           <Card className="shadow-none">
             <CardContent className="p-5">
