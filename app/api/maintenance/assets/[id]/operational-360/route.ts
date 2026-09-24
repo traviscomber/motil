@@ -539,9 +539,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const purchaseHistorySummary = {
       matchBasis: purchaseHistoryMatchBasis,
       purchaseLines: costCenterPurchaseHistory.length,
+      pricedLines: costCenterPurchaseHistory.filter((row: any) => row.net_amount != null).length,
+      unpricedLines: costCenterPurchaseHistory.filter((row: any) => row.net_amount == null).length,
       orders: new Set(costCenterPurchaseHistory.map((row: any) => row.order_number).filter(Boolean)).size,
       suppliers: new Set(costCenterPurchaseHistory.map((row: any) => row.supplier_name).filter(Boolean)).size,
-      netSpend: costCenterPurchaseHistory.reduce((sum: number, row: any) => sum + Number(row.net_amount || 0), 0),
+      netSpend: costCenterPurchaseHistory.reduce(
+        (sum: number, row: any) => row.net_amount != null ? sum + Number(row.net_amount) : sum,
+        0,
+      ),
       lastOrderDate: costCenterPurchaseHistory
         .map((row: any) => row.order_date)
         .filter(Boolean)
