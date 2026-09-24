@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getOrganizationContext } from '@/lib/api/organization-context';
 import { MODULE_KEYS, requireModuleAccess } from '@/lib/api/module-access';
-import { deriveMachinesFromCostCenters, getRedistributableMachineAssignment, inferMachineFamilyFromText } from '@/lib/maintenance/cost-center-machines';
+import { deriveMachinesFromCostCenters, inferMachineFamilyFromText } from '@/lib/maintenance/cost-center-machines';
 import {
   cleanCategoricalEvidence,
   inferChileanPlateFromName,
@@ -21,6 +21,14 @@ import {
   resolvePlanningCurrentMeter,
   resolvePreventiveMeterSnapshot,
 } from '@/lib/maintenance/meter-evidence-resolution';
+import {
+  buildPurchaseHistorySummary,
+  dedupePurchaseLines,
+  resolveExactCostCenter,
+  resolvePurchaseExactCostCenter,
+  resolvePurchaseHistoryMatchBasis,
+  selectPurchaseHistoryRows,
+} from '@/lib/maintenance/purchase-history-resolution';
 
 const OPTIONAL_SOURCE_TIMEOUT_MS = 2500;
 
@@ -506,43 +514,19 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         status: center.status || null,
       }))
     );
-    const exactCostCenterMatches = derivedCostCenterMachines.filter((machine) =>
-      normalizedAssetIdentity &&
-      normalizeAssetIdentity(machine.name) === normalizedAssetIdentity
-    );
-    const canonicalExactCostCenterMatches = exactCostCenterMatches.filter(
-      (machine) => !getRedistributableMachineAssignment(machine.code),
-    );
-    const exactCostCenter =
-      !asset.cost_center_code && exactCostCenterMatches.length === 1
-        ? exactCostCenterMatches[0]
-        : !asset.cost_center_code && canonicalExactCostCenterMatches.length === 1
-          ? canonicalExactCostCenterMatches[0]
-          : null;
+    const hasExplicitCostCenter = Boolean(asset.cost_center_code);
+    const { exactCostCenter } = resolveExactCostCenter({
+      machines: derivedCostCenterMachines,
+      normalizedIdentity: normalizedAssetIdentity,
+      hasExplicitCostCenter,
+    });
 
-    const purchaseExactCostCenterMatches = new Map<string, { code: string; description: string }>();
-    if (!asset.cost_center_code && !exactCostCenter?.code && normalizedAssetIdentity) {
-      for (const row of namePurchaseHistoryResult.data || []) {
-        const rawCostCenter = String(row.cost_center_code || '').trim();
-        const match = rawCostCenter.match(/^(\S+)\s+(.+)$/);
-        if (!match) continue;
-        const [, code, description] = match;
-        if (normalizeAssetIdentity(description) !== normalizedAssetIdentity) continue;
-        if (!purchaseExactCostCenterMatches.has(code)) {
-          purchaseExactCostCenterMatches.set(code, { code, description });
-        }
-      }
-    }
-    const purchaseExactCostCenterCandidates = [...purchaseExactCostCenterMatches.values()];
-    const purchaseCanonicalCostCenterCandidates = purchaseExactCostCenterCandidates.filter(
-      (candidate) => !getRedistributableMachineAssignment(candidate.code),
-    );
-    const purchaseExactCostCenter =
-      purchaseExactCostCenterCandidates.length === 1
-        ? purchaseExactCostCenterCandidates[0]
-        : purchaseCanonicalCostCenterCandidates.length === 1
-          ? purchaseCanonicalCostCenterCandidates[0]
-          : null;
+    const { purchaseExactCostCenter } = resolvePurchaseExactCostCenter({
+      namePurchaseRows: namePurchaseHistoryResult.data || [],
+      normalizedIdentity: normalizedAssetIdentity,
+      hasExplicitCostCenter,
+      exactCostCenterCode: exactCostCenter?.code || null,
+    });
 
     const derivedCostCenterPurchaseHistoryResult =
       !asset.cost_center_code && exactCostCenter?.code
@@ -573,43 +557,24 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       });
     }
 
-    const purchaseHistoryMatchBasis = asset.cost_center_code
-      ? 'cost_center'
-      : exactCostCenter?.code
-        ? 'cost_center_derived'
-        : purchaseExactCostCenter?.code
-          ? 'purchase_cost_center_exact_identity'
-          : 'name_model';
-    const purchaseHistoryRows = asset.cost_center_code
-      ? costCenterPurchaseHistoryResult.data || []
-      : exactCostCenter?.code && !derivedCostCenterPurchaseHistoryResult.error
-        ? derivedCostCenterPurchaseHistoryResult.data || []
-        : purchaseExactCostCenter?.code && !purchaseExactCostCenterHistoryResult.error
-          ? purchaseExactCostCenterHistoryResult.data || []
-          : namePurchaseHistoryResult.data || [];
-    const seenPurchaseLineIds = new Set<number>();
-    const costCenterPurchaseHistory = purchaseHistoryRows.filter((row: any) => {
-      if (seenPurchaseLineIds.has(row.id)) return false;
-      seenPurchaseLineIds.add(row.id);
-      return true;
+    const purchaseHistoryMatchBasis = resolvePurchaseHistoryMatchBasis({
+      hasExplicitCostCenter,
+      exactCostCenterCode: exactCostCenter?.code || null,
+      purchaseExactCostCenterCode: purchaseExactCostCenter?.code || null,
     });
+    const purchaseHistoryRows = selectPurchaseHistoryRows({
+      matchBasis: purchaseHistoryMatchBasis,
+      explicitRows: costCenterPurchaseHistoryResult.data || [],
+      derivedRows: derivedCostCenterPurchaseHistoryResult.data || [],
+      derivedError: derivedCostCenterPurchaseHistoryResult.error || null,
+      purchaseRows: purchaseExactCostCenterHistoryResult.data || [],
+      purchaseError: purchaseExactCostCenterHistoryResult.error || null,
+      nameRows: namePurchaseHistoryResult.data || [],
+    });
+    const { history: costCenterPurchaseHistory } = dedupePurchaseLines(purchaseHistoryRows);
     const purchaseHistorySummary = {
       matchBasis: purchaseHistoryMatchBasis,
-      purchaseLines: costCenterPurchaseHistory.length,
-      pricedLines: costCenterPurchaseHistory.filter((row: any) => row.net_amount != null).length,
-      unpricedLines: costCenterPurchaseHistory.filter((row: any) => row.net_amount == null).length,
-      orders: new Set(costCenterPurchaseHistory.map((row: any) => row.order_number).filter(Boolean)).size,
-      suppliers: new Set(costCenterPurchaseHistory.map((row: any) => row.supplier_name).filter(Boolean)).size,
-      netSpend: costCenterPurchaseHistory.reduce(
-        (sum: number, row: any) => row.net_amount != null ? sum + Number(row.net_amount) : sum,
-        0,
-      ),
-      lastOrderDate: costCenterPurchaseHistory
-        .map((row: any) => row.order_date)
-        .filter(Boolean)
-        .sort()
-        .reverse()[0] || null,
-      lastSupplier: costCenterPurchaseHistory[0]?.supplier_name || null,
+      ...buildPurchaseHistorySummary(costCenterPurchaseHistory),
     };
 
     const locationCandidates = [

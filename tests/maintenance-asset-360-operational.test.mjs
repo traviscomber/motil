@@ -8,6 +8,7 @@ const assetsApi = fs.readFileSync('app/api/maintenance/assets/route.ts', 'utf8')
 const costCenterMachines = fs.readFileSync('lib/maintenance/cost-center-machines.ts', 'utf8');
 const identityEvidence = fs.readFileSync('lib/maintenance/asset-identity-evidence.ts', 'utf8');
 const meterEvidence = fs.readFileSync('lib/maintenance/meter-evidence-resolution.ts', 'utf8');
+const purchaseHistory = fs.readFileSync('lib/maintenance/purchase-history-resolution.ts', 'utf8');
 
 test('asset 360 API is maintenance authorized tenant scoped and composes existing evidence', () => {
   assert.match(api, /requireModuleAccess\(request, MODULE_KEYS\.MANT_OPERACIONES\)/);
@@ -237,8 +238,8 @@ test('asset 360 carries dated corroboration for consolidated locations', () => {
 test('asset 360 resolves canonical location and exact cost center evidence', () => {
   assert.match(api, /deriveMachinesFromCostCenters/);
   assert.match(api, /from\('cost_centers'\)/);
-  assert.match(api, /normalizeAssetIdentity\(machine\.name\) === normalizedAssetIdentity/);
-  assert.match(api, /exactCostCenterMatches\.length === 1/);
+  assert.match(purchaseHistory, /normalizeAssetIdentity\(machine\.name\) === normalizedIdentity/);
+  assert.match(purchaseHistory, /matches\.length === 1/);
   assert.match(api, /normalizeLocationEvidence/);
   assert.match(api, /normalizedLocations\.size === 1/);
   assert.match(api, /location: locationResolution\.value/);
@@ -391,26 +392,37 @@ test('asset 360 derives criticality only from one consistent planning value', ()
 test('asset 360 uses a uniquely derived cost center for purchase history', () => {
   assert.match(api, /derivedCostCenterPurchaseHistoryResult/);
   assert.match(api, /exactCostCenter\?\.code/);
-  assert.match(api, /cost_center_derived/);
+  assert.match(purchaseHistory, /cost_center_derived/);
   assert.match(api, /canonical_purchase_order_lines_current/);
   assert.match(api, /derived cost center purchase history unavailable/);
 });
 
 test('asset 360 can recover one exact cost center from purchase history without mutating the asset master', () => {
-  assert.match(api, /purchaseExactCostCenterMatches/);
-  assert.match(api, /normalizeAssetIdentity\(description\) !== normalizedAssetIdentity/);
-  assert.match(api, /purchaseExactCostCenterCandidates/);
-  assert.match(api, /purchaseCanonicalCostCenterCandidates/);
-  assert.match(api, /getRedistributableMachineAssignment\(candidate\.code\)/);
+  assert.match(purchaseHistory, /const matches = new Map/);
+  assert.match(purchaseHistory, /normalizeAssetIdentity\(description\) !== normalizedIdentity/);
+  assert.match(purchaseHistory, /const candidates = \[\.\.\.matches\.values\(\)\]/);
+  assert.match(purchaseHistory, /canonicalCandidates/);
+  assert.match(purchaseHistory, /getRedistributableMachineAssignment\(candidate\.code\)/);
   assert.match(api, /purchase_history_exact_identity/);
-  assert.match(api, /purchase_cost_center_exact_identity/);
+  assert.match(purchaseHistory, /purchase_cost_center_exact_identity/);
   assert.match(ui, /Resuelto por identidad exacta en histórico de compras/);
   assert.match(ui, /identificado de forma exacta en el histórico de compras/);
 });
 
+test('asset 360 resolves purchase history through the shared purchase history lib', () => {
+  assert.match(api, /from '@\/lib\/maintenance\/purchase-history-resolution'/);
+  assert.match(api, /resolveExactCostCenter\(\{/);
+  assert.match(api, /resolvePurchaseExactCostCenter\(\{/);
+  assert.match(api, /resolvePurchaseHistoryMatchBasis\(\{/);
+  assert.match(api, /selectPurchaseHistoryRows\(\{/);
+  assert.match(api, /dedupePurchaseLines\(purchaseHistoryRows\)/);
+  assert.match(api, /\.\.\.buildPurchaseHistorySummary\(costCenterPurchaseHistory\)/);
+  assert.doesNotMatch(api, /seenPurchaseLineIds/);
+});
+
 test('asset 360 preserves unpriced purchase lines instead of silently treating them as zero', () => {
-  assert.match(api, /unpricedLines/);
-  assert.match(api, /row\.net_amount != null \? sum \+ Number\(row\.net_amount\) : sum/);
+  assert.match(purchaseHistory, /unpricedLines/);
+  assert.match(purchaseHistory, /row\.net_amount != null \? sum \+ Number\(row\.net_amount\) : sum/);
   assert.match(ui, /Gasto histórico neto registrado/);
   assert.match(ui, /líneas sin monto/);
 });
@@ -421,9 +433,9 @@ test('asset 360 labels deterministically derived cost center purchase context co
 });
 
 test('asset 360 prefers one canonical cost center when duplicate names are redistributable aliases', () => {
-  assert.match(api, /getRedistributableMachineAssignment/);
-  assert.match(api, /canonicalExactCostCenterMatches/);
-  assert.match(api, /!getRedistributableMachineAssignment\(machine\.code\)/);
-  assert.match(api, /canonicalExactCostCenterMatches\.length === 1/);
+  assert.match(purchaseHistory, /getRedistributableMachineAssignment/);
+  assert.match(purchaseHistory, /canonicalMatches/);
+  assert.match(purchaseHistory, /!getRedistributableMachineAssignment\(machine\.code\)/);
+  assert.match(purchaseHistory, /canonicalMatches\.length === 1/);
 });
 
