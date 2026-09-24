@@ -13,6 +13,7 @@ import {
   normalizeCriticalityEvidence,
   normalizeLocationEvidence,
 } from '@/lib/maintenance/asset-identity-evidence';
+import { resolveEvidenceField } from '@/lib/maintenance/evidence-field-resolution';
 
 const OPTIONAL_SOURCE_TIMEOUT_MS = 2500;
 
@@ -694,6 +695,45 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         ? null
         : inferChileanPlateFromName(normalizedAsset.name);
 
+    const assetRecordAt = normalizedAsset.updated_at || normalizedAsset.imported_at || null;
+    const latestLocationEvidenceAt = [planningEvidenceAt, drillingLocationEvidenceAt].filter(Boolean).sort().reverse()[0] || null;
+    const locationResolution = resolveEvidenceField([
+      {
+        value: operationalLocation,
+        source: 'asset_operational_state_v1',
+        at:
+          evidenceLocation &&
+          normalizeLocationEvidence(operationalLocation) === normalizeLocationEvidence(evidenceLocation)
+            ? latestLocationEvidenceAt
+            : null,
+      },
+      { value: payloadLocation, source: 'maintenance_canonical_assets_v1', at: assetRecordAt },
+      { value: evidenceLocation, source: 'planning_or_production_evidence', at: latestLocationEvidenceAt },
+    ]);
+    const criticalityResolution = resolveEvidenceField([
+      {
+        value: operationalCriticality,
+        source: 'asset_operational_state_v1',
+        at:
+          evidenceCriticality &&
+          normalizeCriticalityEvidence(operationalCriticality) === normalizeCriticalityEvidence(evidenceCriticality)
+            ? planningEvidenceAt
+            : null,
+      },
+      { value: payloadCriticality, source: 'maintenance_canonical_assets_v1', at: assetRecordAt },
+      { value: evidenceCriticality, source: 'planning_maintenance_source_rows', at: planningEvidenceAt },
+    ]);
+    const statusSourceResolution = resolveEvidenceField([
+      {
+        value: statusEventMatchesResolved ? eventStatus : null,
+        source: 'maintenance_asset_status_history',
+        at: latestStatusEvent?.changed_at || null,
+      },
+      { value: operationalStatus, source: 'asset_operational_state_v1' },
+      { value: payloadStatus, source: 'maintenance_canonical_assets_v1', at: assetRecordAt },
+      { value: canonicalStatus, source: 'canonical_assets_current', at: canonicalCurrent?.updated_at || null },
+    ]);
+
     const resolvedAsset = {
       ...normalizedAsset,
       meter_unit: normalizedAsset.meter_unit || planningMeterUnit || null,
@@ -715,64 +755,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             : purchaseExactCostCenter?.code
               ? 'purchase_history_exact_identity'
               : null,
-      location: operationalLocation || payloadLocation || evidenceLocation || null,
-      location_evidence_source:
-        operationalLocation
-          ? 'asset_operational_state_v1'
-          : payloadLocation
-            ? 'maintenance_canonical_assets_v1'
-            : evidenceLocation
-              ? 'planning_or_production_evidence'
-              : null,
-      location_evidence_at:
-        operationalLocation
-          ? evidenceLocation && normalizeLocationEvidence(operationalLocation) === normalizeLocationEvidence(evidenceLocation)
-            ? [planningEvidenceAt, drillingLocationEvidenceAt].filter(Boolean).sort().reverse()[0] || null
-            : null
-          : payloadLocation
-            ? normalizedAsset.updated_at || normalizedAsset.imported_at || null
-            : evidenceLocation
-              ? [planningEvidenceAt, drillingLocationEvidenceAt].filter(Boolean).sort().reverse()[0] || null
-              : null,
-      criticality: operationalCriticality || payloadCriticality || evidenceCriticality || null,
-      criticality_evidence_source:
-        operationalCriticality
-          ? 'asset_operational_state_v1'
-          : payloadCriticality
-            ? 'maintenance_canonical_assets_v1'
-            : evidenceCriticality
-              ? 'planning_maintenance_source_rows'
-              : null,
-      criticality_evidence_at:
-        operationalCriticality
-          ? evidenceCriticality &&
-            normalizeCriticalityEvidence(operationalCriticality) === normalizeCriticalityEvidence(evidenceCriticality)
-            ? planningEvidenceAt
-            : null
-          : payloadCriticality
-            ? normalizedAsset.updated_at || normalizedAsset.imported_at || null
-            : evidenceCriticality
-              ? planningEvidenceAt
-              : null,
+      location: locationResolution.value,
+      location_evidence_source: locationResolution.source,
+      location_evidence_at: locationResolution.at,
+      criticality: criticalityResolution.value,
+      criticality_evidence_source: criticalityResolution.source,
+      criticality_evidence_at: criticalityResolution.at,
       operational_status: resolvedOperationalStatus,
-      operational_status_evidence_source:
-        statusEventMatchesResolved
-          ? 'maintenance_asset_status_history'
-          : operationalStatus
-            ? 'asset_operational_state_v1'
-            : payloadStatus
-              ? 'maintenance_canonical_assets_v1'
-              : canonicalStatus
-                ? 'canonical_assets_current'
-                : null,
-      operational_status_evidence_at:
-        statusEventMatchesResolved
-          ? latestStatusEvent?.changed_at || null
-          : payloadStatus
-            ? normalizedAsset.updated_at || normalizedAsset.imported_at || null
-            : canonicalStatus
-              ? canonicalCurrent?.updated_at || null
-              : null,
+      operational_status_evidence_source: statusSourceResolution.source,
+      operational_status_evidence_at: statusSourceResolution.at,
       operational_status_reason:
         statusEventMatchesResolved ? latestStatusEvent?.reason || null : null,
       reference_manufacturer: referenceManufacturer || null,
