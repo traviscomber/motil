@@ -652,6 +652,17 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     const planningMeterHistory = meterHistoryResult.data || [];
     const latestPlanningMeter = planningMeterHistory[0] || null;
+    const chronologicalPlanningMeters = [...planningMeterHistory]
+      .filter((row: any) => row.meter_value != null && row.recorded_at)
+      .sort((a: any, b: any) => String(a.recorded_at).localeCompare(String(b.recorded_at)));
+    let materialMeterDecreaseCount = 0;
+    for (let index = 1; index < chronologicalPlanningMeters.length; index += 1) {
+      const previous = Number(chronologicalPlanningMeters[index - 1]?.meter_value);
+      const current = Number(chronologicalPlanningMeters[index]?.meter_value);
+      if (Number.isFinite(previous) && Number.isFinite(current) && previous - current > 1) {
+        materialMeterDecreaseCount += 1;
+      }
+    }
     const preventiveMeterValues = preventives
       .map((row: any) => row.effective_current_meter)
       .filter((value: any) => value !== null && value !== undefined && Number.isFinite(Number(value)))
@@ -694,6 +705,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             last_reading_at: resolvedLastReadingAt,
             latest_meter_hours: resolvedLatestMeter,
             meter_evidence_source: resolvedMeterEvidenceSource,
+            material_meter_decrease_count: materialMeterDecreaseCount,
+            meter_sequence_status:
+              materialMeterDecreaseCount > 0 ? 'review_required' : 'consistent',
           }
         : null;
 
