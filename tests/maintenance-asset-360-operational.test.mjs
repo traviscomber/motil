@@ -142,7 +142,7 @@ test('equipment list trusts the canonical active state for deduplicated fleet id
 });
 
 test('asset 360 consumes the canonical deduplicated meter observation model', () => {
-  assert.match(api, /planning_asset_meter_observations_v1/);
+  assert.match(api, /planning_asset_meter_readings/);
   assert.match(api, /evidence_row_count/);
   assert.match(api, /\.limit\(12\)/);
   assert.doesNotMatch(api, /dedupeMeterHistory/);
