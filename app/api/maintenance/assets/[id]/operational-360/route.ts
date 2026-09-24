@@ -309,8 +309,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         .eq('canonical_asset_id', id)
         .maybeSingle(),
       context.supabase
-        .from('planning_asset_meter_observations_v1')
-        .select('id,canonical_asset_id,recorded_at,meter_value,meter_unit,source_kind,source_reference,evidence_row_count')
+        .from('planning_asset_meter_readings')
+        .select('id,canonical_asset_id,recorded_at,meter_value,meter_unit,source_kind,source_reference')
         .eq('organization_id', context.organizationId)
         .eq('canonical_asset_id', id)
         .order('recorded_at', { ascending: false })
