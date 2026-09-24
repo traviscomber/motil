@@ -121,3 +121,8 @@ test('asset 360 uses a uniquely derived cost center for purchase history', () =>
   assert.match(api, /derived cost center purchase history unavailable/);
 });
 
+test('asset 360 labels deterministically derived cost center purchase context correctly', () => {
+  assert.match(ui, /cost_center_derived/);
+  assert.match(ui, /resuelto de forma determinística/);
+});
+
