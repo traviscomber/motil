@@ -208,7 +208,9 @@ test('asset 360 uses a uniquely derived cost center for purchase history', () =>
 test('asset 360 can recover one exact cost center from purchase history without mutating the asset master', () => {
   assert.match(api, /purchaseExactCostCenterMatches/);
   assert.match(api, /normalizeAssetIdentity\(description\) !== normalizedAssetIdentity/);
-  assert.match(api, /purchaseExactCostCenterMatches\.size === 1/);
+  assert.match(api, /purchaseExactCostCenterCandidates/);
+  assert.match(api, /purchaseCanonicalCostCenterCandidates/);
+  assert.match(api, /getRedistributableMachineAssignment\(candidate\.code\)/);
   assert.match(api, /purchase_history_exact_identity/);
   assert.match(api, /purchase_cost_center_exact_identity/);
   assert.match(ui, /Resuelto por identidad exacta en histórico de compras/);
