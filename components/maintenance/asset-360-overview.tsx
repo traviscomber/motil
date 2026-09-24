@@ -2039,122 +2039,153 @@ export function Asset360Overview({
       ) : null}
 
       {auditedInterventions.length > 0 || recentEvents.length > 0 ? (
-      <details className="group rounded-lg border border-border bg-card">
-        <SectionSummary
-          title="Historial de mantención"
-          hint={auditedInterventions.length > 0
-            ? `${auditedInterventions.length} cierres auditados`
-            : recentEvents.length > 0
-              ? `${recentEvents.length} eventos recientes`
-              : 'Sin historial reciente'}
-        />
-        <div className="border-t border-border">
-          <div className="p-4">
-            <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Cierres auditados</p>
+        <details className="group rounded-lg border border-border bg-card">
+          <SectionSummary
+            title="Historial de mantención"
+            hint={auditedInterventions.length > 0
+              ? `${auditedInterventions.length} cierres auditados`
+              : `${recentEvents.length} eventos recientes`}
+          />
+          <div className="border-t border-border">
             {auditedInterventions.length > 0 ? (
-              <div className="mt-3 divide-y divide-border">
-                {auditedInterventions.slice(0, 5).map((item) => (
-                  <div key={item.id} className="grid gap-3 py-4 lg:grid-cols-[140px_minmax(0,1fr)_140px_140px] lg:items-center">
-                    <div>
-                      <p className="text-xs text-muted-foreground">{date(item.closed_at || item.workOrder?.completion_date)}</p>
-                      <p className="mt-1 font-mono text-xs">{item.workOrder?.work_order_number || 'OT sin número'}</p>
+              <div className="p-4">
+                <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                  Últimas intervenciones auditadas
+                </p>
+                <div className="mt-3 divide-y divide-border">
+                  {auditedInterventions.slice(0, 3).map((item) => (
+                    <div key={item.id} className="grid gap-3 py-4 lg:grid-cols-[140px_minmax(0,1fr)_140px] lg:items-center">
+                      <div>
+                        <p className="text-xs text-muted-foreground">{date(item.closed_at || item.workOrder?.completion_date)}</p>
+                        <p className="mt-1 font-mono text-xs">{item.workOrder?.work_order_number || 'OT sin número'}</p>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">
+                          {item.workOrder?.title || item.workOrder?.work_type || 'Mantención cerrada'}
+                        </p>
+                        <p className="mt-1 truncate text-xs text-muted-foreground">
+                          {item.workOrder?.root_cause || item.workOrder?.preventive_actions || 'Sin causa o acción documentada'}
+                        </p>
+                      </div>
+                      <div className="lg:text-right">
+                        <p className="text-xs text-muted-foreground">Costo</p>
+                        <p className="mt-1 text-sm font-medium">{money(item.total_cost)}</p>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{item.workOrder?.title || item.workOrder?.work_type || 'Mantención cerrada'}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {item.workOrder?.root_cause || item.workOrder?.preventive_actions || 'Sin causa o acción documentada'}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Duración</p>
-                      <p className="mt-1 text-sm font-medium">
-                        {item.workOrder?.actual_duration_hours != null ? `${number(item.workOrder.actual_duration_hours, 1)} h` : 'Sin base'}
-                      </p>
-                    </div>
-                    <div className="lg:text-right">
-                      <p className="text-xs text-muted-foreground">Costo</p>
-                      <p className="mt-1 text-sm font-medium">{money(item.total_cost)}</p>
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             ) : (
-              <p className="mt-3 text-sm text-muted-foreground">Sin cierres de mantención auditados para este activo.</p>
+              <div className="p-4 text-sm text-muted-foreground">Sin cierres auditados.</div>
             )}
-          </div>
-          {recentEvents.length > 0 ? (
-            <div className="border-t border-border p-4">
-              <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Actividad reciente</p>
-              <div className="mt-3 divide-y divide-border">
-                {recentEvents.slice(0, 5).map((event) => (
-                  <div key={event.id} className="grid gap-1 py-3 sm:grid-cols-[120px_minmax(0,1fr)_180px] sm:items-center">
-                    <span className="text-xs text-muted-foreground">{date(event.event_at)}</span>
-                    <span className="text-sm font-medium">{event.summary || event.event_type || 'Evento de mantenimiento'}</span>
-                    <span className="text-xs text-muted-foreground sm:text-right">{event.actor_name || 'Actor no informado'}</span>
+
+            {recentEvents.length > 0 || auditedInterventions.length > 3 ? (
+              <details className="group border-t border-border px-4 py-4">
+                <summary className="cursor-pointer list-none">
+                  <span className="flex items-center justify-between gap-4">
+                    <span>
+                      <span className="block text-sm font-medium">Más historial</span>
+                      <span className="mt-0.5 block text-xs text-muted-foreground">
+                        Eventos recientes y cierres anteriores
+                      </span>
+                    </span>
+                    <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
+                  </span>
+                </summary>
+                {auditedInterventions.length > 3 ? (
+                  <div className="mt-4 divide-y divide-border border-t border-border pt-1">
+                    {auditedInterventions.slice(3, 6).map((item) => (
+                      <div key={item.id} className="grid gap-3 py-3 sm:grid-cols-[120px_minmax(0,1fr)_120px] sm:items-center">
+                        <span className="text-xs text-muted-foreground">{date(item.closed_at || item.workOrder?.completion_date)}</span>
+                        <span className="truncate text-sm font-medium">{item.workOrder?.title || item.workOrder?.work_type || 'Mantención cerrada'}</span>
+                        <span className="text-sm font-medium sm:text-right">{money(item.total_cost)}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </div>
-          ) : null}
-        </div>
-      </details>
+                ) : null}
+                {recentEvents.length > 0 ? (
+                  <div className={auditedInterventions.length > 3 ? 'border-t border-border pt-3' : 'mt-4 border-t border-border pt-3'}>
+                    <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Actividad reciente</p>
+                    <div className="mt-2 divide-y divide-border">
+                      {recentEvents.slice(0, 5).map((event) => (
+                        <div key={event.id} className="grid gap-1 py-3 sm:grid-cols-[120px_minmax(0,1fr)_180px] sm:items-center">
+                          <span className="text-xs text-muted-foreground">{date(event.event_at)}</span>
+                          <span className="text-sm font-medium">{event.summary || event.event_type || 'Evento de mantenimiento'}</span>
+                          <span className="text-xs text-muted-foreground sm:text-right">{event.actor_name || 'Actor no informado'}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </details>
+            ) : null}
+          </div>
+        </details>
       ) : null}
 
       {hasMaterialEvidence ? (
-      <details className="group rounded-lg border border-border bg-card">
-        <SectionSummary
-          title="Materiales y repuestos"
-          hint={installedParts.length || pendingParts.length
-            ? `${installedParts.length} instalados · ${pendingParts.length} pendientes`
-            : 'Sin repuestos vinculados'}
-        />
-        <div className="border-t border-border">
-          <div className="p-4">
-            <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Pendientes</p>
-            {pendingParts.length > 0 ? (
-              <div className="mt-3 divide-y divide-border">
-                {pendingParts.slice(0, 8).map((part) => {
-                  const pending = Math.max(
-                    Number(part.quantity_requested || 0) -
-                      Number(part.quantity_installed || 0) -
-                      Number(part.quantity_returned || 0),
-                    0,
-                  );
-                  return (
-                    <div key={part.id} className="flex items-start justify-between gap-4 py-3">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium">
-                          {part.product?.name || part.product?.product_code || 'Repuesto sin nombre'}
-                        </p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {part.workOrder?.work_order_number || 'OT no informada'} · {part.status || 'Pendiente'}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-medium">{number(pending, 0)} {part.product?.unit || ''}</p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          Solicitado {number(part.quantity_requested || 0, 0)}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : latestPlan?.parts_status_raw ? (
-              <div className="mt-3 rounded-md border border-border bg-muted/20 p-3">
-                <p className="text-sm font-medium">{latestPlan.parts_status_raw}</p>
-                {latestPlan.observations ? (
-                  <p className="mt-1 text-xs text-muted-foreground">{latestPlan.observations}</p>
-                ) : null}
-              </div>
-            ) : (
-              <p className="mt-3 text-sm text-muted-foreground">No hay materiales pendientes asociados a este activo.</p>
-            )}
-          </div>
-          <div className="border-t border-border p-4">
-            <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Historial instalado</p>
-              {installedParts.length > 0 ? (
+        <details className="group rounded-lg border border-border bg-card" open={pendingParts.length > 0}>
+          <SectionSummary
+            title="Materiales y repuestos"
+            hint={pendingParts.length > 0
+              ? `${pendingParts.length} pendientes`
+              : installedParts.length > 0
+                ? `${installedParts.length} instalados`
+                : 'Sin repuestos vinculados'}
+          />
+          <div className="border-t border-border">
+            <div className="p-4">
+              <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Pendientes</p>
+              {pendingParts.length > 0 ? (
                 <div className="mt-3 divide-y divide-border">
+                  {pendingParts.slice(0, 4).map((part) => {
+                    const pending = Math.max(
+                      Number(part.quantity_requested || 0) -
+                        Number(part.quantity_installed || 0) -
+                        Number(part.quantity_returned || 0),
+                      0,
+                    );
+                    return (
+                      <div key={part.id} className="flex items-start justify-between gap-4 py-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">
+                            {part.product?.name || part.product?.product_code || 'Repuesto sin nombre'}
+                          </p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {part.workOrder?.work_order_number || 'OT no informada'} · {part.status || 'Pendiente'}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-medium">{number(pending, 0)} {part.product?.unit || ''}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            Solicitado {number(part.quantity_requested || 0, 0)}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : latestPlan?.parts_status_raw ? (
+                <p className="mt-3 text-sm">{latestPlan.parts_status_raw}</p>
+              ) : (
+                <p className="mt-3 text-sm text-muted-foreground">No hay materiales pendientes asociados al equipo.</p>
+              )}
+            </div>
+
+            {installedParts.length > 0 ? (
+              <details className="group border-t border-border px-4 py-4">
+                <summary className="cursor-pointer list-none">
+                  <span className="flex items-center justify-between gap-4">
+                    <span>
+                      <span className="block text-sm font-medium">Historial instalado</span>
+                      <span className="mt-0.5 block text-xs text-muted-foreground">
+                        {installedParts.length} registros de repuestos
+                      </span>
+                    </span>
+                    <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
+                  </span>
+                </summary>
+                <div className="mt-3 divide-y divide-border border-t border-border pt-1">
                   {installedParts.slice(0, 8).map((part) => (
                     <div key={part.id} className="flex items-start justify-between gap-4 py-3">
                       <div className="min-w-0">
@@ -2168,18 +2199,20 @@ export function Asset360Overview({
                       <div className="text-right">
                         <p className="text-sm font-medium">{number(part.quantity_installed || 0, 0)} {part.product?.unit || ''}</p>
                         <p className="mt-1 text-xs text-muted-foreground">
-                          {part.total_cost != null ? money(part.total_cost) : part.unit_cost != null ? money(Number(part.unit_cost) * Number(part.quantity_installed || 0)) : 'Sin costo'}
+                          {part.total_cost != null
+                            ? money(part.total_cost)
+                            : part.unit_cost != null
+                              ? money(Number(part.unit_cost) * Number(part.quantity_installed || 0))
+                              : 'Sin costo'}
                         </p>
                       </div>
                     </div>
                   ))}
                 </div>
-              ) : (
-                <p className="mt-3 text-sm text-muted-foreground">No hay repuestos instalados registrados para este activo.</p>
-              )}
+              </details>
+            ) : null}
           </div>
-        </div>
-      </details>
+        </details>
       ) : null}
 
       {hasLifecycleEvidence ? (
