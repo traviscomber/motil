@@ -824,21 +824,37 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       .map((value: any) => Number(value));
     const uniquePreventiveMeters = Array.from(new Set(preventiveMeterValues));
     const preventiveMeterSnapshot = uniquePreventiveMeters.length === 1 ? uniquePreventiveMeters[0] : null;
+    const planningCurrentRows = (planningResult.data || []).filter(
+      (row: any) => row.current_reading !== null && row.current_reading !== undefined && Number.isFinite(Number(row.current_reading)),
+    );
+    const uniquePlanningCurrentMeters = Array.from(
+      new Set(planningCurrentRows.map((row: any) => Number(row.current_reading))),
+    );
+    const planningCurrentMeter = uniquePlanningCurrentMeters.length === 1 ? uniquePlanningCurrentMeters[0] : null;
+    const planningCurrentEvidence = planningCurrentMeter != null
+      ? planningCurrentRows
+          .filter((row: any) => Number(row.current_reading) === planningCurrentMeter)
+          .sort((a: any, b: any) => String(b.current_reading_at || b.updated_at || '').localeCompare(String(a.current_reading_at || a.updated_at || '')))[0] || null
+      : null;
     const baseRuntimeCost = runtimeCostResult.data || null;
     const resolvedLatestMeter =
       baseRuntimeCost?.latest_meter_hours ??
       latestPlanningMeter?.meter_value ??
       preventiveMeterSnapshot ??
+      planningCurrentMeter ??
       null;
     const resolvedLastReadingAt =
       baseRuntimeCost?.last_reading_at ??
       latestPlanningMeter?.recorded_at ??
+      planningCurrentEvidence?.current_reading_at ??
+      planningCurrentEvidence?.updated_at ??
       null;
     const resolvedMeterUnit =
       baseRuntimeCost?.latest_meter_hours != null
         ? 'h'
         : latestPlanningMeter?.meter_unit ||
           normalizedAsset.meter_unit ||
+          planningCurrentEvidence?.meter_unit ||
           (preventiveMeterSnapshot != null ? 'h' : null);
     const resolvedMeterEvidenceSource =
       baseRuntimeCost?.latest_meter_hours != null
@@ -847,7 +863,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           ? latestPlanningMeter.source_kind || latestPlanningMeter.source_reference || 'planning_asset_meter_readings'
           : preventiveMeterSnapshot != null
             ? (preventives.find((row: any) => Number(row.effective_current_meter) === preventiveMeterSnapshot)?.meter_evidence_source || 'schedule_snapshot')
-            : null;
+            : planningCurrentMeter != null
+              ? 'planning_maintenance_source_rows'
+              : null;
     const resolvedRuntimeCostIntelligence =
       resolvedLatestMeter != null || baseRuntimeCost
         ? {
