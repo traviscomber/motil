@@ -2044,7 +2044,7 @@ export function Asset360Overview({
 
                 <div className="border-t border-border py-4">
                   <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                    Reportes recientes · ${number(recentDrillingMeters, 1)} m en la muestra visible
+                    Reportes recientes · {number(recentDrillingMeters, 1)} m en la muestra visible
                   </p>
                   <div className="mt-3 divide-y divide-border">
                     {drillingHistory.slice(0, 8).map((row) => (
