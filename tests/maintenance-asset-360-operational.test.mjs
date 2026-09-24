@@ -77,6 +77,14 @@ test('asset 360 recovers a unique current meter from planning when stronger mete
   assert.match(api, /planningCurrentEvidence\?\.current_reading_at/);
 });
 
+test('asset 360 keeps manufacturer parsed from the name referential', () => {
+  assert.match(api, /function inferManufacturerFromName/);
+  assert.match(api, /reference_manufacturer: referenceManufacturer \|\| null/);
+  assert.match(api, /deterministic_name_brand/);
+  assert.match(ui, /Fabricante referencial/);
+  assert.match(ui, /referencial/);
+});
+
 test('asset 360 does not present zero observed runtime without a measured interval', () => {
   assert.match(ui, /Number\(runtimeCostIntelligence\?\.reading_count \|\| 0\) >= 2/);
   assert.match(ui, /observed_operating_hours != null/);
