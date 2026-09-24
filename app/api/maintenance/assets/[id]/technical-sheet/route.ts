@@ -10,10 +10,10 @@ import { resolveExplicitTechnicalReference } from '@/lib/maintenance/technical-r
 type AssetRow = {
   id: string;
   asset_code: string | null;
-  asset_name: string | null;
+  name: string | null;
   asset_type: string | null;
   location: string | null;
-  status: string | null;
+  operational_status: string | null;
   manufacturer: string | null;
   model: string | null;
   serial_number: string | null;
@@ -108,10 +108,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   try {
     const [assetResult, templateResult, faultModeResult] = await Promise.all([
       context.supabase
-        .from('maintenance_assets')
-        .select('id, asset_code, asset_name, asset_type, location, status, manufacturer, model, serial_number, criticality, mtbf_hours, acquisition_date')
+        .from('canonical_assets_current')
+        .select('id, asset_code, name, asset_type, location, operational_status, manufacturer, model, serial_number, criticality, mtbf_hours, acquisition_date')
         .eq('id', id)
         .eq('organization_id', context.organizationId)
+        .eq('is_active', true)
         .maybeSingle(),
       context.supabase.from('components_template').select('id, vehicle_type, name, code, level, description'),
       context.supabase.from('fault_modes').select('id, component_template_id, fault_code, fault_name, severity'),
@@ -120,7 +121,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const safeTemplates = templateResult.error ? [] : templateResult.data;
     const safeFaultModes = faultModeResult.error ? [] : faultModeResult.data;
     let asset = !assetResult.error && assetResult.data ? (assetResult.data as AssetRow) : null;
-    let assetOrigin: 'maintenance_master' | 'cost_center_fallback' = 'maintenance_master';
+    let assetOrigin: 'canonical_master' | 'cost_center_fallback' = 'canonical_master';
 
     if (!asset) {
       const { data: costCenter } = await context.supabase
@@ -135,10 +136,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         asset = {
           id: costCenter.id,
           asset_code: costCenter.code ?? null,
-          asset_name: costCenter.name ?? null,
+          name: costCenter.name ?? null,
           asset_type: null,
           location: null,
-          status: costCenter.status ?? null,
+          operational_status: costCenter.status ?? null,
           manufacturer: null,
           model: null,
           serial_number: null,
@@ -153,10 +154,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: 'No se encontro el activo solicitado' }, { status: 404 });
     }
 
-    const assetText = `${asset.asset_name || ''} ${asset.asset_type || ''} ${asset.model || ''} ${asset.manufacturer || ''}`;
+    const assetText = `${asset.name || ''} ${asset.asset_type || ''} ${asset.model || ''} ${asset.manufacturer || ''}`;
     const assetFamily = inferMachineFamilyFromText(assetText);
     const technicalReference = resolveExplicitTechnicalReference(assetText);
-    const referenceIdentityVerified = assetOrigin === 'maintenance_master' && hasVerifiedReferenceIdentity(asset, technicalReference);
+    const referenceIdentityVerified = assetOrigin === 'canonical_master' && hasVerifiedReferenceIdentity(asset, technicalReference);
     const trustedReference = referenceIdentityVerified ? technicalReference : null;
     const referenceFields = trustedReference
       ? [
@@ -192,10 +193,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       asset: {
         id: asset.id,
         code: asset.asset_code,
-        name: asset.asset_name,
+        name: asset.name,
         type: asset.asset_type,
         location: asset.location,
-        status: asset.status,
+        status: asset.operational_status,
         manufacturer: asset.manufacturer,
         model: asset.model,
         serialNumber: asset.serial_number,

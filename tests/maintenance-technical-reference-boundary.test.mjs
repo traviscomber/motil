@@ -14,7 +14,7 @@ test('technical sheet route requires maintenance module access and tenant contex
 
 test('technical references stay candidates until canonical manufacturer and model agree', () => {
   assert.match(api, /hasVerifiedReferenceIdentity/);
-  assert.match(api, /assetOrigin === 'maintenance_master'/);
+  assert.match(api, /assetOrigin === 'canonical_master'/);
   assert.match(api, /asset\.manufacturer/);
   assert.match(api, /asset\.model/);
   assert.match(api, /reference_candidate_pending_validation/);
