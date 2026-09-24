@@ -77,6 +77,11 @@ test('asset 360 recovers a unique current meter from planning when stronger mete
   assert.match(api, /planningCurrentEvidence\?\.current_reading_at/);
 });
 
+test('asset 360 exposes source row provenance when present', () => {
+  assert.match(ui, /label="Hoja"/);
+  assert.match(ui, /Fila \$\{asset\.source_row\}/);
+});
+
 test('asset 360 exposes the freshest dated evidence across operation, planning and meter sources', () => {
   assert.match(ui, /const latestEvidence = \[/);
   assert.match(ui, /source: 'Operación'/);
