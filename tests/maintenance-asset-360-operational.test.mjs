@@ -36,6 +36,12 @@ test('asset 360 surfaces next preventive closure and reliability in one view', (
   assert.match(ui, /ordenes-trabajo\/cierre/);
 });
 
+test('asset 360 distinguishes technical planning from stock evidence', () => {
+  assert.match(ui, /Pauta técnica · no programada/);
+  assert.match(ui, /Repuestos en pauta/);
+  assert.match(ui, /no equivale a quiebre de stock/);
+});
+
 test('asset 360 keeps secondary evidence consolidated', () => {
   assert.match(ui, /title="Compras y abastecimiento"/);
   assert.doesNotMatch(ui, /SectionSummary title="Abastecimiento de mantención"/);
