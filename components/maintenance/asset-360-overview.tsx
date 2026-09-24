@@ -678,6 +678,18 @@ export function Asset360Overview({
     Number(rr?.audited_corrective_events || 0) > 0 && rr?.mttr_hours != null
       ? `${number(rr.mttr_hours, 1)} h`
       : 'Sin base';
+  const primaryIdentity = [
+    asset.cost_center_code ? ['Centro de costo', asset.cost_center_code, Building2] as const : null,
+    asset.location ? ['Ubicación', asset.location, MapPin] as const : null,
+    (scope === 'vehiculos' ? asset.license_plate || asset.serial_number : asset.serial_number)
+      ? [
+          scope === 'vehiculos' ? 'Patente / serie' : 'N° de serie',
+          scope === 'vehiculos' ? asset.license_plate || asset.serial_number : asset.serial_number,
+          ShieldCheck,
+        ] as const
+      : null,
+  ].filter(Boolean) as Array<readonly [string, string, LucideIcon]>;
+
   const metrics: Metric[] = [
     ['OT activas', summary.activeWorkOrders, Wrench],
     ['Preventivos vencidos', summary.overduePreventives, AlertTriangle],
@@ -1030,15 +1042,13 @@ export function Asset360Overview({
                 </div>
               </div>
 
-              <div className="mt-6 grid gap-4 sm:grid-cols-3">
-                <IdentityItem icon={Building2} label="Centro de costo" value={asset.cost_center_code} />
-                <IdentityItem icon={MapPin} label="Ubicación" value={asset.location} />
-                <IdentityItem
-                  icon={ShieldCheck}
-                  label={scope === 'vehiculos' ? 'Patente / serie' : 'N° de serie'}
-                  value={scope === 'vehiculos' ? asset.license_plate || asset.serial_number : asset.serial_number}
-                />
-              </div>
+              {primaryIdentity.length > 0 ? (
+                <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {primaryIdentity.map(([label, value, Icon]) => (
+                    <IdentityItem key={label} icon={Icon} label={label} value={value} />
+                  ))}
+                </div>
+              ) : null}
             </div>
 
           </div>
