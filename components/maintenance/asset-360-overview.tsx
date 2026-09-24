@@ -1636,73 +1636,94 @@ export function Asset360Overview({
       {hasRuntimeEvidence ? (
         <details className="group rounded-lg border border-border bg-card">
           <SectionSummary
-            title="Horómetro y costo por hora"
+            title="Horómetro y uso"
             hint={runtimeCostIntelligence?.latest_meter_hours != null
-              ? `${number(runtimeCostIntelligence.latest_meter_hours, 1)} h${runtimeCostIntelligence.last_reading_at ? ` · registrado ${date(runtimeCostIntelligence.last_reading_at)}` : ' · sin fecha de lectura'}`
-              : 'Sin historial de horómetro'}
+              ? `${number(runtimeCostIntelligence.latest_meter_hours, 1)} h${runtimeCostIntelligence.last_reading_at ? ` · ${date(runtimeCostIntelligence.last_reading_at)}` : ''}`
+              : 'Sin lectura actual'}
           />
-          <div className="grid gap-4 border-t border-border p-4 sm:grid-cols-2 lg:grid-cols-4">
-            <IdentityItem
-              icon={Gauge}
-              label="Último horómetro"
-              value={runtimeCostIntelligence?.latest_meter_hours != null ? `${number(runtimeCostIntelligence.latest_meter_hours, 1)} h` : null}
-              meta={[
-                runtimeCostIntelligence?.last_reading_at
-                  ? `Registrado el ${date(runtimeCostIntelligence.last_reading_at)}`
-                  : 'Sin fecha de lectura',
-                runtimeCostIntelligence?.meter_evidence_source
-                  ? `Fuente: ${runtimeCostIntelligence.meter_evidence_source}`
-                  : null,
-              ].filter(Boolean).join(' · ')}
-            />
-            <IdentityItem
-              icon={Timer}
-              label="Horas observadas"
-              value={runtimeCostIntelligence?.observed_operating_hours != null ? `${number(runtimeCostIntelligence.observed_operating_hours, 1)} h` : null}
-              meta={runtimeCostIntelligence?.first_reading_at && runtimeCostIntelligence?.last_reading_at ? `Período ${date(runtimeCostIntelligence.first_reading_at)} → ${date(runtimeCostIntelligence.last_reading_at)}` : null}
-            />
-            <IdentityItem
-              icon={Coins}
-              label="Costo auditado / hora"
-              value={runtimeCostIntelligence?.audited_cost_per_operating_hour != null ? `${money(runtimeCostIntelligence.audited_cost_per_operating_hour)}/h` : null}
-              meta={reliability?.last_audited_closure_at ? `Cierres auditados hasta ${date(reliability.last_audited_closure_at)}` : 'Sin cierre auditado con fecha'}
-            />
-            <IdentityItem
-              icon={FileText}
-              label="Lecturas"
-              value={runtimeCostIntelligence?.reading_count ?? meterHistory.length}
-              meta={[
-                runtimeCostIntelligence?.reset_count != null && Number(runtimeCostIntelligence.reset_count) > 0
-                  ? `${number(runtimeCostIntelligence.reset_count, 0)} reinicios detectados`
-                  : null,
-                runtimeCostIntelligence?.last_reading_at
-                  ? `Última el ${date(runtimeCostIntelligence.last_reading_at)}`
-                  : null,
-              ].filter(Boolean).join(' · ') || null}
-            />
-          </div>
-          {meterHistory.length > 0 ? (
-            <div className="border-t border-border px-4 py-4">
-              <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Últimas lecturas</p>
-              <div className="mt-3 divide-y divide-border">
-                {meterHistory.slice(0, 6).map((row) => (
-                  <div key={row.id} className="grid gap-2 py-2 sm:grid-cols-[140px_120px_minmax(0,1fr)] sm:items-center">
-                    <span className="text-xs text-muted-foreground">{date(row.recorded_at)}</span>
-                    <span className="text-sm font-medium">{row.meter_value != null ? `${number(row.meter_value, 1)} ${row.meter_unit || ''}`.trim() : 'Sin lectura'}</span>
-                    <span className="truncate text-xs text-muted-foreground">{row.source_kind || row.source_reference || 'Fuente operacional'}</span>
-                  </div>
-                ))}
+          <div className="border-t border-border">
+            <div className="grid gap-px bg-border sm:grid-cols-3">
+              <div className="bg-card p-4">
+                <p className="text-xs text-muted-foreground">Horómetro actual</p>
+                <p className="mt-2 text-2xl font-semibold tracking-tight">
+                  {runtimeCostIntelligence?.latest_meter_hours != null
+                    ? `${number(runtimeCostIntelligence.latest_meter_hours, 1)} h`
+                    : 'Sin lectura'}
+                </p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {runtimeCostIntelligence?.last_reading_at
+                    ? `Registrado el ${date(runtimeCostIntelligence.last_reading_at)}`
+                    : 'Sin fecha de lectura'}
+                </p>
+              </div>
+              <div className="bg-card p-4">
+                <p className="text-xs text-muted-foreground">Horas observadas</p>
+                <p className="mt-2 text-xl font-semibold">
+                  {runtimeCostIntelligence?.observed_operating_hours != null
+                    ? `${number(runtimeCostIntelligence.observed_operating_hours, 1)} h`
+                    : 'Sin base'}
+                </p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {runtimeCostIntelligence?.first_reading_at && runtimeCostIntelligence?.last_reading_at
+                    ? `${date(runtimeCostIntelligence.first_reading_at)} → ${date(runtimeCostIntelligence.last_reading_at)}`
+                    : 'Período no consolidado'}
+                </p>
+              </div>
+              <div className="bg-card p-4">
+                <p className="text-xs text-muted-foreground">Costo auditado / hora</p>
+                <p className="mt-2 text-xl font-semibold">
+                  {runtimeCostIntelligence?.audited_cost_per_operating_hour != null
+                    ? `${money(runtimeCostIntelligence.audited_cost_per_operating_hour)}/h`
+                    : 'Sin base'}
+                </p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {runtimeCostIntelligence?.audited_cost_per_operating_hour != null
+                    ? 'Sólo cierres auditados y horas observadas'
+                    : 'Requiere cierres auditados y base horaria válida'}
+                </p>
               </div>
             </div>
-          ) : runtimeCostIntelligence?.latest_meter_hours != null ? (
-            <div className="border-t border-border px-4 py-4 text-sm text-muted-foreground">
-              Lectura actual disponible desde {runtimeCostIntelligence.meter_evidence_source || 'evidencia de pauta'}, sin historial cronológico de lecturas.
-            </div>
-          ) : (
-            <div className="border-t border-border px-4 py-4 text-sm text-muted-foreground">
-              Sin historial de horómetro.
-            </div>
-          )}
+
+            <details className="group border-t border-border px-4 py-4">
+              <summary className="cursor-pointer list-none">
+                <span className="flex items-center justify-between gap-4">
+                  <span>
+                    <span className="block text-sm font-medium">Historial de horómetro</span>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">
+                      {runtimeCostIntelligence?.reading_count ?? meterHistory.length} lecturas
+                      {runtimeCostIntelligence?.reset_count != null && Number(runtimeCostIntelligence.reset_count) > 0
+                        ? ` · ${number(runtimeCostIntelligence.reset_count, 0)} reinicios detectados`
+                        : ''}
+                    </span>
+                  </span>
+                  <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
+                </span>
+              </summary>
+              <div className="mt-4 border-t border-border pt-3">
+                {meterHistory.length > 0 ? (
+                  <div className="divide-y divide-border">
+                    {meterHistory.slice(0, 6).map((row) => (
+                      <div key={row.id} className="grid gap-2 py-2 sm:grid-cols-[140px_120px_minmax(0,1fr)] sm:items-center">
+                        <span className="text-xs text-muted-foreground">{date(row.recorded_at)}</span>
+                        <span className="text-sm font-medium">
+                          {row.meter_value != null
+                            ? `${number(row.meter_value, 1)} ${row.meter_unit || ''}`.trim()
+                            : 'Sin lectura'}
+                        </span>
+                        <span className="truncate text-xs text-muted-foreground">
+                          {row.source_kind || row.source_reference || 'Fuente operacional'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Lectura actual disponible desde {runtimeCostIntelligence?.meter_evidence_source || 'evidencia operacional'}, sin historial cronológico enlazado.
+                  </p>
+                )}
+              </div>
+            </details>
+          </div>
         </details>
       ) : null}
 
