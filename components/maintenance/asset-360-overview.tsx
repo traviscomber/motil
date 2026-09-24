@@ -1309,8 +1309,48 @@ export function Asset360Overview({
       </details>
 
       <details className="group rounded-lg border border-border bg-card">
-        <SectionSummary title="Compras y proveedores" hint={purchaseHistorySummary?.lastSupplier ? `${purchaseHistorySummary.lastSupplier} · última compra ${date(purchaseHistorySummary.lastOrderDate)}` : 'Sin compras enlazadas'} />
-        <div className="border-t border-border p-4">
+        <SectionSummary
+          title="Compras y abastecimiento"
+          hint={supplyChain.length > 0
+            ? `${supplyChain.length} OT con abastecimiento`
+            : purchaseHistorySummary?.lastSupplier
+              ? `${purchaseHistorySummary.lastSupplier} · última compra ${date(purchaseHistorySummary.lastOrderDate)}`
+              : 'Sin abastecimiento enlazado'}
+        />
+        <div className="border-t border-border">
+          {supplyChain.length > 0 ? (
+            <div className="p-4">
+              <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Estado de abastecimiento</p>
+              <div className="mt-3 divide-y divide-border">
+                {supplyChain.slice(0, 5).map((row) => (
+                  <div key={row.work_order_id} className="grid gap-3 py-4 lg:grid-cols-[150px_minmax(0,1fr)_150px_150px] lg:items-center">
+                    <div>
+                      <p className="font-mono text-xs">{row.work_order_number || 'OT sin número'}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{date(row.scheduled_date)}</p>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{row.title || 'Mantención'}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {row.supply_chain_status || 'Sin estado'} · {number(row.material_shortage_count || 0)} quiebres · {number(row.open_supply_need_count || 0)} necesidades abiertas
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Compras</p>
+                      <p className="mt-1 text-sm font-medium">{number(row.procurement_order_count || 0)} OC</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{money(row.procurement_order_amount)}</p>
+                    </div>
+                    <div className="lg:text-right">
+                      <p className="text-xs text-muted-foreground">Materiales</p>
+                      <p className="mt-1 text-sm font-medium">{number(row.parts_installed || 0)} instalados</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{money(row.parts_cost)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          <div className={supplyChain.length > 0 ? 'border-t border-border p-4' : 'p-4'}>
+            <p className="mb-3 text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Compras y proveedores</p>
           {purchaseHistorySummary && Number(purchaseHistorySummary.purchaseLines || 0) > 0 ? (
             <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <IdentityItem icon={Building2} label="Último proveedor" value={purchaseHistorySummary.lastSupplier} meta={purchaseHistorySummary.lastOrderDate ? `Última compra ${date(purchaseHistorySummary.lastOrderDate)}` : null} />
@@ -1398,51 +1438,9 @@ export function Asset360Overview({
           ) : (
             <p className="text-sm text-muted-foreground">Sin compras enlazadas al activo.</p>
           )}
+          </div>
         </div>
       </details>
-
-      {supplyChain.length > 0 ? (
-        <details className="group rounded-lg border border-border bg-card">
-          <SectionSummary title="Abastecimiento de mantención" hint={supplyChain.length > 0 ? `${supplyChain.length} registros enlazados` : 'Sin movimientos enlazados'} />
-          <div className="border-t border-border p-4">
-            {supplyChain.length > 0 ? (
-              <div className="divide-y divide-border">
-                {supplyChain.slice(0, 5).map((row) => (
-                  <div key={row.work_order_id} className="grid gap-3 py-4 lg:grid-cols-[150px_minmax(0,1fr)_150px_150px] lg:items-center">
-                    <div>
-                      <p className="font-mono text-xs">{row.work_order_number || 'OT sin número'}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">{date(row.scheduled_date)}</p>
-                    </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{row.title || 'Mantención'}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {row.supply_chain_status || 'Sin estado'} · {number(row.material_shortage_count || 0)} quiebres · {number(row.open_supply_need_count || 0)} necesidades abiertas
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Compras</p>
-                      <p className="mt-1 text-sm font-medium">{number(row.procurement_order_count || 0)} OC</p>
-                      <p className="mt-1 text-xs text-muted-foreground">{money(row.procurement_order_amount)}</p>
-                    </div>
-                    <div className="lg:text-right">
-                      <p className="text-xs text-muted-foreground">Materiales</p>
-                      <p className="mt-1 text-sm font-medium">
-                        {number(row.parts_installed || 0)} instalados
-                      </p>
-                      <p className="mt-1 text-xs text-muted-foreground">{money(row.parts_cost)}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                No hay movimientos de cadena de suministro enlazados a este activo.
-              </p>
-            )}
-          </div>
-        </details>
-
-      ) : null}
 
       {maintenanceTaskCandidates.length > 0 || standardJobPlans.length > 0 ? (
         <details className="group rounded-lg border border-border bg-card">
