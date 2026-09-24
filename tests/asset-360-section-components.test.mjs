@@ -9,6 +9,40 @@ const purchaseSection = fs.readFileSync(
   'components/maintenance/asset-360/purchase-section.tsx',
   'utf8',
 );
+const interventionSection = fs.readFileSync(
+  'components/maintenance/asset-360/intervention-section.tsx',
+  'utf8',
+);
+
+test('asset 360 intervention section owns the task signal and job plan types', () => {
+  assert.match(interventionSection, /export type Asset360MaintenanceTaskCandidate = \{/);
+  assert.match(interventionSection, /component_key\?: string \| null;/);
+  assert.match(interventionSection, /signal_status\?: string \| null;/);
+  assert.match(interventionSection, /export type Asset360StandardJobPlan = \{/);
+  assert.match(interventionSection, /estimated_duration_hours\?: number \| string \| null;/);
+  assert.match(interventionSection, /labor_people_required\?: number \| string \| null;/);
+});
+
+test('asset 360 intervention section renders signals and standard job plans', () => {
+  assert.match(interventionSection, /export function Asset360InterventionSection\(/);
+  assert.match(interventionSection, /if \(maintenanceTaskCandidates\.length === 0 && standardJobPlans\.length === 0\) return null;/);
+  assert.match(interventionSection, /title="Señales de intervención"/);
+  assert.match(interventionSection, /Evidencia operacional/);
+  assert.match(interventionSection, /No equivalen a diagnóstico ni a una OT autorizada/);
+  assert.match(interventionSection, /Planes estándar disponibles/);
+  assert.match(interventionSection, /No hay señales operacionales enlazadas a este equipo\./);
+});
+
+test('asset 360 overview delegates intervention rendering to the intervention section', () => {
+  assert.match(overview, /from '@\/components\/maintenance\/asset-360\/intervention-section'/);
+  assert.match(overview, /<Asset360InterventionSection[ \n]/);
+  assert.match(overview, /maintenanceTaskCandidates=\{maintenanceTaskCandidates\}/);
+  assert.match(overview, /standardJobPlans=\{standardJobPlans\}/);
+  assert.match(overview, /maintenanceTaskCandidates\?: Asset360MaintenanceTaskCandidate\[\]/);
+  assert.match(overview, /standardJobPlans\?: Asset360StandardJobPlan\[\]/);
+  assert.doesNotMatch(overview, /Señales de intervención/);
+  assert.doesNotMatch(overview, /Planes estándar disponibles/);
+});
 
 test('asset 360 format helpers live in the shared format module', () => {
   assert.match(format, /export const number = \(value: unknown, digits = 0\)/);
