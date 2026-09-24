@@ -88,6 +88,13 @@ test('asset 360 labels deterministic family as reference when canonical type is 
   assert.match(ui, /Familia: \$\{asset\.reference_family\}/);
 });
 
+test('asset 360 exposes approved canonical identity aliases in traceability', () => {
+  assert.match(api, /from\('asset_identity_unified_preview_v1'\)/);
+  assert.match(api, /identityHistory: identityHistoryResult\.data \|\| \[\]/);
+  assert.match(ui, /Identidad consolidada/);
+  assert.match(ui, /alias histórico aprobado/);
+});
+
 test('asset 360 enriches exact cost center codes with canonical names', () => {
   assert.match(api, /exactCostCenterDetailPromise/);
   assert.match(api, /cost_center_name/);
