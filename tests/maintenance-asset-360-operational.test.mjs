@@ -58,14 +58,25 @@ test('asset 360 resolves canonical location and exact cost center evidence', () 
   assert.match(api, /exactCostCenterMatches\.length === 1/);
   assert.match(api, /normalizeLocationEvidence/);
   assert.match(api, /normalizedLocations\.size === 1/);
-  assert.match(api, /operationalStateResult\.data\?\.location/);
+  assert.match(api, /operationalLocation \|\| payloadLocation \|\| evidenceLocation \|\| null/);
   assert.match(api, /cost_center_code: normalizedAsset\.cost_center_code \|\| exactCostCenter\?\.code \|\| null/);
+  assert.match(api, /cost_center_evidence_source/);
+  assert.match(api, /location_evidence_source/);
+});
+
+test('asset 360 rejects placeholder state and prefers validated operational evidence', () => {
+  assert.match(api, /cleanCategoricalEvidence/);
+  assert.match(api, /operationalCriticality \|\| payloadCriticality \|\| evidenceCriticality \|\| null/);
+  assert.match(api, /operationalStatus \|\| payloadStatus \|\| null/);
+  assert.match(api, /asset_operational_state_v1/);
+  assert.match(api, /operational_status_evidence_source/);
 });
 
 test('asset 360 surfaces planning or schedule horometer without inventing runtime history', () => {
   assert.match(api, /planningMeterHistory/);
   assert.match(api, /preventiveMeterSnapshot/);
   assert.match(api, /meter_evidence_source: resolvedMeterEvidenceSource/);
+  assert.match(ui, /data\.runtimeCostIntelligence\?\.latest_meter_hours != null/);
   assert.match(ui, /runtimeCostIntelligence\?\.latest_meter_hours != null/);
   assert.match(ui, /sin historial cronológico enlazado/);
 });
