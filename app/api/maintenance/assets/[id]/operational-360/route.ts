@@ -514,10 +514,16 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         }
       }
     }
+    const purchaseExactCostCenterCandidates = [...purchaseExactCostCenterMatches.values()];
+    const purchaseCanonicalCostCenterCandidates = purchaseExactCostCenterCandidates.filter(
+      (candidate) => !getRedistributableMachineAssignment(candidate.code),
+    );
     const purchaseExactCostCenter =
-      purchaseExactCostCenterMatches.size === 1
-        ? [...purchaseExactCostCenterMatches.values()][0]
-        : null;
+      purchaseExactCostCenterCandidates.length === 1
+        ? purchaseExactCostCenterCandidates[0]
+        : purchaseCanonicalCostCenterCandidates.length === 1
+          ? purchaseCanonicalCostCenterCandidates[0]
+          : null;
 
     const derivedCostCenterPurchaseHistoryResult =
       !asset.cost_center_code && exactCostCenter?.code
