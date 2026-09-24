@@ -284,6 +284,7 @@ type Asset360Response = {
     first_reading_at?: string | null;
     last_reading_at?: string | null;
     latest_meter_hours?: number | string | null;
+    latest_meter_unit?: string | null;
     observed_operating_hours?: number | string | null;
     reset_count?: number | string | null;
     usable_for_rate_metrics?: boolean | null;
