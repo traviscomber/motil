@@ -1376,16 +1376,14 @@ export function Asset360Overview({
               </div>
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">
-              No hay compras enlazadas directamente al activo ni historial disponible para su centro de costo.
-            </p>
+            <p className="text-sm text-muted-foreground">Sin compras enlazadas al activo.</p>
           )}
         </div>
       </details>
 
       {supplyChain.length > 0 ? (
         <details className="group rounded-lg border border-border bg-card">
-          <SectionSummary title="Cadena de suministro de mantención" hint={supplyChain.length > 0 ? `${supplyChain.length} registros enlazados` : 'Sin movimientos enlazados'} />
+          <SectionSummary title="Abastecimiento de mantención" hint={supplyChain.length > 0 ? `${supplyChain.length} registros enlazados` : 'Sin movimientos enlazados'} />
           <div className="border-t border-border p-4">
             {supplyChain.length > 0 ? (
               <div className="divide-y divide-border">
@@ -1926,9 +1924,6 @@ export function Asset360Overview({
             <div key={label} className="bg-card px-4 py-3">
               <p className="text-xs text-muted-foreground">{label}</p>
               <p className="mt-1 text-sm font-medium">{status}</p>
-              {!available ? (
-                <p className="mt-1 text-[11px] text-muted-foreground">La fuente actual no contiene información enlazada para este activo.</p>
-              ) : null}
             </div>
           ))}
         </div>
@@ -1938,7 +1933,7 @@ export function Asset360Overview({
         <SectionSummary title="Trazabilidad" hint={`${sourceLabel} · ${date(asset.updated_at || asset.imported_at)}`} />
         <div className="border-t border-border px-5 py-4">
           <p className="text-sm leading-relaxed text-muted-foreground">
-            Horómetro, MTBF y MTTR se muestran sólo desde evidencia operacional auditada. El costo se obtiene desde snapshots de cierre auditado. Los campos de identidad ausentes permanecen explícitamente como no informados.
+            Horómetro, MTBF y MTTR provienen de evidencia operacional disponible. Los costos históricos se muestran desde registros económicos enlazados al activo; los costos auditados, desde cierres cuando existen.
           </p>
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <IdentityItem icon={Database} label="Fuente" value={sourceLabel} />
