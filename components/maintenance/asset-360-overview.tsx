@@ -2216,98 +2216,91 @@ export function Asset360Overview({
       ) : null}
 
       {hasLifecycleEvidence ? (
-      <details className="group rounded-lg border border-border bg-card">
-        <SectionSummary title="Ciclo de vida" hint={remainingLifeYears != null ? `${number(remainingLifeYears, 1)} años remanentes estimados` : 'Vida útil no informada'} />
-        <div className="grid gap-4 border-t border-border p-4 sm:grid-cols-2 lg:grid-cols-4">
-          <IdentityItem icon={CalendarDays} label="Fecha adquisición" value={date(asset.acquisition_date)} meta={asset.updated_at ? `Maestro actualizado ${date(asset.updated_at)}` : null} />
-          <IdentityItem
-            icon={Timer}
-            label="Edad estimada"
-            value={assetAgeYears != null ? `${number(assetAgeYears, 1)} años` : 'No informado'}
-            meta={asset.acquisition_date ? `Calculada desde ${date(asset.acquisition_date)}` : null}
+        <details className="group rounded-lg border border-border bg-card">
+          <SectionSummary
+            title="Ciclo de vida"
+            hint={remainingLifeYears != null
+              ? `${number(remainingLifeYears, 1)} años remanentes estimados`
+              : asset.acquisition_date
+                ? `Adquirido ${date(asset.acquisition_date)}`
+                : 'Vida útil no informada'}
           />
-          <IdentityItem
-            icon={Timer}
-            label="Vida útil esperada"
-            value={expectedLifespan != null ? `${number(expectedLifespan, 0)} años` : 'No informado'}
-            meta={asset.updated_at ? `Maestro actualizado ${date(asset.updated_at)}` : null}
-          />
-          <IdentityItem
-            icon={Activity}
-            label="Vida útil remanente"
-            value={remainingLifeYears != null ? `${number(remainingLifeYears, 1)} años` : 'No informado'}
-            meta={asset.acquisition_date && expectedLifespan != null ? `Calculada desde adquisición y vida esperada` : null}
-          />
-        </div>
-        {asset.acquisition_cost != null ? (
-          <div className="border-t border-border px-4 py-3">
-            <p className="text-xs text-muted-foreground">Costo de adquisición</p>
-            <p className="mt-1 text-sm font-medium">{money(asset.acquisition_cost)}</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {asset.acquisition_date
-                ? `Fecha de adquisición ${date(asset.acquisition_date)}`
-                : asset.updated_at
-                  ? `Maestro actualizado ${date(asset.updated_at)}`
-                  : 'Sin fecha de referencia'}
-            </p>
+          <div className="border-t border-border">
+            <div className="grid gap-4 p-4 sm:grid-cols-3">
+              <IdentityItem icon={CalendarDays} label="Adquisición" value={date(asset.acquisition_date)} />
+              <IdentityItem icon={Timer} label="Edad estimada" value={assetAgeYears != null ? `${number(assetAgeYears, 1)} años` : 'No informado'} />
+              <IdentityItem
+                icon={Activity}
+                label="Vida remanente"
+                value={remainingLifeYears != null ? `${number(remainingLifeYears, 1)} años` : 'No informado'}
+                meta={expectedLifespan != null ? `Vida esperada ${number(expectedLifespan, 0)} años` : null}
+              />
+            </div>
+            {asset.acquisition_cost != null ? (
+              <div className="border-t border-border px-4 py-3">
+                <p className="text-xs text-muted-foreground">Costo de adquisición</p>
+                <p className="mt-1 text-sm font-medium">{money(asset.acquisition_cost)}</p>
+              </div>
+            ) : null}
           </div>
-        ) : null}
-      </details>
+        </details>
       ) : null}
 
       <details className="group rounded-lg border border-border bg-card">
         <SectionSummary
           title="Cobertura y trazabilidad"
-          hint={coverageMissingCount > 0
-            ? `${coverageMissingCount} brechas · ${sourceLabel}`
-            : `Cobertura completa · ${sourceLabel}`}
+          hint={coverageMissingCount > 0 ? `${coverageMissingCount} brechas de evidencia` : 'Cobertura completa'}
         />
         <div className="border-t border-border">
-          <div className="p-4">
-            <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Cobertura</p>
-            {coverageMissingCount > 0 ? (
+          {coverageMissingCount > 0 ? (
+            <div className="p-4">
+              <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Brechas de evidencia</p>
               <div className="mt-3 divide-y divide-border">
-                {coverageItems
-                  .filter(([, available]) => !available)
-                  .map(([label, , status]) => (
-                    <div key={label} className="grid gap-1 py-3 sm:grid-cols-[minmax(0,1fr)_220px] sm:items-center">
-                      <p className="text-sm font-medium">{label}</p>
-                      <p className="text-xs text-muted-foreground sm:text-right">{status}</p>
-                    </div>
-                  ))}
+                {coverageItems.filter(([, available]) => !available).map(([label, , status]) => (
+                  <div key={label} className="grid gap-1 py-3 sm:grid-cols-[minmax(0,1fr)_220px] sm:items-center">
+                    <p className="text-sm font-medium">{label}</p>
+                    <p className="text-xs text-muted-foreground sm:text-right">{status}</p>
+                  </div>
+                ))}
               </div>
-            ) : (
-              <p className="mt-3 text-sm text-muted-foreground">
-                No hay brechas de cobertura en las capas evaluadas.
-              </p>
-            )}
-            <p className="mt-3 text-xs text-muted-foreground">
-              {coverageAvailableCount}/{coverageItems.length} capas con evidencia.
-            </p>
-          </div>
-          <div className="border-t border-border px-5 py-4">
-            <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Trazabilidad</p>
-            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-              Horómetro, MTBF y MTTR provienen de evidencia operacional disponible. Los costos históricos se muestran desde registros económicos enlazados al activo; los costos auditados, desde cierres cuando existen.
-            </p>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <IdentityItem icon={Database} label="Fuente" value={sourceLabel} />
-              <IdentityItem icon={FileText} label="Hoja" value={asset.source_sheet} />
-              <IdentityItem icon={Hash} label="Fila fuente" value={asset.source_row} />
-              <IdentityItem icon={CalendarDays} label="Última actualización" value={date(asset.updated_at || asset.imported_at)} />
+              <p className="mt-3 text-xs text-muted-foreground">{coverageAvailableCount}/{coverageItems.length} capas con evidencia.</p>
             </div>
-            {financeReconciliation ? (
-              <div className="mt-4 border-t border-border pt-3">
-                <p className="text-xs text-muted-foreground">Conciliación finanzas</p>
-                <p className="mt-1 text-sm font-medium">
-                  {financeReconciliation.reconciliation_status || 'Sin estado'} · {financeReconciliation.match_method || 'sin método'}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  La vista de conciliación actual no expone timestamp propio.
-                </p>
+          ) : (
+            <div className="p-4 text-sm text-muted-foreground">
+              {coverageAvailableCount}/{coverageItems.length} capas con evidencia. Sin brechas detectadas.
+            </div>
+          )}
+
+          <details className="group border-t border-border px-4 py-4">
+            <summary className="cursor-pointer list-none">
+              <span className="flex items-center justify-between gap-4">
+                <span>
+                  <span className="block text-sm font-medium">Trazabilidad técnica</span>
+                  <span className="mt-0.5 block text-xs text-muted-foreground">Fuente, hoja, fila y conciliación financiera</span>
+                </span>
+                <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
+              </span>
+            </summary>
+            <div className="mt-4 border-t border-border pt-4">
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                Horómetro, confiabilidad y costos se muestran sólo cuando existe evidencia operacional o económica enlazada.
+              </p>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <IdentityItem icon={Database} label="Fuente" value={sourceLabel} />
+                <IdentityItem icon={FileText} label="Hoja" value={asset.source_sheet} />
+                <IdentityItem icon={Hash} label="Fila fuente" value={asset.source_row} />
+                <IdentityItem icon={CalendarDays} label="Última actualización" value={date(asset.updated_at || asset.imported_at)} />
               </div>
-            ) : null}
-          </div>
+              {financeReconciliation ? (
+                <div className="mt-4 border-t border-border pt-3">
+                  <p className="text-xs text-muted-foreground">Conciliación finanzas</p>
+                  <p className="mt-1 text-sm font-medium">
+                    {financeReconciliation.reconciliation_status || 'Sin estado'} · {financeReconciliation.match_method || 'sin método'}
+                  </p>
+                </div>
+              ) : null}
+            </div>
+          </details>
         </div>
       </details>
     </div>
