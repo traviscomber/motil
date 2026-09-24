@@ -17,7 +17,6 @@ import {
   Hash,
   MapPin,
   PackageCheck,
-  QrCode,
   RefreshCw,
   ShieldCheck,
   Timer,
@@ -663,11 +662,6 @@ export function Asset360Overview({
     Number(rr?.audited_corrective_events || 0) > 0 && rr?.mttr_hours != null
       ? `${number(rr.mttr_hours, 1)} h`
       : 'Sin base';
-  const auditedCost =
-    Number(reliability?.audited_closures || 0) > 0
-      ? money(reliability?.audited_total_cost)
-      : 'Sin base';
-
   const metrics: Metric[] = [
     ['OT activas', summary.activeWorkOrders, Wrench],
     ['Preventivos vencidos', summary.overduePreventives, AlertTriangle],
@@ -867,11 +861,6 @@ export function Asset360Overview({
   ] as const;
   const coverageAvailableCount = coverageItems.filter(([, available]) => available).length;
   const coverageMissingCount = coverageItems.length - coverageAvailableCount;
-  const latestMpValue = latestPlan?.last_mp != null ? Number(latestPlan.last_mp) : null;
-  const latestMpSummary = latestMpValue != null && Number.isFinite(latestMpValue) && latestMpValue > 0
-    ? `Última MP ${number(latestMpValue, 1)} ${latestPlan?.meter_unit || ''}`.trim()
-    : 'Última MP no informada';
-
   const showExecutionCard = Boolean(
     actionableWorkOrder ||
     summary.pendingPlanSteps ||
@@ -882,6 +871,12 @@ export function Asset360Overview({
   const hasReliabilityEvidence = Boolean(
     Number(reliability?.audited_closures || 0) > 0 ||
     Number(rr?.audited_corrective_events || 0) > 0
+  );
+  const maintenanceNeedsAttention = Boolean(
+    summary.criticalOpen > 0 ||
+    summary.overduePreventives > 0 ||
+    summary.operationalBlockers > 0 ||
+    actionableWorkOrder
   );
   const planningPriorityText = String(maintenancePriority?.priority || '');
   const attention = summary.criticalOpen > 0
@@ -1129,7 +1124,7 @@ export function Asset360Overview({
         </CardContent>
       </Card>
 
-      <details className="group rounded-lg border border-border bg-card" open>
+      <details className="group rounded-lg border border-border bg-card" open={maintenanceNeedsAttention}>
         <SectionSummary
           title="Mantenimiento"
           hint={nextPreventive
