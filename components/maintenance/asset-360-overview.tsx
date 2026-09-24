@@ -1774,39 +1774,58 @@ export function Asset360Overview({
           title="Historial de mantención"
           hint={auditedInterventions.length > 0
             ? `${auditedInterventions.length} cierres auditados`
-            : 'Sin cierres auditados'}
+            : recentEvents.length > 0
+              ? `${recentEvents.length} eventos recientes`
+              : 'Sin historial reciente'}
         />
-        <div className="border-t border-border p-4">
-          {auditedInterventions.length > 0 ? (
-            <div className="divide-y divide-border">
-              {auditedInterventions.slice(0, 5).map((item) => (
-                <div key={item.id} className="grid gap-3 py-4 lg:grid-cols-[140px_minmax(0,1fr)_140px_140px] lg:items-center">
-                  <div>
-                    <p className="text-xs text-muted-foreground">{date(item.closed_at || item.workOrder?.completion_date)}</p>
-                    <p className="mt-1 font-mono text-xs">{item.workOrder?.work_order_number || 'OT sin número'}</p>
+        <div className="border-t border-border">
+          <div className="p-4">
+            <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Cierres auditados</p>
+            {auditedInterventions.length > 0 ? (
+              <div className="mt-3 divide-y divide-border">
+                {auditedInterventions.slice(0, 5).map((item) => (
+                  <div key={item.id} className="grid gap-3 py-4 lg:grid-cols-[140px_minmax(0,1fr)_140px_140px] lg:items-center">
+                    <div>
+                      <p className="text-xs text-muted-foreground">{date(item.closed_at || item.workOrder?.completion_date)}</p>
+                      <p className="mt-1 font-mono text-xs">{item.workOrder?.work_order_number || 'OT sin número'}</p>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{item.workOrder?.title || item.workOrder?.work_type || 'Mantención cerrada'}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {item.workOrder?.root_cause || item.workOrder?.preventive_actions || 'Sin causa o acción documentada'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Duración</p>
+                      <p className="mt-1 text-sm font-medium">
+                        {item.workOrder?.actual_duration_hours != null ? `${number(item.workOrder.actual_duration_hours, 1)} h` : 'Sin base'}
+                      </p>
+                    </div>
+                    <div className="lg:text-right">
+                      <p className="text-xs text-muted-foreground">Costo</p>
+                      <p className="mt-1 text-sm font-medium">{money(item.total_cost)}</p>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{item.workOrder?.title || item.workOrder?.work_type || 'Mantención cerrada'}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {item.workOrder?.root_cause || item.workOrder?.preventive_actions || 'Sin causa o acción documentada'}
-                    </p>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-3 text-sm text-muted-foreground">Sin cierres de mantención auditados para este activo.</p>
+            )}
+          </div>
+          {recentEvents.length > 0 ? (
+            <div className="border-t border-border p-4">
+              <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Actividad reciente</p>
+              <div className="mt-3 divide-y divide-border">
+                {recentEvents.slice(0, 5).map((event) => (
+                  <div key={event.id} className="grid gap-1 py-3 sm:grid-cols-[120px_minmax(0,1fr)_180px] sm:items-center">
+                    <span className="text-xs text-muted-foreground">{date(event.event_at)}</span>
+                    <span className="text-sm font-medium">{event.summary || event.event_type || 'Evento de mantenimiento'}</span>
+                    <span className="text-xs text-muted-foreground sm:text-right">{event.actor_name || 'Actor no informado'}</span>
                   </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Duración</p>
-                    <p className="mt-1 text-sm font-medium">
-                      {item.workOrder?.actual_duration_hours != null ? `${number(item.workOrder.actual_duration_hours, 1)} h` : 'Sin base'}
-                    </p>
-                  </div>
-                  <div className="lg:text-right">
-                    <p className="text-xs text-muted-foreground">Costo</p>
-                    <p className="mt-1 text-sm font-medium">{money(item.total_cost)}</p>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">Sin cierres de mantención auditados para este activo.</p>
-          )}
+          ) : null}
         </div>
       </details>
 
@@ -1926,25 +1945,6 @@ export function Asset360Overview({
             </p>
           </div>
         ) : null}
-      </details>
-
-      <details className="group rounded-lg border border-border bg-card">
-        <SectionSummary title="Actividad reciente" hint={recentEvents.length > 0 ? `${recentEvents.length} eventos recientes` : 'Sin eventos recientes'} />
-        <div className="border-t border-border p-4">
-          {recentEvents.length > 0 ? (
-            <div className="divide-y divide-border">
-              {recentEvents.slice(0, 5).map((event) => (
-                <div key={event.id} className="grid gap-1 py-3 sm:grid-cols-[120px_minmax(0,1fr)_180px] sm:items-center">
-                  <span className="text-xs text-muted-foreground">{date(event.event_at)}</span>
-                  <span className="text-sm font-medium">{event.summary || event.event_type || 'Evento de mantenimiento'}</span>
-                  <span className="text-xs text-muted-foreground sm:text-right">{event.actor_name || 'Actor no informado'}</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">No hay eventos recientes registrados para este activo.</p>
-          )}
-        </div>
       </details>
 
       <details className="group rounded-lg border border-border bg-card">
