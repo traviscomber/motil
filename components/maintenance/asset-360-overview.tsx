@@ -716,6 +716,12 @@ export function Asset360Overview({
   ).trim().toLowerCase();
   const effectiveMeterLabel =
     effectiveMeterUnit === 'km' ? 'Odómetro' : effectiveMeterUnit === 'h' ? 'Horómetro' : 'Medidor';
+  const meterIsScheduleReference =
+    data.runtimeCostIntelligence?.meter_evidence_source === 'schedule_snapshot' &&
+    !data.runtimeCostIntelligence?.last_reading_at;
+  const effectiveMeterDisplayLabel = meterIsScheduleReference
+    ? `${effectiveMeterLabel} de pauta`
+    : effectiveMeterLabel;
   const effectiveMeterSuffix = effectiveMeterUnit || '';
   const primaryIdentity = [
     asset.cost_center_code
@@ -767,7 +773,7 @@ export function Asset360Overview({
     ['Preventivos vencidos', summary.overduePreventives, AlertTriangle],
     ['Bloqueos operativos', summary.operationalBlockers, Activity],
     [
-      effectiveMeterLabel,
+      effectiveMeterDisplayLabel,
       runtime?.latest_meter_hours != null
         ? `${number(runtime.latest_meter_hours, 1)} h`
         : data.runtimeCostIntelligence?.latest_meter_hours != null
@@ -1773,7 +1779,7 @@ export function Asset360Overview({
       {hasRuntimeEvidence ? (
         <details className="group rounded-lg border border-border bg-card">
           <SectionSummary
-            title={`${effectiveMeterLabel} y uso`}
+            title={`${effectiveMeterDisplayLabel} y uso`}
             hint={runtimeCostIntelligence?.latest_meter_hours != null
               ? `${number(runtimeCostIntelligence.latest_meter_hours, 1)} ${effectiveMeterSuffix}${runtimeCostIntelligence.last_reading_at ? ` · ${date(runtimeCostIntelligence.last_reading_at)}` : ''}`.trim()
               : 'Sin lectura actual'}
@@ -1781,7 +1787,7 @@ export function Asset360Overview({
           <div className="border-t border-border">
             <div className="grid gap-px bg-border sm:grid-cols-3">
               <div className="bg-card p-4">
-                <p className="text-xs text-muted-foreground">{effectiveMeterLabel} actual</p>
+                <p className="text-xs text-muted-foreground">{meterIsScheduleReference ? `${effectiveMeterLabel} referencial` : `${effectiveMeterLabel} actual`}</p>
                 <p className="mt-2 text-2xl font-semibold tracking-tight">
                   {runtimeCostIntelligence?.latest_meter_hours != null
                     ? `${number(runtimeCostIntelligence.latest_meter_hours, 1)} ${effectiveMeterSuffix}`.trim()
@@ -1790,7 +1796,9 @@ export function Asset360Overview({
                 <p className="mt-2 text-xs text-muted-foreground">
                   {runtimeCostIntelligence?.last_reading_at
                     ? `Registrado el ${date(runtimeCostIntelligence.last_reading_at)}`
-                    : 'Sin fecha de lectura'}
+                    : meterIsScheduleReference
+                      ? 'Referencia de pauta; sin lectura observada'
+                      : 'Sin fecha de lectura'}
                 </p>
               </div>
               <div className="bg-card p-4">
