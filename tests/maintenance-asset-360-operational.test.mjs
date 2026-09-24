@@ -77,6 +77,13 @@ test('asset 360 recovers a unique current meter from planning when stronger mete
   assert.match(api, /planningCurrentEvidence\?\.current_reading_at/);
 });
 
+test('asset 360 exposes master data validation separately from operational state', () => {
+  assert.match(ui, /Calidad del maestro/);
+  assert.match(ui, /Requiere enriquecimiento/);
+  assert.match(ui, /Identidad preservada; pueden faltar atributos técnicos/);
+  assert.match(ui, /asset\.validation_status/);
+});
+
 test('asset 360 surfaces dated operational freshness from the canonical operating spine', () => {
   assert.match(api, /from\('asset_operating_spine_v1'\)/);
   assert.match(api, /last_work_order_at,last_drilling_date,last_cost_event_at,last_telemetry_at,evidence_domain_count/);
