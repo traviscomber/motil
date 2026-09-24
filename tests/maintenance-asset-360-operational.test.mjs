@@ -194,6 +194,16 @@ test('asset 360 uses a uniquely derived cost center for purchase history', () =>
   assert.match(api, /derived cost center purchase history unavailable/);
 });
 
+test('asset 360 can recover one exact cost center from purchase history without mutating the asset master', () => {
+  assert.match(api, /purchaseExactCostCenterMatches/);
+  assert.match(api, /normalizeAssetIdentity\(description\) !== normalizedAssetIdentity/);
+  assert.match(api, /purchaseExactCostCenterMatches\.size === 1/);
+  assert.match(api, /purchase_history_exact_identity/);
+  assert.match(api, /purchase_cost_center_exact_identity/);
+  assert.match(ui, /Resuelto por identidad exacta en histórico de compras/);
+  assert.match(ui, /identificado de forma exacta en el histórico de compras/);
+});
+
 test('asset 360 preserves unpriced purchase lines instead of silently treating them as zero', () => {
   assert.match(api, /unpricedLines/);
   assert.match(api, /row\.net_amount != null \? sum \+ Number\(row\.net_amount\) : sum/);
