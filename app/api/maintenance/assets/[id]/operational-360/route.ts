@@ -655,7 +655,17 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             : null,
     };
 
-    const planningMeterHistory = meterHistoryResult.data || [];
+    const rawPlanningMeterHistory = meterHistoryResult.data || [];
+    const planningMeterSignature = (row: any) =>
+      [row.canonical_asset_id || id, row.recorded_at || '', row.meter_value ?? '', row.meter_unit || ''].join('|');
+    const planningMeterHistory = Array.from(
+      rawPlanningMeterHistory.reduce((map: Map<string, any>, row: any) => {
+        const signature = planningMeterSignature(row);
+        if (!map.has(signature)) map.set(signature, row);
+        return map;
+      }, new Map()).values(),
+    );
+    const duplicatePlanningMeterRows = Math.max(rawPlanningMeterHistory.length - planningMeterHistory.length, 0);
     const latestPlanningMeter = planningMeterHistory[0] || null;
     const chronologicalPlanningMeters = [...planningMeterHistory]
       .filter((row: any) => row.meter_value != null && row.recorded_at)
@@ -710,6 +720,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             last_reading_at: resolvedLastReadingAt,
             latest_meter_hours: resolvedLatestMeter,
             meter_evidence_source: resolvedMeterEvidenceSource,
+            duplicate_meter_rows_ignored: duplicatePlanningMeterRows,
             material_meter_decrease_count: materialMeterDecreaseCount,
             meter_sequence_status:
               materialMeterDecreaseCount > 0 ? 'review_required' : 'consistent',
