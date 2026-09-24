@@ -729,7 +729,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
               : null,
       location_evidence_at:
         operationalLocation
-          ? null
+          ? evidenceLocation && normalizeLocationEvidence(operationalLocation) === normalizeLocationEvidence(evidenceLocation)
+            ? [planningEvidenceAt, drillingLocationEvidenceAt].filter(Boolean).sort().reverse()[0] || null
+            : null
           : payloadLocation
             ? normalizedAsset.updated_at || normalizedAsset.imported_at || null
             : evidenceLocation
