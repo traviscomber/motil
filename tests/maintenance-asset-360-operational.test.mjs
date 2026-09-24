@@ -72,6 +72,14 @@ test('asset 360 rejects placeholder state and prefers validated operational evid
   assert.match(api, /operational_status_evidence_source/);
 });
 
+test('asset 360 keeps inferred family referential rather than canonical', () => {
+  assert.match(api, /inferMachineFamilyFromText/);
+  assert.match(api, /reference_family: referenceFamily \|\| null/);
+  assert.match(api, /deterministic_name_classifier/);
+  assert.match(ui, /Familia referencial/);
+  assert.match(ui, /no canónico/);
+});
+
 test('asset 360 surfaces planning or schedule horometer without inventing runtime history', () => {
   assert.match(api, /planningMeterHistory/);
   assert.match(api, /preventiveMeterSnapshot/);
