@@ -85,13 +85,11 @@ test('equipment list trusts the canonical active state for deduplicated fleet id
   assert.doesNotMatch(assetsApi, /deduplicatedAliases/);
 });
 
-test('asset 360 deduplicates repeated meter observations without deleting source evidence', () => {
-  assert.match(api, /dedupeMeterHistory/);
-  assert.match(api, /workbook_history: 1/);
-  assert.match(api, /workbook_current: 2/);
-  assert.match(api, /workbook_initial: 3/);
-  assert.match(api, /\.limit\(24\)/);
-  assert.match(api, /dedupeMeterHistory\(meterHistoryResult\.data \|\| \[\]\)/);
+test('asset 360 consumes the canonical deduplicated meter observation model', () => {
+  assert.match(api, /planning_asset_meter_observations_v1/);
+  assert.match(api, /evidence_row_count/);
+  assert.match(api, /\.limit\(12\)/);
+  assert.doesNotMatch(api, /dedupeMeterHistory/);
 });
 
 test('asset 360 rejects placeholder locations as operational evidence', () => {

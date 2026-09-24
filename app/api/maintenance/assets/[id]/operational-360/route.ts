@@ -32,36 +32,6 @@ function normalizeLocationEvidence(value: unknown) {
   return normalized;
 }
 
-function dedupeMeterHistory(rows: any[]) {
-  const sourceRank: Record<string, number> = {
-    workbook_history: 1,
-    workbook_current: 2,
-    workbook_initial: 3,
-  };
-  const byObservation = new Map<string, any>();
-
-  for (const row of rows) {
-    const key = [
-      row.canonical_asset_id || '',
-      row.recorded_at || '',
-      row.meter_value ?? '',
-      row.meter_unit || '',
-    ].join('|');
-    const current = byObservation.get(key);
-    if (!current) {
-      byObservation.set(key, row);
-      continue;
-    }
-    const currentRank = sourceRank[String(current.source_kind || '')] ?? 9;
-    const nextRank = sourceRank[String(row.source_kind || '')] ?? 9;
-    if (nextRank < currentRank) byObservation.set(key, row);
-  }
-
-  return [...byObservation.values()]
-    .sort((a, b) => new Date(b.recorded_at || 0).getTime() - new Date(a.recorded_at || 0).getTime())
-    .slice(0, 12);
-}
-
 function withOptionalTimeout<T>(query: PromiseLike<T>, source: string): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<T>((resolve) => {
@@ -318,12 +288,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         .eq('canonical_asset_id', id)
         .maybeSingle(),
       context.supabase
-        .from('planning_asset_meter_readings')
-        .select('id,canonical_asset_id,recorded_at,meter_value,meter_unit,source_kind,source_reference')
+        .from('planning_asset_meter_observations_v1')
+        .select('id,canonical_asset_id,recorded_at,meter_value,meter_unit,source_kind,source_reference,evidence_row_count')
         .eq('organization_id', context.organizationId)
         .eq('canonical_asset_id', id)
         .order('recorded_at', { ascending: false })
-        .limit(24),
+        .limit(12),
       isDrillRig
         ? withOptionalTimeout(
             context.supabase
@@ -607,7 +577,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           : null,
     };
 
-    const planningMeterHistory = dedupeMeterHistory(meterHistoryResult.data || []);
+    const planningMeterHistory = meterHistoryResult.data || [];
     const latestPlanningMeter = planningMeterHistory[0] || null;
     const preventiveMeterValues = preventives
       .map((row: any) => row.effective_current_meter)
