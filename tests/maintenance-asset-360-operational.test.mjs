@@ -58,6 +58,12 @@ test('asset 360 keeps secondary evidence consolidated', () => {
   assert.doesNotMatch(ui, /label="OT históricas"/);
 });
 
+test('asset 360 rejects zero schedule snapshots as current meter evidence', () => {
+  assert.match(api, /value === 0 && String\(row\.meter_evidence_source \|\| ''\)\.toLowerCase\(\) === 'schedule_snapshot'/);
+  assert.match(ui, /defendableNextPreventiveMeter/);
+  assert.match(ui, /Sin lectura/);
+});
+
 test('asset 360 recovers a unique current meter from planning when stronger meter evidence is absent', () => {
   assert.match(api, /uniquePlanningCurrentMeters/);
   assert.match(api, /planningCurrentMeter/);
