@@ -5,7 +5,6 @@ import { getOrganizationContext } from '@/lib/api/organization-context';
 
 type SensorRow = {
   id: string;
-  equipment_id: string | null;
   sensor_type: string | null;
   unit: string | null;
   name: string | null;
@@ -14,109 +13,34 @@ type SensorRow = {
 type ReadingRow = {
   id: string;
   sensor_id: string | null;
-  equipment_id: string | null;
-  timestamp: string | null;
-  created_at: string | null;
-  received_at: string | null;
   value: number | string | null;
-  temperature: number | string | null;
-  pressure: number | string | null;
-  vibration: number | string | null;
-  rpm: number | string | null;
+  unit: string | null;
+  status: string | null;
+  timestamp: string | null;
+  received_at: string | null;
 };
 
 type AlarmRow = {
   id: string;
-  equipment_id: string | null;
+  sensor_id: string | null;
   severity: string | null;
   message: string | null;
-  description: string | null;
-  created_at: string | null;
-  timestamp: string | null;
-  acknowledged_at: string | null;
   status: string | null;
-};
-
-type EquipmentSensorPayload = {
-  asset_id?: string | null;
-  temperature?: number | string | null;
-  pressure?: number | string | null;
-  vibration?: number | string | null;
-  rpm?: number | string | null;
+  created_at: string | null;
 };
 
 function toNumber(value: unknown) {
+  if (value === null || value === undefined || value === '') return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function normalizeStatusFromReadings(
-  temperature: number | null,
-  vibration: number | null,
-  activeAlarmCount: number,
-  equipmentStatus?: string | null
-) {
-  const status = String(equipmentStatus || '').toLowerCase();
-
-  if (['offline', 'inactive', 'inactivo', 'fuera_servicio', 'fuera_de_servicio'].includes(status)) {
-    return 'alert';
-  }
-
-  if ((temperature !== null && temperature > 75) || (vibration !== null && vibration > 2.8)) {
-    return 'alert';
-  }
-
-  if (activeAlarmCount > 0) {
-    return 'alert';
-  }
-
-  return 'normal';
-}
-
-function safeTime(value: string | null) {
-  if (!value) return new Date().toISOString();
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString();
-}
-
-function buildSensorSummary(readings: ReadingRow[], sensorsById: Map<string, SensorRow>) {
-  let temperature: number | null = null;
-  let pressure: number | null = null;
-  let vibration: number | null = null;
-  let rpm: number | null = null;
-  let lastTimestamp: string | null = null;
-
+function latestBySensor(readings: ReadingRow[]) {
+  const latest = new Map<string, ReadingRow>();
   for (const reading of readings) {
-    const sensor = reading.sensor_id ? sensorsById.get(reading.sensor_id) : undefined;
-    const sensorType = String(sensor?.sensor_type || '').toLowerCase();
-    const timestamp = reading.timestamp || reading.created_at || reading.received_at;
-    if (!lastTimestamp || (timestamp && new Date(timestamp).getTime() > new Date(lastTimestamp).getTime())) {
-      lastTimestamp = timestamp || lastTimestamp;
-    }
-
-    const directTemperature = toNumber(reading.temperature);
-    const directPressure = toNumber(reading.pressure);
-    const directVibration = toNumber(reading.vibration);
-    const directRpm = toNumber(reading.rpm);
-
-    if (directTemperature !== null) temperature = directTemperature;
-    if (directPressure !== null) pressure = directPressure;
-    if (directVibration !== null) vibration = directVibration;
-    if (directRpm !== null) rpm = directRpm;
-
-    if (sensorType.includes('temp') && toNumber(reading.value) !== null) temperature = toNumber(reading.value);
-    if (sensorType.includes('press') && toNumber(reading.value) !== null) pressure = toNumber(reading.value);
-    if (sensorType.includes('vib') && toNumber(reading.value) !== null) vibration = toNumber(reading.value);
-    if (sensorType.includes('rpm') && toNumber(reading.value) !== null) rpm = toNumber(reading.value);
+    if (reading.sensor_id && !latest.has(reading.sensor_id)) latest.set(reading.sensor_id, reading);
   }
-
-  return {
-    temperature,
-    pressure,
-    vibration,
-    rpm,
-    timestamp: safeTime(lastTimestamp),
-  };
+  return latest;
 }
 
 export async function GET(request: NextRequest) {
@@ -125,109 +49,103 @@ export async function GET(request: NextRequest) {
 
   try {
     const { searchParams } = new URL(request.url);
-    const equipmentId =
+    const assetId =
       searchParams.get('equipment_id') ||
       searchParams.get('asset_id') ||
       searchParams.get('equipmentId');
 
-    if (!equipmentId) {
+    if (!assetId) {
       return NextResponse.json({ error: 'equipment_id es requerido', sensor_data: null, alarms: [] }, { status: 400 });
     }
 
-    const { data: equipment } = await context.supabase
-      .from('equipment')
-      .select('id, name, type, status')
-      .eq('id', equipmentId)
-      .maybeSingle();
-
-    const { data: maintenanceAsset } = await context.supabase
-      .from('maintenance_assets')
-      .select('id, asset_name, asset_type, status')
-      .eq('id', equipmentId)
+    const { data: asset, error: assetError } = await context.supabase
+      .from('canonical_assets_current')
+      .select('id,name,asset_type,operational_status')
       .eq('organization_id', context.organizationId)
+      .eq('id', assetId)
       .maybeSingle();
 
-    const { data: sensors } = await context.supabase
+    if (assetError) return NextResponse.json({ error: assetError.message }, { status: 500 });
+    if (!asset) return NextResponse.json({ error: 'Equipo no encontrado para la organización' }, { status: 404 });
+
+    const { data: sensors, error: sensorsError } = await context.supabase
       .from('sensors')
-      .select('id, equipment_id, sensor_type, unit, name')
-      .eq('equipment_id', equipmentId)
+      .select('id,sensor_type,unit,name')
+      .eq('organization_id', context.organizationId)
+      .eq('canonical_asset_id', assetId)
       .order('name', { ascending: true });
+
+    if (sensorsError) return NextResponse.json({ error: sensorsError.message }, { status: 500 });
 
     const sensorRows = (sensors || []) as SensorRow[];
     const sensorIds = sensorRows.map((sensor) => sensor.id);
 
-    const { data: directReadings } = await context.supabase
-      .from('sensor_readings')
-      .select('id, sensor_id, equipment_id, timestamp, created_at, received_at, value, temperature, pressure, vibration, rpm')
-      .eq('equipment_id', equipmentId)
-      .order('timestamp', { ascending: false })
-      .limit(50);
+    let readings: ReadingRow[] = [];
+    let alarms: AlarmRow[] = [];
 
-    const readings = (directReadings || []) as ReadingRow[];
+    if (sensorIds.length > 0) {
+      const [readingResult, alarmResult] = await Promise.all([
+        context.supabase
+          .from('sensor_readings')
+          .select('id,sensor_id,value,unit,status,timestamp,received_at')
+          .eq('organization_id', context.organizationId)
+          .in('sensor_id', sensorIds)
+          .order('timestamp', { ascending: false })
+          .limit(200),
+        context.supabase
+          .from('alarms')
+          .select('id,sensor_id,severity,message,status,created_at')
+          .in('sensor_id', sensorIds)
+          .order('created_at', { ascending: false })
+          .limit(20),
+      ]);
 
-    const sensorReadings =
-      readings.length > 0
-        ? readings
-        : sensorIds.length > 0
-        ? ((await context.supabase
-            .from('sensor_readings')
-            .select('id, sensor_id, equipment_id, timestamp, created_at, received_at, value, temperature, pressure, vibration, rpm')
-            .in('sensor_id', sensorIds)
-            .order('timestamp', { ascending: false })
-            .limit(50)).data || []) as ReadingRow[]
-        : [];
+      if (readingResult.error) return NextResponse.json({ error: readingResult.error.message }, { status: 500 });
+      readings = (readingResult.data || []) as ReadingRow[];
+      alarms = (alarmResult.data || []) as AlarmRow[];
+    }
 
-    const sensorsById = new Map(sensorRows.map((sensor) => [sensor.id, sensor] as const));
-    const sensorSummary = buildSensorSummary(sensorReadings, sensorsById);
+    const latest = latestBySensor(readings);
+    const byType = (tokens: string[]) => {
+      const sensor = sensorRows.find((row) => {
+        const value = `${row.sensor_type || ''} ${row.name || ''}`.toLowerCase();
+        return tokens.some((token) => value.includes(token));
+      });
+      return sensor ? latest.get(sensor.id) || null : null;
+    };
 
-    const { data: alarms } = await context.supabase
-      .from('alarms')
-      .select('id, equipment_id, severity, message, description, created_at, timestamp, acknowledged_at, status')
-      .eq('equipment_id', equipmentId)
-      .order('created_at', { ascending: false })
-      .limit(20);
-
-    const alarmRows = Array.isArray(alarms) ? (alarms as AlarmRow[]) : [];
-    const activeAlarms = alarmRows.filter(
+    const temperature = byType(['temperatura', 'temperature']);
+    const pressure = byType(['presion', 'presión', 'pressure']);
+    const vibration = byType(['vibracion', 'vibración', 'vibration']);
+    const rpm = byType(['rpm', 'revolucion', 'revolución']);
+    const newestReading = readings[0] || null;
+    const activeAlarms = alarms.filter(
       (alarm) => !['resolved', 'resuelta', 'cerrada', 'closed'].includes(String(alarm.status || '').toLowerCase())
     );
 
-    const currentStatus = normalizeStatusFromReadings(
-      sensorSummary.temperature,
-      sensorSummary.vibration,
-      activeAlarms.length,
-      equipment?.status || maintenanceAsset?.status
-    );
-
-    const availability =
-      currentStatus === 'alert'
-        ? Math.max(60, 90 - activeAlarms.length * 5)
-        : currentStatus === 'normal'
-        ? 96
-        : 0;
-
     return NextResponse.json({
-      equipment_id: equipmentId,
-      equipment_name: equipment?.name || maintenanceAsset?.asset_name || 'Equipo',
+      equipment_id: assetId,
+      equipment_name: asset.name || 'Equipo',
+      equipment_type: asset.asset_type,
+      operational_status: asset.operational_status,
       sensor_data: {
-        asset_id: equipmentId,
-        temperature: sensorSummary.temperature,
-        pressure: sensorSummary.pressure,
-        vibration: sensorSummary.vibration,
-        rpm: sensorSummary.rpm,
-        status: currentStatus,
-        timestamp: sensorSummary.timestamp,
+        asset_id: assetId,
+        temperature: toNumber(temperature?.value),
+        pressure: toNumber(pressure?.value),
+        vibration: toNumber(vibration?.value),
+        rpm: toNumber(rpm?.value),
+        timestamp: newestReading?.timestamp || newestReading?.received_at || null,
       },
-      availability_percentage: availability,
+      availability_percentage: null,
+      availability_evidence_status: 'insufficient_evidence',
       alarms: activeAlarms.map((alarm) => ({
         id: alarm.id,
-        equipment_id: alarm.equipment_id,
-        severity: alarm.severity || 'medium',
-        message: alarm.message || alarm.description || 'Alerta operacional',
-        description: alarm.description || alarm.message || '',
-        created_at: alarm.created_at || alarm.timestamp || new Date().toISOString(),
+        sensor_id: alarm.sensor_id,
+        severity: alarm.severity || null,
+        message: alarm.message || 'Alerta operacional',
+        created_at: alarm.created_at,
       })),
-      last_updated: sensorSummary.timestamp,
+      last_updated: newestReading?.timestamp || newestReading?.received_at || null,
     });
   } catch (error) {
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
@@ -239,32 +157,22 @@ export async function POST(request: NextRequest) {
   if (!context.ok) return context.response;
 
   try {
-    const body = (await request.json()) as EquipmentSensorPayload;
-    const assetId = body.asset_id || null;
-    const temperature = toNumber(body.temperature);
-    const pressure = toNumber(body.pressure);
-    const vibration = toNumber(body.vibration);
-    const rpm = toNumber(body.rpm);
+    const body = await request.json();
+    const assetId = String(body?.asset_id || '').trim();
+    if (!assetId) return NextResponse.json({ error: 'asset_id es requerido' }, { status: 400 });
 
-    const { data, error } = await context.supabase
-      .from('equipment_sensors')
-      .insert([
-        {
-          organization_id: context.organizationId,
-          asset_id: assetId,
-          temperature,
-          pressure,
-          vibration,
-          rpm,
-          status: (temperature !== null && temperature > 75) || (vibration !== null && vibration > 2.8) ? 'alert' : 'normal',
-          recorded_at: new Date().toISOString(),
-        },
-      ])
-      .select('*')
-      .single();
+    const { data: asset } = await context.supabase
+      .from('canonical_assets_current')
+      .select('id')
+      .eq('organization_id', context.organizationId)
+      .eq('id', assetId)
+      .maybeSingle();
+    if (!asset) return NextResponse.json({ error: 'Equipo no encontrado para la organización' }, { status: 404 });
 
-    if (error) throw error;
-    return NextResponse.json({ data });
+    return NextResponse.json(
+      { error: 'La telemetría debe ingresar por el flujo canónico de sensores; este endpoint no crea lecturas sintéticas.' },
+      { status: 409 }
+    );
   } catch (error) {
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
