@@ -819,9 +819,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       }
     }
     const preventiveMeterValues = preventives
-      .map((row: any) => row.effective_current_meter)
-      .filter((value: any) => value !== null && value !== undefined && Number.isFinite(Number(value)))
-      .map((value: any) => Number(value));
+      .filter((row: any) => {
+        const value = Number(row.effective_current_meter);
+        if (!Number.isFinite(value)) return false;
+        return !(value === 0 && String(row.meter_evidence_source || '').toLowerCase() === 'schedule_snapshot');
+      })
+      .map((row: any) => Number(row.effective_current_meter));
     const uniquePreventiveMeters = Array.from(new Set(preventiveMeterValues));
     const preventiveMeterSnapshot = uniquePreventiveMeters.length === 1 ? uniquePreventiveMeters[0] : null;
     const planningCurrentRows = (planningResult.data || []).filter(
