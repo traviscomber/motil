@@ -1810,9 +1810,9 @@ export function Asset360Overview({
         <SectionSummary
           title="Planificación"
           hint={maintenancePriority
-            ? `${String(maintenancePriority.priority || '').toUpperCase().includes('SIN LÍNEA BASE') ? 'Base técnica sin programación' : maintenancePriority.priority || 'Sin prioridad'} · ${maintenancePriority.responsible_raw || 'responsable pendiente'}`
+            ? `${String(maintenancePriority.priority || '').toUpperCase().includes('SIN LÍNEA BASE') ? 'Base técnica sin programación' : maintenancePriority.priority || 'Sin prioridad'} · ${maintenancePriority.programming_status_raw || 'sin estado de programación'}`
             : latestPlan
-              ? `${String(latestPlan.programming_status_raw || '').toLowerCase() === 'no programado' ? 'Pauta técnica · no programada' : latestPlan.programming_status_raw || 'Pauta disponible'}${latestPlan.responsible_raw ? ` · ${latestPlan.responsible_raw}` : ''}`
+              ? `${String(latestPlan.programming_status_raw || '').toLowerCase() === 'no programado' ? 'Pauta técnica · no programada' : latestPlan.programming_status_raw || 'Pauta disponible'}${latestPlan.parts_status_raw ? ` · repuestos ${String(latestPlan.parts_status_raw).toLowerCase()}` : ''}`
               : 'Sin planificación enlazada'}
         />
         {maintenancePriority ? (
@@ -1841,10 +1841,10 @@ export function Asset360Overview({
                     : null}
               />
               <IdentityItem
-                icon={Wrench}
-                label="Responsable"
-                value={maintenancePriority.responsible_raw || 'Sin responsable'}
-                meta={maintenancePriority.programming_status_raw || null}
+                icon={CalendarDays}
+                label="Estado de programación"
+                value={maintenancePriority.programming_status_raw || 'Sin estado'}
+                meta={maintenancePriority.responsible_raw ? `Responsable: ${maintenancePriority.responsible_raw}` : null}
               />
               <IdentityItem
                 icon={PackageCheck}
@@ -1886,15 +1886,21 @@ export function Asset360Overview({
               />
               <IdentityItem
                 icon={CalendarDays}
-                label="Fecha programada"
-                value={date(latestPlan.scheduled_date)}
+                label="Estado de programación"
+                value={latestPlan.programming_status_raw || 'Sin estado'}
+                meta={latestPlan.scheduled_date
+                  ? `Programado ${date(latestPlan.scheduled_date)}`
+                  : latestPlan.responsible_raw
+                    ? `Responsable: ${latestPlan.responsible_raw}`
+                    : null}
               />
-              <IdentityItem
-                icon={Wrench}
-                label="Responsable"
-                value={latestPlan.responsible_raw || 'Sin responsable'}
-                meta={latestPlan.programming_status_raw || null}
-              />
+              {latestPlan.responsible_raw && latestPlan.scheduled_date ? (
+                <IdentityItem
+                  icon={Wrench}
+                  label="Responsable"
+                  value={latestPlan.responsible_raw}
+                />
+              ) : null}
               <IdentityItem
                 icon={PackageCheck}
                 label="Repuestos en pauta"
