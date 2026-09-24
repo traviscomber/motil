@@ -114,6 +114,13 @@ test('asset 360 enriches exact cost center codes with canonical names', () => {
   assert.match(ui, /asset\.cost_center_name/);
 });
 
+test('asset 360 carries dated corroboration for semantically equivalent criticality', () => {
+  assert.match(api, /normalizeCriticalityEvidence/);
+  assert.match(api, /normalizeCriticalityEvidence\(operationalCriticality\) === normalizeCriticalityEvidence\(evidenceCriticality\)/);
+  assert.match(api, /criticality_evidence_at/);
+  assert.match(ui, /asset\.criticality_evidence_at/);
+});
+
 test('asset 360 carries dated corroboration for consolidated locations', () => {
   assert.match(api, /normalizeLocationEvidence\(operationalLocation\) === normalizeLocationEvidence\(evidenceLocation\)/);
   assert.match(api, /location_evidence_at/);
