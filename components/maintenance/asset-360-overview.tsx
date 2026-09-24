@@ -1729,90 +1729,102 @@ export function Asset360Overview({
 
       <details className="group rounded-lg border border-border bg-card" open={planningPriorityText.startsWith('P1') || planningPriorityText.startsWith('P2') || (!maintenancePriority && !latestPlan)}>
         <SectionSummary
-          title="Plan de mantenimiento"
+          title="Planificación"
           hint={maintenancePriority
-            ? maintenancePriority.recommended_action || 'Pauta configurada'
+            ? `${maintenancePriority.priority || 'Sin prioridad'} · ${maintenancePriority.responsible_raw || 'sin responsable'}`
             : latestPlan
-              ? 'Pauta disponible'
+              ? `${latestPlan.programming_status_raw || 'Pauta disponible'} · ${latestPlan.responsible_raw || 'sin responsable'}`
               : 'Sin planificación enlazada'}
         />
         {maintenancePriority ? (
-          <>
-            <>
-              <div className="grid gap-4 border-t border-border p-4 sm:grid-cols-2 lg:grid-cols-4">
-                <IdentityItem icon={Activity} label="Prioridad" value={maintenancePriority.priority} meta={maintenancePriority.current_reading_at ? `Calculada con lectura del ${date(maintenancePriority.current_reading_at)}` : latestPlan?.updated_at ? `Fuente actualizada ${date(latestPlan.updated_at)}` : null} />
-                <IdentityItem
-                  icon={Gauge}
-                  label="Lectura actual"
-                  value={maintenancePriority.current_reading != null ? `${number(maintenancePriority.current_reading, 1)} ${maintenancePriority.meter_unit || ''}` : null}
-                  meta={maintenancePriority.current_reading_at ? `Registrado el ${date(maintenancePriority.current_reading_at)}` : 'Sin fecha de lectura'}
-                />
-                <IdentityItem
-                  icon={Gauge}
-                  label="Próximo mantenimiento"
-                  value={maintenancePriority.next_due_meter != null ? `${number(maintenancePriority.next_due_meter, 1)} ${maintenancePriority.meter_unit || ''}` : null}
-                  meta={maintenancePriority.projected_due_at ? `Proyección ${date(maintenancePriority.projected_due_at)}` : maintenancePriority.scheduled_date ? `Programado ${date(maintenancePriority.scheduled_date)}` : null}
-                />
-                <IdentityItem
-                  icon={Timer}
-                  label="Margen"
-                  value={maintenancePriority.remaining_meter != null ? `${number(maintenancePriority.remaining_meter, 1)} ${maintenancePriority.meter_unit || ''}` : null}
-                  meta={maintenancePriority.current_reading_at ? `Con lectura del ${date(maintenancePriority.current_reading_at)}` : null}
-                />
-              </div>
-              <div className="grid gap-x-6 gap-y-3 border-t border-border px-4 py-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
-                <div>
-                  <p className="text-xs text-muted-foreground">Fecha proyectada</p>
-                  <p className="mt-1 font-medium">{date(maintenancePriority.projected_due_at || maintenancePriority.scheduled_date)}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Responsable</p>
-                  <p className="mt-1 font-medium">{maintenancePriority.responsible_raw || 'Sin responsable'}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Materiales</p>
-                  <p className="mt-1 font-medium">{maintenancePriority.parts_status_raw || 'Sin estado'}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Programación</p>
-                  <p className="mt-1 font-medium">{maintenancePriority.programming_status_raw || 'Sin estado'}</p>
-                </div>
-              </div>
-            </>
+          <div className="border-t border-border">
+            <div className="grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-4">
+              <IdentityItem
+                icon={Activity}
+                label="Prioridad"
+                value={maintenancePriority.priority}
+                meta={maintenancePriority.current_reading_at
+                  ? `Con lectura del ${date(maintenancePriority.current_reading_at)}`
+                  : latestPlan?.updated_at
+                    ? `Fuente actualizada ${date(latestPlan.updated_at)}`
+                    : null}
+              />
+              <IdentityItem
+                icon={Gauge}
+                label="Umbral de intervención"
+                value={maintenancePriority.next_due_meter != null
+                  ? `${number(maintenancePriority.next_due_meter, 1)} ${maintenancePriority.meter_unit || ''}`
+                  : null}
+                meta={maintenancePriority.projected_due_at
+                  ? `Proyección ${date(maintenancePriority.projected_due_at)}`
+                  : maintenancePriority.scheduled_date
+                    ? `Programado ${date(maintenancePriority.scheduled_date)}`
+                    : null}
+              />
+              <IdentityItem
+                icon={Wrench}
+                label="Responsable"
+                value={maintenancePriority.responsible_raw || 'Sin responsable'}
+                meta={maintenancePriority.programming_status_raw || null}
+              />
+              <IdentityItem
+                icon={PackageCheck}
+                label="Materiales"
+                value={maintenancePriority.parts_status_raw || 'Sin estado'}
+              />
+            </div>
             {maintenancePriority.recommended_action ? (
               <div className="border-t border-border px-4 py-4">
-                <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Siguiente acción</p>
+                <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                  Siguiente acción
+                </p>
                 <p className="mt-2 text-sm font-medium">{maintenancePriority.recommended_action}</p>
                 {maintenancePriority.observations ? (
-                  <p className="mt-1 text-xs text-muted-foreground">{maintenancePriority.observations}</p>
+                  <details className="group mt-3">
+                    <summary className="cursor-pointer list-none text-xs text-muted-foreground">
+                      <span className="flex items-center gap-2">
+                        Ver observaciones
+                        <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" />
+                      </span>
+                    </summary>
+                    <p className="mt-2 text-xs text-muted-foreground">{maintenancePriority.observations}</p>
+                  </details>
                 ) : null}
               </div>
             ) : null}
-          </>
+          </div>
         ) : latestPlan ? (
-          <>
-            <div className="grid gap-4 border-t border-border p-4 sm:grid-cols-2 lg:grid-cols-4">
-              <IdentityItem icon={Gauge} label="Última MP" value={latestPlan.last_mp != null ? `${number(latestPlan.last_mp, 1)} ${latestPlan.meter_unit || ''}` : null} meta={latestPlan.current_reading_at ? `Lectura al ${date(latestPlan.current_reading_at)}` : latestPlan.updated_at ? `Fuente actualizada ${date(latestPlan.updated_at)}` : null} />
-              <IdentityItem icon={Timer} label="Intervalo MP" value={latestPlan.interval_mp != null ? `${number(latestPlan.interval_mp, 1)} ${latestPlan.meter_unit || ''}` : null} meta={latestPlan.updated_at ? `Fuente actualizada ${date(latestPlan.updated_at)}` : null} />
-              <IdentityItem icon={CalendarDays} label="Fecha programada" value={date(latestPlan.scheduled_date)} />
-              <IdentityItem icon={Wrench} label="Responsable" value={latestPlan.responsible_raw} meta={latestPlan.updated_at ? `Actualizado ${date(latestPlan.updated_at)}` : null} />
+          <div className="border-t border-border">
+            <div className="grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-4">
+              <IdentityItem
+                icon={Timer}
+                label="Intervalo"
+                value={latestPlan.interval_mp != null
+                  ? `${number(latestPlan.interval_mp, 1)} ${latestPlan.meter_unit || ''}`
+                  : null}
+                meta={latestPlan.updated_at ? `Fuente actualizada ${date(latestPlan.updated_at)}` : null}
+              />
+              <IdentityItem
+                icon={CalendarDays}
+                label="Fecha programada"
+                value={date(latestPlan.scheduled_date)}
+              />
+              <IdentityItem
+                icon={Wrench}
+                label="Responsable"
+                value={latestPlan.responsible_raw || 'Sin responsable'}
+                meta={latestPlan.programming_status_raw || null}
+              />
+              <IdentityItem
+                icon={PackageCheck}
+                label="Materiales"
+                value={latestPlan.parts_status_raw || 'Sin estado'}
+              />
             </div>
-            <div className="grid gap-x-6 gap-y-3 border-t border-border px-4 py-3 text-sm sm:grid-cols-2">
-              <div>
-                <p className="text-xs text-muted-foreground">Programación</p>
-                <p className="mt-1 font-medium">{latestPlan.programming_status_raw || 'Sin estado'}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Materiales</p>
-                <p className="mt-1 font-medium">{latestPlan.parts_status_raw || 'Sin estado'}</p>
-              </div>
-            </div>
-          </>
+          </div>
         ) : (
           <div className="flex flex-col gap-4 border-t border-border p-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm font-medium">Sin planificación de mantenimiento enlazada</p>
-            </div>
+            <p className="text-sm font-medium">Sin planificación de mantenimiento enlazada</p>
             {data.canEdit ? (
               <Button asChild size="sm">
                 <Link
