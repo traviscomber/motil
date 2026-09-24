@@ -47,6 +47,12 @@ function cleanCategoricalEvidence(value: unknown) {
   return raw;
 }
 
+function inferChileanPlateFromName(value: unknown) {
+  const raw = String(value || '').trim().toUpperCase();
+  const match = raw.match(/(?:^|[\s-])([A-Z]{4}-[0-9]{2}|[A-Z]{2}-[0-9]{4})$/);
+  return match?.[1] || null;
+}
+
 function withOptionalTimeout<T>(query: PromiseLike<T>, source: string): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<T>((resolve) => {
@@ -591,6 +597,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       normalizedAsset.asset_type || normalizedAsset.category
         ? null
         : exactCostCenter?.family || inferMachineFamilyFromText(String(normalizedAsset.name || ''));
+    const inferredLicensePlate =
+      normalizedAsset.license_plate ? null : inferChileanPlateFromName(normalizedAsset.name);
 
     const resolvedAsset = {
       ...normalizedAsset,
@@ -633,6 +641,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             ? 'cost_center_family'
             : 'deterministic_name_classifier'
           : null,
+      license_plate: normalizedAsset.license_plate || inferredLicensePlate || null,
+      license_plate_evidence_source:
+        normalizedAsset.license_plate
+          ? 'maintenance_canonical_assets_v1'
+          : inferredLicensePlate
+            ? 'deterministic_name_plate'
+            : null,
     };
 
     const planningMeterHistory = meterHistoryResult.data || [];
