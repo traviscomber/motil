@@ -1843,96 +1843,197 @@ export function Asset360Overview({
 
       {drillingHistory.length > 0 ? (
         <details className="group rounded-lg border border-border bg-card">
-          <SectionSummary title="Producción" hint={drillingHistory[0]?.operation_date ? `${number(drillingMeters, 1)} m · ${drillingHistory.length} reportes · hasta ${date(drillingHistory[0].operation_date)}` : 'Sin producción reciente'} />
-          <div className="border-t border-border p-4">
-            <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <IdentityItem icon={Activity} label="Metros perforados" value={`${number(drillingMeters, 1)} m`} meta={drillingHistory[0]?.operation_date ? `${drillingHistory.length} reportes · hasta ${date(drillingHistory[0].operation_date)}` : `${drillingHistory.length} reportes`} />
-              <IdentityItem icon={CalendarDays} label="Última operación" value={date(drillingHistory[0]?.operation_date)} />
-              <IdentityItem icon={MapPin} label="Última faena" value={cleanEvidenceText(drillingHistory[0]?.mine_raw) || cleanEvidenceText(drillingHistory[0]?.site_raw)} />
+          <SectionSummary
+            title="Producción"
+            hint={drillingHistory[0]?.operation_date
+              ? `${number(drillingMeters, 1)} m · última operación ${date(drillingHistory[0].operation_date)}`
+              : 'Sin producción reciente'}
+          />
+          <div className="border-t border-border">
+            <div className="grid gap-4 p-4 sm:grid-cols-3">
+              <IdentityItem
+                icon={Activity}
+                label="Metros perforados"
+                value={`${number(drillingMeters, 1)} m`}
+                meta={`${drillingHistory.length} reportes`}
+              />
+              <IdentityItem
+                icon={CalendarDays}
+                label="Última operación"
+                value={date(drillingHistory[0]?.operation_date)}
+              />
+              <IdentityItem
+                icon={MapPin}
+                label="Última faena"
+                value={cleanEvidenceText(drillingHistory[0]?.mine_raw) || cleanEvidenceText(drillingHistory[0]?.site_raw)}
+              />
             </div>
+
             {drillOperationalEvidence ? (
-              <div className="mb-4 grid gap-4 rounded-md border border-border bg-muted/20 p-4 sm:grid-cols-2 lg:grid-cols-3">
-                <IdentityItem icon={Activity} label="Operativo" value={drillOperationalEvidence.operational_reports} meta={drillOperationalEvidence.window_start && drillOperationalEvidence.window_end ? `Período ${date(drillOperationalEvidence.window_start)} → ${date(drillOperationalEvidence.window_end)}` : 'Período 90 días'} />
-                <IdentityItem icon={Activity} label="Fuera de servicio" value={drillOperationalEvidence.out_of_service_reports} meta={drillOperationalEvidence.window_start && drillOperationalEvidence.window_end ? `Período ${date(drillOperationalEvidence.window_start)} → ${date(drillOperationalEvidence.window_end)}` : 'Período 90 días'} />
-                <IdentityItem icon={Timer} label="Downtime 90 días" value={drillOperationalEvidence.recorded_downtime_hours != null ? `${number(drillOperationalEvidence.recorded_downtime_hours, 1)} h` : null} meta={drillOperationalEvidence.window_end ? `Corte ${date(drillOperationalEvidence.window_end)}` : null} />
+              <div className="grid gap-4 border-t border-border p-4 sm:grid-cols-3">
+                <IdentityItem
+                  icon={Activity}
+                  label="Operativo"
+                  value={drillOperationalEvidence.operational_reports}
+                  meta={drillOperationalEvidence.window_start && drillOperationalEvidence.window_end
+                    ? `${date(drillOperationalEvidence.window_start)} → ${date(drillOperationalEvidence.window_end)}`
+                    : 'Últimos 90 días'}
+                />
+                <IdentityItem
+                  icon={AlertTriangle}
+                  label="Fuera de servicio"
+                  value={drillOperationalEvidence.out_of_service_reports}
+                  meta={drillOperationalEvidence.window_start && drillOperationalEvidence.window_end
+                    ? `${date(drillOperationalEvidence.window_start)} → ${date(drillOperationalEvidence.window_end)}`
+                    : 'Últimos 90 días'}
+                />
+                <IdentityItem
+                  icon={Timer}
+                  label="Detención registrada"
+                  value={drillOperationalEvidence.recorded_downtime_hours != null
+                    ? `${number(drillOperationalEvidence.recorded_downtime_hours, 1)} h`
+                    : 'Sin base'}
+                  meta={drillOperationalEvidence.window_end ? `Corte ${date(drillOperationalEvidence.window_end)}` : null}
+                />
               </div>
             ) : null}
-            {drillEconomicsChange ? (
-              <div className="mb-4 grid gap-4 rounded-md border border-border bg-muted/20 p-4 sm:grid-cols-2 lg:grid-cols-3">
-                <IdentityItem icon={Coins} label="Costo/m mes actual" value={drillEconomicsChange.current_cost_clp_per_meter != null ? `${money(drillEconomicsChange.current_cost_clp_per_meter)}/m` : null} meta={drillEconomicsChange.current_month ? `Período ${date(drillEconomicsChange.current_month)}` : null} />
-                <IdentityItem icon={Coins} label="Cambio costo/m" value={drillEconomicsChange.cost_per_meter_change_pct != null ? `${number(drillEconomicsChange.cost_per_meter_change_pct, 1)}%` : null} meta={drillEconomicsChange.current_month && drillEconomicsChange.previous_month ? `${date(drillEconomicsChange.previous_month)} → ${date(drillEconomicsChange.current_month)}` : null} />
-                <IdentityItem icon={Activity} label="Cambio metros" value={drillEconomicsChange.drilled_meters_change_pct != null ? `${number(drillEconomicsChange.drilled_meters_change_pct, 1)}%` : null} meta={drillEconomicsChange.current_month && drillEconomicsChange.previous_month ? `${date(drillEconomicsChange.previous_month)} → ${date(drillEconomicsChange.current_month)}` : null} />
-              </div>
-            ) : null}
-            {drillEconomics ? (
-              <div className="mb-4 rounded-md border border-border bg-muted/20 p-4">
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  <IdentityItem icon={Coins} label="Costo 90 días" value={drillEconomics.recognized_cost_clp_90d != null ? money(drillEconomics.recognized_cost_clp_90d) : null} meta={drillEconomics.window_start && drillEconomics.window_end ? `Período ${date(drillEconomics.window_start)} → ${date(drillEconomics.window_end)}` : drillEconomics.last_cost_date ? `Último costo ${date(drillEconomics.last_cost_date)}` : null} />
-                  <IdentityItem icon={Activity} label="Metros 90 días" value={drillEconomics.drilled_meters_90d != null ? `${number(drillEconomics.drilled_meters_90d, 1)} m` : null} meta={drillEconomics.window_start && drillEconomics.window_end ? `Período ${date(drillEconomics.window_start)} → ${date(drillEconomics.window_end)}` : drillEconomics.last_drilling_date ? `Última perforación ${date(drillEconomics.last_drilling_date)}` : null} />
-                  <IdentityItem icon={Coins} label="Costo por metro" value={drillEconomics.cost_clp_per_meter_90d != null ? `${money(drillEconomics.cost_clp_per_meter_90d)}/m` : null} meta={drillEconomics.window_end ? `Fecha de corte ${date(drillEconomics.window_end)}` : null} />
-                </div>
-                {drillEconomics.evidence_status ? (
-                  <p className="mt-3 border-t border-border pt-3 text-xs text-muted-foreground">
-                    Evidencia: {drillEconomics.evidence_status}
-                  </p>
+
+            {(drillEconomicsChange || drillEconomics || drillingMaintenanceReview.length > 0 || drillingHistory.length > 0) ? (
+              <details className="group border-t border-border px-4 py-4">
+                <summary className="cursor-pointer list-none">
+                  <span className="flex items-center justify-between gap-4">
+                    <span>
+                      <span className="block text-sm font-medium">Detalle operacional y económico</span>
+                      <span className="mt-0.5 block text-xs text-muted-foreground">
+                        Costos por metro, variaciones, señales y reportes individuales
+                      </span>
+                    </span>
+                    <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
+                  </span>
+                </summary>
+
+                {drillEconomicsChange ? (
+                  <div className="mt-4 grid gap-4 border-t border-border pt-4 sm:grid-cols-3">
+                    <IdentityItem
+                      icon={Coins}
+                      label="Costo/m mes actual"
+                      value={drillEconomicsChange.current_cost_clp_per_meter != null
+                        ? `${money(drillEconomicsChange.current_cost_clp_per_meter)}/m`
+                        : null}
+                      meta={drillEconomicsChange.current_month ? `Período ${date(drillEconomicsChange.current_month)}` : null}
+                    />
+                    <IdentityItem
+                      icon={Coins}
+                      label="Cambio costo/m"
+                      value={drillEconomicsChange.cost_per_meter_change_pct != null
+                        ? `${number(drillEconomicsChange.cost_per_meter_change_pct, 1)}%`
+                        : null}
+                      meta={drillEconomicsChange.current_month && drillEconomicsChange.previous_month
+                        ? `${date(drillEconomicsChange.previous_month)} → ${date(drillEconomicsChange.current_month)}`
+                        : null}
+                    />
+                    <IdentityItem
+                      icon={Activity}
+                      label="Cambio metros"
+                      value={drillEconomicsChange.drilled_meters_change_pct != null
+                        ? `${number(drillEconomicsChange.drilled_meters_change_pct, 1)}%`
+                        : null}
+                      meta={drillEconomicsChange.current_month && drillEconomicsChange.previous_month
+                        ? `${date(drillEconomicsChange.previous_month)} → ${date(drillEconomicsChange.current_month)}`
+                        : null}
+                    />
+                  </div>
                 ) : null}
-              </div>
-            ) : null}
-            {drillingMaintenanceReview.length > 0 ? (
-              <div className="mb-4 rounded-md border border-border">
-                <div className="border-b border-border px-4 py-3">
-                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                    Señales para revisión de mantención
-                  </p>
-                </div>
-                <div className="divide-y divide-border">
-                  {drillingMaintenanceReview.slice(0, 4).map((row) => (
-                    <div key={row.source_report_id} className="grid gap-2 px-4 py-3 md:grid-cols-[120px_minmax(0,1fr)_160px] md:items-center">
-                      <div>
-                        <p className="text-xs text-muted-foreground">{date(row.operation_date)}</p>
-                        <p className="mt-1 text-xs font-medium">{row.review_status || 'Pendiente'}</p>
-                      </div>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium">{row.review_reason || 'Revisión requerida'}</p>
-                        <p className="mt-1 truncate text-xs text-muted-foreground">
-                          {row.machine_observations || row.equipment_status_raw || row.decision_note || 'Sin observación adicional'}
-                        </p>
-                      </div>
-                      <div className="md:text-right">
-                        <p className="text-xs text-muted-foreground">OT asociada</p>
-                        <p className="mt-1 text-sm font-medium">{row.has_linked_work_order ? 'Sí' : 'No'}</p>
-                      </div>
+
+                {drillEconomics ? (
+                  <div className="grid gap-4 border-t border-border py-4 sm:grid-cols-3">
+                    <IdentityItem
+                      icon={Coins}
+                      label="Costo 90 días"
+                      value={drillEconomics.recognized_cost_clp_90d != null ? money(drillEconomics.recognized_cost_clp_90d) : null}
+                      meta={drillEconomics.window_start && drillEconomics.window_end
+                        ? `${date(drillEconomics.window_start)} → ${date(drillEconomics.window_end)}`
+                        : null}
+                    />
+                    <IdentityItem
+                      icon={Activity}
+                      label="Metros 90 días"
+                      value={drillEconomics.drilled_meters_90d != null ? `${number(drillEconomics.drilled_meters_90d, 1)} m` : null}
+                    />
+                    <IdentityItem
+                      icon={Coins}
+                      label="Costo por metro"
+                      value={drillEconomics.cost_clp_per_meter_90d != null
+                        ? `${money(drillEconomics.cost_clp_per_meter_90d)}/m`
+                        : null}
+                      meta={drillEconomics.evidence_status || null}
+                    />
+                  </div>
+                ) : null}
+
+                {drillingMaintenanceReview.length > 0 ? (
+                  <div className="border-t border-border py-4">
+                    <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                      Señales para revisión de mantención
+                    </p>
+                    <div className="mt-3 divide-y divide-border">
+                      {drillingMaintenanceReview.slice(0, 4).map((row) => (
+                        <div key={row.source_report_id} className="grid gap-2 py-3 md:grid-cols-[120px_minmax(0,1fr)_160px] md:items-center">
+                          <div>
+                            <p className="text-xs text-muted-foreground">{date(row.operation_date)}</p>
+                            <p className="mt-1 text-xs font-medium">{row.review_status || 'Pendiente'}</p>
+                          </div>
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium">{row.review_reason || 'Revisión requerida'}</p>
+                            <p className="mt-1 truncate text-xs text-muted-foreground">
+                              {row.machine_observations || row.equipment_status_raw || row.decision_note || 'Sin observación adicional'}
+                            </p>
+                          </div>
+                          <div className="md:text-right">
+                            <p className="text-xs text-muted-foreground">OT asociada</p>
+                            <p className="mt-1 text-sm font-medium">{row.has_linked_work_order ? 'Sí' : 'No'}</p>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  </div>
+                ) : null}
+
+                <div className="border-t border-border py-4">
+                  <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                    Reportes recientes
+                  </p>
+                  <div className="mt-3 divide-y divide-border">
+                    {drillingHistory.slice(0, 8).map((row) => (
+                      <div key={row.id} className="grid gap-3 py-3 lg:grid-cols-[120px_120px_minmax(0,1fr)_140px] lg:items-center">
+                        <div>
+                          <p className="text-xs text-muted-foreground">{date(row.operation_date)}</p>
+                          <p className="mt-1 font-mono text-xs">{row.hole_code_raw || 'Sin sondaje'}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Producción</p>
+                          <p className="mt-1 text-sm font-medium">
+                            {row.drilled_meters != null ? `${number(row.drilled_meters, 1)} m` : 'Sin metros registrados'}
+                          </p>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">
+                            {row.operator_name_raw || 'Operador no informado'} · {row.shift_code_raw || 'Sin turno'}
+                          </p>
+                          <p className="mt-1 truncate text-xs text-muted-foreground">
+                            {row.machine_observations || row.drilling_observations || row.equipment_status_raw || 'Sin observaciones'}
+                          </p>
+                        </div>
+                        <div className="lg:text-right">
+                          <p className="text-xs text-muted-foreground">Ubicación</p>
+                          <p className="mt-1 text-sm font-medium">{row.sector_raw || row.site_raw || row.mine_raw || 'No informada'}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              </details>
             ) : null}
-            <div className="divide-y divide-border">
-              {drillingHistory.slice(0, 8).map((row) => (
-                <div key={row.id} className="grid gap-3 py-3 lg:grid-cols-[120px_120px_minmax(0,1fr)_140px] lg:items-center">
-                  <div>
-                    <p className="text-xs text-muted-foreground">{date(row.operation_date)}</p>
-                    <p className="mt-1 font-mono text-xs">{row.hole_code_raw || 'Sin sondaje'}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Producción</p>
-                    <p className="mt-1 text-sm font-medium">{row.drilled_meters != null ? `${number(row.drilled_meters, 1)} m` : 'Sin metros registrados'}</p>
-                  </div>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">
-                      {row.operator_name_raw || 'Operador no informado'} · {row.shift_code_raw || 'Sin turno'}
-                    </p>
-                    <p className="mt-1 truncate text-xs text-muted-foreground">
-                      {row.machine_observations || row.drilling_observations || row.equipment_status_raw || 'Sin observaciones'}
-                    </p>
-                  </div>
-                  <div className="lg:text-right">
-                    <p className="text-xs text-muted-foreground">Ubicación</p>
-                    <p className="mt-1 text-sm font-medium">{row.sector_raw || row.site_raw || row.mine_raw || 'No informada'}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
           </div>
         </details>
       ) : null}
