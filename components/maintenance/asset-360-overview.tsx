@@ -679,9 +679,11 @@ export function Asset360Overview({
       'Horómetro',
       runtime?.latest_meter_hours != null
         ? `${number(runtime.latest_meter_hours, 1)} h`
-        : nextPreventive?.effective_current_meter != null
-          ? `${number(nextPreventive.effective_current_meter, 1)} h`
-          : 'Sin lectura',
+        : data.runtimeCostIntelligence?.latest_meter_hours != null
+          ? `${number(data.runtimeCostIntelligence.latest_meter_hours, 1)} h`
+          : nextPreventive?.effective_current_meter != null
+            ? `${number(nextPreventive.effective_current_meter, 1)} h`
+            : 'Sin lectura',
       Gauge,
     ],
   ];
