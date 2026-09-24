@@ -66,6 +66,18 @@ function inferChileanPlateFromName(value: unknown) {
   return match?.[1] || null;
 }
 
+function isRoadVehicleIdentity(...values: unknown[]) {
+  const normalized = values
+    .map((value) =>
+      String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toUpperCase(),
+    )
+    .join(' ');
+  return /\b(CAMIONETA|CAMIONETAS|CAMION|CAMIONES|BUS|BUSES|FURGON|VEHICULO|VEHICLE|TRUCK|PICKUP)\b/.test(normalized);
+}
+
 function withOptionalTimeout<T>(query: PromiseLike<T>, source: string): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<T>((resolve) => {
@@ -709,7 +721,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         ? null
         : exactCostCenter?.family || inferMachineFamilyFromText(String(normalizedAsset.name || ''));
     const inferredLicensePlate =
-      normalizedAsset.license_plate ? null : inferChileanPlateFromName(normalizedAsset.name);
+      normalizedAsset.license_plate ||
+      !isRoadVehicleIdentity(
+        normalizedAsset.asset_type,
+        normalizedAsset.category,
+        referenceFamily,
+        normalizedAsset.name,
+      )
+        ? null
+        : inferChileanPlateFromName(normalizedAsset.name);
 
     const resolvedAsset = {
       ...normalizedAsset,
