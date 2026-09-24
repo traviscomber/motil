@@ -1826,7 +1826,8 @@ export function Asset360Overview({
               <div className="bg-card p-4">
                 <p className="text-xs text-muted-foreground">Horas observadas</p>
                 <p className="mt-2 text-xl font-semibold">
-                  {runtimeCostIntelligence?.observed_operating_hours != null
+                  {Number(runtimeCostIntelligence?.reading_count || 0) >= 2 &&
+                  runtimeCostIntelligence?.observed_operating_hours != null
                     ? `${number(runtimeCostIntelligence.observed_operating_hours, 1)} h`
                     : 'Sin base'}
                 </p>
