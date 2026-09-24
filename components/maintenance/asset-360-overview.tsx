@@ -2429,7 +2429,14 @@ export function Asset360Overview({
               <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <IdentityItem icon={Database} label="Fuente maestra" value={sourceLabel} />
                 <IdentityItem icon={MapPin} label="Ubicación" value={asset.location} meta={evidenceSourceLabel(asset.location_evidence_source)} />
-                <IdentityItem icon={ShieldCheck} label="Criticidad" value={displayCriticality} meta={evidenceSourceLabel(asset.criticality_evidence_source)} />
+                <IdentityItem
+                  icon={ShieldCheck}
+                  label="Criticidad"
+                  value={displayCriticality}
+                  meta={asset.criticality_evidence_at
+                    ? `${evidenceSourceLabel(asset.criticality_evidence_source)} · ${date(asset.criticality_evidence_at)}`
+                    : evidenceSourceLabel(asset.criticality_evidence_source)}
+                />
                 <IdentityItem icon={Activity} label="Estado" value={displayStatus} meta={evidenceSourceLabel(asset.operational_status_evidence_source)} />
                 <IdentityItem icon={Building2} label="Centro de costo" value={asset.cost_center_code} meta={evidenceSourceLabel(asset.cost_center_evidence_source)} />
                 <IdentityItem icon={Hash} label="Patente" value={asset.license_plate} meta={asset.license_plate ? evidenceSourceLabel(asset.license_plate_evidence_source) : null} />
