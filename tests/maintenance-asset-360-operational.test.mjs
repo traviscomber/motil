@@ -78,7 +78,8 @@ test('asset 360 attaches dated status history when the event matches the resolve
 test('asset 360 falls back to the canonical current asset for exact-id status evidence', () => {
   assert.match(api, /from\('canonical_assets_current'\)/);
   assert.match(api, /canonicalCurrent\?\.operational_status/);
-  assert.match(api, /operational_status: operationalStatus \|\| payloadStatus \|\| canonicalStatus \|\| null/);
+  assert.match(api, /resolvedOperationalStatus = operationalStatus \|\| eventStatus \|\| payloadStatus \|\| canonicalStatus \|\| null/);
+  assert.match(api, /operational_status: resolvedOperationalStatus/);
   assert.match(api, /canonical_assets_current/);
 });
 
@@ -105,7 +106,7 @@ test('asset 360 resolves canonical location and exact cost center evidence', () 
 test('asset 360 rejects placeholder state and prefers validated operational evidence', () => {
   assert.match(api, /cleanCategoricalEvidence/);
   assert.match(api, /operationalCriticality \|\| payloadCriticality \|\| evidenceCriticality \|\| null/);
-  assert.match(api, /operationalStatus \|\| payloadStatus \|\| null/);
+  assert.match(api, /operationalStatus \|\| eventStatus \|\| payloadStatus \|\| canonicalStatus \|\| null/);
   assert.match(api, /asset_operational_state_v1/);
   assert.match(api, /operational_status_evidence_source/);
 });
