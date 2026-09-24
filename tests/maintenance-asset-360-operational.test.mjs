@@ -52,8 +52,10 @@ test('asset 360 keeps secondary evidence consolidated', () => {
 
 test('asset 360 resolves canonical location and exact cost center evidence', () => {
   assert.match(api, /canonical_cost_centers_current/);
-  assert.match(api, /\.ilike\('name', String\(asset\.name\)\.trim\(\)\)/);
+  assert.match(api, /normalizeAssetIdentity\(center\?\.name\) === normalizedAssetIdentity/);
   assert.match(api, /exactCostCenterMatches\.length === 1/);
+  assert.match(api, /normalizeLocationEvidence/);
+  assert.match(api, /normalizedLocations\.size === 1/);
   assert.match(api, /operationalStateResult\.data\?\.location/);
   assert.match(api, /cost_center_code: normalizedAsset\.cost_center_code \|\| exactCostCenter\?\.cost_center_code \|\| null/);
 });
