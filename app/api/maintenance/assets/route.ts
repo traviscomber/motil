@@ -49,6 +49,7 @@ export async function GET(request: NextRequest) {
       .from('canonical_assets_current')
       .select('id,asset_code,name,asset_type,location,operational_status,manufacturer,model,serial_number,criticality,mtbf_hours,acquisition_cost')
       .eq('organization_id', context.organizationId)
+      .eq('is_active', true)
       .order('criticality', { ascending: false, nullsFirst: false })
       .order('name', { ascending: true });
 
