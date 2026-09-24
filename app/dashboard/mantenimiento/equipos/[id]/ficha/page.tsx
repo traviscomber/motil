@@ -17,9 +17,12 @@ export default async function FichaPage({ params }: FichaPageProps) {
   return (
     <div className="space-y-4">
       <Asset360Overview assetId={assetId} />
-      <details className="rounded-lg border border-border bg-card">
-        <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold">
-          Historial económico-operacional
+      <details className="group rounded-lg border border-border bg-card">
+        <summary className="cursor-pointer list-none px-5 py-4">
+          <span className="block text-sm font-semibold">Análisis histórico avanzado</span>
+          <span className="mt-1 block text-xs font-normal text-muted-foreground">
+            Evolución de costos, uso observado y causas auditadas
+          </span>
         </summary>
         <div className="border-t border-border p-4">
           <AssetEconomicOperationalHistory assetId={assetId} />
