@@ -725,7 +725,13 @@ export function Asset360Overview({
     data.runtimeCostIntelligence?.latest_meter_unit || asset.meter_unit || 'h',
   ).trim().toLowerCase();
   const effectiveMeterLabel =
-    effectiveMeterUnit === 'km' ? 'Odómetro' : effectiveMeterUnit === 'h' ? 'Horómetro' : 'Medidor';
+    effectiveMeterUnit === 'km'
+      ? 'Odómetro'
+      : effectiveMeterUnit === 'h'
+        ? 'Horómetro'
+        : ['anual', 'annual'].includes(effectiveMeterUnit)
+          ? 'Periodicidad'
+          : 'Medidor';
   const meterIsScheduleReference =
     data.runtimeCostIntelligence?.meter_evidence_source === 'schedule_snapshot' &&
     !data.runtimeCostIntelligence?.last_reading_at;
@@ -790,7 +796,9 @@ export function Asset360Overview({
           ? `${number(data.runtimeCostIntelligence.latest_meter_hours, 1)} ${effectiveMeterSuffix}`.trim()
           : defendableNextPreventiveMeter
             ? `${number(nextPreventive?.effective_current_meter, 1)} ${asset.meter_unit || 'h'}`.trim()
-            : 'Sin lectura',
+            : ['anual', 'annual'].includes(effectiveMeterUnit)
+              ? 'Anual'
+              : 'Sin lectura',
       Gauge,
     ],
   ];
