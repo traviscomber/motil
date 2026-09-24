@@ -1430,8 +1430,8 @@ export function Asset360Overview({
           ) : costCenterPurchaseHistory.length > 0 ? (
             <div>
               <div className="mb-3 rounded-md border border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
-                {purchaseHistorySummary?.matchBasis === 'cost_center'
-                  ? `Historial recuperado desde el centro de costo específico ${asset.cost_center_code || ''}. Se muestra como contexto económico del equipo.`
+                {purchaseHistorySummary?.matchBasis === 'cost_center' || purchaseHistorySummary?.matchBasis === 'cost_center_derived'
+                  ? `Historial recuperado desde el centro de costo ${asset.cost_center_code || ''}${purchaseHistorySummary?.matchBasis === 'cost_center_derived' ? ' resuelto de forma determinística' : ''}. Se muestra como contexto económico del equipo.`
                   : 'Historial recuperado por coincidencia de nombre/modelo con centros de costo históricos. Se presenta como contexto del modelo/equipo y no como atribución unitaria cuando existen varias unidades similares.'}
               </div>
               <div className="divide-y divide-border">
