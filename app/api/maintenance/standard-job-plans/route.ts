@@ -2,12 +2,15 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getOrganizationContext } from '@/lib/api/organization-context';
+import { MODULE_KEYS, requireModuleAccess } from '@/lib/api/module-access';
 import { applyStandardJobPlanToWorkOrder } from '@/lib/maintenance/apply-standard-job-plan';
 
 const text = (value: unknown) => String(value ?? '').trim();
 const num = (value: unknown) => Number(value ?? 0);
 
 export async function GET(request: NextRequest) {
+  const access = await requireModuleAccess(request, MODULE_KEYS.MANT_OPERACIONES);
+  if (!access.authorized) return access.response;
   const context = await getOrganizationContext(request);
   if (!context.ok) return context.response;
   const canonical = context.supabase.schema('canonical');
@@ -54,6 +57,7 @@ export async function GET(request: NextRequest) {
         activeApplications: (applications || []).length,
       },
       items,
+      canEdit: access.canWrite,
     });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'No se pudieron cargar los planes estándar.' }, { status: 500 });
@@ -61,6 +65,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const access = await requireModuleAccess(request, MODULE_KEYS.MANT_OPERACIONES, true);
+  if (!access.authorized) return access.response;
   const context = await getOrganizationContext(request);
   if (!context.ok) return context.response;
   const body = await request.json().catch(() => null);
@@ -164,6 +170,8 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
+  const access = await requireModuleAccess(request, MODULE_KEYS.MANT_OPERACIONES, true);
+  if (!access.authorized) return access.response;
   const context = await getOrganizationContext(request);
   if (!context.ok) return context.response;
   const body = await request.json().catch(() => null);
