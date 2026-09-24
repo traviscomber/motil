@@ -81,6 +81,7 @@ type Asset360Response = {
     reading_count?: number;
     last_reading_at?: string | null;
     latest_meter_hours?: number | string | null;
+    latest_meter_unit?: string | null;
     observed_operating_hours?: number | string | null;
     reset_count?: number;
     usable_for_rate_metrics?: boolean;
@@ -683,6 +684,12 @@ export function Asset360Overview({
     Number(rr?.audited_corrective_events || 0) > 0 && rr?.mttr_hours != null
       ? `${number(rr.mttr_hours, 1)} h`
       : 'Sin base';
+  const effectiveMeterUnit = String(
+    data.runtimeCostIntelligence?.latest_meter_unit || asset.meter_unit || 'h',
+  ).trim().toLowerCase();
+  const effectiveMeterLabel =
+    effectiveMeterUnit === 'km' ? 'Odómetro' : effectiveMeterUnit === 'h' ? 'Horómetro' : 'Medidor';
+  const effectiveMeterSuffix = effectiveMeterUnit || '';
   const primaryIdentity = [
     asset.cost_center_code
       ? [
@@ -723,13 +730,13 @@ export function Asset360Overview({
     ['Preventivos vencidos', summary.overduePreventives, AlertTriangle],
     ['Bloqueos operativos', summary.operationalBlockers, Activity],
     [
-      'Horómetro',
+      effectiveMeterLabel,
       runtime?.latest_meter_hours != null
         ? `${number(runtime.latest_meter_hours, 1)} h`
         : data.runtimeCostIntelligence?.latest_meter_hours != null
-          ? `${number(data.runtimeCostIntelligence.latest_meter_hours, 1)} h`
+          ? `${number(data.runtimeCostIntelligence.latest_meter_hours, 1)} ${effectiveMeterSuffix}`.trim()
           : nextPreventive?.effective_current_meter != null
-            ? `${number(nextPreventive.effective_current_meter, 1)} h`
+            ? `${number(nextPreventive.effective_current_meter, 1)} ${asset.meter_unit || 'h'}`.trim()
             : 'Sin lectura',
       Gauge,
     ],
@@ -1706,18 +1713,18 @@ export function Asset360Overview({
       {hasRuntimeEvidence ? (
         <details className="group rounded-lg border border-border bg-card">
           <SectionSummary
-            title="Horómetro y uso"
+            title={`${effectiveMeterLabel} y uso`}
             hint={runtimeCostIntelligence?.latest_meter_hours != null
-              ? `${number(runtimeCostIntelligence.latest_meter_hours, 1)} h${runtimeCostIntelligence.last_reading_at ? ` · ${date(runtimeCostIntelligence.last_reading_at)}` : ''}`
+              ? `${number(runtimeCostIntelligence.latest_meter_hours, 1)} ${effectiveMeterSuffix}${runtimeCostIntelligence.last_reading_at ? ` · ${date(runtimeCostIntelligence.last_reading_at)}` : ''}`.trim()
               : 'Sin lectura actual'}
           />
           <div className="border-t border-border">
             <div className="grid gap-px bg-border sm:grid-cols-3">
               <div className="bg-card p-4">
-                <p className="text-xs text-muted-foreground">Horómetro actual</p>
+                <p className="text-xs text-muted-foreground">{effectiveMeterLabel} actual</p>
                 <p className="mt-2 text-2xl font-semibold tracking-tight">
                   {runtimeCostIntelligence?.latest_meter_hours != null
-                    ? `${number(runtimeCostIntelligence.latest_meter_hours, 1)} h`
+                    ? `${number(runtimeCostIntelligence.latest_meter_hours, 1)} ${effectiveMeterSuffix}`.trim()
                     : 'Sin lectura'}
                 </p>
                 <p className="mt-2 text-xs text-muted-foreground">
@@ -1758,7 +1765,7 @@ export function Asset360Overview({
               <summary className="cursor-pointer list-none">
                 <span className="flex items-center justify-between gap-4">
                   <span>
-                    <span className="block text-sm font-medium">Historial de horómetro</span>
+                    <span className="block text-sm font-medium">Historial de {effectiveMeterLabel.toLowerCase()}</span>
                     <span className="mt-0.5 block text-xs text-muted-foreground">
                       {runtimeCostIntelligence?.reading_count ?? meterHistory.length} lecturas
                       {Number(runtimeCostIntelligence?.material_meter_decrease_count || 0) > 0
