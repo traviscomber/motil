@@ -473,30 +473,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       supplierScore: supplierScoresById.get(row.supplier_id) || null,
     }));
 
-    const purchaseHistoryMatchBasis = asset.cost_center_code ? 'cost_center' : 'name_model';
-    const purchaseHistoryRows = asset.cost_center_code
-      ? costCenterPurchaseHistoryResult.data || []
-      : namePurchaseHistoryResult.data || [];
-    const seenPurchaseLineIds = new Set<number>();
-    const costCenterPurchaseHistory = purchaseHistoryRows.filter((row: any) => {
-      if (seenPurchaseLineIds.has(row.id)) return false;
-      seenPurchaseLineIds.add(row.id);
-      return true;
-    });
-    const purchaseHistorySummary = {
-      matchBasis: purchaseHistoryMatchBasis,
-      purchaseLines: costCenterPurchaseHistory.length,
-      orders: new Set(costCenterPurchaseHistory.map((row: any) => row.order_number).filter(Boolean)).size,
-      suppliers: new Set(costCenterPurchaseHistory.map((row: any) => row.supplier_name).filter(Boolean)).size,
-      netSpend: costCenterPurchaseHistory.reduce((sum: number, row: any) => sum + Number(row.net_amount || 0), 0),
-      lastOrderDate: costCenterPurchaseHistory
-        .map((row: any) => row.order_date)
-        .filter(Boolean)
-        .sort()
-        .reverse()[0] || null,
-      lastSupplier: costCenterPurchaseHistory[0]?.supplier_name || null,
-    };
-
     const parts = (partsResult.data || []).map((row: any) => ({
       ...row,
       product: productsById.get(row.canonical_product_id) || null,
@@ -528,6 +504,55 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       !asset.cost_center_code && exactCostCenterMatches.length === 1
         ? exactCostCenterMatches[0]
         : null;
+
+    const derivedCostCenterPurchaseHistoryResult =
+      !asset.cost_center_code && exactCostCenter?.code
+        ? await context.supabase
+            .from('canonical_purchase_order_lines_current')
+            .select(purchaseSelect)
+            .eq('organization_id', context.organizationId)
+            .ilike('cost_center_code', `${exactCostCenter.code} %`)
+            .order('order_date', { ascending: false, nullsFirst: false })
+            .limit(100)
+        : { data: [], error: null };
+
+    if (derivedCostCenterPurchaseHistoryResult.error) {
+      console.warn('[asset-360] derived cost center purchase history unavailable', {
+        assetId: id,
+        costCenterCode: exactCostCenter?.code || null,
+        error: derivedCostCenterPurchaseHistoryResult.error,
+      });
+    }
+
+    const purchaseHistoryMatchBasis = asset.cost_center_code
+      ? 'cost_center'
+      : exactCostCenter?.code
+        ? 'cost_center_derived'
+        : 'name_model';
+    const purchaseHistoryRows = asset.cost_center_code
+      ? costCenterPurchaseHistoryResult.data || []
+      : exactCostCenter?.code && !derivedCostCenterPurchaseHistoryResult.error
+        ? derivedCostCenterPurchaseHistoryResult.data || []
+        : namePurchaseHistoryResult.data || [];
+    const seenPurchaseLineIds = new Set<number>();
+    const costCenterPurchaseHistory = purchaseHistoryRows.filter((row: any) => {
+      if (seenPurchaseLineIds.has(row.id)) return false;
+      seenPurchaseLineIds.add(row.id);
+      return true;
+    });
+    const purchaseHistorySummary = {
+      matchBasis: purchaseHistoryMatchBasis,
+      purchaseLines: costCenterPurchaseHistory.length,
+      orders: new Set(costCenterPurchaseHistory.map((row: any) => row.order_number).filter(Boolean)).size,
+      suppliers: new Set(costCenterPurchaseHistory.map((row: any) => row.supplier_name).filter(Boolean)).size,
+      netSpend: costCenterPurchaseHistory.reduce((sum: number, row: any) => sum + Number(row.net_amount || 0), 0),
+      lastOrderDate: costCenterPurchaseHistory
+        .map((row: any) => row.order_date)
+        .filter(Boolean)
+        .sort()
+        .reverse()[0] || null,
+      lastSupplier: costCenterPurchaseHistory[0]?.supplier_name || null,
+    };
 
     const locationCandidates = [
       ...(planningResult.data || []).map((row: any) => row.mine_raw),
