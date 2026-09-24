@@ -58,6 +58,13 @@ test('asset 360 keeps secondary evidence consolidated', () => {
   assert.doesNotMatch(ui, /label="OT históricas"/);
 });
 
+test('asset 360 recovers a unique current meter from planning when stronger meter evidence is absent', () => {
+  assert.match(api, /uniquePlanningCurrentMeters/);
+  assert.match(api, /planningCurrentMeter/);
+  assert.match(api, /planning_maintenance_source_rows/);
+  assert.match(api, /planningCurrentEvidence\?\.current_reading_at/);
+});
+
 test('asset 360 operational state query only selects columns present in the live view', () => {
   assert.match(api, /from\('asset_operational_state_v1'\)/);
   assert.doesNotMatch(api, /drilled_meters,last_drilling_date,sensor_count/);
