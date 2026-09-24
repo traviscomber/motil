@@ -120,6 +120,15 @@ test('asset 360 preserves meter units for hour meters and odometers', () => {
   assert.match(ui, /effectiveMeterSuffix/);
 });
 
+test('asset 360 keeps traceability meter units and exact finance reconciliation readable', () => {
+  assert.match(ui, /label=\{effectiveMeterLabel\}/);
+  assert.match(ui, /Conciliación financiera/);
+  assert.match(ui, /finance_asset_code/);
+  assert.match(ui, /finance_asset_name/);
+  assert.match(ui, /reconciliation_status/);
+  assert.match(ui, /match_method/);
+});
+
 test('asset 360 flags material planning meter decreases without calling them resets', () => {
   assert.match(api, /materialMeterDecreaseCount/);
   assert.match(api, /previous - current > 1/);
