@@ -501,6 +501,24 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           ? canonicalExactCostCenterMatches[0]
           : null;
 
+    const purchaseExactCostCenterMatches = new Map<string, { code: string; description: string }>();
+    if (!asset.cost_center_code && !exactCostCenter?.code && normalizedAssetIdentity) {
+      for (const row of namePurchaseHistoryResult.data || []) {
+        const rawCostCenter = String(row.cost_center_code || '').trim();
+        const match = rawCostCenter.match(/^(\S+)\s+(.+)$/);
+        if (!match) continue;
+        const [, code, description] = match;
+        if (normalizeAssetIdentity(description) !== normalizedAssetIdentity) continue;
+        if (!purchaseExactCostCenterMatches.has(code)) {
+          purchaseExactCostCenterMatches.set(code, { code, description });
+        }
+      }
+    }
+    const purchaseExactCostCenter =
+      purchaseExactCostCenterMatches.size === 1
+        ? [...purchaseExactCostCenterMatches.values()][0]
+        : null;
+
     const derivedCostCenterPurchaseHistoryResult =
       !asset.cost_center_code && exactCostCenter?.code
         ? await context.supabase
@@ -511,12 +529,22 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             .order('order_date', { ascending: false, nullsFirst: false })
             .limit(100)
         : { data: [], error: null };
+    const purchaseExactCostCenterHistoryResult =
+      !asset.cost_center_code && !exactCostCenter?.code && purchaseExactCostCenter?.code
+        ? await context.supabase
+            .from('canonical_purchase_order_lines_current')
+            .select(purchaseSelect)
+            .eq('organization_id', context.organizationId)
+            .ilike('cost_center_code', `${purchaseExactCostCenter.code} %`)
+            .order('order_date', { ascending: false, nullsFirst: false })
+            .limit(100)
+        : { data: [], error: null };
 
-    if (derivedCostCenterPurchaseHistoryResult.error) {
+    if (derivedCostCenterPurchaseHistoryResult.error || purchaseExactCostCenterHistoryResult.error) {
       console.warn('[asset-360] derived cost center purchase history unavailable', {
         assetId: id,
-        costCenterCode: exactCostCenter?.code || null,
-        error: derivedCostCenterPurchaseHistoryResult.error,
+        costCenterCode: exactCostCenter?.code || purchaseExactCostCenter?.code || null,
+        error: derivedCostCenterPurchaseHistoryResult.error || purchaseExactCostCenterHistoryResult.error,
       });
     }
 
@@ -524,12 +552,16 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       ? 'cost_center'
       : exactCostCenter?.code
         ? 'cost_center_derived'
-        : 'name_model';
+        : purchaseExactCostCenter?.code
+          ? 'purchase_cost_center_exact_identity'
+          : 'name_model';
     const purchaseHistoryRows = asset.cost_center_code
       ? costCenterPurchaseHistoryResult.data || []
       : exactCostCenter?.code && !derivedCostCenterPurchaseHistoryResult.error
         ? derivedCostCenterPurchaseHistoryResult.data || []
-        : namePurchaseHistoryResult.data || [];
+        : purchaseExactCostCenter?.code && !purchaseExactCostCenterHistoryResult.error
+          ? purchaseExactCostCenterHistoryResult.data || []
+          : namePurchaseHistoryResult.data || [];
     const seenPurchaseLineIds = new Set<number>();
     const costCenterPurchaseHistory = purchaseHistoryRows.filter((row: any) => {
       if (seenPurchaseLineIds.has(row.id)) return false;
@@ -618,13 +650,19 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     const resolvedAsset = {
       ...normalizedAsset,
-      cost_center_code: normalizedAsset.cost_center_code || exactCostCenter?.code || null,
+      cost_center_code:
+        normalizedAsset.cost_center_code ||
+        exactCostCenter?.code ||
+        purchaseExactCostCenter?.code ||
+        null,
       cost_center_evidence_source:
         normalizedAsset.cost_center_code
           ? 'maintenance_canonical_assets_v1'
           : exactCostCenter?.code
             ? 'cost_centers_exact_identity'
-            : null,
+            : purchaseExactCostCenter?.code
+              ? 'purchase_history_exact_identity'
+              : null,
       location: operationalLocation || payloadLocation || evidenceLocation || null,
       location_evidence_source:
         operationalLocation
