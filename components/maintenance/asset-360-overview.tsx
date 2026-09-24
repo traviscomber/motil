@@ -65,6 +65,8 @@ type Asset360Response = {
     location_evidence_source?: string | null;
     criticality_evidence_source?: string | null;
     operational_status_evidence_source?: string | null;
+    reference_family?: string | null;
+    reference_family_evidence_source?: string | null;
   };
   summary?: {
     activeWorkOrders: number;
@@ -769,6 +771,9 @@ export function Asset360Overview({
     asset.meter_unit ? ['Unidad de control', asset.meter_unit, Gauge] as const : null,
     displayMobility ? ['Movilidad', displayMobility, MapPin] as const : null,
     displayLifecycle ? ['Ciclo de vida', displayLifecycle, Activity] as const : null,
+    !displayAssetType && asset.reference_family
+      ? ['Familia referencial', asset.reference_family, Wrench] as const
+      : null,
     asset.acquisition_date ? ['Adquisición', date(asset.acquisition_date), CalendarDays] as const : null,
     asset.expected_lifespan_years != null
       ? ['Vida esperada', `${number(asset.expected_lifespan_years, 0)} años`, Timer] as const
@@ -871,6 +876,8 @@ export function Asset360Overview({
       asset_runtime_readings: 'Lecturas operacionales',
       planning_asset_meter_readings: 'Planificación · horómetro',
       schedule_snapshot: 'Pauta preventiva',
+      cost_center_family: 'Familia del centro de costo',
+      deterministic_name_classifier: 'Clasificador determinístico del nombre',
     };
     return labels[source] || source;
   };
@@ -2299,6 +2306,7 @@ export function Asset360Overview({
                 <IdentityItem icon={ShieldCheck} label="Criticidad" value={displayCriticality} meta={evidenceSourceLabel(asset.criticality_evidence_source)} />
                 <IdentityItem icon={Activity} label="Estado" value={displayStatus} meta={evidenceSourceLabel(asset.operational_status_evidence_source)} />
                 <IdentityItem icon={Building2} label="Centro de costo" value={asset.cost_center_code} meta={evidenceSourceLabel(asset.cost_center_evidence_source)} />
+                <IdentityItem icon={Wrench} label="Familia referencial" value={asset.reference_family} meta={asset.reference_family ? `${evidenceSourceLabel(asset.reference_family_evidence_source)} · no canónico` : null} />
                 <IdentityItem icon={Gauge} label="Horómetro" value={runtimeCostIntelligence?.latest_meter_hours != null ? `${number(runtimeCostIntelligence.latest_meter_hours, 1)} h` : null} meta={evidenceSourceLabel(runtimeCostIntelligence?.meter_evidence_source)} />
                 <IdentityItem icon={FileText} label="Hoja" value={asset.source_sheet} />
                 <IdentityItem icon={CalendarDays} label="Última actualización" value={date(asset.updated_at || asset.imported_at)} />
