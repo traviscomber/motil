@@ -2399,14 +2399,26 @@ export function Asset360Overview({
                 <IdentityItem icon={Building2} label="Centro de costo" value={asset.cost_center_code} meta={evidenceSourceLabel(asset.cost_center_evidence_source)} />
                 <IdentityItem icon={Hash} label="Patente" value={asset.license_plate} meta={asset.license_plate ? evidenceSourceLabel(asset.license_plate_evidence_source) : null} />
                 <IdentityItem icon={Wrench} label="Familia referencial" value={asset.reference_family} meta={asset.reference_family ? `${evidenceSourceLabel(asset.reference_family_evidence_source)} · no canónico` : null} />
-                <IdentityItem icon={Gauge} label="Horómetro" value={runtimeCostIntelligence?.latest_meter_hours != null ? `${number(runtimeCostIntelligence.latest_meter_hours, 1)} h` : null} meta={evidenceSourceLabel(runtimeCostIntelligence?.meter_evidence_source)} />
+                <IdentityItem
+                  icon={Gauge}
+                  label={effectiveMeterLabel}
+                  value={runtimeCostIntelligence?.latest_meter_hours != null
+                    ? `${number(runtimeCostIntelligence.latest_meter_hours, 1)} ${effectiveMeterSuffix}`.trim()
+                    : null}
+                  meta={evidenceSourceLabel(runtimeCostIntelligence?.meter_evidence_source)}
+                />
                 <IdentityItem icon={FileText} label="Hoja" value={asset.source_sheet} />
                 <IdentityItem icon={CalendarDays} label="Última actualización" value={date(asset.updated_at || asset.imported_at)} />
               </div>
               {financeReconciliation ? (
                 <div className="mt-4 border-t border-border pt-3">
-                  <p className="text-xs text-muted-foreground">Conciliación finanzas</p>
+                  <p className="text-xs text-muted-foreground">Conciliación financiera</p>
                   <p className="mt-1 text-sm font-medium">
+                    {financeReconciliation.finance_asset_code || financeReconciliation.finance_asset_name
+                      ? `${financeReconciliation.finance_asset_code || ''}${financeReconciliation.finance_asset_code && financeReconciliation.finance_asset_name ? ' · ' : ''}${financeReconciliation.finance_asset_name || ''}`
+                      : 'Activo financiero sin identificación visible'}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
                     {financeReconciliation.reconciliation_status || 'Sin estado'} · {financeReconciliation.match_method || 'sin método'}
                   </p>
                 </div>
