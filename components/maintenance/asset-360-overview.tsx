@@ -872,6 +872,17 @@ export function Asset360Overview({
     ? `Última MP ${number(latestMpValue, 1)} ${latestPlan?.meter_unit || ''}`.trim()
     : 'Última MP no informada';
 
+  const showExecutionCard = Boolean(
+    actionableWorkOrder ||
+    summary.pendingPlanSteps ||
+    summary.readyToClose ||
+    summary.criticalOpen ||
+    Number(runtime?.reset_count || 0) > 0
+  );
+  const hasReliabilityEvidence = Boolean(
+    Number(reliability?.audited_closures || 0) > 0 ||
+    Number(rr?.audited_corrective_events || 0) > 0
+  );
   const planningPriorityText = String(maintenancePriority?.priority || '');
   const attention = summary.criticalOpen > 0
     ? { tone: 'border-destructive/40 bg-destructive/5', title: 'OT crítica abierta', detail: 'Revisar la orden crítica y su siguiente acción.' }
@@ -1125,7 +1136,7 @@ export function Asset360Overview({
             ? `Próximo: ${nextPreventive.task_name || 'preventivo'}${nextPreventive.due_meter != null ? ` · ${number(nextPreventive.due_meter, 0)} h` : ''}`
             : 'Sin pauta horaria registrada'}
         />
-        <div className="grid gap-4 border-t border-border p-4 lg:grid-cols-3">
+        <div className={`grid gap-4 border-t border-border p-4 ${showExecutionCard ? 'lg:grid-cols-3' : 'lg:grid-cols-2'}`}>
         <Card className="shadow-none">
           <CardContent className="p-5">
             <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
@@ -1173,29 +1184,32 @@ export function Asset360Overview({
             <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
               Confiabilidad auditada
             </p>
-            <div className="mt-3 grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-xs text-muted-foreground">MTTR</p>
-                <p className="mt-1 font-medium">{mttr}</p>
+            {hasReliabilityEvidence ? (
+              <div className="mt-3 grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-muted-foreground">MTTR</p>
+                  <p className="mt-1 font-medium">{mttr}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Cobertura horómetro</p>
+                  <p className="mt-1 font-medium">
+                    {rr?.meter_event_coverage_percent != null
+                      ? `${number(rr.meter_event_coverage_percent, 0)}%`
+                      : 'Sin base'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Cierres auditados</p>
+                  <p className="mt-1 font-medium">{Number(reliability?.audited_closures || 0)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Causas recurrentes</p>
+                  <p className="mt-1 font-medium">{Number(reliability?.recurring_cause_count || 0)}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Cobertura horómetro</p>
-                <p className="mt-1 font-medium">
-                  {Number(rr?.audited_corrective_events || 0) > 0 &&
-                  rr?.meter_event_coverage_percent != null
-                    ? `${number(rr.meter_event_coverage_percent, 0)}%`
-                    : 'Sin base'}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Cierres auditados</p>
-                <p className="mt-1 font-medium">{Number(reliability?.audited_closures || 0)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Causas recurrentes</p>
-                <p className="mt-1 font-medium">{Number(reliability?.recurring_cause_count || 0)}</p>
-              </div>
-            </div>
+            ) : (
+              <p className="mt-3 text-sm text-muted-foreground">Sin cierres auditados.</p>
+            )}
             <Button asChild variant="ghost" size="sm" className="mt-4 px-0">
               <Link href="/dashboard/mantenimiento/confiabilidad">
                 Ver confiabilidad
@@ -1205,49 +1219,51 @@ export function Asset360Overview({
           </CardContent>
         </Card>
 
-        <Card className="shadow-none">
-          <CardContent className="p-5">
-            <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-              Cierre y ejecución
-            </p>
-            <div className="mt-3 grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-xs text-muted-foreground">Pasos pendientes</p>
-                <p className="mt-1 font-medium">{summary.pendingPlanSteps}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Listas para cerrar</p>
-                <p className="mt-1 font-medium">{summary.readyToClose}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Críticas abiertas</p>
-                <p className="mt-1 font-medium">{summary.criticalOpen}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Reinicios horómetro</p>
-                <p className="mt-1 font-medium">
-                  {runtime ? Number(runtime.reset_count || 0) : 'Sin lectura'}
-                </p>
-              </div>
-            </div>
-            {actionableWorkOrder ? (
-              <Button asChild variant="ghost" size="sm" className="mt-4 px-0">
-                <Link
-                  href={`/dashboard/mantenimiento/ordenes-trabajo/cierre?workOrderId=${encodeURIComponent(
-                    actionableWorkOrder.work_order_id,
-                  )}`}
-                >
-                  Continuar trabajo
-                  <ArrowRight className="ml-1 h-4 w-4" />
-                </Link>
-              </Button>
-            ) : (
-              <p className="mt-4 text-xs text-muted-foreground">
-                No hay una OT activa con cierre pendiente para continuar.
+        {showExecutionCard ? (
+          <Card className="shadow-none">
+            <CardContent className="p-5">
+              <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                Cierre y ejecución
               </p>
-            )}
-          </CardContent>
-        </Card>
+              <div className="mt-3 grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-muted-foreground">Pasos pendientes</p>
+                  <p className="mt-1 font-medium">{summary.pendingPlanSteps}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Listas para cerrar</p>
+                  <p className="mt-1 font-medium">{summary.readyToClose}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Críticas abiertas</p>
+                  <p className="mt-1 font-medium">{summary.criticalOpen}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Reinicios horómetro</p>
+                  <p className="mt-1 font-medium">
+                    {runtime ? Number(runtime.reset_count || 0) : 'Sin lectura'}
+                  </p>
+                </div>
+              </div>
+              {actionableWorkOrder ? (
+                <Button asChild variant="ghost" size="sm" className="mt-4 px-0">
+                  <Link
+                    href={`/dashboard/mantenimiento/ordenes-trabajo/cierre?workOrderId=${encodeURIComponent(
+                      actionableWorkOrder.work_order_id,
+                    )}`}
+                  >
+                    Continuar trabajo
+                    <ArrowRight className="ml-1 h-4 w-4" />
+                  </Link>
+                </Button>
+              ) : (
+                <p className="mt-4 text-xs text-muted-foreground">
+                  No hay una OT activa con cierre pendiente para continuar.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        ) : null}
         </div>
       </details>
 
@@ -1865,7 +1881,7 @@ export function Asset360Overview({
       </details>
 
       <details className="group rounded-lg border border-border bg-card">
-        <SectionSummary title="Vida útil y ciclo del activo" hint={remainingLifeYears != null ? `${number(remainingLifeYears, 1)} años remanentes estimados` : 'Vida útil no informada'} />
+        <SectionSummary title="Ciclo de vida" hint={remainingLifeYears != null ? `${number(remainingLifeYears, 1)} años remanentes estimados` : 'Vida útil no informada'} />
         <div className="grid gap-4 border-t border-border p-4 sm:grid-cols-2 lg:grid-cols-4">
           <IdentityItem icon={CalendarDays} label="Fecha adquisición" value={date(asset.acquisition_date)} meta={asset.updated_at ? `Maestro actualizado ${date(asset.updated_at)}` : null} />
           <IdentityItem
@@ -1896,7 +1912,7 @@ export function Asset360Overview({
       </details>
 
       <details className="group rounded-lg border border-border bg-card">
-        <SectionSummary title="Actividad reciente del activo" hint={recentEvents.length > 0 ? `${recentEvents.length} eventos recientes` : 'Sin eventos recientes'} />
+        <SectionSummary title="Actividad reciente" hint={recentEvents.length > 0 ? `${recentEvents.length} eventos recientes` : 'Sin eventos recientes'} />
         <div className="border-t border-border p-4">
           {recentEvents.length > 0 ? (
             <div className="divide-y divide-border">
@@ -1916,7 +1932,7 @@ export function Asset360Overview({
 
       <details className="group rounded-lg border border-border bg-card">
         <SectionSummary
-          title="Cobertura de la ficha"
+          title="Cobertura"
           hint={`${coverageAvailableCount}/${coverageItems.length} capas con evidencia`}
         />
         <div className="grid gap-px border-t border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
