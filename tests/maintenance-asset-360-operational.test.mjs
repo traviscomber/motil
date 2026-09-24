@@ -161,6 +161,17 @@ test('asset 360 operational state query only selects columns present in the live
   assert.match(ui, /consolidatedDrillingReports/);
 });
 
+test('asset 360 resolves location criticality and status evidence through one deterministic resolver', () => {
+  assert.match(api, /from '@\/lib\/maintenance\/evidence-field-resolution'/);
+  assert.match(api, /const locationResolution = resolveEvidenceField\(\[/);
+  assert.match(api, /const criticalityResolution = resolveEvidenceField\(\[/);
+  assert.match(api, /const statusSourceResolution = resolveEvidenceField\(\[/);
+  assert.match(api, /location: locationResolution\.value/);
+  assert.match(api, /criticality_evidence_source: criticalityResolution\.source/);
+  assert.match(api, /operational_status_evidence_at: statusSourceResolution\.at/);
+  assert.doesNotMatch(api, /location: operationalLocation \|\| payloadLocation \|\| evidenceLocation/);
+});
+
 test('asset 360 attaches dated status history when the event matches the resolved state', () => {
   assert.match(api, /from\('maintenance_asset_status_history'\)/);
   assert.match(api, /statusEventMatchesResolved/);
@@ -229,7 +240,7 @@ test('asset 360 resolves canonical location and exact cost center evidence', () 
   assert.match(api, /exactCostCenterMatches\.length === 1/);
   assert.match(api, /normalizeLocationEvidence/);
   assert.match(api, /normalizedLocations\.size === 1/);
-  assert.match(api, /operationalLocation \|\| payloadLocation \|\| evidenceLocation \|\| null/);
+  assert.match(api, /location: locationResolution\.value/);
   assert.match(api, /normalizedAsset\.cost_center_code/);
   assert.match(api, /exactCostCenter\?\.code/);
   assert.match(api, /purchaseExactCostCenter\?\.code/);
@@ -239,7 +250,7 @@ test('asset 360 resolves canonical location and exact cost center evidence', () 
 
 test('asset 360 rejects placeholder state and prefers validated operational evidence', () => {
   assert.match(api, /cleanCategoricalEvidence/);
-  assert.match(api, /operationalCriticality \|\| payloadCriticality \|\| evidenceCriticality \|\| null/);
+  assert.match(api, /criticality: criticalityResolution\.value/);
   assert.match(api, /operationalStatus \|\| eventStatus \|\| payloadStatus \|\| canonicalStatus \|\| null/);
   assert.match(api, /asset_operational_state_v1/);
   assert.match(api, /operational_status_evidence_source/);
@@ -360,7 +371,7 @@ test('equipment fleet API excludes inactive canonical assets from the operationa
 test('asset 360 derives criticality only from one consistent planning value', () => {
   assert.match(api, /planningCriticalities/);
   assert.match(api, /planningCriticalities\.size === 1/);
-  assert.match(api, /criticality: operationalCriticality \|\| payloadCriticality \|\| evidenceCriticality \|\| null/);
+  assert.match(api, /criticality: criticalityResolution\.value/);
   assert.match(api, /criticality_evidence_source/);
   assert.match(api, /planning_maintenance_source_rows/);
 });
