@@ -113,3 +113,11 @@ test('asset 360 derives criticality only from one consistent planning value', ()
   assert.match(api, /planning_maintenance_source_rows/);
 });
 
+test('asset 360 uses a uniquely derived cost center for purchase history', () => {
+  assert.match(api, /derivedCostCenterPurchaseHistoryResult/);
+  assert.match(api, /exactCostCenter\?\.code/);
+  assert.match(api, /cost_center_derived/);
+  assert.match(api, /canonical_purchase_order_lines_current/);
+  assert.match(api, /derived cost center purchase history unavailable/);
+});
+
