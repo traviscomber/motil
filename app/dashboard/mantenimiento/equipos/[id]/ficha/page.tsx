@@ -29,9 +29,12 @@ export default async function FichaPage({ params }: FichaPageProps) {
           <AssetEconomicOperationalHistory assetId={assetId} />
         </div>
       </details>
-      <details className="rounded-lg border border-border bg-card">
-        <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold">
-          Tendencia costo + condición
+      <details className="group rounded-lg border border-border bg-card">
+        <summary className="cursor-pointer list-none px-5 py-4">
+          <span className="block text-sm font-semibold">Tendencia costo + condición</span>
+          <span className="mt-1 block text-xs font-normal text-muted-foreground">
+            Dos ventanas consecutivas de 12 meses con evidencia mínima de 30 reportes
+          </span>
         </summary>
         <div className="border-t border-border p-4">
           <AssetEconomicConditionTrend assetId={assetId} />
