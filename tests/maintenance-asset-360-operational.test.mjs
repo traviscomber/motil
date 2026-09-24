@@ -58,6 +58,18 @@ test('asset 360 keeps secondary evidence consolidated', () => {
   assert.doesNotMatch(ui, /label="OT históricas"/);
 });
 
+test('asset 360 falls back to the canonical current asset for exact-id status evidence', () => {
+  assert.match(api, /from\('canonical_assets_current'\)/);
+  assert.match(api, /canonicalCurrent\?\.operational_status/);
+  assert.match(api, /operational_status: operationalStatus \|\| payloadStatus \|\| canonicalStatus \|\| null/);
+  assert.match(api, /canonical_assets_current/);
+});
+
+test('asset 360 labels deterministic family as reference when canonical type is absent', () => {
+  assert.match(api, /reference_family: referenceFamily \|\| null/);
+  assert.match(ui, /Familia: \$\{asset\.reference_family\}/);
+});
+
 test('asset 360 resolves canonical location and exact cost center evidence', () => {
   assert.match(api, /deriveMachinesFromCostCenters/);
   assert.match(api, /from\('cost_centers'\)/);
