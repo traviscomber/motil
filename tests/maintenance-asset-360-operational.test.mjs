@@ -77,6 +77,13 @@ test('asset 360 recovers a unique current meter from planning when stronger mete
   assert.match(api, /planningCurrentEvidence\?\.current_reading_at/);
 });
 
+test('asset 360 rejects numeric readings whose planning unit is annual and flags them for review', () => {
+  assert.match(api, /!\['anual', 'annual'\]\.includes\(meterUnit\)/);
+  assert.match(ui, /hasAnnualReadingConflict/);
+  assert.match(ui, /Anual · lectura numérica por validar/);
+  assert.match(ui, /Valor numérico con unidad anual en planificación/);
+});
+
 test('asset 360 treats annual planning units as periodicity rather than a missing horometer', () => {
   assert.match(api, /const planningMeterUnit = planningMeterUnits\.length === 1 \? planningMeterUnits\[0\] : null/);
   assert.match(api, /meter_unit: normalizedAsset\.meter_unit \|\| planningMeterUnit \|\| null/);
