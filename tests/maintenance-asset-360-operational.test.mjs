@@ -102,3 +102,7 @@ test('asset 360 rejects placeholder locations as operational evidence', () => {
   assert.match(api, /#ERROR!/);
 });
 
+test('equipment fleet API excludes inactive canonical assets from the operational list', () => {
+  assert.match(assetsApi, /\.eq\('is_active', true\)/);
+});
+
