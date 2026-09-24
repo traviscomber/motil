@@ -1,5 +1,6 @@
 import { Asset360Overview } from '@/components/maintenance/asset-360-overview';
 import { AssetEconomicOperationalHistory } from '@/components/maintenance/asset-economic-operational-history';
+import { AssetEconomicConditionTrend } from '@/components/maintenance/asset-economic-condition-trend';
 
 export const metadata = {
   title: 'Equipo 360° | Mantenimiento',
@@ -26,6 +27,17 @@ export default async function FichaPage({ params }: FichaPageProps) {
         </summary>
         <div className="border-t border-border p-4">
           <AssetEconomicOperationalHistory assetId={assetId} />
+        </div>
+      </details>
+      <details className="group rounded-lg border border-border bg-card">
+        <summary className="cursor-pointer list-none px-5 py-4">
+          <span className="block text-sm font-semibold">Tendencia costo + condición</span>
+          <span className="mt-1 block text-xs font-normal text-muted-foreground">
+            Dos ventanas consecutivas de 12 meses con evidencia mínima de 30 reportes
+          </span>
+        </summary>
+        <div className="border-t border-border p-4">
+          <AssetEconomicConditionTrend assetId={assetId} />
         </div>
       </details>
     </div>
