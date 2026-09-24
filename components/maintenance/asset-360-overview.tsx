@@ -1234,7 +1234,7 @@ export function Asset360Overview({
               <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
                 Cierre y ejecución
               </p>
-              <div className="mt-3 grid grid-cols-2 gap-4">
+              <div className="mt-3 grid gap-4 sm:grid-cols-3">
                 <div>
                   <p className="text-xs text-muted-foreground">Pasos pendientes</p>
                   <p className="mt-1 font-medium">{summary.pendingPlanSteps}</p>
@@ -1246,12 +1246,6 @@ export function Asset360Overview({
                 <div>
                   <p className="text-xs text-muted-foreground">Críticas abiertas</p>
                   <p className="mt-1 font-medium">{summary.criticalOpen}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Reinicios horómetro</p>
-                  <p className="mt-1 font-medium">
-                    {runtime ? Number(runtime.reset_count || 0) : 'Sin lectura'}
-                  </p>
                 </div>
               </div>
               {actionableWorkOrder ? (
@@ -1541,7 +1535,14 @@ export function Asset360Overview({
               icon={FileText}
               label="Lecturas"
               value={runtimeCostIntelligence?.reading_count ?? meterHistory.length}
-              meta={runtimeCostIntelligence?.last_reading_at ? `Última el ${date(runtimeCostIntelligence.last_reading_at)}` : null}
+              meta={[
+                runtimeCostIntelligence?.reset_count != null && Number(runtimeCostIntelligence.reset_count) > 0
+                  ? `${number(runtimeCostIntelligence.reset_count, 0)} reinicios detectados`
+                  : null,
+                runtimeCostIntelligence?.last_reading_at
+                  ? `Última el ${date(runtimeCostIntelligence.last_reading_at)}`
+                  : null,
+              ].filter(Boolean).join(' · ') || null}
             />
           </div>
           {meterHistory.length > 0 ? (
