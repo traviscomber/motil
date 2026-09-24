@@ -22,11 +22,12 @@ test('asset 360 UI refuses legacy calendar MTBF and historical mixed cost', () =
   assert.match(ui, /MTBF real/);
   assert.match(ui, /valid_mtbf_intervals/);
   assert.match(ui, /Sin base/);
-  assert.match(ui, /snapshots de cierre auditado/);
+  assert.match(ui, /costos históricos se muestran desde registros económicos enlazados al activo/);
+  assert.match(ui, /costos auditados, desde cierres cuando existen/);
 });
 
 test('asset 360 surfaces next preventive closure and reliability in one view', () => {
-  assert.match(ui, /Próximo preventivo por horas/);
+  assert.match(ui, /Próximo preventivo/);
   assert.match(ui, /Confiabilidad auditada/);
   assert.match(ui, /Cierre y ejecución/);
   assert.match(ui, /Continuar trabajo/);
