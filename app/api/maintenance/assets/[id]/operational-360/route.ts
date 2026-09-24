@@ -725,6 +725,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         ? [...planningCriticalities.values()][0]
         : null;
 
+    const planningMeterUnits = Array.from(
+      new Set(
+        (planningResult.data || [])
+          .map((row: any) => String(row.meter_unit || '').trim().toLowerCase())
+          .filter(Boolean),
+      ),
+    );
+    const planningMeterUnit = planningMeterUnits.length === 1 ? planningMeterUnits[0] : null;
+
     const planningEvidenceAt = (planningResult.data || [])
       .map((row: any) => row.updated_at)
       .filter(Boolean)
@@ -775,6 +784,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     const resolvedAsset = {
       ...normalizedAsset,
+      meter_unit: normalizedAsset.meter_unit || planningMeterUnit || null,
       cost_center_code:
         normalizedAsset.cost_center_code ||
         exactCostCenter?.code ||
@@ -941,8 +951,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       baseRuntimeCost?.latest_meter_hours != null
         ? 'h'
         : latestPlanningMeter?.meter_unit ||
-          normalizedAsset.meter_unit ||
           planningCurrentEvidence?.meter_unit ||
+          normalizedAsset.meter_unit ||
+          planningMeterUnit ||
           (preventiveMeterSnapshot != null ? 'h' : null);
     const resolvedMeterEvidenceSource =
       baseRuntimeCost?.latest_meter_hours != null
