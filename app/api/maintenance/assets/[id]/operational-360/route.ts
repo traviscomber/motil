@@ -32,6 +32,21 @@ function normalizeLocationEvidence(value: unknown) {
   return normalized;
 }
 
+function cleanCategoricalEvidence(value: unknown) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  const normalized = raw
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (['#ERROR!', 'NO REGISTRADO', 'N/A', 'SIN ASIGNAR', 'NO ASIGNADO', 'DESCONOCIDO'].includes(normalized)) {
+    return '';
+  }
+  return raw;
+}
+
 function withOptionalTimeout<T>(query: PromiseLike<T>, source: string): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<T>((resolve) => {
@@ -562,19 +577,51 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         ? [...planningCriticalities.values()][0]
         : null;
 
+    const operationalLocation = normalizeLocationEvidence(operationalStateResult.data?.location)
+      ? String(operationalStateResult.data?.location || '').trim()
+      : null;
+    const payloadLocation = normalizeLocationEvidence(normalizedAsset.location)
+      ? String(normalizedAsset.location || '').trim()
+      : null;
+    const operationalCriticality = cleanCategoricalEvidence(operationalStateResult.data?.criticality);
+    const payloadCriticality = cleanCategoricalEvidence(normalizedAsset.criticality);
+    const operationalStatus = cleanCategoricalEvidence(operationalStateResult.data?.operational_status);
+    const payloadStatus = cleanCategoricalEvidence(normalizedAsset.operational_status);
+
     const resolvedAsset = {
       ...normalizedAsset,
       cost_center_code: normalizedAsset.cost_center_code || exactCostCenter?.code || null,
-      location:
-        operationalStateResult.data?.location ||
-        normalizedAsset.location ||
-        evidenceLocation ||
-        null,
-      criticality: normalizedAsset.criticality || evidenceCriticality || null,
+      cost_center_evidence_source:
+        normalizedAsset.cost_center_code
+          ? 'maintenance_canonical_assets_v1'
+          : exactCostCenter?.code
+            ? 'cost_centers_exact_identity'
+            : null,
+      location: operationalLocation || payloadLocation || evidenceLocation || null,
+      location_evidence_source:
+        operationalLocation
+          ? 'asset_operational_state_v1'
+          : payloadLocation
+            ? 'maintenance_canonical_assets_v1'
+            : evidenceLocation
+              ? 'planning_or_production_evidence'
+              : null,
+      criticality: operationalCriticality || payloadCriticality || evidenceCriticality || null,
       criticality_evidence_source:
-        !normalizedAsset.criticality && evidenceCriticality
-          ? 'planning_maintenance_source_rows'
-          : null,
+        operationalCriticality
+          ? 'asset_operational_state_v1'
+          : payloadCriticality
+            ? 'maintenance_canonical_assets_v1'
+            : evidenceCriticality
+              ? 'planning_maintenance_source_rows'
+              : null,
+      operational_status: operationalStatus || payloadStatus || null,
+      operational_status_evidence_source:
+        operationalStatus
+          ? 'asset_operational_state_v1'
+          : payloadStatus
+            ? 'maintenance_canonical_assets_v1'
+            : null,
     };
 
     const planningMeterHistory = meterHistoryResult.data || [];
