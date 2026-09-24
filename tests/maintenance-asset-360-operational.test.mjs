@@ -58,6 +58,14 @@ test('asset 360 keeps secondary evidence consolidated', () => {
   assert.doesNotMatch(ui, /label="OT históricas"/);
 });
 
+test('asset 360 attaches dated status history when the event matches the resolved state', () => {
+  assert.match(api, /from\('maintenance_asset_status_history'\)/);
+  assert.match(api, /statusEventMatchesResolved/);
+  assert.match(api, /operational_status_evidence_at/);
+  assert.match(api, /operational_status_reason/);
+  assert.match(ui, /Estado \{asset\.operational_status_evidence_source === 'maintenance_asset_status_history' \? 'registrado' : 'actualizado'\}/);
+});
+
 test('asset 360 falls back to the canonical current asset for exact-id status evidence', () => {
   assert.match(api, /from\('canonical_assets_current'\)/);
   assert.match(api, /canonicalCurrent\?\.operational_status/);
