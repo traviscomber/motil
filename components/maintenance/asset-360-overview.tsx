@@ -2464,6 +2464,18 @@ export function Asset360Overview({
               </p>
               <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <IdentityItem icon={Database} label="Fuente maestra" value={sourceLabel} />
+                <IdentityItem
+                  icon={ShieldCheck}
+                  label="Calidad del maestro"
+                  value={
+                    asset.validation_status === 'valid'
+                      ? 'Validado'
+                      : asset.validation_status === 'warning'
+                        ? 'Requiere enriquecimiento'
+                        : asset.validation_status || 'No informada'
+                  }
+                  meta={asset.validation_status === 'warning' ? 'Identidad preservada; pueden faltar atributos técnicos' : null}
+                />
                 <IdentityItem icon={MapPin} label="Ubicación" value={asset.location} meta={evidenceSourceLabel(asset.location_evidence_source)} />
                 <IdentityItem
                   icon={ShieldCheck}
