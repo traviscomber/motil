@@ -389,6 +389,13 @@ type Asset360Response = {
     identity_status?: string | null;
     canonicalized?: boolean | null;
   }>;
+  operatingSpine?: {
+    last_work_order_at?: string | null;
+    last_drilling_date?: string | null;
+    last_cost_event_at?: string | null;
+    last_telemetry_at?: string | null;
+    evidence_domain_count?: number | string | null;
+  } | null;
   operationalState?: {
     operational_status?: string | null;
     criticality?: string | null;
@@ -887,6 +894,7 @@ export function Asset360Overview({
   const pendingParts = data.pendingParts || [];
   const maintenancePlanning = data.maintenancePlanning || [];
   const operationalState = data.operationalState;
+  const operatingSpine = data.operatingSpine;
   const maintenancePriority = data.maintenancePriority;
   const runtimeCostIntelligence = data.runtimeCostIntelligence;
   const maintenanceTaskCandidates = data.maintenanceTaskCandidates || [];
@@ -929,7 +937,11 @@ export function Asset360Overview({
   const economicFirstCostDate = economicHistory.length > 0
     ? economicHistory[economicHistory.length - 1]?.first_cost_date
     : null;
-  const economicLastCostDate = economicHistory[0]?.last_cost_date || operationalState?.last_cost_at || null;
+  const economicLastCostDate =
+    economicHistory[0]?.last_cost_date ||
+    operatingSpine?.last_cost_event_at ||
+    operationalState?.last_cost_at ||
+    null;
   const economicLifetimeValue = operationalState?.recognized_cost_clp_lifetime != null
     ? Number(operationalState.recognized_cost_clp_lifetime)
     : economicHistory.length > 0
@@ -968,6 +980,16 @@ export function Asset360Overview({
     assetAgeYears != null && expectedLifespan != null
       ? Math.max(expectedLifespan - assetAgeYears, 0)
       : null;
+  const operationalEvidenceDates = [
+    operatingSpine?.last_work_order_at,
+    operatingSpine?.last_drilling_date,
+    operatingSpine?.last_cost_event_at,
+    operatingSpine?.last_telemetry_at,
+  ].filter(Boolean) as string[];
+  const lastOperationalEvidenceAt = operationalEvidenceDates
+    .map((value) => ({ value, time: new Date(value).getTime() }))
+    .filter((item) => !Number.isNaN(item.time))
+    .sort((a, b) => b.time - a.time)[0]?.value || null;
 
   const unavailableSources = data.unavailableSources || [];
   const sourceLabel = asset.source_file?.startsWith('public.')
@@ -2001,7 +2023,7 @@ export function Asset360Overview({
           <SectionSummary
             title="Producción"
             hint={consolidatedDrillingReports > 0
-              ? `${number(consolidatedDrillingMeters, 1)} m acumulados${drillingHistory[0]?.operation_date ? ` · última operación ${date(drillingHistory[0].operation_date)}` : ''}`
+              ? `${number(consolidatedDrillingMeters, 1)} m acumulados${operatingSpine?.last_drilling_date ? ` · última operación ${date(operatingSpine.last_drilling_date)}` : drillingHistory[0]?.operation_date ? ` · última operación ${date(drillingHistory[0].operation_date)}` : ''}`
               : 'Sin producción enlazada'}
           />
           <div className="border-t border-border">
@@ -2465,6 +2487,12 @@ export function Asset360Overview({
                 />
                 <IdentityItem icon={FileText} label="Hoja" value={asset.source_sheet} />
                 <IdentityItem icon={CalendarDays} label="Última actualización" value={date(asset.updated_at || asset.imported_at)} />
+                <IdentityItem
+                  icon={Activity}
+                  label="Última evidencia operacional"
+                  value={date(lastOperationalEvidenceAt)}
+                  meta={operatingSpine?.evidence_domain_count != null ? `${number(operatingSpine.evidence_domain_count, 0)} dominios con evidencia` : null}
+                />
               </div>
               {financeReconciliation ? (
                 <div className="mt-4 border-t border-border pt-3">
