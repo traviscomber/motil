@@ -88,6 +88,12 @@ test('asset 360 labels deterministic family as reference when canonical type is 
   assert.match(ui, /Familia: \$\{asset\.reference_family\}/);
 });
 
+test('asset 360 enriches exact cost center codes with canonical names', () => {
+  assert.match(api, /exactCostCenterDetailPromise/);
+  assert.match(api, /cost_center_name/);
+  assert.match(ui, /asset\.cost_center_name/);
+});
+
 test('asset 360 resolves canonical location and exact cost center evidence', () => {
   assert.match(api, /deriveMachinesFromCostCenters/);
   assert.match(api, /from\('cost_centers'\)/);
