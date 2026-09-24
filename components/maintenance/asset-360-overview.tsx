@@ -616,7 +616,7 @@ export function Asset360Overview({
       <StatePanel
         tone="loading"
         title={`Preparando ${noun} 360°`}
-        description="Reuniendo identidad, OT, preventivos, horómetro, costos auditados y confiabilidad."
+        description="Cargando información del activo."
       />
     );
   }
@@ -684,13 +684,24 @@ export function Asset360Overview({
   const links = [
     { href: `${basePath}/documentos`, label: 'Documentos', icon: FileText },
     { href: `${basePath}/ficha-tecnica`, label: 'Ficha técnica', icon: Gauge },
-    { href: `${basePath}/qr`, label: 'QR', icon: QrCode },
   ];
 
+  const assetTypeLabel: Record<string, string> = {
+    drill_rig: 'Equipo de perforación',
+    truck: 'Camión',
+    vehicle: 'Vehículo',
+    excavator: 'Excavadora',
+    loader: 'Cargador',
+    pump: 'Bomba',
+    conveyor: 'Correa transportadora',
+  };
+  const displayAssetType = asset.asset_type
+    ? assetTypeLabel[String(asset.asset_type).toLowerCase()] || asset.category || asset.asset_type
+    : asset.category || null;
   const technicalIdentity = [
     asset.manufacturer,
     asset.model,
-    asset.asset_type || asset.category,
+    displayAssetType,
   ]
     .filter(Boolean)
     .join(' · ');
@@ -913,19 +924,13 @@ export function Asset360Overview({
             <div className="min-w-0 p-5 lg:p-6">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                    Ficha 360 · activo canónico
-                  </p>
-                  <h1 className="mt-2 truncate text-2xl font-semibold tracking-tight sm:text-3xl">
+                  <h1 className="truncate text-2xl font-semibold tracking-tight sm:text-3xl">
                     {asset.name || asset.asset_code || noun}
                   </h1>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     <span className="font-mono text-sm text-muted-foreground">
                       {asset.asset_code || 'Código no informado'}
                     </span>
-                    <Badge variant={asset.is_active ? 'outline' : 'secondary'}>
-                      {asset.is_active ? 'Activo' : 'Inactivo'}
-                    </Badge>
                     {displayStatus ? (
                       <Badge variant="outline">{displayStatus}</Badge>
                     ) : null}
@@ -935,9 +940,9 @@ export function Asset360Overview({
                       </Badge>
                     ) : null}
                   </div>
-                  <p className="mt-3 text-sm text-muted-foreground">
-                    {technicalIdentity || 'Clasificación técnica no informada'}
-                  </p>
+                  {technicalIdentity ? (
+                    <p className="mt-3 text-sm text-muted-foreground">{technicalIdentity}</p>
+                  ) : null}
                 </div>
 
                 <div className="flex flex-wrap gap-2">
@@ -952,8 +957,7 @@ export function Asset360Overview({
                 </div>
               </div>
 
-              <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <IdentityItem icon={Hash} label="Código" value={asset.asset_code} />
+              <div className="mt-6 grid gap-4 sm:grid-cols-3">
                 <IdentityItem icon={Building2} label="Centro de costo" value={asset.cost_center_code} />
                 <IdentityItem icon={MapPin} label="Ubicación" value={asset.location} />
                 <IdentityItem
@@ -974,12 +978,7 @@ export function Asset360Overview({
                   />
                 </div>
               </Link>
-              <p className="mt-3 text-xs font-semibold uppercase tracking-[0.14em] text-foreground">
-                Identidad QR
-              </p>
-              <p className="mt-1 text-center text-xs leading-relaxed text-muted-foreground">
-                Escanea para abrir esta ficha 360 en terreno.
-              </p>
+              <p className="mt-3 text-xs font-medium text-muted-foreground">QR</p>
             </div>
           </div>
 
