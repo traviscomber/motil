@@ -67,6 +67,7 @@ type Asset360Response = {
     operational_status_evidence_source?: string | null;
     reference_family?: string | null;
     reference_family_evidence_source?: string | null;
+    license_plate_evidence_source?: string | null;
   };
   summary?: {
     activeWorkOrders: number;
@@ -878,6 +879,7 @@ export function Asset360Overview({
       schedule_snapshot: 'Pauta preventiva',
       cost_center_family: 'Familia del centro de costo',
       deterministic_name_classifier: 'Clasificador determinístico del nombre',
+      deterministic_name_plate: 'Patente extraída del nombre con formato validado',
     };
     return labels[source] || source;
   };
@@ -2306,6 +2308,7 @@ export function Asset360Overview({
                 <IdentityItem icon={ShieldCheck} label="Criticidad" value={displayCriticality} meta={evidenceSourceLabel(asset.criticality_evidence_source)} />
                 <IdentityItem icon={Activity} label="Estado" value={displayStatus} meta={evidenceSourceLabel(asset.operational_status_evidence_source)} />
                 <IdentityItem icon={Building2} label="Centro de costo" value={asset.cost_center_code} meta={evidenceSourceLabel(asset.cost_center_evidence_source)} />
+                <IdentityItem icon={Hash} label="Patente" value={asset.license_plate} meta={asset.license_plate ? evidenceSourceLabel(asset.license_plate_evidence_source) : null} />
                 <IdentityItem icon={Wrench} label="Familia referencial" value={asset.reference_family} meta={asset.reference_family ? `${evidenceSourceLabel(asset.reference_family_evidence_source)} · no canónico` : null} />
                 <IdentityItem icon={Gauge} label="Horómetro" value={runtimeCostIntelligence?.latest_meter_hours != null ? `${number(runtimeCostIntelligence.latest_meter_hours, 1)} h` : null} meta={evidenceSourceLabel(runtimeCostIntelligence?.meter_evidence_source)} />
                 <IdentityItem icon={FileText} label="Hoja" value={asset.source_sheet} />
