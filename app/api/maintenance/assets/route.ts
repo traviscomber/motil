@@ -65,27 +65,13 @@ export async function GET(request: NextRequest) {
       query = query.eq('asset_type', assetType);
     }
 
-    const [{ data, error }, aliasResult] = await Promise.all([
-      query,
-      context.supabase
-        .from('asset_identity_unified_preview_v1')
-        .select('source_asset_id,target_asset_id,canonicalized')
-        .eq('organization_id', context.organizationId)
-        .eq('canonicalized', true),
-    ]);
+    const { data, error } = await query;
     if (error) throw error;
 
-    const aliasedSourceIds = new Set(
-      (aliasResult.data || [])
-        .map((row: any) => row.source_asset_id)
-        .filter(Boolean),
-    );
-    const assets = (Array.isArray(data) ? (data as AssetRow[]) : [])
-      .filter((asset) => !aliasedSourceIds.has(asset.id));
+    const assets = Array.isArray(data) ? (data as AssetRow[]) : [];
 
     return NextResponse.json({
       assets: assets.map(mapAsset),
-      deduplicatedAliases: aliasedSourceIds.size,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'No se pudieron cargar los activos canónicos';
