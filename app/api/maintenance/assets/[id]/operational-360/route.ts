@@ -554,7 +554,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             ...(baseRuntimeCost || {}),
             reading_count:
               Number(baseRuntimeCost?.reading_count || 0) > 0
-                ? Number(baseRuntimeCost.reading_count)
+                ? Number(baseRuntimeCost?.reading_count || 0)
                 : planningMeterHistory.length > 0
                   ? planningMeterHistory.length
                   : preventiveMeterSnapshot != null
