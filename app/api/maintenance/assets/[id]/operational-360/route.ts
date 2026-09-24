@@ -89,6 +89,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     if (assetError) throw assetError;
     if (!asset) return NextResponse.json({ error: 'Equipo no encontrado' }, { status: 404 });
 
+    const { data: canonicalCurrent, error: canonicalCurrentError } = await context.supabase
+      .from('canonical_assets_current')
+      .select('asset_type,location,operational_status,manufacturer,model,serial_number,criticality,mtbf_hours,acquisition_cost')
+      .eq('organization_id', context.organizationId)
+      .eq('id', id)
+      .maybeSingle();
+    if (canonicalCurrentError) throw canonicalCurrentError;
+
     const sourcePayload =
       asset.source_payload && typeof asset.source_payload === 'object'
         ? (asset.source_payload as Record<string, unknown>)
@@ -138,24 +146,24 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       id: asset.id,
       asset_code: asset.asset_code,
       name: asset.name,
-      asset_type: asset.asset_type,
+      asset_type: asset.asset_type || canonicalCurrent?.asset_type || null,
       category: asset.category,
-      manufacturer: asset.manufacturer || sourcePayload.manufacturer || null,
-      model: asset.model || sourcePayload.model || null,
-      serial_number: asset.serial_number || sourcePayload.serial_number || null,
+      manufacturer: asset.manufacturer || sourcePayload.manufacturer || canonicalCurrent?.manufacturer || null,
+      model: asset.model || sourcePayload.model || canonicalCurrent?.model || null,
+      serial_number: asset.serial_number || sourcePayload.serial_number || canonicalCurrent?.serial_number || null,
       license_plate: asset.license_plate,
       cost_center_code: asset.cost_center_code,
-      location: sourcePayload.location || sourcePayload.mine || null,
-      criticality: sourcePayload.criticality || sourcePayload.criticality_raw || null,
-      operational_status: sourcePayload.status || sourcePayload.operational_status || null,
+      location: sourcePayload.location || sourcePayload.mine || canonicalCurrent?.location || null,
+      criticality: sourcePayload.criticality || sourcePayload.criticality_raw || canonicalCurrent?.criticality || null,
+      operational_status: sourcePayload.status || sourcePayload.operational_status || canonicalCurrent?.operational_status || null,
       meter_unit: sourcePayload.meter_unit || null,
       mobility_class: sourcePayload.mobility_class || null,
       lifecycle_state: sourcePayload.lifecycle_state || null,
       lifecycle_reason: sourcePayload.lifecycle_reason || null,
       acquisition_date: sourcePayload.acquisition_date || null,
-      acquisition_cost: sourcePayload.acquisition_cost ?? null,
+      acquisition_cost: sourcePayload.acquisition_cost ?? canonicalCurrent?.acquisition_cost ?? null,
       expected_lifespan_years: sourcePayload.expected_lifespan_years ?? null,
-      baseline_mtbf_hours: sourcePayload.mtbf_hours ?? null,
+      baseline_mtbf_hours: sourcePayload.mtbf_hours ?? canonicalCurrent?.mtbf_hours ?? null,
       source_file: asset.source_file,
       source_sheet: asset.source_sheet,
       source_row: asset.source_row,
@@ -646,7 +654,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const operationalCriticality = cleanCategoricalEvidence(operationalStateResult.data?.criticality);
     const payloadCriticality = cleanCategoricalEvidence(normalizedAsset.criticality);
     const operationalStatus = cleanCategoricalEvidence(operationalStateResult.data?.operational_status);
-    const payloadStatus = cleanCategoricalEvidence(normalizedAsset.operational_status);
+    const payloadStatus = cleanCategoricalEvidence(
+      sourcePayload.status || sourcePayload.operational_status,
+    );
+    const canonicalStatus = cleanCategoricalEvidence(canonicalCurrent?.operational_status);
     const referenceFamily =
       normalizedAsset.asset_type || normalizedAsset.category
         ? null
@@ -703,13 +714,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             : evidenceCriticality
               ? planningEvidenceAt
               : null,
-      operational_status: operationalStatus || payloadStatus || null,
+      operational_status: operationalStatus || payloadStatus || canonicalStatus || null,
       operational_status_evidence_source:
         operationalStatus
           ? 'asset_operational_state_v1'
           : payloadStatus
             ? 'maintenance_canonical_assets_v1'
-            : null,
+            : canonicalStatus
+              ? 'canonical_assets_current'
+              : null,
       reference_family: referenceFamily || null,
       reference_family_evidence_source:
         referenceFamily
