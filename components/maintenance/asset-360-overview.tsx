@@ -841,6 +841,19 @@ export function Asset360Overview({
   const hasProductionEvidence = drillingHistory.length > 0 || Number(operationalState?.drilling_report_count || 0) > 0;
   const hasRuntimeEvidence = meterHistory.length > 0 || Number(runtimeCostIntelligence?.reading_count || 0) > 0;
   const hasEconomicEvidence = economicHistory.length > 0 || Number(operationalState?.recognized_cost_event_count || 0) > 0;
+  const hasAvailabilityEvidence = Boolean(
+    operationalState?.last_availability_date ||
+    operationalState?.availability_pct != null ||
+    operationalState?.recorded_downtime_hours != null ||
+    Number(operationalState?.open_work_order_count || 0) > 0
+  );
+  const hasLifecycleEvidence = Boolean(
+    asset.acquisition_date ||
+    asset.acquisition_cost != null ||
+    expectedLifespan != null ||
+    remainingLifeYears != null ||
+    assetAgeYears != null
+  );
 
   const coverageItems = [
     ['Identidad canónica', true, 'Disponible'],
@@ -1014,11 +1027,11 @@ export function Asset360Overview({
       </Card>
 
       <Card className={`shadow-none ${attention.tone}`}>
-        <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+        <CardContent className={maintenanceNeedsAttention || maintenancePriority ? "flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between" : "flex items-center justify-between gap-4 px-5 py-3"}>
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Atención</p>
-            <p className="mt-1 text-lg font-semibold">{attention.title}</p>
-            {attention.detail ? <p className="mt-1 text-sm text-muted-foreground">{attention.detail}</p> : null}
+            <p className={maintenanceNeedsAttention || maintenancePriority ? "mt-1 text-lg font-semibold" : "mt-1 text-sm font-medium"}>{attention.title}</p>
+            {attention.detail && (maintenanceNeedsAttention || maintenancePriority) ? <p className="mt-1 text-sm text-muted-foreground">{attention.detail}</p> : null}
           </div>
           {actionableWorkOrder ? (
             <Button asChild size="sm">
@@ -1271,6 +1284,7 @@ export function Asset360Overview({
       </details>
 
 
+      {hasAvailabilityEvidence ? (
       <details className="group rounded-lg border border-border bg-card">
         <SectionSummary
           title="Disponibilidad"
@@ -1301,7 +1315,9 @@ export function Asset360Overview({
           />
         </div>
       </details>
+      ) : null}
 
+      {hasPurchaseEvidence || supplyChain.length > 0 ? (
       <details className="group rounded-lg border border-border bg-card">
         <SectionSummary
           title="Compras y abastecimiento"
@@ -1435,6 +1451,7 @@ export function Asset360Overview({
           </div>
         </div>
       </details>
+      ) : null}
 
       {maintenanceTaskCandidates.length > 0 || standardJobPlans.length > 0 ? (
         <details className="group rounded-lg border border-border bg-card">
@@ -1509,7 +1526,7 @@ export function Asset360Overview({
         </details>
       ) : null}
 
-      {runtimeCostIntelligence || meterHistory.length > 0 ? (
+      {hasRuntimeEvidence ? (
         <details className="group rounded-lg border border-border bg-card">
           <SectionSummary title="Horómetro y costo por hora" hint={runtimeCostIntelligence?.latest_meter_hours != null ? `${number(runtimeCostIntelligence.latest_meter_hours, 1)} h · registrado ${date(runtimeCostIntelligence.last_reading_at)}` : 'Sin historial de horómetro'} />
           <div className="grid gap-4 border-t border-border p-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -1824,6 +1841,7 @@ export function Asset360Overview({
         </div>
       </details>
 
+      {hasMaterialEvidence ? (
       <details className="group rounded-lg border border-border bg-card">
         <SectionSummary
           title="Materiales y repuestos"
@@ -1903,7 +1921,9 @@ export function Asset360Overview({
           </div>
         </div>
       </details>
+      ) : null}
 
+      {hasLifecycleEvidence ? (
       <details className="group rounded-lg border border-border bg-card">
         <SectionSummary title="Ciclo de vida" hint={remainingLifeYears != null ? `${number(remainingLifeYears, 1)} años remanentes estimados` : 'Vida útil no informada'} />
         <div className="grid gap-4 border-t border-border p-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -1941,6 +1961,7 @@ export function Asset360Overview({
           </div>
         ) : null}
       </details>
+      ) : null}
 
       <details className="group rounded-lg border border-border bg-card">
         <SectionSummary
