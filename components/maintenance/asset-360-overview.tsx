@@ -276,6 +276,7 @@ type Asset360Response = {
     audited_closures?: number | string | null;
     audited_total_cost?: number | string | null;
     audited_cost_per_operating_hour?: number | string | null;
+    meter_evidence_source?: string | null;
   } | null;
   meterHistory?: Array<{
     id: string;
@@ -839,7 +840,11 @@ export function Asset360Overview({
   const hasMaintenanceEvidence = auditedInterventions.length > 0 || Number(operationalState?.work_order_count || 0) > 0;
   const hasMaterialEvidence = installedParts.length > 0 || pendingParts.length > 0 || supplyChain.length > 0;
   const hasProductionEvidence = drillingHistory.length > 0 || Number(operationalState?.drilling_report_count || 0) > 0;
-  const hasRuntimeEvidence = meterHistory.length > 0 || Number(runtimeCostIntelligence?.reading_count || 0) > 0;
+  const hasRuntimeEvidence =
+    meterHistory.length > 0 ||
+    Number(runtimeCostIntelligence?.reading_count || 0) > 0 ||
+    runtimeCostIntelligence?.latest_meter_hours != null ||
+    nextPreventive?.effective_current_meter != null;
   const hasEconomicEvidence = economicHistory.length > 0 || Number(operationalState?.recognized_cost_event_count || 0) > 0;
   const hasAvailabilityEvidence = Boolean(
     operationalState?.last_availability_date ||
@@ -1529,13 +1534,25 @@ export function Asset360Overview({
 
       {hasRuntimeEvidence ? (
         <details className="group rounded-lg border border-border bg-card">
-          <SectionSummary title="Horómetro y costo por hora" hint={runtimeCostIntelligence?.latest_meter_hours != null ? `${number(runtimeCostIntelligence.latest_meter_hours, 1)} h · registrado ${date(runtimeCostIntelligence.last_reading_at)}` : 'Sin historial de horómetro'} />
+          <SectionSummary
+            title="Horómetro y costo por hora"
+            hint={runtimeCostIntelligence?.latest_meter_hours != null
+              ? `${number(runtimeCostIntelligence.latest_meter_hours, 1)} h${runtimeCostIntelligence.last_reading_at ? ` · registrado ${date(runtimeCostIntelligence.last_reading_at)}` : ' · sin fecha de lectura'}`
+              : 'Sin historial de horómetro'}
+          />
           <div className="grid gap-4 border-t border-border p-4 sm:grid-cols-2 lg:grid-cols-4">
             <IdentityItem
               icon={Gauge}
               label="Último horómetro"
               value={runtimeCostIntelligence?.latest_meter_hours != null ? `${number(runtimeCostIntelligence.latest_meter_hours, 1)} h` : null}
-              meta={runtimeCostIntelligence?.last_reading_at ? `Registrado el ${date(runtimeCostIntelligence.last_reading_at)}` : 'Sin fecha de lectura'}
+              meta={[
+                runtimeCostIntelligence?.last_reading_at
+                  ? `Registrado el ${date(runtimeCostIntelligence.last_reading_at)}`
+                  : 'Sin fecha de lectura',
+                runtimeCostIntelligence?.meter_evidence_source
+                  ? `Fuente: ${runtimeCostIntelligence.meter_evidence_source}`
+                  : null,
+              ].filter(Boolean).join(' · ')}
             />
             <IdentityItem
               icon={Timer}
@@ -1575,6 +1592,10 @@ export function Asset360Overview({
                   </div>
                 ))}
               </div>
+            </div>
+          ) : runtimeCostIntelligence?.latest_meter_hours != null ? (
+            <div className="border-t border-border px-4 py-4 text-sm text-muted-foreground">
+              Lectura actual disponible desde {runtimeCostIntelligence.meter_evidence_source || 'evidencia de pauta'}, sin historial cronológico de lecturas.
             </div>
           ) : (
             <div className="border-t border-border px-4 py-4 text-sm text-muted-foreground">
