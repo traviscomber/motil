@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getOrganizationContext } from '@/lib/api/organization-context';
 import { MODULE_KEYS, requireModuleAccess } from '@/lib/api/module-access';
-import { deriveMachinesFromCostCenters, getRedistributableMachineAssignment } from '@/lib/maintenance/cost-center-machines';
+import { deriveMachinesFromCostCenters, getRedistributableMachineAssignment, inferMachineFamilyFromText } from '@/lib/maintenance/cost-center-machines';
 
 const OPTIONAL_SOURCE_TIMEOUT_MS = 2500;
 
@@ -587,6 +587,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const payloadCriticality = cleanCategoricalEvidence(normalizedAsset.criticality);
     const operationalStatus = cleanCategoricalEvidence(operationalStateResult.data?.operational_status);
     const payloadStatus = cleanCategoricalEvidence(normalizedAsset.operational_status);
+    const referenceFamily =
+      normalizedAsset.asset_type || normalizedAsset.category
+        ? null
+        : exactCostCenter?.family || inferMachineFamilyFromText(String(normalizedAsset.name || ''));
 
     const resolvedAsset = {
       ...normalizedAsset,
@@ -622,6 +626,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           : payloadStatus
             ? 'maintenance_canonical_assets_v1'
             : null,
+      reference_family: referenceFamily || null,
+      reference_family_evidence_source:
+        referenceFamily
+          ? exactCostCenter?.family
+            ? 'cost_center_family'
+            : 'deterministic_name_classifier'
+          : null,
     };
 
     const planningMeterHistory = meterHistoryResult.data || [];
