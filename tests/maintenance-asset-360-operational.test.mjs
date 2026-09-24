@@ -145,7 +145,8 @@ test('asset 360 consumes the canonical deduplicated meter observation model', ()
   assert.match(api, /planning_asset_meter_readings/);
   assert.match(api, /planningMeterSignature/);
   assert.match(api, /duplicate_meter_rows_ignored/);
-  assert.match(api, /\.limit\(12\)/);
+  assert.match(api, /\.slice\(0, 12\)/);
+  assert.match(api, /\.limit\(24\)/);
 });
 
 test('asset 360 rejects placeholder locations as operational evidence', () => {
