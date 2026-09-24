@@ -6,6 +6,7 @@ const api = fs.readFileSync('app/api/maintenance/assets/[id]/operational-360/rou
 const ui = fs.readFileSync('components/maintenance/asset-360-overview.tsx', 'utf8');
 const assetsApi = fs.readFileSync('app/api/maintenance/assets/route.ts', 'utf8');
 const costCenterMachines = fs.readFileSync('lib/maintenance/cost-center-machines.ts', 'utf8');
+const identityEvidence = fs.readFileSync('lib/maintenance/asset-identity-evidence.ts', 'utf8');
 
 test('asset 360 API is maintenance authorized tenant scoped and composes existing evidence', () => {
   assert.match(api, /requireModuleAccess\(request, MODULE_KEYS\.MANT_OPERACIONES\)/);
@@ -105,8 +106,19 @@ test('asset 360 exposes the freshest dated evidence across operation, planning a
   assert.match(ui, /label="Última evidencia"/);
 });
 
+test('asset 360 consumes shared identity evidence helpers instead of local copies', () => {
+  assert.match(api, /from '@\/lib\/maintenance\/asset-identity-evidence'/);
+  assert.doesNotMatch(api, /function normalizeAssetIdentity/);
+  assert.doesNotMatch(api, /function normalizeLocationEvidence/);
+  assert.doesNotMatch(api, /function cleanCategoricalEvidence/);
+  assert.doesNotMatch(api, /function normalizeCriticalityEvidence/);
+  assert.doesNotMatch(api, /function inferManufacturerFromName/);
+  assert.doesNotMatch(api, /function inferChileanPlateFromName/);
+  assert.doesNotMatch(api, /function isRoadVehicleIdentity/);
+});
+
 test('asset 360 keeps manufacturer parsed from the name referential', () => {
-  assert.match(api, /function inferManufacturerFromName/);
+  assert.match(identityEvidence, /export function inferManufacturerFromName/);
   assert.match(api, /reference_manufacturer: referenceManufacturer \|\| null/);
   assert.match(api, /deterministic_name_brand/);
   assert.match(ui, /Fabricante referencial/);
@@ -173,8 +185,8 @@ test('asset 360 suppresses operational placeholder values instead of presenting 
 });
 
 test('asset 360 restricts inferred Chilean plates to road vehicle identities', () => {
-  assert.match(api, /function isRoadVehicleIdentity/);
-  assert.match(api, /CAMIONETA\|CAMIONETAS\|CAMION\|CAMIONES\|BUS\|BUSES\|FURGON\|VEHICULO\|VEHICLE\|TRUCK\|PICKUP/);
+  assert.match(identityEvidence, /export function isRoadVehicleIdentity/);
+  assert.match(identityEvidence, /CAMIONETA\|CAMIONETAS\|CAMION\|CAMIONES\|BUS\|BUSES\|FURGON\|VEHICULO\|VEHICLE\|TRUCK\|PICKUP/);
   assert.match(api, /!isRoadVehicleIdentity/);
   assert.match(api, /inferChileanPlateFromName\(normalizedAsset\.name\)/);
 });
@@ -335,10 +347,10 @@ test('asset 360 consumes the canonical deduplicated meter observation model', ()
 });
 
 test('asset 360 rejects placeholder locations as operational evidence', () => {
-  assert.match(api, /SIN MINA ASIGNADA/);
-  assert.match(api, /SIN ASIGNAR/);
-  assert.match(api, /NO ASIGNADO/);
-  assert.match(api, /#ERROR!/);
+  assert.match(identityEvidence, /SIN MINA ASIGNADA/);
+  assert.match(identityEvidence, /SIN ASIGNAR/);
+  assert.match(identityEvidence, /NO ASIGNADO/);
+  assert.match(identityEvidence, /#ERROR!/);
 });
 
 test('equipment fleet API excludes inactive canonical assets from the operational list', () => {
