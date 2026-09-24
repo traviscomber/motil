@@ -314,7 +314,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         .eq('organization_id', context.organizationId)
         .eq('canonical_asset_id', id)
         .order('recorded_at', { ascending: false })
-        .limit(12),
+        .limit(24),
       isDrillRig
         ? withOptionalTimeout(
             context.supabase
@@ -664,7 +664,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         if (!map.has(signature)) map.set(signature, row);
         return map;
       }, new Map()).values(),
-    );
+    ).slice(0, 12);
     const duplicatePlanningMeterRows = Math.max(rawPlanningMeterHistory.length - planningMeterHistory.length, 0);
     const latestPlanningMeter = planningMeterHistory[0] || null;
     const chronologicalPlanningMeters = [...planningMeterHistory]
