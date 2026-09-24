@@ -784,6 +784,30 @@ export function Asset360Overview({
     (sum, row) => sum + Number(row.historical_total_cost || 0),
     0,
   );
+  const economicMovementCount = economicHistory.reduce(
+    (sum, row) => sum + Number(row.movement_count || 0),
+    0,
+  );
+  const economicYearsWithMovements = economicHistory.filter(
+    (row) => Number(row.movement_count || 0) > 0 || Number(row.historical_total_cost || 0) !== 0,
+  ).length;
+  const economicAnnualAverage =
+    economicYearsWithMovements > 0 ? economicLifetime / economicYearsWithMovements : null;
+  const economicFirstCostDate = economicHistory.length > 0
+    ? economicHistory[economicHistory.length - 1]?.first_cost_date
+    : null;
+  const economicLastCostDate = economicHistory[0]?.last_cost_date || operationalState?.last_cost_at || null;
+  const economicLifetimeValue = operationalState?.recognized_cost_clp_lifetime != null
+    ? Number(operationalState.recognized_cost_clp_lifetime)
+    : economicHistory.length > 0
+      ? economicLifetime
+      : null;
+  const economicYtdValue = operationalState?.recognized_cost_clp_ytd != null
+    ? Number(operationalState.recognized_cost_clp_ytd)
+    : null;
+  const economic12mValue = operationalState?.recognized_cost_clp_12m != null
+    ? Number(operationalState.recognized_cost_clp_12m)
+    : null;
   const drillingMeters = drillingHistory.reduce(
     (sum, row) => sum + Number(row.drilled_meters || 0),
     0,
@@ -1009,6 +1033,69 @@ export function Asset360Overview({
               ) : null}
             </div>
           ) : null}
+        </CardContent>
+      </Card>
+
+      <Card className="border-border/80 shadow-none">
+        <CardContent className="p-5">
+          <div className="flex flex-col gap-1 border-b border-border pb-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                Economía del activo
+              </p>
+              <h2 className="mt-1 text-lg font-semibold">Inversión histórica en mantenimiento</h2>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Este equipo se trata como una unidad económica propia. Los montos corresponden sólo a costos históricos enlazados al activo.
+              </p>
+            </div>
+            {economicLastCostDate ? (
+              <p className="text-xs text-muted-foreground">Corte {date(economicLastCostDate)}</p>
+            ) : null}
+          </div>
+
+          {economicLifetimeValue != null || economicHistory.length > 0 ? (
+            <>
+              <div className="grid gap-4 py-5 sm:grid-cols-2 lg:grid-cols-4">
+                <div>
+                  <p className="text-xs text-muted-foreground">Costo histórico acumulado</p>
+                  <p className="mt-1 text-2xl font-semibold tracking-tight">{money(economicLifetimeValue)}</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    {economicFirstCostDate ? `Desde ${date(economicFirstCostDate)}` : 'Desde el primer registro disponible'}
+                  </p>
+                </div>
+                <IdentityItem
+                  icon={Coins}
+                  label="Últimos 12 meses"
+                  value={economic12mValue != null ? money(economic12mValue) : 'Sin base'}
+                  meta={economicLastCostDate ? `Corte ${date(economicLastCostDate)}` : null}
+                />
+                <IdentityItem
+                  icon={CalendarDays}
+                  label="Año en curso"
+                  value={economicYtdValue != null ? money(economicYtdValue) : 'Sin base'}
+                  meta={economicLastCostDate ? `Corte ${date(economicLastCostDate)}` : null}
+                />
+                <IdentityItem
+                  icon={Coins}
+                  label="Promedio anual histórico"
+                  value={economicAnnualAverage != null ? money(economicAnnualAverage) : 'Sin base'}
+                  meta={economicYearsWithMovements > 0 ? `${economicYearsWithMovements} años con movimientos` : null}
+                />
+              </div>
+              <div className="grid gap-3 border-t border-border pt-4 sm:grid-cols-3">
+                <IdentityItem icon={Hash} label="Movimientos de costo" value={economicMovementCount || 'Sin base'} />
+                <IdentityItem icon={CalendarDays} label="Primer costo registrado" value={date(economicFirstCostDate)} />
+                <IdentityItem icon={CalendarDays} label="Última imputación" value={date(economicLastCostDate)} />
+              </div>
+            </>
+          ) : (
+            <div className="py-5">
+              <p className="text-sm font-medium">Sin historial de costos enlazado</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                No se registra inversión histórica de mantenimiento para este activo en las fuentes disponibles. Esto no equivale a costo cero.
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -1537,7 +1624,7 @@ export function Asset360Overview({
       </details>
 
       <details className="group rounded-lg border border-border bg-card">
-        <SectionSummary title="Historial económico" hint={economicHistory.length > 0 ? `${economicHistory.length} años con movimientos · ${money(economicLifetime)}` : 'Sin movimientos económicos históricos'} />
+        <SectionSummary title="Evolución anual de costos" hint={economicHistory.length > 0 ? `${economicHistory.length} años fiscales · ${money(economicLifetime)} acumulados` : 'Sin historial de costos enlazado'} />
         <div className="border-t border-border p-4">
           {economicHistory.length > 0 ? (
             <>
@@ -1564,7 +1651,7 @@ export function Asset360Overview({
               </div>
             </>
           ) : (
-            <p className="text-sm text-muted-foreground">No hay movimientos económicos históricos enlazados a este activo.</p>
+            <p className="text-sm text-muted-foreground">No hay historial de costos enlazado a este activo. Esto no equivale a costo cero.</p>
           )}
         </div>
       </details>
