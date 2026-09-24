@@ -79,11 +79,10 @@ test('asset 360 does not render missing evidence as zero or raw source errors', 
   assert.doesNotMatch(ui, /number\(row\.meter_value \|\| 0/);
 });
 
-test('equipment list hides active canonical aliases instead of deleting evidence', () => {
-  assert.match(assetsApi, /asset_identity_unified_preview_v1/);
-  assert.match(assetsApi, /canonicalized/);
-  assert.match(assetsApi, /aliasedSourceIds/);
-  assert.match(assetsApi, /deduplicatedAliases/);
+test('equipment list trusts the canonical active state for deduplicated fleet identity', () => {
+  assert.match(assetsApi, /\.eq\('is_active', true\)/);
+  assert.doesNotMatch(assetsApi, /asset_identity_unified_preview_v1/);
+  assert.doesNotMatch(assetsApi, /deduplicatedAliases/);
 });
 
 test('asset 360 deduplicates repeated meter observations without deleting source evidence', () => {
@@ -104,5 +103,13 @@ test('asset 360 rejects placeholder locations as operational evidence', () => {
 
 test('equipment fleet API excludes inactive canonical assets from the operational list', () => {
   assert.match(assetsApi, /\.eq\('is_active', true\)/);
+});
+
+test('asset 360 derives criticality only from one consistent planning value', () => {
+  assert.match(api, /planningCriticalities/);
+  assert.match(api, /planningCriticalities\.size === 1/);
+  assert.match(api, /criticality: normalizedAsset\.criticality \|\| evidenceCriticality \|\| null/);
+  assert.match(api, /criticality_evidence_source/);
+  assert.match(api, /planning_maintenance_source_rows/);
 });
 
