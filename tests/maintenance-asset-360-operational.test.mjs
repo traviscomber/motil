@@ -5,6 +5,7 @@ import fs from 'node:fs';
 const api = fs.readFileSync('app/api/maintenance/assets/[id]/operational-360/route.ts', 'utf8');
 const ui = fs.readFileSync('components/maintenance/asset-360-overview.tsx', 'utf8');
 const assetsApi = fs.readFileSync('app/api/maintenance/assets/route.ts', 'utf8');
+const costCenterMachines = fs.readFileSync('lib/maintenance/cost-center-machines.ts', 'utf8');
 
 test('asset 360 API is maintenance authorized tenant scoped and composes existing evidence', () => {
   assert.match(api, /requireModuleAccess\(request, MODULE_KEYS\.MANT_OPERACIONES\)/);
@@ -84,6 +85,15 @@ test('asset 360 keeps inferred family referential rather than canonical', () => 
   assert.match(api, /deterministic_name_classifier/);
   assert.match(ui, /Familia referencial/);
   assert.match(ui, /no canónico/);
+});
+
+test('asset 360 referential family classifier covers explicit fleet names', () => {
+  assert.match(costCenterMachines, /\['bomba', 'Bombas'\]/);
+  assert.match(costCenterMachines, /\['ventilador', 'Ventiladores'\]/);
+  assert.match(costCenterMachines, /\['hilux', 'Camionetas'\]/);
+  assert.match(costCenterMachines, /\['ford transit', 'Buses'\]/);
+  assert.match(costCenterMachines, /\['rodillo', 'Compactadores'\]/);
+  assert.match(costCenterMachines, /\['560-80', 'Manipuladores Telescopicos'\]/);
 });
 
 test('asset 360 can recover a strongly formatted Chilean plate without overwriting canonical identity', () => {
