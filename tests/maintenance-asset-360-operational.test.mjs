@@ -132,7 +132,7 @@ test('equipment fleet API excludes inactive canonical assets from the operationa
 test('asset 360 derives criticality only from one consistent planning value', () => {
   assert.match(api, /planningCriticalities/);
   assert.match(api, /planningCriticalities\.size === 1/);
-  assert.match(api, /criticality: normalizedAsset\.criticality \|\| evidenceCriticality \|\| null/);
+  assert.match(api, /criticality: operationalCriticality \|\| payloadCriticality \|\| evidenceCriticality \|\| null/);
   assert.match(api, /criticality_evidence_source/);
   assert.match(api, /planning_maintenance_source_rows/);
 });
