@@ -16,16 +16,28 @@ const costCenterMachines = fs.readFileSync('lib/maintenance/cost-center-machines
 const identityEvidence = fs.readFileSync('lib/maintenance/asset-identity-evidence.ts', 'utf8');
 const meterEvidence = fs.readFileSync('lib/maintenance/meter-evidence-resolution.ts', 'utf8');
 const purchaseHistory = fs.readFileSync('lib/maintenance/purchase-history-resolution.ts', 'utf8');
+const sourcesLib = fs.readFileSync('lib/maintenance/asset-360-data-sources.ts', 'utf8');
+
+test('asset 360 composes its data sources through the extracted query orchestration lib', () => {
+  assert.match(api, /import \{ queryAsset360Sources \} from '@\/lib\/maintenance\/asset-360-data-sources'/);
+  assert.match(api, /queryAsset360Sources\(context, id, asset, purchaseSelect\)/);
+  assert.match(sourcesLib, /export async function queryAsset360Sources\(/);
+  assert.doesNotMatch(api, /const \[ordersResult, closeResult, preventiveResult[\s\S]*?await Promise\.all\(/);
+  assert.doesNotMatch(api, /withOptionalTimeout/);
+  assert.doesNotMatch(api, /OPTIONAL_SOURCE_TIMEOUT_MS/);
+  assert.match(sourcesLib, /function withOptionalTimeout/);
+  assert.match(sourcesLib, /OPTIONAL_SOURCE_TIMEOUT_MS = 2500/);
+});
 
 test('asset 360 API is maintenance authorized tenant scoped and composes existing evidence', () => {
   assert.match(api, /requireModuleAccess\(request, MODULE_KEYS\.MANT_OPERACIONES\)/);
   assert.match(api, /eq\('organization_id', context\.organizationId\)/);
-  assert.match(api, /maintenance_operational_work_order_flow_v1/);
-  assert.match(api, /work_order_close_readiness_v2/);
-  assert.match(api, /preventive_maintenance_hour_status_v1/);
-  assert.match(api, /asset_runtime_summary_v1/);
-  assert.match(api, /maintenance_reliability_by_asset_v1/);
-  assert.match(api, /maintenance_runtime_reliability_by_asset_v1/);
+  assert.match(sourcesLib, /maintenance_operational_work_order_flow_v1/);
+  assert.match(sourcesLib, /work_order_close_readiness_v2/);
+  assert.match(sourcesLib, /preventive_maintenance_hour_status_v1/);
+  assert.match(sourcesLib, /asset_runtime_summary_v1/);
+  assert.match(sourcesLib, /maintenance_reliability_by_asset_v1/);
+  assert.match(sourcesLib, /maintenance_runtime_reliability_by_asset_v1/);
 });
 
 test('asset 360 UI refuses legacy calendar MTBF and historical mixed cost', () => {
@@ -153,8 +165,8 @@ test('asset 360 exposes master data validation separately from operational state
 });
 
 test('asset 360 surfaces dated operational freshness from the canonical operating spine', () => {
-  assert.match(api, /from\('asset_operating_spine_v1'\)/);
-  assert.match(api, /last_work_order_at,last_drilling_date,last_cost_event_at,last_telemetry_at,evidence_domain_count/);
+  assert.match(sourcesLib, /from\('asset_operating_spine_v1'\)/);
+  assert.match(sourcesLib, /last_work_order_at,last_drilling_date,last_cost_event_at,last_telemetry_at,evidence_domain_count/);
   assert.match(api, /operatingSpine: operatingSpineResult\.data \|\| null/);
   assert.match(ui, /label="Última evidencia"/);
   assert.match(ui, /operatingSpine\?\.last_cost_event_at/);
@@ -162,10 +174,10 @@ test('asset 360 surfaces dated operational freshness from the canonical operatin
 });
 
 test('asset 360 operational state query only selects columns present in the live view', () => {
-  assert.match(api, /from\('asset_operational_state_v1'\)/);
-  assert.doesNotMatch(api, /drilled_meters,last_drilling_date,sensor_count/);
+  assert.match(sourcesLib, /from\('asset_operational_state_v1'\)/);
+  assert.doesNotMatch(sourcesLib, /drilled_meters,last_drilling_date,sensor_count/);
   assert.doesNotMatch(ui, /operationalState\?\.last_drilling_date/);
-  assert.match(api, /drilling_report_count,drilled_meters,sensor_count/);
+  assert.match(sourcesLib, /drilling_report_count,drilled_meters,sensor_count/);
   assert.match(ui, /consolidatedDrillingMeters/);
   assert.match(ui, /consolidatedDrillingReports/);
 });
@@ -182,7 +194,7 @@ test('asset 360 resolves location criticality and status evidence through one de
 });
 
 test('asset 360 attaches dated status history when the event matches the resolved state', () => {
-  assert.match(api, /from\('maintenance_asset_status_history'\)/);
+  assert.match(sourcesLib, /from\('maintenance_asset_status_history'\)/);
   assert.match(api, /statusEventMatchesResolved/);
   assert.match(api, /operational_status_evidence_at/);
   assert.match(api, /operational_status_reason/);
@@ -217,14 +229,14 @@ test('asset 360 labels deterministic family as reference when canonical type is 
 });
 
 test('asset 360 exposes approved canonical identity aliases in traceability', () => {
-  assert.match(api, /from\('asset_identity_unified_preview_v1'\)/);
+  assert.match(sourcesLib, /from\('asset_identity_unified_preview_v1'\)/);
   assert.match(api, /identityHistory: identityHistoryResult\.data \|\| \[\]/);
   assert.match(ui, /Identidad consolidada/);
   assert.match(ui, /alias histórico aprobado/);
 });
 
 test('asset 360 enriches exact cost center codes with canonical names', () => {
-  assert.match(api, /exactCostCenterDetailPromise/);
+  assert.match(sourcesLib, /exactCostCenterDetailPromise/);
   assert.match(api, /cost_center_name/);
   assert.match(ui, /asset\.cost_center_name/);
 });
@@ -244,7 +256,7 @@ test('asset 360 carries dated corroboration for consolidated locations', () => {
 
 test('asset 360 resolves canonical location and exact cost center evidence', () => {
   assert.match(api, /deriveMachinesFromCostCenters/);
-  assert.match(api, /from\('cost_centers'\)/);
+  assert.match(sourcesLib, /from\('cost_centers'\)/);
   assert.match(purchaseHistory, /normalizeAssetIdentity\(machine\.name\) === normalizedIdentity/);
   assert.match(purchaseHistory, /matches\.length === 1/);
   assert.match(api, /normalizeLocationEvidence/);
@@ -327,7 +339,7 @@ test('asset 360 flags material planning meter decreases without calling them res
 });
 
 test('asset 360 separates consolidated drilling totals from the visible recent sample', () => {
-  assert.match(api, /last_drilling_date/);
+  assert.match(sourcesLib, /last_drilling_date/);
   assert.match(ui, /consolidatedDrillingMeters/);
   assert.match(ui, /Metros perforados acumulados/);
   assert.match(ui, /reportes enlazados/);
@@ -370,11 +382,11 @@ test('asset 360 resolves meter evidence through the shared meter lib', () => {
 });
 
 test('asset 360 consumes the canonical deduplicated meter observation model', () => {
-  assert.match(api, /planning_asset_meter_readings/);
+  assert.match(sourcesLib, /planning_asset_meter_readings/);
   assert.match(meterEvidence, /const signature = \(row: MeterReadingRow\)/);
   assert.match(meterEvidence, /duplicate_meter_rows_ignored/);
   assert.match(meterEvidence, /\.slice\(0, limit\)/);
-  assert.match(api, /\.limit\(24\)/);
+  assert.match(sourcesLib, /\.limit\(24\)/);
 });
 
 test('asset 360 rejects placeholder locations as operational evidence', () => {
