@@ -62,14 +62,18 @@ test('landing hero states one operation one source of truth better decisions', (
   assert.match(stone, /hero-stone\.png/);
 });
 
-test('hero stone interaction respects motion preferences and accessibility', () => {
+test('hero stone is a real 3d webgl scene with graceful fallback', () => {
+  assert.match(stone, /WebGLRenderer/);
   assert.match(stone, /requestAnimationFrame/);
   assert.match(stone, /prefers-reduced-motion/);
-  assert.match(stone, /aria-label/);
   assert.match(stone, /pointermove/);
-  assert.match(css, /perspective: 900px/);
-  assert.match(css, /:focus-visible/);
+  assert.match(stone, /role="img"/);
+  assert.match(stone, /domElement/); // WebGL canvas mounted into the stage
+  assert.match(stone, /hero-stone\.png/); // no-WebGL fallback
+  assert.match(css, /aspect-ratio: 1 \/ 1/);
   assert.doesNotMatch(stone, /setInterval/);
+  assert.doesNotMatch(stone, /\bthree\/examples/); // no examples/ addons
+  assert.doesNotMatch(stone, /addEventListener\('click'/); // rotation only, no click gimmick
 });
 
 test('landing keeps numbered eyebrows and the commercial Chile LATAM section', () => {

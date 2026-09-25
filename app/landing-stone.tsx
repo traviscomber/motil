@@ -1,131 +1,221 @@
 'use client';
 
 import Image from 'next/image';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type * as THREE from 'three';
 
-/* Interactive hero stone: display-pedestal sway + pointer tilt + click spin.
-   A flat mineral PNG can never spin edge-on like resend's solid cube, so the
-   rotation language is adapted: slow oscillation when idle, pointer-follow
-   tilt on hover, and one full eased 360° turn per click/tap. */
+/* Real 3D hero stone (WebGL, like resend's cube): a displaced-icosahedron
+   mineral with copper edge veins, lit warm from the front and copper from
+   behind, on the canonical dark palette.
+   - Idle: continuous slow turntable rotation + subtle float.
+   - Pointer: tilts the specimen toward the cursor (eased).
+   - prefers-reduced-motion: renders a static mineral, no ambient motion.
+   If WebGL is unavailable, the canonical PNG specimen is used instead. */
 
-const IDLE_SWAY_DEG = 12;
-const IDLE_FLOAT_PX = 8;
-const POINTER_TILT_DEG = 10;
-const SPIN_DURATION_MS = 1400;
-const SPIN_DURATION_REDUCED_MS = 500;
+const POINTER_TILT_RAD = 0.38;
+
+/* Deterministic crystal displacement: duplicated vertices of the non-indexed
+   icosahedron share positions, so hashing positions keeps faces connected. */
+function crystalField(x: number, y: number, z: number) {
+  const h = (seed: number) => {
+    const s = Math.sin(x * 12.9898 + y * 78.233 + z * 37.719 + seed * 5.133) * 43758.5453;
+    return s - Math.floor(s);
+  };
+  const stepped = Math.round(h(1) * 3) / 3; // chunky facets
+  return 1 + stepped * 0.32 + (h(2) - 0.5) * 0.07;
+}
 
 export default function LandingStone() {
-  const stageRef = useRef<HTMLButtonElement>(null);
-  const tiltRef = useRef<HTMLSpanElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const mountRef = useRef<HTMLSpanElement>(null);
+  const [fallback, setFallback] = useState(false);
 
   useEffect(() => {
     const stage = stageRef.current;
-    const tilt = tiltRef.current;
-    if (!stage || !tilt) return;
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const spinMs = reduceMotion ? SPIN_DURATION_REDUCED_MS : SPIN_DURATION_MS;
+    const mount = mountRef.current;
+    if (!stage || !mount) return;
 
-    let raf = 0;
-    let last = performance.now();
-    let phase = Math.random() * Math.PI * 2;
-    let targetX = 0;
-    let targetY = 0;
-    let curX = 0;
-    let curY = 0;
-    let spinFrom = 0;
-    let spinTo = 0;
-    let spinStart = 0;
-    let spinning = false;
+    let disposed = false;
+    let cleanup: (() => void) | undefined;
 
-    const frame = (now: number) => {
-      const dt = Math.min((now - last) / 1000, 0.05);
-      last = now;
+    const init = async () => {
+      const THREE = await import('three');
+      if (disposed) return;
 
-      // Automatic motion (sway, float, pointer tilt) is ambient decoration:
-      // it stops entirely under prefers-reduced-motion. The click spin is
-      // user-initiated, so it stays available (faster) at every tier.
-      let idleY = 0;
-      let floatY = 0;
-      if (!reduceMotion) {
-        phase += dt * 0.5;
-        const k = 1 - Math.pow(1 - 0.07, dt * 60);
-        curX += (targetX - curX) * k;
-        curY += (targetY - curY) * k;
-        idleY = Math.sin(phase) * IDLE_SWAY_DEG;
-        floatY = Math.sin(phase * 0.8) * IDLE_FLOAT_PX;
+      let renderer: THREE.WebGLRenderer;
+      try {
+        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      } catch {
+        setFallback(true);
+        return;
+      }
+      if (disposed) {
+        renderer.dispose();
+        return;
       }
 
-      let spin = 0;
-      if (spinning) {
-        const t = Math.min((now - spinStart) / spinMs, 1);
-        const eased = 1 - Math.pow(1 - t, 3);
-        spin = spinFrom + (spinTo - spinFrom) * eased;
-        if (t >= 1) {
-          spinning = false;
-          spinFrom = spinTo % 360;
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setClearColor(0x000000, 0);
+      mount.appendChild(renderer.domElement);
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 50);
+      camera.position.set(0, 0.1, 5.1);
+
+      // Mineral body: displaced icosahedron, flat-shaded, per-facet dark tones.
+      const geometry = new THREE.IcosahedronGeometry(1.3, 1).toNonIndexed();
+      const position = geometry.getAttribute('position');
+      const colors = new Float32Array(position.count * 3);
+      const base = new THREE.Color(0x2b2a26); // canonical tertiary family
+      const dark = new THREE.Color(0x1d1c19);
+      const v = new THREE.Vector3();
+      for (let i = 0; i < position.count; i += 3) {
+        const tone = dark.clone().lerp(base, 0.35 + 0.65 * ((i / 3) % 7) / 7);
+        for (let j = 0; j < 3; j++) {
+          const idx = i + j;
+          v.fromBufferAttribute(position, idx).normalize();
+          const r = crystalField(v.x, v.y, v.z);
+          position.setXYZ(idx, v.x * r, v.y * r, v.z * r);
+          colors[idx * 3] = tone.r;
+          colors[idx * 3 + 1] = tone.g;
+          colors[idx * 3 + 2] = tone.b;
         }
       }
+      geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+      geometry.computeVertexNormals();
 
-      tilt.style.transform = `translateY(${floatY.toFixed(2)}px) rotateX(${curX.toFixed(2)}deg) rotateY(${(idleY + curY + spin).toFixed(2)}deg)`;
-      raf = requestAnimationFrame(frame);
-    };
+      const material = new THREE.MeshStandardMaterial({
+        vertexColors: true,
+        roughness: 0.52,
+        metalness: 0.42,
+        flatShading: true,
+      });
+      const rock = new THREE.Mesh(geometry, material);
 
-    const onMove = (event: PointerEvent) => {
-      const rect = stage.getBoundingClientRect();
-      const nx = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-      const ny = ((event.clientY - rect.top) / rect.height) * 2 - 1;
-      targetY = nx * POINTER_TILT_DEG;
-      targetX = -ny * POINTER_TILT_DEG * 0.7;
-    };
-    const onLeave = () => {
-      targetX = 0;
-      targetY = 0;
-    };
-    const onClick = () => {
-      // Continue from the current eased angle so repeated clicks never jump.
-      const now = performance.now();
-      if (spinning) {
-        const t = Math.min((now - spinStart) / spinMs, 1);
-        const eased = 1 - Math.pow(1 - t, 3);
-        spinFrom = spinFrom + (spinTo - spinFrom) * eased;
+      // Copper veins along the crystal edges (canonical detail accent).
+      const edges = new THREE.LineSegments(
+        new THREE.EdgesGeometry(geometry, 18),
+        new THREE.LineBasicMaterial({ color: 0xb95732, transparent: true, opacity: 0.85 })
+      );
+      rock.add(edges);
+
+      const tiltGroup = new THREE.Group();
+      tiltGroup.add(rock);
+      tiltGroup.rotation.x = 0.12;
+      scene.add(tiltGroup);
+
+      // Warm key from the front-top, copper rim from behind, faint fill.
+      scene.add(new THREE.HemisphereLight(0xe8e3d6, 0x171715, 0.45));
+      const key = new THREE.DirectionalLight(0xe8e3d6, 1.7);
+      key.position.set(3, 4, 5);
+      scene.add(key);
+      const rim = new THREE.DirectionalLight(0xb95732, 1.1);
+      rim.position.set(-4, -1, -3.5);
+      scene.add(rim);
+      const fill = new THREE.DirectionalLight(0xaaa69c, 0.35);
+      fill.position.set(-2.5, 1.5, 4);
+      scene.add(fill);
+
+      const resize = () => {
+        const size = mount.clientWidth || 440;
+        renderer.setSize(size, size, false);
+        renderer.domElement.style.width = '100%';
+        renderer.domElement.style.height = '100%';
+      };
+      resize();
+      const observer = new ResizeObserver(resize);
+      observer.observe(mount);
+
+      let raf = 0;
+      let last = performance.now();
+      let elapsed = 0;
+      let autoRot = 0;
+      let targetTiltX = 0.12;
+      let targetTiltY = 0;
+      let tiltX = 0.12;
+      let tiltY = 0;
+
+      const frame = (now: number) => {
+        const dt = Math.min((now - last) / 1000, 0.05);
+        last = now;
+        elapsed += dt;
+
+        if (!reduceMotion) {
+          autoRot += dt * 0.45; // resend-style turntable
+          rock.position.y = Math.sin(elapsed * 0.8) * 0.06;
+          const k = 1 - Math.pow(1 - 0.08, dt * 60);
+          tiltX += (targetTiltX - tiltX) * k;
+          tiltY += (targetTiltY - tiltY) * k;
+          tiltGroup.rotation.x = tiltX;
+          tiltGroup.rotation.y = tiltY;
+        }
+        rock.rotation.y = autoRot;
+
+        renderer.render(scene, camera);
+        raf = requestAnimationFrame(frame);
+      };
+
+      const onMove = (event: PointerEvent) => {
+        const rect = stage.getBoundingClientRect();
+        const nx = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        const ny = ((event.clientY - rect.top) / rect.height) * 2 - 1;
+        targetTiltY = nx * POINTER_TILT_RAD;
+        targetTiltX = 0.12 - ny * POINTER_TILT_RAD;
+      };
+      const onLeave = () => {
+        targetTiltX = 0.12;
+        targetTiltY = 0;
+      };
+
+      if (!reduceMotion) {
+        stage.addEventListener('pointermove', onMove);
+        stage.addEventListener('pointerleave', onLeave);
       }
-      spinTo = spinFrom + 360;
-      spinStart = now;
-      spinning = true;
+      raf = requestAnimationFrame(frame);
+
+      cleanup = () => {
+        cancelAnimationFrame(raf);
+        observer.disconnect();
+        stage.removeEventListener('pointermove', onMove);
+        stage.removeEventListener('pointerleave', onLeave);
+        geometry.dispose();
+        material.dispose();
+        edges.geometry.dispose();
+        (edges.material as THREE.Material).dispose();
+        renderer.dispose();
+        renderer.domElement.remove();
+      };
     };
 
-    if (!reduceMotion) {
-      stage.addEventListener('pointermove', onMove);
-      stage.addEventListener('pointerleave', onLeave);
-    }
-    stage.addEventListener('click', onClick);
-    raf = requestAnimationFrame(frame);
+    init().catch(() => setFallback(true));
 
     return () => {
-      cancelAnimationFrame(raf);
-      stage.removeEventListener('pointermove', onMove);
-      stage.removeEventListener('pointerleave', onLeave);
-      stage.removeEventListener('click', onClick);
+      disposed = true;
+      cleanup?.();
     };
   }, []);
 
   return (
-    <button
+    <div
       ref={stageRef}
-      type="button"
-      aria-label="Girar la piedra mineral"
+      role="img"
+      aria-label="Mineral de cuarzo oscuro con vetas de cobre, girando suavemente"
       className="ld-stone-stage"
     >
-      <span ref={tiltRef} className="ld-stone-tilt">
-        <Image
-          src="/brand/hero-stone.png"
-          alt=""
-          width={1024}
-          height={1024}
-          priority
-          className="ld-stone"
-        />
+      <span ref={mountRef} className="ld-stone-tilt">
+        {fallback ? (
+          <Image
+            src="/brand/hero-stone.png"
+            alt=""
+            width={1024}
+            height={1024}
+            priority
+            className="ld-stone"
+          />
+        ) : null}
       </span>
-    </button>
+    </div>
   );
 }
