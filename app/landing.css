@@ -203,8 +203,28 @@
   margin-top: 8px;
 }
 
-.motil-landing .ld-stone {
+.motil-landing .ld-stone-stage {
   justify-self: center;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  perspective: 900px;
+  -webkit-tap-highlight-color: transparent;
+}
+.motil-landing .ld-stone-stage:focus {
+  outline: none;
+}
+.motil-landing .ld-stone-stage:focus-visible {
+  outline: 2px solid var(--ld-accent-detail);
+  outline-offset: 14px;
+}
+.motil-landing .ld-stone-tilt {
+  display: block;
+  will-change: transform;
+}
+.motil-landing .ld-stone {
+  display: block;
   width: min(30vw, 440px);
   height: auto;
   filter: drop-shadow(0 30px 44px rgba(0, 0, 0, 0.55));

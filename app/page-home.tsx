@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowDown, ArrowRight } from 'lucide-react';
+import LandingStone from './landing-stone';
 import './landing.css';
 
 const structuredData = {
@@ -68,14 +69,7 @@ export default function HomePage() {
               <Link href="#contexto" className="ld-btn ld-btn-ghost">Conocer el sistema <ArrowDown size={16} strokeWidth={1.5} /></Link>
             </div>
           </div>
-          <Image
-            src="/brand/hero-stone.png"
-            alt="Mineral de cuarzo oscuro con vetas de cobre, aislado sobre fondo oscuro"
-            width={1024}
-            height={1024}
-            priority
-            className="ld-stone"
-          />
+          <LandingStone />
         </div>
       </section>
 
