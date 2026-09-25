@@ -61,6 +61,7 @@ export default function LandingStone() {
       mount.appendChild(renderer.domElement);
 
       const scene = new THREE.Scene();
+      // Square mount (CSS aspect-ratio: 1/1 in landing.css) — keep both in sync.
       const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 50);
       camera.position.set(0, 0.1, 5.1);
 
@@ -84,7 +85,7 @@ export default function LandingStone() {
         }
       }
       geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-      geometry.computeVertexNormals();
+      // flatShading derives face normals in the shader; no normal pass needed.
 
       const material = new THREE.MeshStandardMaterial({
         vertexColors: true,
@@ -123,6 +124,7 @@ export default function LandingStone() {
         renderer.setSize(size, size, false);
         renderer.domElement.style.width = '100%';
         renderer.domElement.style.height = '100%';
+        if (reduceMotion) renderer.render(scene, camera); // single static frame
       };
       resize();
       const observer = new ResizeObserver(resize);
@@ -172,8 +174,10 @@ export default function LandingStone() {
       if (!reduceMotion) {
         stage.addEventListener('pointermove', onMove);
         stage.addEventListener('pointerleave', onLeave);
+        raf = requestAnimationFrame(frame);
       }
-      raf = requestAnimationFrame(frame);
+      // Reduced motion: a single static frame is rendered (in resize/setup);
+      // no animation loop, no listeners.
 
       cleanup = () => {
         cancelAnimationFrame(raf);
@@ -201,7 +205,7 @@ export default function LandingStone() {
     <div
       ref={stageRef}
       role="img"
-      aria-label="Mineral de cuarzo oscuro con vetas de cobre, girando suavemente"
+      aria-label="Mineral de cuarzo oscuro con vetas de cobre"
       className="ld-stone-stage"
     >
       <span ref={mountRef} className="ld-stone-tilt">

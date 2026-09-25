@@ -205,10 +205,6 @@
 
 .motil-landing .ld-stone-stage {
   justify-self: center;
-  background: none;
-  border: 0;
-  padding: 0;
-  -webkit-tap-highlight-color: transparent;
 }
 .motil-landing .ld-stone-tilt {
   display: block;
