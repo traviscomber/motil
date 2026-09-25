@@ -216,7 +216,7 @@
   outline: none;
 }
 .motil-landing .ld-stone-stage:focus-visible {
-  outline: 1px solid var(--ld-accent-detail);
+  outline: 2px solid var(--ld-accent-detail);
   outline-offset: 14px;
 }
 .motil-landing .ld-stone-tilt {
@@ -228,11 +228,6 @@
   width: min(30vw, 440px);
   height: auto;
   filter: drop-shadow(0 30px 44px rgba(0, 0, 0, 0.55));
-}
-@media (prefers-reduced-motion: reduce) {
-  .motil-landing .ld-stone-tilt {
-    transform: none !important;
-  }
 }
 .motil-landing .ld-map {
   justify-self: center;

@@ -12,6 +12,7 @@ const IDLE_SWAY_DEG = 12;
 const IDLE_FLOAT_PX = 8;
 const POINTER_TILT_DEG = 10;
 const SPIN_DURATION_MS = 1400;
+const SPIN_DURATION_REDUCED_MS = 500;
 
 export default function LandingStone() {
   const stageRef = useRef<HTMLButtonElement>(null);
@@ -21,7 +22,8 @@ export default function LandingStone() {
     const stage = stageRef.current;
     const tilt = tiltRef.current;
     if (!stage || !tilt) return;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const spinMs = reduceMotion ? SPIN_DURATION_REDUCED_MS : SPIN_DURATION_MS;
 
     let raf = 0;
     let last = performance.now();
@@ -38,13 +40,24 @@ export default function LandingStone() {
     const frame = (now: number) => {
       const dt = Math.min((now - last) / 1000, 0.05);
       last = now;
-      phase += dt * 0.5;
-      curX += (targetX - curX) * 0.07;
-      curY += (targetY - curY) * 0.07;
+
+      // Automatic motion (sway, float, pointer tilt) is ambient decoration:
+      // it stops entirely under prefers-reduced-motion. The click spin is
+      // user-initiated, so it stays available (faster) at every tier.
+      let idleY = 0;
+      let floatY = 0;
+      if (!reduceMotion) {
+        phase += dt * 0.5;
+        const k = 1 - Math.pow(1 - 0.07, dt * 60);
+        curX += (targetX - curX) * k;
+        curY += (targetY - curY) * k;
+        idleY = Math.sin(phase) * IDLE_SWAY_DEG;
+        floatY = Math.sin(phase * 0.8) * IDLE_FLOAT_PX;
+      }
 
       let spin = 0;
       if (spinning) {
-        const t = Math.min((now - spinStart) / SPIN_DURATION_MS, 1);
+        const t = Math.min((now - spinStart) / spinMs, 1);
         const eased = 1 - Math.pow(1 - t, 3);
         spin = spinFrom + (spinTo - spinFrom) * eased;
         if (t >= 1) {
@@ -53,8 +66,6 @@ export default function LandingStone() {
         }
       }
 
-      const idleY = Math.sin(phase) * IDLE_SWAY_DEG;
-      const floatY = Math.sin(phase * 0.8) * IDLE_FLOAT_PX;
       tilt.style.transform = `translateY(${floatY.toFixed(2)}px) rotateX(${curX.toFixed(2)}deg) rotateY(${(idleY + curY + spin).toFixed(2)}deg)`;
       raf = requestAnimationFrame(frame);
     };
@@ -71,14 +82,22 @@ export default function LandingStone() {
       targetY = 0;
     };
     const onClick = () => {
-      spinFrom = spinning ? spinTo % 360 : spinFrom;
+      // Continue from the current eased angle so repeated clicks never jump.
+      const now = performance.now();
+      if (spinning) {
+        const t = Math.min((now - spinStart) / spinMs, 1);
+        const eased = 1 - Math.pow(1 - t, 3);
+        spinFrom = spinFrom + (spinTo - spinFrom) * eased;
+      }
       spinTo = spinFrom + 360;
-      spinStart = performance.now();
+      spinStart = now;
       spinning = true;
     };
 
-    stage.addEventListener('pointermove', onMove);
-    stage.addEventListener('pointerleave', onLeave);
+    if (!reduceMotion) {
+      stage.addEventListener('pointermove', onMove);
+      stage.addEventListener('pointerleave', onLeave);
+    }
     stage.addEventListener('click', onClick);
     raf = requestAnimationFrame(frame);
 

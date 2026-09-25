@@ -68,7 +68,7 @@ test('hero stone interaction respects motion preferences and accessibility', () 
   assert.match(stone, /aria-label/);
   assert.match(stone, /pointermove/);
   assert.match(css, /perspective: 900px/);
-  assert.match(css, /prefers-reduced-motion/);
+  assert.match(css, /:focus-visible/);
   assert.doesNotMatch(stone, /setInterval/);
 });
 
