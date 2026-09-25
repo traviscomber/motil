@@ -25,6 +25,39 @@ const drillingSection = fs.readFileSync(
   'components/maintenance/asset-360/drilling-section.tsx',
   'utf8',
 );
+const historySection = fs.readFileSync(
+  'components/maintenance/asset-360/history-section.tsx',
+  'utf8',
+);
+
+test('asset 360 history section owns the audited intervention and recent event types', () => {
+  assert.match(historySection, /export type Asset360RecentEvent = \{/);
+  assert.match(historySection, /actor_name\?: string \| null;/);
+  assert.match(historySection, /export type Asset360AuditedIntervention = \{/);
+  assert.match(historySection, /closure_sequence\?: number \| null;/);
+  assert.match(historySection, /preventive_actions\?: string \| null;/);
+});
+
+test('asset 360 history section renders audited closures and recent activity', () => {
+  assert.match(historySection, /export function Asset360HistorySection\(/);
+  assert.match(historySection, /if \(auditedInterventions\.length === 0 && recentEvents\.length === 0\) return null;/);
+  assert.match(historySection, /title="Historial de mantención"/);
+  assert.match(historySection, /Últimas intervenciones auditadas/);
+  assert.match(historySection, /Sin cierres auditados\./);
+  assert.match(historySection, /Más historial/);
+  assert.match(historySection, /Actividad reciente/);
+});
+
+test('asset 360 overview delegates maintenance history to the history section', () => {
+  assert.match(overview, /from '@\/components\/maintenance\/asset-360\/history-section'/);
+  assert.match(overview, /<Asset360HistorySection[ \n]/);
+  assert.match(overview, /auditedInterventions=\{auditedInterventions\}/);
+  assert.match(overview, /recentEvents=\{recentEvents\}/);
+  assert.match(overview, /auditedInterventions\?: Asset360AuditedIntervention\[\]/);
+  assert.match(overview, /recentEvents\?: Asset360RecentEvent\[\]/);
+  assert.doesNotMatch(overview, /Últimas intervenciones auditadas/);
+  assert.doesNotMatch(overview, /Más historial/);
+});
 
 test('asset 360 drilling section owns the drilling evidence and economics types', () => {
   assert.match(drillingSection, /export type Asset360DrillEconomics = \{/);
