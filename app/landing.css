@@ -1,0 +1,436 @@
+/* MOTIL landing — canonical brand system (Brand Bible).
+   Scope: .motil-landing only. Dark mineral palette, no color fades, no pure white. */
+
+.motil-landing {
+  --ld-bg: #171715;
+  --ld-bg-2: #20201d;
+  --ld-bg-3: #292925;
+  --ld-line: #393833;
+  --ld-text: #e8e3d6;
+  --ld-text-2: #aaa69c;
+  --ld-text-3: #747169;
+  --ld-accent: #874034;
+  --ld-accent-detail: #b95732;
+  --ld-paper: #e8e3d6;
+  --ld-ink: #171715;
+  --ld-ink-2: rgba(23, 23, 21, 0.68);
+
+  background: var(--ld-bg);
+  color: var(--ld-text);
+  font-family: var(--font-montserrat), 'Montserrat', sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: clip;
+}
+
+.motil-landing h1,
+.motil-landing h2,
+.motil-landing h3 {
+  font-family: var(--font-manrope), 'Manrope', sans-serif;
+  font-weight: 300;
+  letter-spacing: -0.01em;
+  color: var(--ld-text);
+}
+
+/* Headings never exceed 48px on desktop; fluid down to ~34px on mobile. */
+.motil-landing .ld-h1,
+.motil-landing .ld-h2 {
+  font-size: clamp(2.125rem, 1.3rem + 2.2vw, 3rem); /* 34px → 48px */
+  line-height: 1.14;
+}
+.motil-landing .ld-h3 {
+  font-size: clamp(1.5rem, 1.2rem + 0.9vw, 2rem); /* 24px → 32px */
+  line-height: 1.2;
+}
+
+.motil-landing .ld-accent {
+  color: var(--ld-accent);
+}
+
+/* Eyebrow: small accent dash + numbered label */
+.motil-landing .ld-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 12px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--ld-text-2);
+}
+.motil-landing .ld-eyebrow::before {
+  content: '';
+  width: 26px;
+  height: 3px;
+  background: var(--ld-accent-detail);
+  flex: none;
+}
+
+.motil-landing .ld-body-lg {
+  font-size: 18px;
+  line-height: 1.65;
+  color: var(--ld-text-2);
+  max-width: 34em;
+}
+.motil-landing .ld-label {
+  font-size: 12px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--ld-text-3);
+}
+
+/* Sharp, minimal MOTIL buttons — never pill-shaped. */
+.motil-landing .ld-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 28px;
+  border-radius: 0;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  text-decoration: none;
+  border: 1px solid transparent;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+  cursor: pointer;
+}
+.motil-landing .ld-btn-solid {
+  background: var(--ld-accent);
+  color: var(--ld-text);
+}
+.motil-landing .ld-btn-solid:hover {
+  background: #96503c;
+}
+.motil-landing .ld-btn-ghost {
+  background: transparent;
+  color: var(--ld-text);
+  border-color: var(--ld-line);
+}
+.motil-landing .ld-btn-ghost:hover {
+  border-color: var(--ld-text-2);
+}
+
+/* Sections: desktop framed as full-height 16:9-style compositions. */
+.motil-landing .ld-section {
+  position: relative;
+  min-height: 100vh;
+  padding-inline: clamp(24px, 6vw, 96px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.motil-landing .ld-inner {
+  width: 100%;
+  max-width: 1440px;
+  margin-inline: auto;
+}
+
+/* Header over the hero */
+.motil-landing .ld-header {
+  position: absolute;
+  inset: 0 0 auto 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 36px clamp(24px, 6vw, 96px);
+}
+.motil-landing .ld-wordmark {
+  text-decoration: none;
+  color: var(--ld-text);
+}
+.motil-landing .ld-wordmark strong {
+  display: block;
+  font-family: var(--font-manrope), 'Manrope', sans-serif;
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  line-height: 1;
+}
+.motil-landing .ld-wordmark span {
+  display: block;
+  margin-top: 6px;
+  font-size: 10px;
+  letter-spacing: 0.42em;
+  color: var(--ld-text-3);
+}
+.motil-landing .ld-nav {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+}
+.motil-landing .ld-nav-link {
+  font-size: 12px;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--ld-text-2);
+  text-decoration: none;
+}
+.motil-landing .ld-nav-link:hover {
+  color: var(--ld-text);
+}
+.motil-landing .ld-nav-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--ld-line);
+}
+.motil-landing .ld-nav-cta {
+  padding: 11px 22px;
+  font-size: 12px;
+  border: 1px solid var(--ld-line);
+  color: var(--ld-text);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: border-color 160ms ease;
+}
+.motil-landing .ld-nav-cta:hover {
+  border-color: var(--ld-text-2);
+}
+
+/* Two-column editorial split */
+.motil-landing .ld-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  align-items: center;
+  gap: clamp(40px, 5vw, 88px);
+}
+.motil-landing .ld-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 28px;
+  width: 100%;
+  min-width: 0;
+}
+.motil-landing .ld-ctas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.motil-landing .ld-stone {
+  justify-self: center;
+  width: min(30vw, 440px);
+  height: auto;
+  filter: drop-shadow(0 30px 44px rgba(0, 0, 0, 0.55));
+}
+.motil-landing .ld-map {
+  justify-self: center;
+  width: min(32vw, 500px);
+  height: auto;
+  filter: drop-shadow(0 30px 44px rgba(0, 0, 0, 0.55));
+}
+
+/* Section 01 — light paper section */
+.motil-landing .ld-light {
+  background: var(--ld-paper);
+  color: var(--ld-ink);
+}
+.motil-landing .ld-light h2,
+.motil-landing .ld-light h3 {
+  color: var(--ld-ink);
+}
+.motil-landing .ld-light .ld-eyebrow {
+  color: rgba(23, 23, 21, 0.6);
+}
+.motil-landing .ld-light .ld-body-lg {
+  color: var(--ld-ink-2);
+}
+.motil-landing .ld-flow {
+  margin-top: clamp(48px, 7vh, 84px);
+  width: 100%;
+  max-width: 1120px;
+}
+.motil-landing .ld-flow img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.motil-landing .ld-flow-labels {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px 16px;
+  margin-top: 20px;
+  padding-inline: 1%;
+}
+.motil-landing .ld-flow-label {
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(23, 23, 21, 0.62);
+}
+.motil-landing .ld-flow-label-accent {
+  color: var(--ld-accent);
+}
+.motil-landing .ld-pillars {
+  margin-top: clamp(48px, 7vh, 84px);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(28px, 4vw, 56px);
+}
+.motil-landing .ld-pillar {
+  border-left: 1px solid rgba(23, 23, 21, 0.18);
+  padding-left: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.motil-landing .ld-pillar::before {
+  content: '';
+  width: 22px;
+  height: 3px;
+  background: var(--ld-accent-detail);
+  margin-bottom: 6px;
+}
+.motil-landing .ld-pillar h3 {
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  font-family: var(--font-montserrat), 'Montserrat', sans-serif;
+}
+.motil-landing .ld-pillar p {
+  font-size: 15px;
+  color: var(--ld-ink-2);
+}
+
+/* Section 02 — mining image section */
+.motil-landing .ld-mining-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: clamp(40px, 5vw, 88px);
+  align-items: center;
+}
+.motil-landing .ld-mining-photo {
+  position: relative;
+  height: min(76vh, 780px);
+  border-left: 1px solid var(--ld-line);
+}
+.motil-landing .ld-mining-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 68% 50%;
+  display: block;
+}
+.motil-landing .ld-domains {
+  margin-top: clamp(32px, 5vh, 56px);
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+.motil-landing .ld-domain {
+  display: flex;
+  align-items: baseline;
+  gap: 20px;
+}
+.motil-landing .ld-domain::before {
+  content: '';
+  width: 22px;
+  height: 3px;
+  background: var(--ld-accent-detail);
+  flex: none;
+  transform: translateY(-4px);
+}
+.motil-landing .ld-domain-title {
+  font-size: 13px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--ld-text);
+  min-width: 130px;
+}
+.motil-landing .ld-domain-items {
+  font-size: 13px;
+  color: var(--ld-text-3);
+}
+
+/* Section 03 — LATAM + footer strip */
+.motil-landing .ld-footer-strip {
+  position: absolute;
+  inset: auto 0 0 0;
+  border-top: 1px solid var(--ld-line);
+  padding: 26px clamp(24px, 6vw, 96px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  font-size: 11px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--ld-text-3);
+}
+.motil-landing .ld-footer-strip nav {
+  display: flex;
+  gap: 14px;
+}
+.motil-landing .ld-latam-meta {
+  margin-top: 4px;
+  font-size: 12px;
+  letter-spacing: 0.3em;
+  color: var(--ld-text-3);
+}
+
+/* Responsive — mobile does not force literal 16:9 */
+@media (max-width: 900px) {
+  .motil-landing .ld-section {
+    min-height: auto;
+    padding-block: 96px;
+  }
+  .motil-landing .ld-split,
+  .motil-landing .ld-mining-grid {
+    grid-template-columns: 1fr;
+    gap: 56px;
+  }
+  .motil-landing .ld-stone,
+  .motil-landing .ld-map {
+    width: min(72vw, 360px);
+  }
+  .motil-landing .ld-mining-photo {
+    height: auto;
+    border-left: none;
+  }
+  .motil-landing .ld-mining-photo img {
+    height: auto;
+    max-height: 60vh;
+  }
+  .motil-landing .ld-pillars {
+    grid-template-columns: 1fr;
+  }
+  .motil-landing .ld-header {
+    padding-block: 24px;
+  }
+  .motil-landing .ld-wordmark strong {
+    font-size: 22px;
+  }
+  .motil-landing .ld-wordmark span {
+    display: none;
+  }
+  .motil-landing .ld-nav {
+    gap: 12px;
+  }
+  .motil-landing .ld-nav .ld-nav-link,
+  .motil-landing .ld-nav .ld-nav-divider {
+    display: none;
+  }
+  .motil-landing .ld-nav-cta {
+    padding: 9px 16px;
+    font-size: 11px;
+  }
+  .motil-landing .ld-ctas {
+    width: 100%;
+  }
+  .motil-landing .ld-ctas .ld-btn {
+    width: 100%;
+    justify-content: center;
+  }
+  .motil-landing .ld-footer-strip {
+    position: static;
+    flex-direction: column;
+    align-items: flex-start;
+    margin-top: 64px;
+  }
+}
