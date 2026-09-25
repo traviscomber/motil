@@ -8,14 +8,16 @@ import {
   Gauge,
   RefreshCw,
   Wrench,
-  type LucideIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StatePanel } from '@/components/ui/state-panel';
 import {
   number,
 } from '@/components/maintenance/asset-360/format';
-import { Asset360AttentionCard } from '@/components/maintenance/asset-360/attention-card';
+import {
+  Asset360ActionableWorkOrder,
+  Asset360AttentionCard,
+} from '@/components/maintenance/asset-360/attention-card';
 import {
   Asset360AvailabilitySection,
   Asset360OperationalState,
@@ -24,7 +26,10 @@ import {
   Asset360EconomicHistoryRow,
   Asset360EconomicsSection,
 } from '@/components/maintenance/asset-360/economics-section';
-import { Asset360IdentityHeader } from '@/components/maintenance/asset-360/identity-header';
+import {
+  Asset360HeaderMetric,
+  Asset360IdentityHeader,
+} from '@/components/maintenance/asset-360/identity-header';
 import {
   Asset360MaintenanceSection,
   Asset360NextPreventive,
@@ -178,16 +183,8 @@ type Asset360Response = {
   procurementOrders?: Asset360ProcurementOrder[];
   maintenancePlanning?: Asset360MaintenancePlanningRow[];
   canEdit?: boolean;
-  closeReadiness?: Array<{
-    work_order_id: string;
-    work_order_number?: string | null;
-    next_action?: string | null;
-    ready_to_close?: boolean;
-    standard_plan_steps_pending?: number | string | null;
-  }>;
+  closeReadiness?: Asset360ActionableWorkOrder[];
 };
-
-type Metric = [label: string, value: string | number, icon: LucideIcon];
 
 const fetcher = async (url: string): Promise<Asset360Response> => {
   const response = await fetch(url, { credentials: 'include', cache: 'no-store' });
@@ -288,7 +285,7 @@ export function Asset360Overview({
     : effectiveMeterLabel;
   const effectiveMeterSuffix = effectiveMeterUnit || '';
 
-  const metrics: Metric[] = [
+  const metrics: Asset360HeaderMetric[] = [
     ['OT activas', summary.activeWorkOrders, Wrench],
     ['Preventivos vencidos', summary.overduePreventives, AlertTriangle],
     ['Bloqueos operativos', summary.operationalBlockers, Activity],
@@ -412,7 +409,6 @@ export function Asset360Overview({
     .filter((item) => !Number.isNaN(item.time))
     .sort((a, b) => b.time - a.time)[0] || null;
 
-  const unavailableSources = data.unavailableSources || [];
   const hasPurchaseEvidence = Number(purchaseHistorySummary?.purchaseLines || 0) > 0 || procurementOrders.length > 0;
   const hasMaintenanceEvidence = auditedInterventions.length > 0 || Number(operationalState?.work_order_count || 0) > 0;
   const hasMaterialEvidence = installedParts.length > 0 || pendingParts.length > 0 || supplyChain.length > 0;

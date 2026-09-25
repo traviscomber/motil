@@ -565,3 +565,13 @@ test('asset 360 overview delegates economics rendering to the economics section'
   assert.doesNotMatch(overview, /Inversión en mantenimiento/);
   assert.doesNotMatch(overview, /const economicLifetime = economicHistory\.reduce\(/);
 });
+
+
+test('asset 360 module keeps single sources of truth after cohesion cleanup', () => {
+  assert.doesNotMatch(overview, /const unavailableSources =/);
+  assert.doesNotMatch(overview, /type Metric = \[/);
+  assert.match(overview, /const metrics: Asset360HeaderMetric\[\] = \[/);
+  assert.match(overview, /closeReadiness\?: Asset360ActionableWorkOrder\[\];/);
+  assert.match(overview, /Asset360ActionableWorkOrder,\n  Asset360AttentionCard,\n\} from '@\/components\/maintenance\/asset-360\/attention-card';/);
+  assert.doesNotMatch(overview, /type LucideIcon,/);
+});
