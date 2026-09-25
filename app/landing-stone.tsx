@@ -5,10 +5,12 @@ import { useEffect, useRef, useState } from 'react';
 import type * as THREE from 'three';
 
 /* Real 3D hero stone (WebGL, like resend's cube): the authored MOTIL mineral
-   model (public/brand/motil-stone-3d.glb) shaded with the canonical MOTIL
-   mineral look — near-black smoky-quartz body with crisp metallic copper
-   veins, per-pixel in the fragment shader — lit warm from the front and
-   copper from behind, on the canonical dark palette.
+   model (public/brand/motil-stone-3d.glb). Its baked vertex colors map the
+   mineral — bright warm facets are copper, dark facets are smoky quartz — so
+   the canonical photographic look (the static hero-stone.png) is reproduced
+   by driving roughness/metalness/emissive from the vertex-color luminance
+   and lighting it with a strong warm key, like the original photo shoot.
+   ACES tone mapping keeps the copper highlights photographic, not clipped.
    - Idle: continuous slow turntable rotation + subtle float.
    - Pointer: tilts the specimen toward the cursor (eased).
    - prefers-reduced-motion: renders a single static frame, no loop.
@@ -20,52 +22,6 @@ const STONE_GLB_URL = '/brand/motil-stone-3d.glb';
 /* Bounding-sphere radius the authored model is normalized to (camera sits at
    z = 5.1 with fov 30 — keep both in sync with any framing change). */
 const STONE_RADIUS = 1.55;
-
-/* Copper veins + mineral tones run per-pixel in the fragment shader
-   (STONE_GLSL) so the vein lines stay razor-thin at any resolution. */
-const STONE_GLSL = /* glsl */ `
-float stoneHash(vec3 p) {
-  p = fract(p * 0.3183099 + 0.1);
-  p *= 17.0;
-  return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
-}
-float stoneNoise(vec3 x) {
-  vec3 i = floor(x);
-  vec3 f = fract(x);
-  f = f * f * (3.0 - 2.0 * f);
-  return mix(
-    mix(
-      mix(stoneHash(i + vec3(0.0, 0.0, 0.0)), stoneHash(i + vec3(1.0, 0.0, 0.0)), f.x),
-      mix(stoneHash(i + vec3(0.0, 1.0, 0.0)), stoneHash(i + vec3(1.0, 1.0, 0.0)), f.x),
-      f.y
-    ),
-    mix(
-      mix(stoneHash(i + vec3(0.0, 0.0, 1.0)), stoneHash(i + vec3(1.0, 0.0, 1.0)), f.x),
-      mix(stoneHash(i + vec3(0.0, 1.0, 1.0)), stoneHash(i + vec3(1.0, 1.0, 1.0)), f.x),
-      f.y
-    ),
-    f.z
-  );
-}
-float stoneFbm(vec3 p) {
-  float s = 0.0;
-  float a = 0.5;
-  for (int o = 0; o < 4; o++) {
-    s += a * stoneNoise(p);
-    p *= 2.1;
-    a *= 0.5;
-  }
-  return s / 0.9375; // normalize to ~0..1
-}
-float stoneVein(vec3 d) {
-  float t1 = stoneFbm(d * 3.1 + 20.0);
-  float main = pow(max(0.0, 1.0 - abs(t1 - 0.5) * 2.0 / 0.14), 3.0);
-  float t2 = stoneFbm(d * 5.3 + 40.0);
-  float sec = pow(max(0.0, 1.0 - abs(t2 - 0.5) * 2.0 / 0.09), 3.0) * 0.5;
-  float region = smoothstep(0.42, 0.72, stoneFbm(d * 1.2 + 80.0));
-  return min(1.0, max(main, sec) * region);
-}
-`;
 
 export default function LandingStone() {
   const stageRef = useRef<HTMLDivElement>(null);
@@ -100,6 +56,9 @@ export default function LandingStone() {
 
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       renderer.setClearColor(0x000000, 0);
+      // ACES keeps the hot copper highlights photographic instead of clipped.
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.0;
       mount.appendChild(renderer.domElement);
 
       const scene = new THREE.Scene();
@@ -129,36 +88,36 @@ export default function LandingStone() {
 
       const material = new THREE.MeshStandardMaterial({
         color: 0xffffff,
-        roughness: 0.7,
-        metalness: 0.2,
+        vertexColors: true, // the GLB bakes the mineral map: bright verts = copper, dark = quartz
+        roughness: 0.55,
+        metalness: 0.35,
       });
-      // Per-pixel mineral body + copper veins; veins metallic and slightly
-      // emissive, body stays rough near-black quartz. The authored GLB ships
-      // without materials, so the canonical look is applied to every mesh.
+      // Photographic copper finish, driven by the baked vertex colors: bright
+      // facets turn metallic with warm emissive lift (the photo's glowing
+      // copper), dark facets stay rough smoky quartz. The GLB ships without
+      // materials, so the canonical look is applied to every mesh.
       material.onBeforeCompile = (shader) => {
-        shader.vertexShader = shader.vertexShader
-          .replace('#include <common>', '#include <common>\nvarying vec3 vStoneDir;')
-          .replace('#include <begin_vertex>', '#include <begin_vertex>\nvStoneDir = normalize(position);');
         shader.fragmentShader = shader.fragmentShader
-          .replace('#include <common>', `#include <common>\nvarying vec3 vStoneDir;\n${STONE_GLSL}`)
           .replace(
             '#include <color_fragment>',
             `#include <color_fragment>
-float vein = stoneVein(vStoneDir);
-vec3 stoneBody = mix(vec3(0.035, 0.033, 0.03), vec3(0.095, 0.09, 0.082), stoneFbm(vStoneDir * 3.0 + 60.0));
-diffuseColor.rgb *= mix(stoneBody, vec3(0.85, 0.42, 0.2), pow(vein, 0.75));`
+float copperLum = dot(vColor.rgb, vec3(0.299, 0.587, 0.114));
+float copper = smoothstep(0.20, 0.58, copperLum);
+/* Baked bright facets are cream — remap them to deep mineral copper and pull
+   the quartz body down for the high-contrast look of the original photo. */
+diffuseColor.rgb = mix(diffuseColor.rgb * vec3(0.62, 0.60, 0.58), diffuseColor.rgb * vec3(1.75, 0.78, 0.30), copper);`
           )
           .replace(
             '#include <roughnessmap_fragment>',
-            '#include <roughnessmap_fragment>\nroughnessFactor = mix(roughnessFactor, 0.2, vein);'
+            '#include <roughnessmap_fragment>\nroughnessFactor = mix(roughnessFactor, 0.22, copper);'
           )
           .replace(
             '#include <metalnessmap_fragment>',
-            '#include <metalnessmap_fragment>\nmetalnessFactor = mix(metalnessFactor, 0.95, vein);'
+            '#include <metalnessmap_fragment>\nmetalnessFactor = mix(metalnessFactor, 0.92, copper);'
           )
           .replace(
             '#include <emissivemap_fragment>',
-            '#include <emissivemap_fragment>\ntotalEmissiveRadiance += vec3(0.5, 0.2, 0.08) * (vein * vein) * 0.35;'
+            '#include <emissivemap_fragment>\ntotalEmissiveRadiance += vec3(0.55, 0.20, 0.05) * (copper * copper) * 0.45;'
           );
       };
       specimen.traverse((node) => {
@@ -174,15 +133,16 @@ diffuseColor.rgb *= mix(stoneBody, vec3(0.85, 0.42, 0.2), pow(vein, 0.75));`
       specimen.rotation.y = 0.9; // start on a vein-rich face
       scene.add(tiltGroup);
 
-      // Warm key from the front-top, copper rim from behind, faint fill.
-      scene.add(new THREE.HemisphereLight(0xe8e3d6, 0x171715, 0.35));
-      const key = new THREE.DirectionalLight(0xe8e3d6, 1.4);
-      key.position.set(3, 4, 5);
+      // Photo-study lighting: strong warm key from the front-top (the bright
+      // copper highlights of the original shoot), copper rim from behind.
+      scene.add(new THREE.HemisphereLight(0xf5ead6, 0x171715, 0.5));
+      const key = new THREE.DirectionalLight(0xffe9cf, 2.6);
+      key.position.set(2.5, 3.5, 5);
       scene.add(key);
-      const rim = new THREE.DirectionalLight(0xb95732, 1.1);
+      const rim = new THREE.DirectionalLight(0xb95732, 1.4);
       rim.position.set(-4, -1, -3.5);
       scene.add(rim);
-      const fill = new THREE.DirectionalLight(0xaaa69c, 0.3);
+      const fill = new THREE.DirectionalLight(0xaaa69c, 0.45);
       fill.position.set(-2.5, 1.5, 4);
       scene.add(fill);
 
