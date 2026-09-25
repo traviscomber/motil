@@ -215,7 +215,6 @@ export default function LandingStone() {
             alt=""
             width={1024}
             height={1024}
-            priority
             className="ld-stone"
           />
         ) : null}
