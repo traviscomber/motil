@@ -205,27 +205,21 @@
 
 .motil-landing .ld-stone-stage {
   justify-self: center;
-  background: none;
-  border: 0;
-  padding: 0;
-  cursor: pointer;
-  perspective: 900px;
-  -webkit-tap-highlight-color: transparent;
-}
-.motil-landing .ld-stone-stage:focus {
-  outline: none;
-}
-.motil-landing .ld-stone-stage:focus-visible {
-  outline: 2px solid var(--ld-accent-detail);
-  outline-offset: 14px;
 }
 .motil-landing .ld-stone-tilt {
   display: block;
-  will-change: transform;
+  width: min(30vw, 440px);
+  aspect-ratio: 1 / 1;
+}
+.motil-landing .ld-stone-tilt canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 30px 34px rgba(0, 0, 0, 0.55));
 }
 .motil-landing .ld-stone {
   display: block;
-  width: min(30vw, 440px);
+  width: 100%;
   height: auto;
   filter: drop-shadow(0 30px 44px rgba(0, 0, 0, 0.55));
 }
@@ -398,7 +392,7 @@
     grid-template-columns: 1fr;
     gap: 56px;
   }
-  .motil-landing .ld-stone,
+  .motil-landing .ld-stone-tilt,
   .motil-landing .ld-map {
     width: min(72vw, 360px);
   }
