@@ -26,6 +26,7 @@ import {
   money,
   number,
 } from '@/components/maintenance/asset-360/format';
+import { Asset360AttentionCard } from '@/components/maintenance/asset-360/attention-card';
 import { Asset360IdentityHeader } from '@/components/maintenance/asset-360/identity-header';
 import { IdentityItem, SectionSummary } from '@/components/maintenance/asset-360/primitives';
 import {
@@ -580,20 +581,6 @@ export function Asset360Overview({
     actionableWorkOrder
   );
   const planningPriorityText = String(maintenancePriority?.priority || '');
-  const attention = summary.criticalOpen > 0
-    ? { tone: 'border-destructive/40 bg-destructive/5', title: 'OT crítica abierta', detail: 'Revisar la orden crítica y su siguiente acción.' }
-    : summary.overduePreventives > 0
-      ? { tone: 'border-amber-500/40 bg-amber-500/5', title: 'Preventivo vencido', detail: maintenancePriority?.recommended_action || 'Existe mantenimiento preventivo que requiere atención.' }
-      : planningPriorityText.startsWith('P1')
-        ? { tone: 'border-destructive/40 bg-destructive/5', title: planningPriorityText, detail: maintenancePriority?.recommended_action || 'Intervención prioritaria según planificación.' }
-        : planningPriorityText.startsWith('P2')
-          ? { tone: 'border-amber-500/40 bg-amber-500/5', title: planningPriorityText, detail: maintenancePriority?.recommended_action || 'Intervención próxima según planificación.' }
-          : summary.operationalBlockers > 0
-            ? { tone: 'border-amber-500/40 bg-amber-500/5', title: 'Bloqueo operativo', detail: 'Existe una dependencia que impide avanzar o cerrar trabajo.' }
-            : summary.pendingPlanSteps > 0
-              ? { tone: 'border-border bg-muted/20', title: 'Trabajo pendiente', detail: 'Quedan pasos de ejecución antes del cierre.' }
-              : { tone: 'border-border bg-muted/10', title: 'Sin alertas operacionales', detail: 'No hay excepciones abiertas en la evidencia disponible.' };
-  const showAttentionDetail = attention.title !== 'Sin alertas operacionales';
 
   return (
     <div className="space-y-5">
@@ -606,39 +593,15 @@ export function Asset360Overview({
         metrics={metrics}
       />
 
-      {showAttentionDetail ? (
-        <Card className={`shadow-none ${attention.tone}`}>
-          <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Atención</p>
-              <p className="mt-1 text-lg font-semibold">{attention.title}</p>
-              {attention.detail ? <p className="mt-1 text-sm text-muted-foreground">{attention.detail}</p> : null}
-            </div>
-            {actionableWorkOrder ? (
-              <Button asChild size="sm">
-                <Link href={`/dashboard/mantenimiento/ordenes-trabajo/cierre?workOrderId=${encodeURIComponent(actionableWorkOrder.work_order_id)}`}>
-                  Continuar trabajo
-                  <ArrowRight className="ml-1 h-4 w-4" />
-                </Link>
-              </Button>
-            ) : null}
-            {!actionableWorkOrder && maintenancePriority ? (
-              <div className="text-right text-xs text-muted-foreground">
-                {maintenancePriority.remaining_meter != null ? (
-                  <p>
-                    Margen: {number(maintenancePriority.remaining_meter, 0)} {maintenancePriority.meter_unit || ''}
-                  </p>
-                ) : null}
-                {maintenancePriority.projected_due_at ? (
-                  <p className="mt-1">Proyección: {date(maintenancePriority.projected_due_at)}</p>
-                ) : maintenancePriority.scheduled_date ? (
-                  <p className="mt-1">Programado: {date(maintenancePriority.scheduled_date)}</p>
-                ) : null}
-              </div>
-            ) : null}
-          </CardContent>
-        </Card>
-      ) : null}
+      <Asset360AttentionCard
+        criticalOpen={summary.criticalOpen}
+        overduePreventives={summary.overduePreventives}
+        operationalBlockers={summary.operationalBlockers}
+        pendingPlanSteps={summary.pendingPlanSteps}
+        planningPriorityText={planningPriorityText}
+        actionableWorkOrder={actionableWorkOrder}
+        maintenancePriority={maintenancePriority}
+      />
 
       <details className="group rounded-lg border border-border bg-card" open={maintenanceNeedsAttention}>
         <SectionSummary
