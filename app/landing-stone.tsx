@@ -163,6 +163,8 @@ export default function LandingStone() {
       for (let i = 0; i < position.count; i++) {
         v.fromBufferAttribute(position, i).normalize();
         const r = rockRadius(v.x, v.y, v.z);
+        // Squash is applied to the silhouette only; vStoneDir in the shader
+        // uses the unsquashed direction, which is what the vein field keys on.
         position.setXYZ(i, v.x * r, v.y * r * 0.94, v.z * r);
       }
       geometry.computeVertexNormals();
@@ -183,21 +185,21 @@ export default function LandingStone() {
           .replace(
             '#include <color_fragment>',
             `#include <color_fragment>
-float vVein = stoneVein(vStoneDir);
+float vein = stoneVein(vStoneDir);
 vec3 stoneBody = mix(vec3(0.035, 0.033, 0.03), vec3(0.095, 0.09, 0.082), stoneFbm(vStoneDir * 3.0 + 60.0));
-diffuseColor.rgb *= mix(stoneBody, vec3(0.85, 0.42, 0.2), pow(vVein, 0.75));`
+diffuseColor.rgb *= mix(stoneBody, vec3(0.85, 0.42, 0.2), pow(vein, 0.75));`
           )
           .replace(
             '#include <roughnessmap_fragment>',
-            '#include <roughnessmap_fragment>\nroughnessFactor = mix(roughnessFactor, 0.2, vVein);'
+            '#include <roughnessmap_fragment>\nroughnessFactor = mix(roughnessFactor, 0.2, vein);'
           )
           .replace(
             '#include <metalnessmap_fragment>',
-            '#include <metalnessmap_fragment>\nmetalnessFactor = mix(metalnessFactor, 0.95, vVein);'
+            '#include <metalnessmap_fragment>\nmetalnessFactor = mix(metalnessFactor, 0.95, vein);'
           )
           .replace(
             '#include <emissivemap_fragment>',
-            '#include <emissivemap_fragment>\ntotalEmissiveRadiance += vec3(0.5, 0.2, 0.08) * (vVein * vVein) * 0.35;'
+            '#include <emissivemap_fragment>\ntotalEmissiveRadiance += vec3(0.5, 0.2, 0.08) * (vein * vein) * 0.35;'
           );
       };
       const rock = new THREE.Mesh(geometry, material);
