@@ -41,6 +41,10 @@ const coverageSection = fs.readFileSync(
   'components/maintenance/asset-360/coverage-section.tsx',
   'utf8',
 );
+const identityHeader = fs.readFileSync(
+  'components/maintenance/asset-360/identity-header.tsx',
+  'utf8',
+);
 
 test('asset 360 coverage section owns the reconciliation and identity history types', () => {
   assert.match(coverageSection, /export type Asset360FinanceReconciliation = \{/);
@@ -355,4 +359,50 @@ test('asset 360 overview still renders through the shared primitives', () => {
   assert.match(overview, /number\(/);
   assert.match(overview, /money\(/);
   assert.match(overview, /date\(/);
+});
+
+
+test('asset 360 identity header owns the header asset and item types', () => {
+  assert.match(identityHeader, /export type Asset360IdentityItem = readonly \[string, string, LucideIcon, string \| null\];/);
+  assert.match(identityHeader, /export type Asset360DetailItem = readonly \[string, string, LucideIcon, string\?\];/);
+  assert.match(identityHeader, /export type Asset360HeaderMetric = readonly \[string, string \| number, LucideIcon\];/);
+  assert.match(identityHeader, /export type Asset360HeaderAsset = \{/);
+  assert.match(identityHeader, /cost_center_evidence_source\?: string \| null;/);
+  assert.match(identityHeader, /license_plate_evidence_source\?: string \| null;/);
+  assert.match(identityHeader, /reference_family_evidence_at\?: string \| null;/);
+  assert.match(identityHeader, /operational_status_reason\?: string \| null;/);
+});
+
+test('asset 360 identity header renders image, identity, metrics and technical details', () => {
+  assert.match(identityHeader, /export function Asset360IdentityHeader\(/);
+  assert.match(identityHeader, /const \[failedImageSrc, setFailedImageSrc\] = useState<string \| null>\(null\);/);
+  assert.match(identityHeader, /getEquipmentImageMeta\(/);
+  assert.match(identityHeader, /Referencia de modelo/);
+  assert.match(identityHeader, /Imagen no disponible\. La ficha sigue operativa\./);
+  assert.match(identityHeader, /Centro de costo/);
+  assert.match(identityHeader, /Recuperada desde evidencia operacional/);
+  assert.match(identityHeader, /Recuperada desde el nombre del activo/);
+  assert.match(identityHeader, /Datos técnicos/);
+  assert.match(identityHeader, /Identificación física del equipo/);
+  assert.match(identityHeader, /Ver QR/);
+  assert.match(identityHeader, /assetDetails\.length\} datos/);
+  assert.match(identityHeader, /Ficha técnica/);
+  assert.match(identityHeader, /metrics\.map\(\(\[label, value, Icon\]\)/);
+});
+
+test('asset 360 overview delegates the identity header to the identity header component', () => {
+  assert.match(overview, /from '@\/components\/maintenance\/asset-360\/identity-header'/);
+  assert.match(overview, /<Asset360IdentityHeader[ \n]/);
+  assert.match(overview, /assetNoun=\{noun\}/);
+  assert.match(overview, /basePath=\{basePath\}/);
+  assert.match(overview, /displayStatus=\{displayStatus\}/);
+  assert.match(overview, /displayCriticality=\{displayCriticality\}/);
+  assert.match(overview, /metrics=\{metrics\}/);
+  assert.doesNotMatch(overview, /Referencia de modelo/);
+  assert.doesNotMatch(overview, /Datos técnicos/);
+  assert.doesNotMatch(overview, /const primaryIdentity = \[/);
+  assert.doesNotMatch(overview, /const assetDetails = \[/);
+  assert.doesNotMatch(overview, /const technicalIdentity = \[/);
+  assert.doesNotMatch(overview, /getEquipmentImageMeta/);
+  assert.doesNotMatch(overview, /failedImageSrc/);
 });
