@@ -4,71 +4,22 @@ import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
 import type * as THREE from 'three';
 
-/* Real 3D hero stone (WebGL, like resend's cube): a procedural recreation of
-   the canonical MOTIL mineral — near-black smoky-quartz body with crisp
-   metallic copper veins — as an organic displaced-sphere rock, lit warm from
-   the front and copper from behind, on the canonical dark palette.
+/* Real 3D hero stone (WebGL, like resend's cube): the authored MOTIL mineral
+   model (public/brand/motil-stone-3d.glb) shaded with the canonical MOTIL
+   mineral look — near-black smoky-quartz body with crisp metallic copper
+   veins, per-pixel in the fragment shader — lit warm from the front and
+   copper from behind, on the canonical dark palette.
    - Idle: continuous slow turntable rotation + subtle float.
    - Pointer: tilts the specimen toward the cursor (eased).
    - prefers-reduced-motion: renders a single static frame, no loop.
-   If WebGL is unavailable, the canonical PNG specimen is used instead. */
+   If WebGL is unavailable or the model fails to load, the canonical PNG
+   specimen is used instead. */
 
 const POINTER_TILT_RAD = 0.38;
-
-/* ---- Deterministic 3D value noise (hand-rolled, no addons) ---- */
-
-function hash3(ix: number, iy: number, iz: number, seed: number) {
-  const s = Math.sin(ix * 127.1 + iy * 311.7 + iz * 74.7 + seed * 269.5) * 43758.5453;
-  return s - Math.floor(s);
-}
-
-const fade = (t: number) => t * t * (3 - 2 * t);
-
-function valueNoise3(x: number, y: number, z: number, seed: number) {
-  const ix = Math.floor(x);
-  const iy = Math.floor(y);
-  const iz = Math.floor(z);
-  const fx = fade(x - ix);
-  const fy = fade(y - iy);
-  const fz = fade(z - iz);
-  const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
-  const c000 = hash3(ix, iy, iz, seed);
-  const c100 = hash3(ix + 1, iy, iz, seed);
-  const c010 = hash3(ix, iy + 1, iz, seed);
-  const c110 = hash3(ix + 1, iy + 1, iz, seed);
-  const c001 = hash3(ix, iy, iz + 1, seed);
-  const c101 = hash3(ix + 1, iy, iz + 1, seed);
-  const c011 = hash3(ix, iy + 1, iz + 1, seed);
-  const c111 = hash3(ix + 1, iy + 1, iz + 1, seed);
-  return lerp(
-    lerp(lerp(c000, c100, fx), lerp(c010, c110, fx), fy),
-    lerp(lerp(c001, c101, fx), lerp(c011, c111, fx), fy),
-    fz
-  );
-}
-
-function fbm3(x: number, y: number, z: number, seed: number, octaves = 4) {
-  let amp = 0.5;
-  let freq = 1;
-  let sum = 0;
-  let norm = 0;
-  for (let o = 0; o < octaves; o++) {
-    sum += amp * valueNoise3(x * freq, y * freq, z * freq, seed + o * 7.13);
-    norm += amp;
-    amp *= 0.5;
-    freq *= 2.1;
-  }
-  return sum / norm; // 0..1
-}
-
-/* Organic rock silhouette: lumps + creases + sharp detail (JS, per-vertex). */
-function rockRadius(dx: number, dy: number, dz: number) {
-  const lumps = fbm3(dx * 1.5 + 5, dy * 1.5 + 5, dz * 1.5 + 5, 1);
-  const detail = fbm3(dx * 4 + 9, dy * 4 + 9, dz * 4 + 9, 2, 3);
-  const crease = 1 - Math.abs(2 * fbm3(dx * 2.6 + 2, dy * 2.6 + 2, dz * 2.6 + 2, 3, 3) - 1);
-  const sharp = fbm3(dx * 8 + 14, dy * 8 + 14, dz * 8 + 14, 4, 2);
-  return 1.3 * (0.8 + lumps * 0.28 + detail * 0.11 + crease * 0.14 + sharp * 0.08);
-}
+const STONE_GLB_URL = '/brand/motil-stone-3d.glb';
+/* Bounding-sphere radius the authored model is normalized to (camera sits at
+   z = 5.1 with fov 30 — keep both in sync with any framing change). */
+const STONE_RADIUS = 1.55;
 
 /* Copper veins + mineral tones run per-pixel in the fragment shader
    (STONE_GLSL) so the vein lines stay razor-thin at any resolution. */
@@ -156,18 +107,25 @@ export default function LandingStone() {
       const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 50);
       camera.position.set(0, 0.1, 5.1);
 
-      // Organic mineral silhouette: displaced indexed sphere, smooth normals.
-      const geometry = new THREE.SphereGeometry(1, 120, 84);
-      const position = geometry.getAttribute('position');
-      const v = new THREE.Vector3();
-      for (let i = 0; i < position.count; i++) {
-        v.fromBufferAttribute(position, i).normalize();
-        const r = rockRadius(v.x, v.y, v.z);
-        // Squash is applied to the silhouette only; vStoneDir in the shader
-        // uses the unsquashed direction, which is what the vein field keys on.
-        position.setXYZ(i, v.x * r, v.y * r * 0.94, v.z * r);
+      // Authored mineral model, normalized to a known bounding-sphere radius
+      // and re-centered so it orbits the view axis regardless of source scale.
+      const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
+      const gltf = await new Promise<{ scene: THREE.Group }>((resolve, reject) => {
+        new GLTFLoader().load(STONE_GLB_URL, resolve, undefined, reject);
+      });
+      if (disposed) {
+        renderer.dispose();
+        renderer.domElement.remove();
+        return;
       }
-      geometry.computeVertexNormals();
+      const specimen = gltf.scene;
+      {
+        const bounds = new THREE.Box3().setFromObject(specimen);
+        const sphere = bounds.getBoundingSphere(new THREE.Sphere());
+        const scale = STONE_RADIUS / (sphere.radius || 1);
+        specimen.scale.setScalar(scale);
+        specimen.position.sub(sphere.center.clone().multiplyScalar(scale));
+      }
 
       const material = new THREE.MeshStandardMaterial({
         color: 0xffffff,
@@ -175,7 +133,8 @@ export default function LandingStone() {
         metalness: 0.2,
       });
       // Per-pixel mineral body + copper veins; veins metallic and slightly
-      // emissive, body stays rough near-black quartz.
+      // emissive, body stays rough near-black quartz. The authored GLB ships
+      // without materials, so the canonical look is applied to every mesh.
       material.onBeforeCompile = (shader) => {
         shader.vertexShader = shader.vertexShader
           .replace('#include <common>', '#include <common>\nvarying vec3 vStoneDir;')
@@ -202,12 +161,17 @@ diffuseColor.rgb *= mix(stoneBody, vec3(0.85, 0.42, 0.2), pow(vein, 0.75));`
             '#include <emissivemap_fragment>\ntotalEmissiveRadiance += vec3(0.5, 0.2, 0.08) * (vein * vein) * 0.35;'
           );
       };
-      const rock = new THREE.Mesh(geometry, material);
+      specimen.traverse((node) => {
+        if ((node as THREE.Mesh).isMesh) {
+          node.castShadow = false;
+          (node as THREE.Mesh).material = material;
+        }
+      });
 
       const tiltGroup = new THREE.Group();
-      tiltGroup.add(rock);
+      tiltGroup.add(specimen);
       tiltGroup.rotation.x = 0.12;
-      rock.rotation.y = 0.9; // start on a vein-rich face
+      specimen.rotation.y = 0.9; // start on a vein-rich face
       scene.add(tiltGroup);
 
       // Warm key from the front-top, copper rim from behind, faint fill.
@@ -249,14 +213,14 @@ diffuseColor.rgb *= mix(stoneBody, vec3(0.85, 0.42, 0.2), pow(vein, 0.75));`
 
         if (!reduceMotion) {
           autoRot += dt * 0.45; // resend-style turntable
-          rock.position.y = Math.sin(elapsed * 0.8) * 0.06;
+          specimen.position.y = Math.sin(elapsed * 0.8) * 0.06;
           const k = 1 - Math.pow(1 - 0.08, dt * 60);
           tiltX += (targetTiltX - tiltX) * k;
           tiltY += (targetTiltY - tiltY) * k;
           tiltGroup.rotation.x = tiltX;
           tiltGroup.rotation.y = tiltY;
         }
-        rock.rotation.y = 0.9 + autoRot;
+        specimen.rotation.y = 0.9 + autoRot;
 
         renderer.render(scene, camera);
         raf = requestAnimationFrame(frame);
@@ -287,7 +251,9 @@ diffuseColor.rgb *= mix(stoneBody, vec3(0.85, 0.42, 0.2), pow(vein, 0.75));`
         observer.disconnect();
         stage.removeEventListener('pointermove', onMove);
         stage.removeEventListener('pointerleave', onLeave);
-        geometry.dispose();
+        specimen.traverse((node) => {
+          if ((node as THREE.Mesh).isMesh) (node as THREE.Mesh).geometry.dispose();
+        });
         material.dispose();
         renderer.dispose();
         renderer.domElement.remove();
