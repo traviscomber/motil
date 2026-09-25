@@ -49,6 +49,10 @@ const attentionCard = fs.readFileSync(
   'components/maintenance/asset-360/attention-card.tsx',
   'utf8',
 );
+const maintenanceSection = fs.readFileSync(
+  'components/maintenance/asset-360/maintenance-section.tsx',
+  'utf8',
+);
 
 test('asset 360 coverage section owns the reconciliation and identity history types', () => {
   assert.match(coverageSection, /export type Asset360FinanceReconciliation = \{/);
@@ -444,4 +448,44 @@ test('asset 360 overview delegates attention rendering to the attention card', (
   assert.doesNotMatch(overview, /Sin alertas operacionales/);
   assert.doesNotMatch(overview, /const attention = summary/);
   assert.doesNotMatch(overview, /showAttentionDetail/);
+});
+
+
+test('asset 360 maintenance section owns the preventive and reliability types', () => {
+  assert.match(maintenanceSection, /export type Asset360NextPreventive = \{/);
+  assert.match(maintenanceSection, /schedule_id: string;/);
+  assert.match(maintenanceSection, /alert_due\?: boolean;/);
+  assert.match(maintenanceSection, /export type Asset360Reliability = \{/);
+  assert.match(maintenanceSection, /audited_closures\?: number;/);
+  assert.match(maintenanceSection, /export type Asset360RuntimeReliability = \{/);
+  assert.match(maintenanceSection, /valid_mtbf_intervals\?: number;/);
+  assert.match(maintenanceSection, /import type \{ Asset360ActionableWorkOrder \} from '\.\/attention-card';/);
+});
+
+test('asset 360 maintenance section renders next preventive, execution and reliability', () => {
+  assert.match(maintenanceSection, /export function Asset360MaintenanceSection\(/);
+  assert.match(maintenanceSection, /const mtbf =/);
+  assert.match(maintenanceSection, /const showExecutionCard = Boolean\(/);
+  assert.match(maintenanceSection, /open=\{maintenanceNeedsAttention\}/);
+  assert.match(maintenanceSection, /Próxima intervención/);
+  assert.match(maintenanceSection, /Trabajo en curso/);
+  assert.match(maintenanceSection, /Confiabilidad auditada/);
+  assert.match(maintenanceSection, /Abrir pauta/);
+  assert.match(maintenanceSection, /Ver confiabilidad/);
+  assert.match(maintenanceSection, /Sin cierres auditados suficientes para métricas de confiabilidad/);
+});
+
+test('asset 360 overview delegates maintenance rendering to the maintenance section', () => {
+  assert.match(overview, /from '@\/components\/maintenance\/asset-360\/maintenance-section'/);
+  assert.match(overview, /<Asset360MaintenanceSection[ \n]/);
+  assert.match(overview, /nextPreventive=\{nextPreventive\}/);
+  assert.match(overview, /runtimeResetCount=\{Number\(runtime\?\.reset_count \|\| 0\)\}/);
+  assert.match(overview, /runtimeReliability=\{data\.runtimeReliability\}/);
+  assert.match(overview, /nextPreventive\?: Asset360NextPreventive;/);
+  assert.match(overview, /reliability\?: Asset360Reliability;/);
+  assert.match(overview, /runtimeReliability\?: Asset360RuntimeReliability;/);
+  assert.doesNotMatch(overview, /Confiabilidad auditada/);
+  assert.doesNotMatch(overview, /const showExecutionCard = Boolean\(/);
+  assert.doesNotMatch(overview, /const mtbf =/);
+  assert.doesNotMatch(overview, /maintenanceNeedsAttention/);
 });
