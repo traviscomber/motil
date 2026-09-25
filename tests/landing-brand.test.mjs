@@ -73,9 +73,7 @@ test('hero stone is a real 3d webgl scene with graceful fallback', () => {
   assert.match(css, /aspect-ratio: 1 \/ 1/);
   assert.doesNotMatch(stone, /\bclick\b/); // rotation only, no click gimmick
   assert.doesNotMatch(stone, /setInterval/);
-  assert.match(stone, /motil-stone-3d\.glb/); // authored model shipped in public/brand
-  assert.match(stone, /GLTFLoader/);
-  assert.doesNotMatch(stone, /three\/examples(?!\/jsm\/loaders\/GLTFLoader\.js)/); // GLTFLoader is the only examples/ addon
+  assert.doesNotMatch(stone, /\bthree\/examples/); // no examples/ addons
   assert.doesNotMatch(stone, /addEventListener\('click'/); // rotation only, no click gimmick
 });
 
