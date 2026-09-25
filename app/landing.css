@@ -39,11 +39,6 @@
   font-size: clamp(2.125rem, 1.3rem + 2.2vw, 3rem); /* 34px → 48px */
   line-height: 1.14;
 }
-.motil-landing .ld-h3 {
-  font-size: clamp(1.5rem, 1.2rem + 0.9vw, 2rem); /* 24px → 32px */
-  line-height: 1.2;
-}
-
 .motil-landing .ld-accent {
   color: var(--ld-accent);
 }
@@ -72,12 +67,6 @@
   color: var(--ld-text-2);
   max-width: 34em;
 }
-.motil-landing .ld-label {
-  font-size: 12px;
-  letter-spacing: 0.24em;
-  text-transform: uppercase;
-  color: var(--ld-text-3);
-}
 
 /* Sharp, minimal MOTIL buttons — never pill-shaped. */
 .motil-landing .ld-btn {
@@ -98,9 +87,11 @@
 .motil-landing .ld-btn-solid {
   background: var(--ld-accent);
   color: var(--ld-text);
+  border-color: transparent;
 }
 .motil-landing .ld-btn-solid:hover {
-  background: #96503c;
+  background: var(--ld-accent);
+  border-color: var(--ld-accent-detail);
 }
 .motil-landing .ld-btn-ghost {
   background: transparent;
@@ -109,6 +100,7 @@
 }
 .motil-landing .ld-btn-ghost:hover {
   border-color: var(--ld-text-2);
+  background: var(--ld-bg-3);
 }
 
 /* Sections: desktop framed as full-height 16:9-style compositions. */
@@ -352,6 +344,7 @@
 .motil-landing .ld-footer-strip {
   position: absolute;
   inset: auto 0 0 0;
+  background: var(--ld-bg-2);
   border-top: 1px solid var(--ld-line);
   padding: 26px clamp(24px, 6vw, 96px);
   display: flex;

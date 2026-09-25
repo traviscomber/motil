@@ -24,8 +24,15 @@ test('landing uses the canonical mineral palette and never pure white or gradien
   }
   assert.doesNotMatch(css, /#fff\b/i);
   assert.doesNotMatch(page, /#fff\b/i);
-  assert.doesNotMatch(css, /gradient/);
-  assert.doesNotMatch(page, /gradient/);
+  assert.doesNotMatch(css, /(#ffffff|rgb\(255,\s*255,\s*255\))/i);
+  assert.doesNotMatch(page, /(#ffffff|rgb\(255,\s*255,\s*255\))/i);
+  assert.doesNotMatch(css, /gradient/i);
+  assert.doesNotMatch(page, /gradient/i);
+});
+
+test('landing keeps the sharp geometric button language', () => {
+  assert.match(css, /border-radius: 0/);
+  assert.doesNotMatch(css, /border-radius:\s*[1-9]/);
 });
 
 test('landing typography pairs Manrope headers with Montserrat body', () => {
