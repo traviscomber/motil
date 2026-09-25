@@ -10,7 +10,6 @@ import {
   Coins,
   Gauge,
   RefreshCw,
-  Timer,
   Wrench,
   type LucideIcon,
 } from 'lucide-react';
@@ -23,6 +22,10 @@ import {
   number,
 } from '@/components/maintenance/asset-360/format';
 import { Asset360AttentionCard } from '@/components/maintenance/asset-360/attention-card';
+import {
+  Asset360AvailabilitySection,
+  Asset360OperationalState,
+} from '@/components/maintenance/asset-360/availability-section';
 import { Asset360IdentityHeader } from '@/components/maintenance/asset-360/identity-header';
 import {
   Asset360MaintenanceSection,
@@ -177,31 +180,7 @@ type Asset360Response = {
     last_telemetry_at?: string | null;
     evidence_domain_count?: number | string | null;
   } | null;
-  operationalState?: {
-    operational_status?: string | null;
-    criticality?: string | null;
-    location?: string | null;
-    recognized_cost_event_count?: number | string | null;
-    last_cost_at?: string | null;
-    recognized_cost_clp_lifetime?: number | string | null;
-    recognized_cost_clp_ytd?: number | string | null;
-    recognized_cost_clp_12m?: number | string | null;
-    work_order_count?: number | string | null;
-    open_work_order_count?: number | string | null;
-    recorded_downtime_hours?: number | string | null;
-    drilling_report_count?: number | string | null;
-    drilled_meters?: number | string | null;
-    last_drilling_date?: string | null;
-    sensor_count?: number | string | null;
-    sensor_reading_count?: number | string | null;
-    evidence_domain_count?: number | string | null;
-    availability_evidence_status?: string | null;
-    availability_pct?: number | string | null;
-    last_availability_date?: string | null;
-    availability_days_30d?: number | string | null;
-    scheduled_minutes_30d?: number | string | null;
-    downtime_minutes_30d?: number | string | null;
-  } | null;
+  operationalState?: Asset360OperationalState;
   supplyChain?: Asset360SupplyChainRow[];
   purchaseHistorySummary?: Asset360PurchaseHistorySummary;
   costCenterPurchaseHistory?: Asset360CostCenterPurchaseLine[];
@@ -374,7 +353,6 @@ export function Asset360Overview({
   const runtimeCostIntelligence = data.runtimeCostIntelligence;
   const maintenanceTaskCandidates = data.maintenanceTaskCandidates || [];
   const standardJobPlans = data.standardJobPlans || [];
-  const generatedAt = data.generatedAt;
   const meterHistory = data.meterHistory || [];
   const drillOperationalEvidence = data.drillOperationalEvidence;
   const drillEconomicsChange = data.drillEconomicsChange;
@@ -486,12 +464,6 @@ export function Asset360Overview({
     runtimeCostIntelligence?.latest_meter_hours != null ||
     defendableNextPreventiveMeter;
   const hasEconomicEvidence = economicHistory.length > 0 || Number(operationalState?.recognized_cost_event_count || 0) > 0;
-  const hasAvailabilityEvidence = Boolean(
-    operationalState?.last_availability_date ||
-    operationalState?.availability_pct != null ||
-    operationalState?.recorded_downtime_hours != null ||
-    Number(operationalState?.open_work_order_count || 0) > 0
-  );
   const hasLifecycleEvidence = Boolean(
     asset.acquisition_date ||
     asset.acquisition_cost != null ||
@@ -563,38 +535,10 @@ export function Asset360Overview({
         runtimeReliability={data.runtimeReliability}
       />
 
-      {hasAvailabilityEvidence ? (
-      <details className="group rounded-lg border border-border bg-card">
-        <SectionSummary
-          title="Disponibilidad"
-          hint={operationalState?.last_availability_date
-            ? `${operationalState.availability_pct != null ? `${number(operationalState.availability_pct, 1)}%` : 'Sin base'} · ${operationalState.open_work_order_count || 0} OT abiertas`
-            : 'Sin base de disponibilidad'}
-        />
-        <div className="grid gap-4 border-t border-border p-4 sm:grid-cols-2 lg:grid-cols-3">
-          <IdentityItem
-            icon={Activity}
-            label="Disponibilidad"
-            value={operationalState?.availability_pct != null ? `${number(operationalState.availability_pct, 1)}%` : 'Sin base'}
-            meta={operationalState?.last_availability_date
-              ? `Fecha de corte ${date(operationalState.last_availability_date)}`
-              : operationalState?.availability_evidence_status || (operationalState?.availability_days_30d ? 'Período: últimos 30 días' : 'Sin fecha de corte')}
-          />
-          <IdentityItem
-            icon={Timer}
-            label="Detención registrada"
-            value={operationalState?.recorded_downtime_hours != null ? `${number(operationalState.recorded_downtime_hours, 1)} h` : 'Sin base'}
-            meta={generatedAt ? `Acumulado al corte ${date(generatedAt)}` : null}
-          />
-          <IdentityItem
-            icon={Wrench}
-            label="OT abiertas"
-            value={operationalState?.open_work_order_count}
-            meta={generatedAt ? `Estado consultado ${date(generatedAt)}` : null}
-          />
-        </div>
-      </details>
-      ) : null}
+      <Asset360AvailabilitySection
+        operationalState={operationalState}
+        generatedAt={data.generatedAt}
+      />
 
       <Card className="border-border/80 shadow-none">
         <CardContent className="p-5">
