@@ -5,6 +5,7 @@ import fs from 'node:fs';
 const page = fs.readFileSync('app/page-home.tsx', 'utf8');
 const css = fs.readFileSync('app/landing.css', 'utf8');
 const layout = fs.readFileSync('app/layout.tsx', 'utf8');
+const stone = fs.readFileSync('app/landing-stone.tsx', 'utf8');
 
 test('landing has exactly four principal sections in canonical order', () => {
   const sections = [...page.matchAll(/data-landing-section="([^"]+)"/g)].map((m) => m[1]);
@@ -57,7 +58,18 @@ test('landing hero states one operation one source of truth better decisions', (
   assert.match(page, /One source of truth\./);
   assert.match(page, /Better decisions\./);
   assert.match(page, /Mining Operating System/);
-  assert.match(page, /hero-stone\.png/);
+  assert.match(page, /LandingStone/);
+  assert.match(stone, /hero-stone\.png/);
+});
+
+test('hero stone interaction respects motion preferences and accessibility', () => {
+  assert.match(stone, /requestAnimationFrame/);
+  assert.match(stone, /prefers-reduced-motion/);
+  assert.match(stone, /aria-label/);
+  assert.match(stone, /pointermove/);
+  assert.match(css, /perspective: 900px/);
+  assert.match(css, /prefers-reduced-motion/);
+  assert.doesNotMatch(stone, /setInterval/);
 });
 
 test('landing keeps numbered eyebrows and the commercial Chile LATAM section', () => {
