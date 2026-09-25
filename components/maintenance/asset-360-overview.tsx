@@ -32,6 +32,7 @@ import {
   number,
 } from '@/components/maintenance/asset-360/format';
 import { IdentityItem, SectionSummary } from '@/components/maintenance/asset-360/primitives';
+import { Asset360LifecycleSection } from '@/components/maintenance/asset-360/lifecycle-section';
 import {
   Asset360MaterialsSection,
   Asset360PartsRow,
@@ -1239,36 +1240,14 @@ export function Asset360Overview({
         latestPlanPartsStatus={latestPlan?.parts_status_raw}
       />
 
-      {hasLifecycleEvidence ? (
-        <details className="group rounded-lg border border-border bg-card">
-          <SectionSummary
-            title="Ciclo de vida"
-            hint={remainingLifeYears != null
-              ? `${number(remainingLifeYears, 1)} años remanentes estimados`
-              : asset.acquisition_date
-                ? `Adquirido ${date(asset.acquisition_date)}`
-                : 'Vida útil no informada'}
-          />
-          <div className="border-t border-border">
-            <div className="grid gap-4 p-4 sm:grid-cols-3">
-              <IdentityItem icon={CalendarDays} label="Adquisición" value={date(asset.acquisition_date)} />
-              <IdentityItem icon={Timer} label="Edad estimada" value={assetAgeYears != null ? `${number(assetAgeYears, 1)} años` : 'No informado'} />
-              <IdentityItem
-                icon={Activity}
-                label="Vida remanente"
-                value={remainingLifeYears != null ? `${number(remainingLifeYears, 1)} años` : 'No informado'}
-                meta={expectedLifespan != null ? `Vida esperada ${number(expectedLifespan, 0)} años` : null}
-              />
-            </div>
-            {asset.acquisition_cost != null ? (
-              <div className="border-t border-border px-4 py-3">
-                <p className="text-xs text-muted-foreground">Costo de adquisición</p>
-                <p className="mt-1 text-sm font-medium">{money(asset.acquisition_cost)}</p>
-              </div>
-            ) : null}
-          </div>
-        </details>
-      ) : null}
+      <Asset360LifecycleSection
+        hasLifecycleEvidence={hasLifecycleEvidence}
+        assetAgeYears={assetAgeYears}
+        expectedLifespan={expectedLifespan}
+        remainingLifeYears={remainingLifeYears}
+        acquisitionDate={asset.acquisition_date}
+        acquisitionCost={asset.acquisition_cost}
+      />
 
       <details className="group rounded-lg border border-border bg-card">
         <SectionSummary

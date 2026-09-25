@@ -33,6 +33,30 @@ const materialsSection = fs.readFileSync(
   'components/maintenance/asset-360/materials-section.tsx',
   'utf8',
 );
+const lifecycleSection = fs.readFileSync(
+  'components/maintenance/asset-360/lifecycle-section.tsx',
+  'utf8',
+);
+
+test('asset 360 lifecycle section renders age, remaining life and acquisition', () => {
+  assert.match(lifecycleSection, /export function Asset360LifecycleSection\(/);
+  assert.match(lifecycleSection, /if \(!hasLifecycleEvidence\) return null;/);
+  assert.match(lifecycleSection, /title="Ciclo de vida"/);
+  assert.match(lifecycleSection, /Edad estimada/);
+  assert.match(lifecycleSection, /Vida remanente/);
+  assert.match(lifecycleSection, /Costo de adquisición/);
+  assert.match(lifecycleSection, /assetAgeYears: number \| null;/);
+  assert.match(lifecycleSection, /remainingLifeYears: number \| null;/);
+});
+
+test('asset 360 overview delegates lifecycle rendering to the lifecycle section', () => {
+  assert.match(overview, /from '@\/components\/maintenance\/asset-360\/lifecycle-section'/);
+  assert.match(overview, /<Asset360LifecycleSection[ \n]/);
+  assert.match(overview, /remainingLifeYears=\{remainingLifeYears\}/);
+  assert.match(overview, /acquisitionDate=\{asset\.acquisition_date\}/);
+  assert.doesNotMatch(overview, /Edad estimada/);
+  assert.doesNotMatch(overview, /Costo de adquisición/);
+});
 
 test('asset 360 materials section owns the shared parts row type', () => {
   assert.match(materialsSection, /export type Asset360PartsRow = \{/);
