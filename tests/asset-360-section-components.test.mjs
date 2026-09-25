@@ -37,6 +37,42 @@ const lifecycleSection = fs.readFileSync(
   'components/maintenance/asset-360/lifecycle-section.tsx',
   'utf8',
 );
+const coverageSection = fs.readFileSync(
+  'components/maintenance/asset-360/coverage-section.tsx',
+  'utf8',
+);
+
+test('asset 360 coverage section owns the reconciliation and identity history types', () => {
+  assert.match(coverageSection, /export type Asset360FinanceReconciliation = \{/);
+  assert.match(coverageSection, /reconciliation_status\?: string \| null;/);
+  assert.match(coverageSection, /export type Asset360IdentityHistoryRow = \{/);
+  assert.match(coverageSection, /canonicalized\?: boolean \| null;/);
+  assert.match(coverageSection, /export type Asset360CoverageAsset = \{/);
+  assert.match(coverageSection, /evidenceSourceLabel = \(source\?: string \| null\)/);
+});
+
+test('asset 360 coverage section renders evidence gaps and technical traceability', () => {
+  assert.match(coverageSection, /export function Asset360CoverageSection\(/);
+  assert.match(coverageSection, /title="Cobertura y trazabilidad"/);
+  assert.match(coverageSection, /Brechas de evidencia/);
+  assert.match(coverageSection, /Trazabilidad técnica/);
+  assert.match(coverageSection, /Fuente maestra/);
+  assert.match(coverageSection, /Conciliación financiera/);
+  assert.match(coverageSection, /alias históricos aprobados/);
+  assert.match(coverageSection, /const sourceLabel = asset\.source_file\?\.startsWith\('public\.'\)/);
+});
+
+test('asset 360 overview delegates coverage rendering to the coverage section', () => {
+  assert.match(overview, /from '@\/components\/maintenance\/asset-360\/coverage-section'/);
+  assert.match(overview, /<Asset360CoverageSection[ \n]/);
+  assert.match(overview, /coverageItems=\{coverageItems\}/);
+  assert.match(overview, /financeReconciliation=\{financeReconciliation\}/);
+  assert.match(overview, /financeReconciliation\?: Asset360FinanceReconciliation;/);
+  assert.match(overview, /identityHistory\?: Asset360IdentityHistoryRow\[\];/);
+  assert.doesNotMatch(overview, /Brechas de evidencia/);
+  assert.doesNotMatch(overview, /Trazabilidad técnica/);
+  assert.doesNotMatch(overview, /evidenceSourceLabel/);
+});
 
 test('asset 360 lifecycle section renders age, remaining life and acquisition', () => {
   assert.match(lifecycleSection, /export function Asset360LifecycleSection\(/);
