@@ -82,9 +82,10 @@ test('landing keeps numbered eyebrows and the commercial Chile LATAM section', (
   assert.match(page, /02 — Built for mining/);
   assert.match(page, /03 — Chile \/ LATAM/);
   assert.match(page, /Built in Chile\./);
-  assert.match(page, /mining-truck\.jpg/);
-  assert.match(page, /latam-stone\.png/);
-  assert.match(page, /context-flow\.png/);
+  assert.match(page, /mining-truck\.webp/);
+  assert.match(page, /latam-stone\.webp/);
+  assert.match(page, /context-flow\.webp/);
+  assert.doesNotMatch(page, /context-flow\.png|latam-stone\.png|mining-truck\.jpg/);
 });
 
 test('landing preserves structured data for SEO', () => {

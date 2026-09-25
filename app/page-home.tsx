@@ -86,7 +86,7 @@ export default function HomePage() {
           </div>
           <div className="ld-flow">
             <Image
-              src="/brand/context-flow.png"
+              src="/brand/context-flow.webp"
               alt="Flujo operacional: personas, activos, trabajo, materiales, producción, costo, riesgo y decisiones conectados en una línea"
               width={2400}
               height={800}
@@ -137,7 +137,7 @@ export default function HomePage() {
           </div>
           <div className="ld-mining-photo">
             <Image
-              src="/brand/mining-truck.jpg"
+              src="/brand/mining-truck.webp"
               alt="Camión de acarreo minero en ruta de faena al atardecer, con montañas oscuras al fondo"
               width={2048}
               height={1152}
@@ -163,7 +163,7 @@ export default function HomePage() {
             <p className="ld-latam-meta">CHILE&nbsp;&nbsp;/&nbsp;&nbsp;PERU&nbsp;&nbsp;/&nbsp;&nbsp;LATAM</p>
           </div>
           <Image
-            src="/brand/latam-stone.png"
+            src="/brand/latam-stone.webp"
             alt="Sudamérica esculpida en piedra mineral oscura con vetas de cobre"
             width={1024}
             height={1024}
