@@ -53,6 +53,10 @@ const maintenanceSection = fs.readFileSync(
   'components/maintenance/asset-360/maintenance-section.tsx',
   'utf8',
 );
+const availabilitySection = fs.readFileSync(
+  'components/maintenance/asset-360/availability-section.tsx',
+  'utf8',
+);
 
 test('asset 360 coverage section owns the reconciliation and identity history types', () => {
   assert.match(coverageSection, /export type Asset360FinanceReconciliation = \{/);
@@ -363,10 +367,15 @@ test('asset 360 overview imports the shared helpers instead of defining them', (
 
 test('asset 360 overview still renders through the shared primitives', () => {
   assert.match(overview, /<IdentityItem[ \n]/);
-  assert.match(overview, /<SectionSummary[ \n]/);
   assert.match(overview, /number\(/);
   assert.match(overview, /money\(/);
   assert.match(overview, /date\(/);
+});
+
+test('asset 360 overview delegates section summaries to the extracted sections', () => {
+  assert.doesNotMatch(overview, /<SectionSummary[ \n]/);
+  assert.match(maintenanceSection, /<SectionSummary[ \n]/);
+  assert.match(availabilitySection, /<SectionSummary[ \n]/);
 });
 
 
@@ -488,4 +497,33 @@ test('asset 360 overview delegates maintenance rendering to the maintenance sect
   assert.doesNotMatch(overview, /const showExecutionCard = Boolean\(/);
   assert.doesNotMatch(overview, /const mtbf =/);
   assert.doesNotMatch(overview, /maintenanceNeedsAttention/);
+});
+
+
+test('asset 360 availability section owns the operational state type', () => {
+  assert.match(availabilitySection, /export type Asset360OperationalState = \{/);
+  assert.match(availabilitySection, /availability_pct\?: number \| string \| null;/);
+  assert.match(availabilitySection, /last_availability_date\?: string \| null;/);
+  assert.match(availabilitySection, /downtime_minutes_30d\?: number \| string \| null;/);
+});
+
+test('asset 360 availability section renders availability, downtime and open work orders', () => {
+  assert.match(availabilitySection, /export function Asset360AvailabilitySection\(/);
+  assert.match(availabilitySection, /const hasAvailabilityEvidence = Boolean\(/);
+  assert.match(availabilitySection, /if \(!hasAvailabilityEvidence\) return null;/);
+  assert.match(availabilitySection, /title="Disponibilidad"/);
+  assert.match(availabilitySection, /label="Detención registrada"/);
+  assert.match(availabilitySection, /label="OT abiertas"/);
+  assert.match(availabilitySection, /Período: últimos 30 días/);
+  assert.match(availabilitySection, /Acumulado al corte/);
+});
+
+test('asset 360 overview delegates availability rendering to the availability section', () => {
+  assert.match(overview, /from '@\/components\/maintenance\/asset-360\/availability-section'/);
+  assert.match(overview, /<Asset360AvailabilitySection[ \n]/);
+  assert.match(overview, /operationalState=\{operationalState\}/);
+  assert.match(overview, /generatedAt=\{data\.generatedAt\}/);
+  assert.match(overview, /operationalState\?: Asset360OperationalState;/);
+  assert.doesNotMatch(overview, /Sin base de disponibilidad/);
+  assert.doesNotMatch(overview, /const hasAvailabilityEvidence = Boolean\(/);
 });
