@@ -4,10 +4,12 @@ import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
 import type * as THREE from 'three';
 
-/* Real 3D hero stone (WebGL, like resend's cube): a procedural recreation of
-   the canonical MOTIL mineral — near-black smoky-quartz body with crisp
-   metallic copper veins — as an organic displaced-sphere rock, lit warm from
-   the front and copper from behind, on the canonical dark palette.
+/* Real 3D hero stone (WebGL, like resend's cube): a crystalline recreation
+   of the canonical MOTIL mineral — a flat-shaded displaced icosahedron whose
+   facets are classified per crystal face into near-black smoky quartz and
+   metallic copper (region field + per-facet id, stable under rotation), lit
+   by a warm key, a copper rim and a tiny procedural PMREM studio environment
+   so the metal facets catch real reflections.
    - Idle: continuous slow turntable rotation + subtle float.
    - Pointer: tilts the specimen toward the cursor (eased).
    - prefers-reduced-motion: renders a single static frame, no loop.
@@ -61,17 +63,18 @@ function fbm3(x: number, y: number, z: number, seed: number, octaves = 4) {
   return sum / norm; // 0..1
 }
 
-/* Organic rock silhouette: lumps + creases + sharp detail (JS, per-vertex). */
+/* Organic crystal silhouette: broad lumps + sharp creases (JS, per-vertex).
+   Displaces an icosahedron that is rendered flat-shaded, so the shell breaks
+   into planar crystal facets instead of reading as a smooth sphere. */
 function rockRadius(dx: number, dy: number, dz: number) {
   const lumps = fbm3(dx * 1.5 + 5, dy * 1.5 + 5, dz * 1.5 + 5, 1);
   const detail = fbm3(dx * 4 + 9, dy * 4 + 9, dz * 4 + 9, 2, 3);
   const crease = 1 - Math.abs(2 * fbm3(dx * 2.6 + 2, dy * 2.6 + 2, dz * 2.6 + 2, 3, 3) - 1);
   const sharp = fbm3(dx * 8 + 14, dy * 8 + 14, dz * 8 + 14, 4, 2);
-  return 0.92 * (0.8 + lumps * 0.28 + detail * 0.11 + crease * 0.14 + sharp * 0.08);
+  return 0.92 * (0.74 + lumps * 0.30 + detail * 0.10 + crease * 0.20 + sharp * 0.07);
 }
 
-/* Copper veins + mineral tones run per-pixel in the fragment shader
-   (STONE_GLSL) so the vein lines stay razor-thin at any resolution. */
+/* Mineral tones run per-pixel in the fragment shader (STONE_GLSL). */
 const STONE_GLSL = /* glsl */ `
 float stoneHash(vec3 p) {
   p = fract(p * 0.3183099 + 0.1);
@@ -105,14 +108,6 @@ float stoneFbm(vec3 p) {
     a *= 0.5;
   }
   return s / 0.9375; // normalize to ~0..1
-}
-float stoneVein(vec3 d) {
-  float t1 = stoneFbm(d * 3.1 + 20.0);
-  float main = pow(max(0.0, 1.0 - abs(t1 - 0.5) * 2.0 / 0.14), 3.0);
-  float t2 = stoneFbm(d * 5.3 + 40.0);
-  float sec = pow(max(0.0, 1.0 - abs(t2 - 0.5) * 2.0 / 0.09), 3.0) * 0.5;
-  float region = smoothstep(0.42, 0.72, stoneFbm(d * 1.2 + 80.0));
-  return min(1.0, max(main, sec) * region);
 }
 `;
 
@@ -156,15 +151,16 @@ export default function LandingStone() {
       const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 50);
       camera.position.set(0, 0.1, 5.1);
 
-      // Organic mineral silhouette: displaced indexed sphere, smooth normals.
-      const geometry = new THREE.SphereGeometry(1, 120, 84);
+      // Crystalline shell: displaced icosahedron rendered flat-shaded, so the
+      // surface breaks into planar crystal facets. Facet-classified copper is
+      // keyed on the flat (per-face) normal, which is constant over each
+      // facet — that's what makes the ore read as crystal faces, not paint.
+      const geometry = new THREE.IcosahedronGeometry(1, 24);
       const position = geometry.getAttribute('position');
       const v = new THREE.Vector3();
       for (let i = 0; i < position.count; i++) {
         v.fromBufferAttribute(position, i).normalize();
         const r = rockRadius(v.x, v.y, v.z);
-        // Squash is applied to the silhouette only; vStoneDir in the shader
-        // uses the unsquashed direction, which is what the vein field keys on.
         position.setXYZ(i, v.x * r, v.y * r * 0.94, v.z * r);
       }
       geometry.computeVertexNormals();
@@ -173,33 +169,53 @@ export default function LandingStone() {
         color: 0xffffff,
         roughness: 0.7,
         metalness: 0.2,
+        flatShading: true,
       });
-      // Per-pixel mineral body + copper veins; veins metallic and slightly
-      // emissive, body stays rough near-black quartz.
+      /* Facet-level ore classification, evaluated per crystal face:
+           - each facet gets a stable id from its flat normal;
+           - a low-frequency ore field decides whether the REGION is copper;
+           - inside copper regions the brightest facets (by facing) glow.
+         Quartz facets stay rough and near-black; copper facets are metallic
+         with a warm ember emissive, lit hard by the warm key light. */
       material.onBeforeCompile = (shader) => {
         shader.vertexShader = shader.vertexShader
-          .replace('#include <common>', '#include <common>\nvarying vec3 vStoneDir;')
-          .replace('#include <begin_vertex>', '#include <begin_vertex>\nvStoneDir = normalize(position);');
+          .replace('#include <common>', '#include <common>\nvarying vec3 vStoneDir;\nvarying vec3 vObjPos;')
+          .replace('#include <begin_vertex>', '#include <begin_vertex>\nvStoneDir = normalize(position);\nvObjPos = position;');
         shader.fragmentShader = shader.fragmentShader
-          .replace('#include <common>', `#include <common>\nvarying vec3 vStoneDir;\n${STONE_GLSL}`)
+          .replace('#include <common>', `#include <common>\nvarying vec3 vStoneDir;\nvarying vec3 vObjPos;\n${STONE_GLSL}`)
           .replace(
             '#include <color_fragment>',
             `#include <color_fragment>
-float vein = stoneVein(vStoneDir);
-vec3 stoneBody = mix(vec3(0.035, 0.033, 0.03), vec3(0.095, 0.09, 0.082), stoneFbm(vStoneDir * 3.0 + 60.0));
-diffuseColor.rgb *= mix(stoneBody, vec3(0.85, 0.42, 0.2), pow(vein, 0.75));`
+/* Per-crystal-face normal from screen-space derivatives of the OBJECT-space
+   position: constant across each flat facet and stable as the specimen
+   rotates (a view-space derivative normal would make the ore swim). */
+vec3 fdxO = dFdx(vObjPos);
+vec3 fdyO = dFdy(vObjPos);
+vec3 facetN = normalize(cross(fdxO, fdyO));
+float facetId = stoneHash(floor(facetN * 7.0 + 3.5));
+float oreRegion = stoneFbm(vStoneDir * 2.2 + 20.0);
+float copperRegion = smoothstep(0.50, 0.62, oreRegion + facetId * 0.06);
+vec3 fdxV = dFdx(-vViewPosition);
+vec3 fdyV = dFdy(-vViewPosition);
+vec3 facetNv = normalize(cross(fdxV, fdyV));
+float facetFace = clamp(dot(facetNv, normalize(vec3(0.35, 0.55, 0.75))), 0.0, 1.0);
+/* Region dominates (clustered ore patches, not confetti); within a copper
+   region the light-facing facets shine brightest, the rest stay matte. */
+float copperFacet = copperRegion * (0.45 + 0.55 * smoothstep(0.25, 0.9, facetFace + facetId * 0.25));
+vec3 quartz = mix(vec3(0.024, 0.022, 0.021), vec3(0.070, 0.066, 0.061), stoneFbm(vStoneDir * 3.0 + 60.0));
+diffuseColor.rgb *= mix(quartz, vec3(0.72, 0.33, 0.13), copperFacet);`
           )
           .replace(
             '#include <roughnessmap_fragment>',
-            '#include <roughnessmap_fragment>\nroughnessFactor = mix(roughnessFactor, 0.2, vein);'
+            '#include <roughnessmap_fragment>\nroughnessFactor = mix(roughnessFactor, 0.16, copperFacet);'
           )
           .replace(
             '#include <metalnessmap_fragment>',
-            '#include <metalnessmap_fragment>\nmetalnessFactor = mix(metalnessFactor, 0.95, vein);'
+            '#include <metalnessmap_fragment>\nmetalnessFactor = mix(metalnessFactor, 0.95, copperFacet);'
           )
           .replace(
             '#include <emissivemap_fragment>',
-            '#include <emissivemap_fragment>\ntotalEmissiveRadiance += vec3(0.5, 0.2, 0.08) * (vein * vein) * 0.35;'
+            '#include <emissivemap_fragment>\ntotalEmissiveRadiance += vec3(0.55, 0.22, 0.07) * (copperFacet * copperFacet) * 0.30;'
           );
       };
       const rock = new THREE.Mesh(geometry, material);
@@ -221,6 +237,51 @@ diffuseColor.rgb *= mix(stoneBody, vec3(0.85, 0.42, 0.2), pow(vein, 0.75));`
       const fill = new THREE.DirectionalLight(0xaaa69c, 0.3);
       fill.position.set(-2.5, 1.5, 4);
       scene.add(fill);
+
+      /* Studio environment for the metallic facets: a tiny hand-built room
+         (dark graphite walls, one warm overhead softbox, one copper card)
+         prefiltered with PMREM — core three, no examples addons. Without it,
+         metalness-0.95 facets go black outside the direct light hits. */
+      const envScene = new THREE.Scene();
+      const envRoom = new THREE.Mesh(
+        new THREE.BoxGeometry(12, 12, 12),
+        new THREE.MeshBasicMaterial({ color: 0x171715, side: THREE.BackSide })
+      );
+      envScene.add(envRoom);
+      const softbox = new THREE.Mesh(
+        new THREE.PlaneGeometry(5, 3),
+        new THREE.MeshBasicMaterial({ color: 0xfff0dd })
+      );
+      softbox.position.set(1.5, 5.9, 2.5);
+      softbox.rotation.x = Math.PI / 2;
+      envScene.add(softbox);
+      const copperCard = new THREE.Mesh(
+        new THREE.PlaneGeometry(4, 2.4),
+        new THREE.MeshBasicMaterial({ color: 0xb95732 })
+      );
+      copperCard.position.set(-5.9, 1.2, -2.5);
+      copperCard.rotation.y = Math.PI / 2;
+      envScene.add(copperCard);
+      const coolCard = new THREE.Mesh(
+        new THREE.PlaneGeometry(3, 2),
+        new THREE.MeshBasicMaterial({ color: 0x393833 })
+      );
+      coolCard.position.set(5.9, -1, 3);
+      coolCard.rotation.y = -Math.PI / 2;
+      envScene.add(coolCard);
+      const pmrem = new THREE.PMREMGenerator(renderer);
+      const envRT = pmrem.fromScene(envScene, 0.05);
+      scene.environment = envRT.texture;
+      scene.environmentIntensity = 0.55;
+      pmrem.dispose();
+      envRoom.geometry.dispose();
+      (envRoom.material as THREE.Material).dispose();
+      softbox.geometry.dispose();
+      (softbox.material as THREE.Material).dispose();
+      copperCard.geometry.dispose();
+      (copperCard.material as THREE.Material).dispose();
+      coolCard.geometry.dispose();
+      (coolCard.material as THREE.Material).dispose();
 
       const resize = () => {
         const size = mount.clientWidth || 440;
@@ -289,6 +350,8 @@ diffuseColor.rgb *= mix(stoneBody, vec3(0.85, 0.42, 0.2), pow(vein, 0.75));`
         stage.removeEventListener('pointerleave', onLeave);
         geometry.dispose();
         material.dispose();
+        envRT.texture.dispose();
+        envRT.dispose();
         renderer.dispose();
         renderer.domElement.remove();
       };
