@@ -29,6 +29,38 @@ const historySection = fs.readFileSync(
   'components/maintenance/asset-360/history-section.tsx',
   'utf8',
 );
+const materialsSection = fs.readFileSync(
+  'components/maintenance/asset-360/materials-section.tsx',
+  'utf8',
+);
+
+test('asset 360 materials section owns the shared parts row type', () => {
+  assert.match(materialsSection, /export type Asset360PartsRow = \{/);
+  assert.match(materialsSection, /quantity_requested\?: number \| null;/);
+  assert.match(materialsSection, /quantity_returned\?: number \| null;/);
+  assert.match(materialsSection, /product\?: \{/);
+  assert.match(materialsSection, /workOrder\?: \{/);
+});
+
+test('asset 360 materials section renders pending and installed parts', () => {
+  assert.match(materialsSection, /export function Asset360MaterialsSection\(/);
+  assert.match(materialsSection, /if \(!hasMaterialEvidence\) return null;/);
+  assert.match(materialsSection, /title="Materiales y repuestos"/);
+  assert.match(materialsSection, /Historial instalado/);
+  assert.match(materialsSection, /No hay materiales pendientes asociados al equipo\./);
+  assert.match(materialsSection, /Repuesto sin nombre/);
+  assert.match(materialsSection, /Sin costo/);
+});
+
+test('asset 360 overview delegates materials rendering to the materials section', () => {
+  assert.match(overview, /from '@\/components\/maintenance\/asset-360\/materials-section'/);
+  assert.match(overview, /<Asset360MaterialsSection[ \n]/);
+  assert.match(overview, /pendingParts=\{pendingParts\}/);
+  assert.match(overview, /latestPlanPartsStatus=\{latestPlan\?\.parts_status_raw\}/);
+  assert.match(overview, /installedParts\?: Asset360PartsRow\[\]/);
+  assert.doesNotMatch(overview, /Historial instalado/);
+  assert.doesNotMatch(overview, /No hay materiales pendientes asociados al equipo\./);
+});
 
 test('asset 360 history section owns the audited intervention and recent event types', () => {
   assert.match(historySection, /export type Asset360RecentEvent = \{/);
