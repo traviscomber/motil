@@ -57,6 +57,10 @@ const availabilitySection = fs.readFileSync(
   'components/maintenance/asset-360/availability-section.tsx',
   'utf8',
 );
+const economicsSection = fs.readFileSync(
+  'components/maintenance/asset-360/economics-section.tsx',
+  'utf8',
+);
 
 test('asset 360 coverage section owns the reconciliation and identity history types', () => {
   assert.match(coverageSection, /export type Asset360FinanceReconciliation = \{/);
@@ -353,9 +357,7 @@ test('asset 360 overview delegates purchase rendering to the purchase section', 
 
 test('asset 360 overview imports the shared helpers instead of defining them', () => {
   assert.match(overview, /from '@\/components\/maintenance\/asset-360\/format'/);
-  assert.match(overview, /from '@\/components\/maintenance\/asset-360\/primitives'/);
-  assert.match(overview, /date,/);
-  assert.match(overview, /IdentityItem, SectionSummary/);
+  assert.match(overview, /number,/);
   assert.doesNotMatch(overview, /const number = \(value: unknown/);
   assert.doesNotMatch(overview, /const money = \(value: unknown\)/);
   assert.doesNotMatch(overview, /const show = \(value: unknown\)/);
@@ -365,11 +367,17 @@ test('asset 360 overview imports the shared helpers instead of defining them', (
   assert.doesNotMatch(overview, /function SectionSummary\(/);
 });
 
-test('asset 360 overview still renders through the shared primitives', () => {
-  assert.match(overview, /<IdentityItem[ \n]/);
+test('asset 360 extracted sections own the shared primitives usage', () => {
+  assert.match(economicsSection, /from '\.\/primitives'/);
+  assert.match(economicsSection, /<IdentityItem[ \n]/);
+  assert.match(maintenanceSection, /<SectionSummary[ \n]/);
+  assert.match(availabilitySection, /<SectionSummary[ \n]/);
+});
+
+test('asset 360 overview still renders through the shared helpers', () => {
   assert.match(overview, /number\(/);
-  assert.match(overview, /money\(/);
-  assert.match(overview, /date\(/);
+  assert.doesNotMatch(overview, /<IdentityItem[ \n]/);
+  assert.doesNotMatch(overview, /<SectionSummary[ \n]/);
 });
 
 test('asset 360 overview delegates section summaries to the extracted sections', () => {
@@ -526,4 +534,34 @@ test('asset 360 overview delegates availability rendering to the availability se
   assert.match(overview, /operationalState\?: Asset360OperationalState;/);
   assert.doesNotMatch(overview, /Sin base de disponibilidad/);
   assert.doesNotMatch(overview, /const hasAvailabilityEvidence = Boolean\(/);
+});
+
+
+test('asset 360 economics section owns the economic history row type', () => {
+  assert.match(economicsSection, /export type Asset360EconomicHistoryRow = \{/);
+  assert.match(economicsSection, /fiscal_year\?: number \| null;/);
+  assert.match(economicsSection, /historical_total_cost\?: number \| string \| null;/);
+  assert.match(economicsSection, /import type \{ Asset360OperationalState \} from '\.\/availability-section';/);
+});
+
+test('asset 360 economics section renders investment summary and yearly detail', () => {
+  assert.match(economicsSection, /export function Asset360EconomicsSection\(/);
+  assert.match(economicsSection, /const economicLifetime = economicHistory\.reduce\(/);
+  assert.match(economicsSection, /Inversión en mantenimiento/);
+  assert.match(economicsSection, /Histórico acumulado/);
+  assert.match(economicsSection, /Últimos 12 meses/);
+  assert.match(economicsSection, /Detalle económico/);
+  assert.match(economicsSection, /Sin historial de costos enlazado/);
+  assert.match(economicsSection, /años con movimientos/);
+  assert.match(economicsSection, /economicHistory\.slice\(0, 6\)\.map\(\(row\)/);
+});
+
+test('asset 360 overview delegates economics rendering to the economics section', () => {
+  assert.match(overview, /from '@\/components\/maintenance\/asset-360\/economics-section'/);
+  assert.match(overview, /<Asset360EconomicsSection[ \n]/);
+  assert.match(overview, /economicHistory=\{economicHistory\}/);
+  assert.match(overview, /lastCostEventAt=\{operatingSpine\?\.last_cost_event_at\}/);
+  assert.match(overview, /economicHistory\?: Asset360EconomicHistoryRow\[\];/);
+  assert.doesNotMatch(overview, /Inversión en mantenimiento/);
+  assert.doesNotMatch(overview, /const economicLifetime = economicHistory\.reduce\(/);
 });
