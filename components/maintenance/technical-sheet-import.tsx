@@ -6,6 +6,7 @@ import { AlertCircle, ArrowLeft, Download, Loader2, Upload } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { buildTemplateCsv } from './technical-sheet-template';
 
 type ImportResult = {
   success: boolean;
@@ -21,7 +22,6 @@ type ImportResult = {
   error?: string;
 };
 
-import { buildTemplateCsv } from './technical-sheet-template';
 export function TechnicalSheetImportComponent() {
   const [dragActive, setDragActive] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
