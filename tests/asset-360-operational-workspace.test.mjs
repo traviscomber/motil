@@ -3,10 +3,11 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 const api = fs.readFileSync('app/api/maintenance/assets/[id]/operational-360/route.ts', 'utf8');
+const sourcesLib = fs.readFileSync('lib/maintenance/asset-360-data-sources.ts', 'utf8');
 const workspace = fs.readFileSync('components/maintenance/asset-related-operations.tsx', 'utf8');
 
 test('asset 360 uses latest audited closure snapshot per work order', () => {
-  assert.match(api, /work_order_closure_cost_snapshots/);
+  assert.match(sourcesLib, /work_order_closure_cost_snapshots/);
   assert.match(api, /closure_sequence/);
   assert.match(api, /latestSnapshots/);
   assert.doesNotMatch(api, /work_order_cost_summary/);
