@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 
-import { Geist, Geist_Mono, Montserrat } from 'next/font/google';
+import { Geist, Geist_Mono, Manrope, Montserrat } from 'next/font/google';
 import { ThemeProvider } from 'next-themes';
 import { Toaster } from 'sonner';
 import './globals.css';
@@ -9,6 +9,7 @@ import './motil-system.css';
 const geist = Geist({ subsets: ['latin'], variable: '--font-geist-sans', display: 'swap' });
 const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono', display: 'swap' });
 const montserrat = Montserrat({ subsets: ['latin'], variable: '--font-montserrat', display: 'swap' });
+const manrope = Manrope({ subsets: ['latin'], variable: '--font-manrope', display: 'swap' });
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.motil.app'),
@@ -71,7 +72,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="es-CL" className={`${geist.variable} ${geistMono.variable} ${montserrat.variable} scroll-smooth`} suppressHydrationWarning>
+    <html lang="es-CL" className={`${geist.variable} ${geistMono.variable} ${montserrat.variable} ${manrope.variable} scroll-smooth`} suppressHydrationWarning>
       <head><meta charSet="utf-8" /></head>
       <body className="bg-background font-sans text-foreground antialiased selection:bg-primary/20 selection:text-foreground">
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} storageKey="motil-theme" disableTransitionOnChange>
