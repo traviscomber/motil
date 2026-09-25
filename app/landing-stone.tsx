@@ -67,7 +67,7 @@ function rockRadius(dx: number, dy: number, dz: number) {
   const detail = fbm3(dx * 4 + 9, dy * 4 + 9, dz * 4 + 9, 2, 3);
   const crease = 1 - Math.abs(2 * fbm3(dx * 2.6 + 2, dy * 2.6 + 2, dz * 2.6 + 2, 3, 3) - 1);
   const sharp = fbm3(dx * 8 + 14, dy * 8 + 14, dz * 8 + 14, 4, 2);
-  return 1.3 * (0.8 + lumps * 0.28 + detail * 0.11 + crease * 0.14 + sharp * 0.08);
+  return 0.92 * (0.8 + lumps * 0.28 + detail * 0.11 + crease * 0.14 + sharp * 0.08);
 }
 
 /* Copper veins + mineral tones run per-pixel in the fragment shader
@@ -248,7 +248,7 @@ diffuseColor.rgb *= mix(stoneBody, vec3(0.85, 0.42, 0.2), pow(vein, 0.75));`
         elapsed += dt;
 
         if (!reduceMotion) {
-          autoRot += dt * 0.45; // resend-style turntable
+          autoRot += dt * 0.16; // slow resend-style turntable
           rock.position.y = Math.sin(elapsed * 0.8) * 0.06;
           const k = 1 - Math.pow(1 - 0.08, dt * 60);
           tiltX += (targetTiltX - tiltX) * k;
