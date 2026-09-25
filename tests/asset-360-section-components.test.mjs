@@ -45,6 +45,10 @@ const identityHeader = fs.readFileSync(
   'components/maintenance/asset-360/identity-header.tsx',
   'utf8',
 );
+const attentionCard = fs.readFileSync(
+  'components/maintenance/asset-360/attention-card.tsx',
+  'utf8',
+);
 
 test('asset 360 coverage section owns the reconciliation and identity history types', () => {
   assert.match(coverageSection, /export type Asset360FinanceReconciliation = \{/);
@@ -405,4 +409,39 @@ test('asset 360 overview delegates the identity header to the identity header co
   assert.doesNotMatch(overview, /const technicalIdentity = \[/);
   assert.doesNotMatch(overview, /getEquipmentImageMeta/);
   assert.doesNotMatch(overview, /failedImageSrc/);
+});
+
+
+test('asset 360 attention card owns the attention and actionable work order types', () => {
+  assert.match(attentionCard, /export type Asset360Attention = \{/);
+  assert.match(attentionCard, /detail: string;/);
+  assert.match(attentionCard, /export type Asset360ActionableWorkOrder = \{/);
+  assert.match(attentionCard, /standard_plan_steps_pending\?: number \| string \| null;/);
+  assert.match(attentionCard, /import type \{ Asset360MaintenancePriority \} from '\.\/planning-section';/);
+});
+
+test('asset 360 attention card renders priority alerts and next action', () => {
+  assert.match(attentionCard, /export function Asset360AttentionCard\(/);
+  assert.match(attentionCard, /const attention: Asset360Attention = criticalOpen > 0/);
+  assert.match(attentionCard, /OT crítica abierta/);
+  assert.match(attentionCard, /Preventivo vencido/);
+  assert.match(attentionCard, /Bloqueo operativo/);
+  assert.match(attentionCard, /Trabajo pendiente/);
+  assert.match(attentionCard, /Sin alertas operacionales/);
+  assert.match(attentionCard, /if \(attention\.title === 'Sin alertas operacionales'\) return null;/);
+  assert.match(attentionCard, /Continuar trabajo/);
+  assert.match(attentionCard, /Margen: \{number\(maintenancePriority\.remaining_meter, 0\)\}/);
+  assert.match(attentionCard, /Proyección: \{date\(maintenancePriority\.projected_due_at\)\}/);
+});
+
+test('asset 360 overview delegates attention rendering to the attention card', () => {
+  assert.match(overview, /from '@\/components\/maintenance\/asset-360\/attention-card'/);
+  assert.match(overview, /<Asset360AttentionCard[ \n]/);
+  assert.match(overview, /criticalOpen=\{summary\.criticalOpen\}/);
+  assert.match(overview, /planningPriorityText=\{planningPriorityText\}/);
+  assert.match(overview, /actionableWorkOrder=\{actionableWorkOrder\}/);
+  assert.match(overview, /maintenancePriority=\{maintenancePriority\}/);
+  assert.doesNotMatch(overview, /Sin alertas operacionales/);
+  assert.doesNotMatch(overview, /const attention = summary/);
+  assert.doesNotMatch(overview, /showAttentionDetail/);
 });
