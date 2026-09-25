@@ -21,6 +21,44 @@ const planningSection = fs.readFileSync(
   'components/maintenance/asset-360/planning-section.tsx',
   'utf8',
 );
+const drillingSection = fs.readFileSync(
+  'components/maintenance/asset-360/drilling-section.tsx',
+  'utf8',
+);
+
+test('asset 360 drilling section owns the drilling evidence and economics types', () => {
+  assert.match(drillingSection, /export type Asset360DrillEconomics = \{/);
+  assert.match(drillingSection, /cost_clp_per_meter_90d\?: number \| string \| null;/);
+  assert.match(drillingSection, /export type Asset360DrillingMaintenanceReviewRow = \{/);
+  assert.match(drillingSection, /has_linked_work_order\?: boolean \| null;/);
+  assert.match(drillingSection, /export type Asset360DrillingHistoryRow = \{/);
+  assert.match(drillingSection, /drilled_meters\?: number \| string \| null;/);
+  assert.match(drillingSection, /export type Asset360DrillOperationalEvidence = \{/);
+  assert.match(drillingSection, /export type Asset360DrillEconomicsChange = \{/);
+  assert.match(drillingSection, /cost_per_meter_change_pct\?: number \| string \| null;/);
+});
+
+test('asset 360 drilling section renders production, economics and reports', () => {
+  assert.match(drillingSection, /export function Asset360DrillingSection\(/);
+  assert.match(drillingSection, /if \(drillingHistory\.length === 0\) return null;/);
+  assert.match(drillingSection, /title="Producción"/);
+  assert.match(drillingSection, /Metros perforados acumulados/);
+  assert.match(drillingSection, /Detalle operacional y económico/);
+  assert.match(drillingSection, /Señales para revisión de mantención/);
+  assert.match(drillingSection, /m en la muestra visible/);
+  assert.match(drillingSection, /Sin metros registrados/);
+});
+
+test('asset 360 overview delegates drilling rendering to the drilling section', () => {
+  assert.match(overview, /from '@\/components\/maintenance\/asset-360\/drilling-section'/);
+  assert.match(overview, /<Asset360DrillingSection[ \n]/);
+  assert.match(overview, /consolidatedDrillingMeters=\{consolidatedDrillingMeters\}/);
+  assert.match(overview, /lastDrillingDate=\{operatingSpine\?\.last_drilling_date\}/);
+  assert.match(overview, /drillingHistory\?: Asset360DrillingHistoryRow\[\]/);
+  assert.match(overview, /drillOperationalEvidence\?: Asset360DrillOperationalEvidence;/);
+  assert.doesNotMatch(overview, /Metros perforados acumulados/);
+  assert.doesNotMatch(overview, /Detalle operacional y económico/);
+});
 
 test('asset 360 planning section owns the maintenance priority and planning row types', () => {
   assert.match(planningSection, /export type Asset360MaintenancePriority = \{/);
@@ -175,7 +213,7 @@ test('asset 360 overview delegates purchase rendering to the purchase section', 
 test('asset 360 overview imports the shared helpers instead of defining them', () => {
   assert.match(overview, /from '@\/components\/maintenance\/asset-360\/format'/);
   assert.match(overview, /from '@\/components\/maintenance\/asset-360\/primitives'/);
-  assert.match(overview, /cleanEvidenceText,/);
+  assert.match(overview, /date,/);
   assert.match(overview, /IdentityItem, SectionSummary/);
   assert.doesNotMatch(overview, /const number = \(value: unknown/);
   assert.doesNotMatch(overview, /const money = \(value: unknown\)/);
@@ -192,5 +230,4 @@ test('asset 360 overview still renders through the shared primitives', () => {
   assert.match(overview, /number\(/);
   assert.match(overview, /money\(/);
   assert.match(overview, /date\(/);
-  assert.match(overview, /cleanEvidenceText\(/);
 });
