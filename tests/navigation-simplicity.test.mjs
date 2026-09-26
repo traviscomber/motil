@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const sidebarPath = new URL('../components/layout/sidebar.tsx', import.meta.url);
-const dashboardPath = new URL('../app/dashboard/page.tsx', import.meta.url);
+const dictPath = new URL('../lib/i18n/dictionaries.ts', import.meta.url);
 
 test('global navigation uses role-aware Inicio instead of parallel personal portals', async () => {
   const sidebar = await readFile(sidebarPath, 'utf8');
@@ -15,11 +15,11 @@ test('global navigation uses role-aware Inicio instead of parallel personal port
 });
 
 test('role-aware Inicio keeps operational personalization', async () => {
-  const dashboard = await readFile(dashboardPath, 'utf8');
+  const dict = await readFile(dictPath, 'utf8');
 
-  assert.match(dashboard, /title: 'Mi Mantención'/);
-  assert.match(dashboard, /title: 'Mi Planta'/);
-  assert.match(dashboard, /title: 'Mi Bodega'/);
-  assert.match(dashboard, /title: 'Mi Administración'/);
-  assert.match(dashboard, /title: 'Resumen ejecutivo'/);
+  assert.match(dict, /title: 'Mi Mantención'/);
+  assert.match(dict, /title: 'Mi Planta'/);
+  assert.match(dict, /title: 'Mi Bodega'/);
+  assert.match(dict, /title: 'Mi Administración'/);
+  assert.match(dict, /title: 'Resumen ejecutivo'/);
 });

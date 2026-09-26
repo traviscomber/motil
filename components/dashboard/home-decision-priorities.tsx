@@ -6,6 +6,7 @@ import { ArrowRight, Clock3, Route } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import type { Dictionary, Locale } from '@/lib/i18n/dictionaries';
 
 type AttentionFactor = { code: string; label: string; weight: number };
 
@@ -36,22 +37,14 @@ async function fetchJson<T>(url: string): Promise<T | null> {
   const response = await fetch(url, { credentials: 'include', cache: 'no-store' });
   if (response.status === 401 || response.status === 403) return null;
   const payload = await response.json().catch(() => null);
-  if (!response.ok) throw new Error(payload?.error || 'No fue posible cargar Intelligence Core.');
+  if (!response.ok) throw new Error(payload?.error || 'intelligence request failed');
   return payload as T;
 }
 
-const labels: Record<string, string> = {
-  maintenance: 'Mantención', geology: 'Geología', inventory: 'Inventario', procurement: 'Compras',
-  production: 'Producción', finance: 'Finanzas', hse: 'HSE',
-};
-
+/* Hrefs are identifiers, not copy: they stay in code, keyed by domain. */
 const hrefs: Record<string, string> = {
   maintenance: '/dashboard/mantenimiento', geology: '/dashboard/produccion/geologia', inventory: '/dashboard/bodega',
   procurement: '/dashboard/compras', production: '/dashboard/produccion', finance: '/dashboard/finanzas', hse: '/dashboard/sostenibilidad',
-};
-
-const changeLabels: Record<TemporalChange['kind'], string> = {
-  appeared: 'Apareció', acknowledged: 'Revisado', revalidated: 'Revalidado', resolved: 'Resuelto', changed: 'Cambió',
 };
 
 function short(value: string, max = 160) {
@@ -65,13 +58,16 @@ function primaryReason(item: DecisionCase) {
     .sort((a, b) => b.weight - a.weight)[0]?.label || null;
 }
 
-function timeLabel(value: string) {
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return '';
-  return new Intl.DateTimeFormat('es-CL', { hour: '2-digit', minute: '2-digit' }).format(date);
-}
+export function HomeDecisionPriorities({ locale, dictionary }: { locale: Locale; dictionary: Dictionary }) {
+  const t = dictionary.app.home.priorities;
+  const numberLocale = locale === 'en' ? 'en' : 'es-CL';
+  const timeLabel = (value: string) => {
+    const date = new Date(value);
+    if (!Number.isFinite(date.getTime())) return '';
+    return new Intl.DateTimeFormat(numberLocale, { hour: '2-digit', minute: '2-digit' }).format(date);
+  };
+  const domainLabel = (domain: string) => (t.domains as Record<string, string>)[domain] || domain;
 
-export function HomeDecisionPriorities() {
   const priorities = useSWR<PriorityPayload | null>('/api/intelligence/decision-cases/prioritized?limit=3', fetchJson, {
     revalidateOnFocus: false, refreshInterval: 60000,
   });
@@ -85,14 +81,14 @@ export function HomeDecisionPriorities() {
   if (cases.length === 0 && changes.length === 0) return null;
 
   return (
-    <section className="space-y-5" aria-label="Prioridades y cambios del Intelligence Core">
+    <section className="space-y-5" aria-label={t.ariaLabel}>
       {cases.length > 0 ? <>
         <div className="flex flex-wrap items-end justify-between gap-3 border-t pt-5">
           <div>
-            <div className="flex items-center gap-2"><h2 className="text-lg font-semibold tracking-tight">Qué requiere atención</h2><Badge variant="outline">Advisory</Badge></div>
-            <p className="mt-1 text-xs text-muted-foreground">Máximo tres casos priorizados por evidencia explícita y permisos reales. No ejecutan cambios por sí solos.</p>
+            <div className="flex items-center gap-2"><h2 className="text-lg font-semibold tracking-tight">{t.casesTitle}</h2><Badge variant="outline">Advisory</Badge></div>
+            <p className="mt-1 text-xs text-muted-foreground">{t.casesSubtitle}</p>
           </div>
-          <Button asChild variant="ghost" size="sm"><Link href="/dashboard/decisiones">Ver casos <ArrowRight className="ml-2 size-4" /></Link></Button>
+          <Button asChild variant="ghost" size="sm"><Link href="/dashboard/decisiones">{t.viewCases} <ArrowRight className="ml-2 size-4" /></Link></Button>
         </div>
         <div className="grid gap-3 xl:grid-cols-3">
           {cases.map((item) => {
@@ -100,29 +96,29 @@ export function HomeDecisionPriorities() {
             const reason = primaryReason(item);
             return <Card key={item.id} className="shadow-none"><CardContent className="space-y-3 p-4">
               <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1.5"><Route className="size-3.5" />{labels[item.target_domain] || item.target_domain}</span>
-                <div className="flex items-center gap-2">{item.attention?.level ? <Badge variant="outline">{item.attention.level}</Badge> : null}<span>{item.last_revalidated_at ? 'Revalidado' : 'Pendiente de revalidación'}</span></div>
+                <span className="flex items-center gap-1.5"><Route className="size-3.5" />{domainLabel(item.target_domain)}</span>
+                <div className="flex items-center gap-2">{item.attention?.level ? <Badge variant="outline">{item.attention.level}</Badge> : null}<span>{item.last_revalidated_at ? t.revalidated : t.pendingRevalidation}</span></div>
               </div>
               <div><p className="text-sm font-medium leading-5">{item.title}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{short(item.summary)}</p></div>
-              {reason ? <p className="text-[11px] leading-5 text-muted-foreground"><span className="font-medium text-foreground">Por qué importa:</span> {short(reason, 130)}</p> : null}
-              {missing.length ? <p className="text-[11px] leading-5 text-muted-foreground"><span className="font-medium text-foreground">Falta:</span> {short(missing.slice(0, 2).join(' · '), 130)}</p> : null}
-              {item.recommended_human_action ? <p className="text-xs leading-5"><span className="font-medium">Siguiente acción:</span> {short(item.recommended_human_action, 140)}</p> : null}
-              <Button asChild variant="outline" size="sm" className="w-full"><Link href={hrefs[item.target_domain] || '/dashboard/decisiones'}>Abrir contexto</Link></Button>
+              {reason ? <p className="text-[11px] leading-5 text-muted-foreground"><span className="font-medium text-foreground">{t.whyItMatters}</span> {short(reason, 130)}</p> : null}
+              {missing.length ? <p className="text-[11px] leading-5 text-muted-foreground"><span className="font-medium text-foreground">{t.missingLabel}</span> {short(missing.slice(0, 2).join(' · '), 130)}</p> : null}
+              {item.recommended_human_action ? <p className="text-xs leading-5"><span className="font-medium">{t.nextAction}</span> {short(item.recommended_human_action, 140)}</p> : null}
+              <Button asChild variant="outline" size="sm" className="w-full"><Link href={hrefs[item.target_domain] || '/dashboard/decisiones'}>{t.openContext}</Link></Button>
             </CardContent></Card>;
           })}
         </div>
       </> : null}
 
       {changes.length > 0 ? <div className="space-y-3 border-t pt-4">
-        <div className="flex items-center gap-2"><Clock3 className="size-4 text-muted-foreground" /><h3 className="text-sm font-medium">Cambió desde ayer</h3><Badge variant="outline">24 h</Badge></div>
+        <div className="flex items-center gap-2"><Clock3 className="size-4 text-muted-foreground" /><h3 className="text-sm font-medium">{t.changesTitle}</h3><Badge variant="outline">24 h</Badge></div>
         <div className="grid gap-2 md:grid-cols-3">
           {changes.map((change) => <Link key={`${change.caseId}-${change.kind}-${change.at}`} href={hrefs[change.targetDomain] || '/dashboard/decisiones'} className="rounded-md border p-3 transition-colors hover:bg-muted/40">
-            <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground"><span>{labels[change.targetDomain] || change.targetDomain}</span><span>{timeLabel(change.at)}</span></div>
-            <p className="mt-1 text-xs font-medium">{changeLabels[change.kind]}</p>
+            <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground"><span>{domainLabel(change.targetDomain)}</span><span>{timeLabel(change.at)}</span></div>
+            <p className="mt-1 text-xs font-medium">{(t.changeKinds as Record<string, string>)[change.kind] || change.kind}</p>
             <p className="mt-1 text-xs leading-5 text-muted-foreground">{short(change.title, 105)}</p>
           </Link>)}
         </div>
-        <p className="text-[11px] text-muted-foreground">Derivado sólo del lifecycle explícito de Decision Cases; no implica impacto, causalidad ni prioridad adicional.</p>
+        <p className="text-[11px] text-muted-foreground">{t.changesFootnote}</p>
       </div> : null}
     </section>
   );
