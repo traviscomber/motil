@@ -34,8 +34,8 @@ export function CategoryFilter({ categories, selectedCategory, onCategoryChange 
             </p>
           )}
         </div>
-        <div className="relative">
-          <div className="overflow-x-auto pb-2">
+        <div>
+          <div className="overflow-x-auto pb-2 [-webkit-mask-image:linear-gradient(to_right,#000,#000_calc(100%-2rem),transparent)] [mask-image:linear-gradient(to_right,#000,#000_calc(100%-2rem),transparent)]">
             <div className="flex gap-2 min-w-min">
               <button
                 onClick={() => onCategoryChange('')}
@@ -73,7 +73,6 @@ export function CategoryFilter({ categories, selectedCategory, onCategoryChange 
               ))}
             </div>
           </div>
-          <div className="absolute right-0 top-0 bottom-0 bg-gradient-to-l from-background to-transparent pointer-events-none w-8" />
         </div>
       </div>
     );
