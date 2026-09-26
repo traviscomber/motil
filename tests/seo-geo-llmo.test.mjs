@@ -16,7 +16,7 @@ test('sitemap declares hreflang alternates (es-CL canonical, en, x-default) for 
 
 test('llms.txt indexes MOTIL entities, module pages and the /en mirror', () => {
   assert.ok(llms.length > 500, 'public/llms.txt must exist and be substantive');
-  assert.match(llms, /# MOTIL — Sistema Operativo para Minería/);
+  assert.match(llms, /# MOTIL Mining OS — Sistema Operativo para Minería/);
   assert.match(llms, /Neuralia/);
   assert.match(llms, /https:\/\/www\.motil\.app\/mineria-chile/);
   assert.ok((llms.match(/https:\/\/www\.motil\.app\/modulos\//g) ?? []).length >= 8, 'expected all module pages');
