@@ -35,16 +35,9 @@ function buildStructuredData(description: string, orgDescription: string) {
   };
 }
 
-const flowLabels = ['People', 'Assets', 'Work', 'Materials', 'Production', 'Cost', 'Risk', 'Decisions'];
 /* Measured icon centers in /brand/context-flow.webp (2400px wide) so each
    label sits exactly under its icon. Recompute if the artwork is re-exported. */
 const flowLabelCenters = [7.4, 20.88, 33.25, 45.1, 58.58, 69.38, 79.73, 92.4];
-
-const domains = [
-  { title: 'Operations', items: 'Production · Maintenance · Field execution' },
-  { title: 'Control', items: 'Assets · Materials · Cost · Risk' },
-  { title: 'Decisions', items: 'Evidence · Context · Action' },
-];
 
 export default async function HomePage() {
   const { locale, dictionary: dict } = await getDictionaryForRequest();
@@ -62,7 +55,7 @@ export default async function HomePage() {
             height={610}
             priority
           />
-          <span>MINING OPERATING SYSTEM</span>
+          <span>{dict.landing.wordmarkLine}</span>
         </Link>
         <nav className="ld-nav" aria-label="Navegación principal">
           <Link href="#contexto" className="ld-nav-link">{dict.nav.system}</Link>
@@ -80,12 +73,12 @@ export default async function HomePage() {
       <section className="ld-section" data-landing-section="hero" aria-label="MOTIL Mining Operating System">
         <div className="ld-inner ld-split">
           <div className="ld-copy">
-            <p className="ld-eyebrow">Mining Operating System</p>
+            <p className="ld-eyebrow">{dict.landing.hero.eyebrow}</p>
             <h1 className="ld-h1">
-              One operation.<br />One source of truth.<br /><span className="ld-accent">Better decisions.</span>
+              {dict.landing.hero.h1Lines[0]}<br />{dict.landing.hero.h1Lines[1]}<br /><span className="ld-accent">{dict.landing.hero.h1Lines[2]}</span>
             </h1>
             <p className="ld-body-lg">
-              MOTIL connects people, assets, production, maintenance and operational evidence in one mining operating system.
+              {dict.landing.hero.body}
             </p>
             <div className="ld-ctas">
               <Link href="/auth/login" className="ld-btn ld-btn-solid">{dict.landing.ctaLogin} <ArrowRight size={16} strokeWidth={1.5} /></Link>
@@ -96,15 +89,15 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="ld-section ld-light" id="contexto" data-landing-section="contexto" aria-label="One operating context">
+      <section className="ld-section ld-light" id="contexto" data-landing-section="contexto" aria-label={dict.landing.context.aria}>
         <div className="ld-inner">
           <div className="ld-copy">
-            <p className="ld-eyebrow">01 — One operating context</p>
+            <p className="ld-eyebrow">{dict.landing.context.eyebrow}</p>
             <h2 className="ld-h2">
-              From operations<br />to <span className="ld-accent">real impact.</span>
+              {dict.landing.context.h2Lines[0]}<br />{dict.landing.context.h2Lines[1]}<span className="ld-accent">{dict.landing.context.h2Lines[2]}</span>
             </h2>
             <p className="ld-body-lg">
-              MOTIL connects people, assets, work, materials, production, cost and risk in one operational context.
+              {dict.landing.context.body}
             </p>
           </div>
           <div className="ld-flow">
@@ -116,11 +109,11 @@ export default async function HomePage() {
                 height={800}
               />
               <div className="ld-flow-labels" aria-hidden="true">
-                {flowLabels.map((label, index) => (
+                {dict.landing.flow.labels.map((label, index) => (
                   <span
                     key={label}
                     style={{ left: `${flowLabelCenters[index]}%` }}
-                    className={index === flowLabels.length - 1 ? 'ld-flow-label ld-flow-label-accent' : 'ld-flow-label'}
+                    className={index === dict.landing.flow.labels.length - 1 ? 'ld-flow-label ld-flow-label-accent' : 'ld-flow-label'}
                   >
                     {label}
                   </span>
@@ -129,34 +122,28 @@ export default async function HomePage() {
             </div>
           </div>
           <div className="ld-pillars">
-            <div className="ld-pillar">
-              <h3>Connected</h3>
-              <p>One operational context.</p>
-            </div>
-            <div className="ld-pillar">
-              <h3>Traceable</h3>
-              <p>Evidence follows every action.</p>
-            </div>
-            <div className="ld-pillar">
-              <h3>Canonical</h3>
-              <p>One source of truth.</p>
-            </div>
+            {dict.landing.context.pillars.map((pillar) => (
+              <div key={pillar.title} className="ld-pillar">
+                <h3>{pillar.title}</h3>
+                <p>{pillar.text}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      <section className="ld-section" id="mineria" data-landing-section="mining" aria-label="Built for mining">
+      <section className="ld-section" id="mineria" data-landing-section="mining" aria-label={dict.landing.mining.aria}>
         <div className="ld-inner ld-mining-grid">
           <div className="ld-copy">
-            <p className="ld-eyebrow">02 — Built for mining</p>
+            <p className="ld-eyebrow">{dict.landing.mining.eyebrow}</p>
             <h2 className="ld-h2">
-              Real operations.<br />Real data.<br /><span className="ld-accent">Real decisions.</span>
+              {dict.landing.mining.h2Lines[0]}<br />{dict.landing.mining.h2Lines[1]}<br /><span className="ld-accent">{dict.landing.mining.h2Lines[2]}</span>
             </h2>
             <p className="ld-body-lg">
-              From field activity to management decisions, MOTIL keeps the operation connected in one shared context.
+              {dict.landing.mining.body}
             </p>
             <div className="ld-domains">
-              {domains.map((domain) => (
+              {dict.landing.mining.domains.map((domain) => (
                 <div key={domain.title} className="ld-domain">
                   <span className="ld-domain-title">{domain.title}</span>
                   <span className="ld-domain-items">{domain.items}</span>
@@ -175,21 +162,21 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="ld-section" id="latam" data-landing-section="latam" aria-label="Chile y LATAM">
+      <section className="ld-section" id="latam" data-landing-section="latam" aria-label={dict.landing.latam.aria}>
         <div className="ld-inner ld-split">
           <div className="ld-copy">
-            <p className="ld-eyebrow">03 — Chile / LATAM</p>
+            <p className="ld-eyebrow">{dict.landing.latam.eyebrow}</p>
             <h2 className="ld-h2">
-              Built in Chile.<br />Designed for <span className="ld-accent">LATAM.</span>
+              {dict.landing.latam.h2Lines[0]}<br />{dict.landing.latam.h2Lines[1]}<span className="ld-accent">{dict.landing.latam.h2Lines[2]}</span>
             </h2>
             <p className="ld-body-lg">
-              A mining operating system designed for real operations, ready to scale across increasingly connected sites.
+              {dict.landing.latam.body}
             </p>
             <div className="ld-ctas">
               <Link href="/auth/login" className="ld-btn ld-btn-solid">{dict.landing.ctaLogin} <ArrowRight size={16} strokeWidth={1.5} /></Link>
               <a href="https://www.n3uralia.com" target="_blank" rel="noreferrer" className="ld-btn ld-btn-ghost">{dict.landing.ctaContact} <ArrowRight size={16} strokeWidth={1.5} /></a>
             </div>
-            <p className="ld-latam-meta">CHILE&nbsp;&nbsp;/&nbsp;&nbsp;PERU&nbsp;&nbsp;/&nbsp;&nbsp;LATAM</p>
+            <p className="ld-latam-meta">{dict.landing.latam.meta}</p>
           </div>
           <Image
             src="/brand/latam-stone.webp"
@@ -207,10 +194,10 @@ export default async function HomePage() {
             height={610}
             className="ld-footer-mark"
           />
-          <nav aria-label="Áreas de impacto">
-            <span>People</span><span>/</span><span>Assets</span><span>/</span><span>Operations</span><span>/</span><span>Real impact</span>
+          <nav aria-label={dict.landing.footer.areasAria}>
+            <span>{dict.landing.footer.areas[0]}</span><span>/</span><span>{dict.landing.footer.areas[1]}</span><span>/</span><span>{dict.landing.footer.areas[2]}</span><span>/</span><span>{dict.landing.footer.areas[3]}</span>
           </nav>
-          <span>A solution by N3URALIA</span>
+          <span>{dict.landing.footer.by}</span>
         </footer>
       </section>
     </main>

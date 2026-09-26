@@ -82,11 +82,19 @@ test('landing exposes a language switch between /es default and /en', () => {
   assert.match(css, /\.ld-lang-switch \{[\s\S]*?border: 1px solid var\(--ld-line\)/);
 });
 
-test('landing hero states one operation one source of truth better decisions', () => {
-  assert.match(page, /One operation\./);
-  assert.match(page, /One source of truth\./);
-  assert.match(page, /Better decisions\./);
-  assert.match(page, /Mining Operating System/);
+test('landing hero copy is locale-aware (es default, en for /en)', () => {
+  // es
+  assert.match(dict, /Una operación\./);
+  assert.match(dict, /Una sola fuente de verdad\./);
+  assert.match(dict, /Mejores decisiones\./);
+  assert.match(dict, /Sistema Operativo para Minería/);
+  // en
+  assert.match(dict, /One operation\./);
+  assert.match(dict, /One source of truth\./);
+  assert.match(dict, /Better decisions\./);
+  assert.match(dict, /Mining Operating System/);
+  // The page must render hero copy from the dictionary, not hardcode it.
+  assert.doesNotMatch(page, /One operation\.|Una operación\./);
   assert.match(page, /LandingStone/);
   assert.match(stone, /hero-stone\.png/);
 });
@@ -107,10 +115,19 @@ test('hero stone is a real 3d webgl scene with graceful fallback', () => {
 });
 
 test('landing keeps numbered eyebrows and the commercial Chile LATAM section', () => {
-  assert.match(page, /01 — One operating context/);
-  assert.match(page, /02 — Built for mining/);
-  assert.match(page, /03 — Chile \/ LATAM/);
-  assert.match(page, /Built in Chile\./);
+  // es default
+  assert.match(dict, /01 — Un solo contexto operacional/);
+  assert.match(dict, /02 — Construido para minería/);
+  assert.match(dict, /03 — Chile \/ LATAM/);
+  assert.match(dict, /Construido en Chile\./);
+  assert.match(dict, /Diseñado para /);
+  // en
+  assert.match(dict, /01 — One operating context/);
+  assert.match(dict, /02 — Built for mining/);
+  assert.match(dict, /Built in Chile\./);
+  assert.match(dict, /Designed for /);
+  // Editorial copy must come from the dictionary, not the JSX.
+  assert.doesNotMatch(page, /One operating context|Built for mining|Built in Chile\.|Operaciones reales\./);
   assert.match(page, /mining-truck\.webp/);
   assert.match(page, /latam-stone\.webp/);
   assert.match(page, /context-flow\.webp/);
