@@ -13,10 +13,12 @@ import { cn } from '@/lib/utils';
 import { DashboardPeriodProvider } from '@/components/dashboard/dashboard-period-provider';
 import { useAuth } from '@/hooks/use-auth';
 import { resolveMaintenanceViewerMode } from '@/lib/maintenance/viewer-mode';
+import type { Dictionary } from '@/lib/i18n/dictionaries';
+import type { Locale } from '@/lib/i18n/dictionaries';
 
 const STORAGE_KEY = 'motil-sidebar-collapsed';
 
-export function DashboardShell({ children }: { children: React.ReactNode }) {
+export function DashboardShell({ children, locale, dictionary }: { children: React.ReactNode; locale: Locale; dictionary: Dictionary }) {
   const [collapsed, setCollapsed] = useState(false);
   const [ready, setReady] = useState(false);
   const pathname = usePathname();
@@ -51,11 +53,11 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         )}
         aria-hidden={ready && collapsed ? true : undefined}
       >
-        <Sidebar />
+        <Sidebar dictionary={dictionary} />
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <Header sidebarCollapsed={collapsed} onToggleSidebar={toggleSidebar} />
+        <Header sidebarCollapsed={collapsed} onToggleSidebar={toggleSidebar} locale={locale} dictionary={dictionary} />
         <DailyManagementContextNav />
         <DocumentationContextNav />
         <OperationalAttentionContextNav />

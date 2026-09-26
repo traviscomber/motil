@@ -1,0 +1,70 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+
+const dict = fs.readFileSync('lib/i18n/dictionaries.ts', 'utf8');
+const layout = fs.readFileSync('app/dashboard/layout.tsx', 'utf8');
+const shell = fs.readFileSync('components/layout/dashboard-shell.tsx', 'utf8');
+const sidebar = fs.readFileSync('components/layout/sidebar.tsx', 'utf8');
+const header = fs.readFileSync('components/layout/header.tsx', 'utf8');
+const langSwitch = fs.readFileSync('components/layout/app-language-switch.tsx', 'utf8');
+
+test('dashboard layout resolves locale server-side and feeds the shell', () => {
+  assert.match(layout, /getDictionaryForRequest\(\)/);
+  assert.match(layout, /<DashboardShell locale=\{locale\} dictionary=\{dictionary\}>/);
+  assert.match(shell, /<Sidebar dictionary=\{dictionary\} \/>/);
+  assert.match(shell, /<Header sidebarCollapsed=\{collapsed\} onToggleSidebar=\{toggleSidebar\} locale=\{locale\} dictionary=\{dictionary\} \/>/);
+});
+
+test('sidebar renders every label from the dictionary', () => {
+  // Menu entries keyed, not labelled, in source.
+  assert.match(sidebar, /itemKey: 'home', href: '\/dashboard'/);
+  assert.match(sidebar, /group: 'areas', moduleKey: 'mant_operaciones'/);
+  assert.match(sidebar, /\{t\.items\[item\.itemKey\]\}/);
+  assert.match(sidebar, /\{t\.groups\[group\]\}/);
+  assert.match(sidebar, /\{dictionary\.app\.header\.signOut\}/);
+  assert.match(sidebar, /aria-label=\{isOpen\?t\.close:t\.open\}/);
+  assert.match(sidebar, /\{t\.tagline\}/);
+  // No hardcoded Spanish chrome may remain.
+  for (const literal of ['Inicio', 'Gestión diaria', 'Cerrar navegación', 'Navegación principal', "label:'", "group:'Principal'", "group:'Áreas'"]) {
+    assert.doesNotMatch(sidebar, new RegExp(literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `sidebar must not hardcode ${literal}`);
+  }
+});
+
+test('header breadcrumbs, roles and actions come from the dictionary', () => {
+  assert.match(header, /const t=dictionary\.app\.header;/);
+  assert.match(header, /const routes=t\.routes as Record<string,string>;/);
+  assert.match(header, /const roleLabels=t\.roles as Record<string,string>;/);
+  assert.match(header, /sidebarAction=sidebarCollapsed\?t\.showMenu:t\.hideMenu/);
+  assert.match(header, /aria-label=\{t\.breadcrumbLabel\}/);
+  assert.match(header, /aria-label=\{t\.viewCalendar\}/);
+  assert.match(header, /aria-label=\{t\.viewAlerts\}/);
+  assert.match(header, /\{t\.signOut\}/);
+  assert.doesNotMatch(header, /const routeLabels/);
+  assert.doesNotMatch(header, /Mostrar menú/);
+  assert.doesNotMatch(header, /Ruta de navegación/);
+  assert.doesNotMatch(header, /Sin rol asignado/);
+});
+
+test('app language switcher forces a full document navigation', () => {
+  assert.match(langSwitch, /locale === 'en' \? pathname : `\/en\$\{pathname\}`/);
+  assert.match(langSwitch, /preventDefault\(\)/);
+  assert.match(langSwitch, /window\.location\.assign\(target\)/);
+  assert.match(langSwitch, /lang=\{locale === 'en' \? 'es' : 'en'\}/);
+});
+
+test('app namespace carries chrome copy for both locales', () => {
+  assert.match(dict, /app: \{/);
+  // es
+  assert.match(dict, /home: 'Inicio'/);
+  assert.match(dict, /'ordenes-trabajo': 'Órdenes de trabajo'/);
+  assert.match(dict, /superadmin: 'Administrador general'/);
+  assert.match(dict, /signOut: 'Cerrar sesión'/);
+  assert.match(dict, /openUserMenu: 'Abrir menú de usuario'/);
+  // en
+  assert.match(dict, /home: 'Home'/);
+  assert.match(dict, /'ordenes-trabajo': 'Work orders'/);
+  assert.match(dict, /superadmin: 'General administrator'/);
+  assert.match(dict, /signOut: 'Sign out'/);
+  assert.match(dict, /openUserMenu: 'Open user menu'/);
+});

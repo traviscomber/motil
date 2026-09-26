@@ -34,9 +34,10 @@ test('calendar and cargo inbox remain semantically distinct', async () => {
 
 test('global header uses the canonical context language', async () => {
   const header = await readFile(headerUrl, 'utf8');
-  assert.match(header, /tareas: 'Calendario operacional'/);
-  assert.match(header, /andon: 'Problemas operacionales'/);
-  assert.match(header, /bodega: 'Bodega'/);
-  assert.match(header, /aria-label="Ver calendario operacional"/);
+  const dict = await readFile(new URL('../lib/i18n/dictionaries.ts', import.meta.url), 'utf8');
+  assert.match(dict, /tareas: 'Calendario operacional'/);
+  assert.match(dict, /andon: 'Problemas operacionales'/);
+  assert.match(dict, /bodega: 'Bodega'/);
+  assert.match(header, /aria-label=\{t\.viewCalendar\}/);
   assert.doesNotMatch(header, /aria-label="Ver acciones pendientes"/);
 });

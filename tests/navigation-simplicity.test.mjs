@@ -8,10 +8,10 @@ const dashboardPath = new URL('../app/dashboard/page.tsx', import.meta.url);
 test('global navigation uses role-aware Inicio instead of parallel personal portals', async () => {
   const sidebar = await readFile(sidebarPath, 'utf8');
 
-  assert.match(sidebar, /href:'\/dashboard'/);
-  assert.doesNotMatch(sidebar, /href:'\/dashboard\/mi-operacion'/);
-  assert.doesNotMatch(sidebar, /href:'\/dashboard\/mi-finanzas'/);
-  assert.doesNotMatch(sidebar, /href:'\/dashboard\/mi-area'/);
+  assert.match(sidebar, /href\s*:\s*'\/dashboard'/);
+  assert.doesNotMatch(sidebar, /href\s*:\s*'\/dashboard\/mi-operacion'/);
+  assert.doesNotMatch(sidebar, /href\s*:\s*'\/dashboard\/mi-finanzas'/);
+  assert.doesNotMatch(sidebar, /href\s*:\s*'\/dashboard\/mi-area'/);
 });
 
 test('role-aware Inicio keeps operational personalization', async () => {
