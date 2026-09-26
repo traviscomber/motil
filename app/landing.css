@@ -323,7 +323,6 @@
 .motil-landing .ld-mining-photo {
   position: relative;
   height: min(76vh, 780px);
-  border-left: 1px solid var(--ld-line);
 }
 .motil-landing .ld-mining-photo img {
   width: 100%;
@@ -331,6 +330,10 @@
   object-fit: cover;
   object-position: 68% 50%;
   display: block;
+  /* Alpha mask only: the photo dissolves into the section background on the
+     left edge. Fades alpha, never color. */
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 22%);
+  mask-image: linear-gradient(to right, transparent 0%, #000 22%);
 }
 .motil-landing .ld-domains {
   margin-top: clamp(32px, 5vh, 56px);
