@@ -21,8 +21,8 @@ test('legacy inventory route resolves into the canonical Bodega domain', async (
 
 test('global navigation names Bodega as the canonical inventory area', async () => {
   const source = await readFile(sidebar, 'utf8');
-  assert.match(source, /label:'Bodega',href:'\/dashboard\/bodega'/);
-  assert.doesNotMatch(source, /label:'Inventario',href:'\/dashboard\/bodega'/);
+  assert.match(source, /itemKey: 'warehouse', href: '\/dashboard\/bodega'/);
+  assert.doesNotMatch(source, /itemKey: 'inventory', href: '\/dashboard\/bodega'/);
 });
 
 test('legacy Personas route resolves into RRHH operational evidence', async () => {
