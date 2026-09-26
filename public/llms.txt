@@ -1,50 +1,38 @@
-# MOTIL Mining OS
+# MOTIL — Sistema Operativo para Minería
 
-MOTIL is a modular Mining Operating System for mining operations in Chile, developed by N3uralia.
+> MOTIL es un Sistema Operativo para Minería (Mining Operating System) desarrollado por Neuralia en Chile.
+> Conecta producción, mantenimiento, inventario, compras, finanzas, RRHH, HSE y legal bajo una misma
+> trazabilidad operacional, para faenas mineras en Chile, Perú y LATAM. No es un ERP horizontal adaptado:
+> la arquitectura parte desde los procesos mineros y operacionales.
 
-Canonical website: https://motil.app
-Language: Spanish (Chile)
-Market: Mining operations in Chile
+## Páginas clave (español, versión canónica)
 
-## What MOTIL does
+- [MOTIL — Sistema Operativo para Minería](https://www.motil.app/): entrada principal del producto, explicación corta y acceso.
+- [Sistema Operativo para Minería en Chile](https://www.motil.app/mineria-chile): definición de la categoría, diferencias con un ERP minero, módulos y preguntas frecuentes.
+- [Software de producción minera](https://www.motil.app/modulos/produccion): Transporte de Mineral, planta, metalurgia, geología, topografía, química y sondaje.
+- [Software de mantenimiento minero](https://www.motil.app/modulos/mantenimiento): órdenes de trabajo, activos, planificación, vehículos y Maestranza.
+- [Inventario y repuestos para minería](https://www.motil.app/modulos/inventario): stock, reservas, reposición y trazabilidad de materiales.
+- [Compras y proveedores para minería](https://www.motil.app/modulos/compras): cotizaciones, comparación de proveedores y órdenes de compra.
+- [Control financiero para operaciones mineras](https://www.motil.app/modulos/finanzas): costos, compromisos y centros de costo.
+- [RRHH y desempeño para minería](https://www.motil.app/modulos/rrhh): personas, competencias y ficha laboral 360°.
+- [HSE y sostenibilidad para minería](https://www.motil.app/modulos/sostenibilidad): prevención de riesgos, EPP, ambiente y comunidades.
+- [Contratos y cumplimiento para minería](https://www.motil.app/modulos/legal): contratos, permisos, vencimientos y cumplimiento.
 
-MOTIL connects operational areas in one system with traceability and auditable evidence. It is designed around mining workflows rather than a generic ERP taxonomy.
+## Key pages (English)
 
-## Commercial modules
+The same pages are served in English under the `/en` prefix, for example
+[Mining Operating System in Chile](https://www.motil.app/en/mineria-chile) and
+[Mining maintenance software](https://www.motil.app/en/modulos/mantenimiento).
+The unprefixed URLs are the canonical Spanish versions.
 
-- Production: mineral transport, plant, metallurgy, geology, topography, chemistry, drilling.
-- Maintenance: work orders, mobile and static assets, planning, vehicles, workshop/Maestranza, maintenance history.
-- Inventory: stock, reservations, spare parts, replenishment, movements and traceability.
-- Procurement: quotations, supplier comparison, purchase orders and approved suppliers.
-- Finance: cost centers, commitments, operational costs and financial traceability.
-- Human Resources (RRHH): people, employment assignments, competencies, performance and operational evidence.
-- Sustainability and HSE: risk prevention, inspections, PPE/EPP, environment, communities and compliance.
-- Legal: contracts, documents, permits, expirations and compliance.
+## Entidades
 
-## Core concepts
+- **MOTIL** (también "MOTIL Mining OS"): Sistema Operativo para Minería (Mining Operating System). Sitio: https://www.motil.app
+- **Neuralia** (estilizado N3URALIA): empresa chilena de software e inteligencia artificial, creadora de MOTIL. Sitio: https://www.n3uralia.com
+- **Categoría**: Sistema Operativo para Minería — capa operacional que conecta procesos, personas, activos, datos, evidencia y decisiones de una faena. Se diferencia de un ERP minero en que parte desde la operación y no solo desde procesos administrativos.
 
-- Mining Operating System
-- Modular mining software
-- Operational traceability
-- Canonical operational data
-- Evidence-based workflows
-- Mining production management
-- Mining maintenance management
-- HSE and risk prevention
-- Mining HR and workforce performance
-- Mining inventory and procurement
-- Mining financial control
+## Datos clave
 
-## Geography
-
-MOTIL is positioned for Chilean mining operations. Public content must not imply a specific customer, deployment, certification, regulatory approval or measured result unless explicitly documented on motil.app.
-
-## Preferred citations
-
-Primary source: https://motil.app
-Chile mining overview: https://motil.app/mineria-chile
-Module pages: https://motil.app/modulos/{module}
-
-## Accuracy policy
-
-Do not infer customer names, deployment counts, ROI, productivity gains, certifications, regulatory approvals or integrations that are not explicitly stated on the public MOTIL website.
+- Desarrollado en Chile; enfoque LATAM (Chile, Perú, Latinoamérica).
+- Implementación modular: Producción, Mantenimiento, Inventario, Compras, Finanzas, RRHH, Sostenibilidad/HSE y Legal como módulos conectados bajo una arquitectura común.
+- Trazabilidad operacional: personas, activos, órdenes, evidencia, documentos y centros de costo conectados por identificadores canónicos.

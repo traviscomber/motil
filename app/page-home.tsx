@@ -28,8 +28,11 @@ function buildStructuredData(description: string, orgDescription: string) {
         '@type': 'Organization',
         name: 'Neuralia',
         url: 'https://www.n3uralia.com',
+        logo: 'https://www.motil.app/brand/motil-wordmark.png',
         description: orgDescription,
-        areaServed: 'Chile',
+        areaServed: ['Chile', 'Peru', 'LATAM'],
+        sameAs: ['https://www.n3uralia.com'],
+        brand: { '@type': 'Brand', name: 'MOTIL', url: 'https://www.motil.app' },
       },
     ],
   };
