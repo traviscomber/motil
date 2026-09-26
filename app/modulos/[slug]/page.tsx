@@ -48,7 +48,7 @@ export default async function ModulePage({ params }: { params: Promise<{ slug: s
         '@type': 'SoftwareApplication',
         name: `MOTIL Mining OS — ${mod.name}`,
         applicationCategory: 'BusinessApplication',
-        applicationSubCategory: 'Sistema Operativo para Minería',
+        applicationSubCategory: dict.common.miningOSCategory,
         operatingSystem: 'Web',
         url: `https://www.motil.app/modulos/${slug}`,
         inLanguage: locale === 'en' ? 'en' : 'es-CL',
@@ -60,7 +60,7 @@ export default async function ModulePage({ params }: { params: Promise<{ slug: s
         '@type': 'BreadcrumbList',
         itemListElement: [
           { '@type': 'ListItem', position: 1, name: 'MOTIL', item: 'https://www.motil.app/' },
-          { '@type': 'ListItem', position: 2, name: 'Sistema Operativo para Minería', item: 'https://www.motil.app/mineria-chile' },
+          { '@type': 'ListItem', position: 2, name: dict.common.miningOSCategory, item: 'https://www.motil.app/mineria-chile' },
           { '@type': 'ListItem', position: 3, name: mod.name, item: `https://www.motil.app/modulos/${slug}` },
         ],
       },

@@ -12,14 +12,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: meta.title,
     description: meta.description,
-    keywords: [
-      'sistema operativo para minería',
-      'sistemas operativos para minería',
-      'software de gestión minera Chile',
-      'software minero Chile',
-      'ERP minero',
-      'Mining Operating System',
-    ],
+    keywords: [...meta.keywords],
     alternates: {
       canonical: PATH,
       languages: { 'es-CL': PATH, en: `/en${PATH}`, 'x-default': PATH },
@@ -43,7 +36,7 @@ export default async function MineriaChilePage() {
         '@type': 'SoftwareApplication',
         name: 'MOTIL Mining OS',
         applicationCategory: 'BusinessApplication',
-        applicationSubCategory: 'Sistema Operativo para Minería',
+        applicationSubCategory: dict.common.miningOSCategory,
         operatingSystem: 'Web',
         url: `https://www.motil.app${PATH}`,
         inLanguage: locale === 'en' ? 'en' : 'es-CL',
