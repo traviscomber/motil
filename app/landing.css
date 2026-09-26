@@ -272,10 +272,11 @@
   position: absolute;
   transform: translateX(-50%);
   white-space: nowrap;
-  font-size: 11px;
-  letter-spacing: 0.2em;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: var(--ld-paper-2);
+  color: var(--ld-ink);
 }
 .motil-landing .ld-flow-label-accent {
   color: var(--ld-accent);
