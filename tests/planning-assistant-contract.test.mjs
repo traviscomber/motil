@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 
 const api = await readFile(new URL('../app/api/planificacion/asistente/route.ts', import.meta.url), 'utf8');
 const page = await readFile(new URL('../app/dashboard/planificacion/asistente/page.tsx', import.meta.url), 'utf8');
-const nav = await readFile(new URL('../components/layout/operational-attention-context-nav.tsx', import.meta.url), 'utf8');
+const dict = await readFile(new URL('../lib/i18n/dictionaries.ts', import.meta.url), 'utf8');
 
 test('Ariel planning assistant reads real transversal sources and is tenant scoped', () => {
   for (const source of [
@@ -30,5 +30,5 @@ test('Ariel planning assistant preserves human authority and does not mutate ope
 test('planning assistant UI exposes current-data semantics and stewardship path', () => {
   assert.match(page, /datos reales de Mantenimiento, Producción, Bodega y Compras/i);
   assert.match(page, /\/dashboard\/planificacion\/datos/);
-  assert.match(nav, /Asistente Ariel/);
+  assert.match(dict, /assistant: 'Asistente Ariel'/);
 });

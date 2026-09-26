@@ -10,15 +10,19 @@ const headerUrl = new URL('../components/layout/header.tsx', import.meta.url);
 
 test('Gestión diaria exposes three distinct unnumbered contexts', async () => {
   const source = await readFile(contextNavUrl, 'utf8');
-  assert.match(source, /label: 'Revisión diaria'/);
-  assert.match(source, /label: 'Acciones del cargo'/);
-  assert.match(source, /label: 'Calendario operacional'/);
+  const dict = await readFile(new URL('../lib/i18n/dictionaries.ts', import.meta.url), 'utf8');
+  assert.match(source, /href: '\/dashboard\/daily-management'/);
+  assert.match(source, /href: '\/dashboard\/acciones'/);
+  assert.match(source, /href: '\/dashboard\/tareas'/);
+  assert.match(dict, /review: 'Revisión diaria'/);
+  assert.match(dict, /actions: 'Acciones del cargo'/);
+  assert.match(dict, /calendar: 'Calendario operacional'/);
   assert.doesNotMatch(source, /step:/);
 });
 
 test('shared daily context is mounted once at the dashboard shell level', async () => {
   const source = await readFile(shellUrl, 'utf8');
-  assert.match(source, /<DailyManagementContextNav \/>/);
+  assert.match(source, /<DailyManagementContextNav dictionary=\{dictionary\} \/>/);
 });
 
 test('calendar and cargo inbox remain semantically distinct', async () => {

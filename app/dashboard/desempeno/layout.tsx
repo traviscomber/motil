@@ -1,10 +1,12 @@
 import type { ReactNode } from 'react';
+import { getDictionaryForRequest } from '@/lib/i18n/server';
 import { ManagementContextNav } from '@/components/layout/management-context-nav';
 
-export default function PerformanceLayout({ children }: { children: ReactNode }) {
+export default async function PerformanceLayout({ children }: { children: ReactNode }) {
+  const { dictionary } = await getDictionaryForRequest();
   return (
     <div className="space-y-5">
-      <ManagementContextNav />
+      <ManagementContextNav dictionary={dictionary} />
       {children}
     </div>
   );

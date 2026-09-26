@@ -680,6 +680,44 @@ export const dictionaries = {
           review: 'Revisar',
         },
       },
+      dailyNav: {
+        label: 'Gestión diaria',
+        contextsAria: 'Contextos de Gestión diaria',
+        items: {
+          review: 'Revisión diaria',
+          actions: 'Acciones del cargo',
+          calendar: 'Calendario operacional',
+        },
+      },
+      docsNav: {
+        label: 'Documentación',
+        contextsAria: 'Contextos de Documentación',
+        items: {
+          library: 'Biblioteca',
+          control: 'Control documental',
+        },
+      },
+      attentionNav: {
+        label: 'Atención operacional',
+        contextsAria: 'Contextos de Atención operacional',
+        items: {
+          planning: 'Planificación',
+          assistant: 'Asistente Ariel',
+          assistantData: 'Data de Ariel',
+          alerts: 'Alertas',
+          andon: 'Problemas',
+        },
+      },
+      managementNav: {
+        sectionAria: 'Contexto de Gerencia',
+        label: 'Gerencia',
+        navAria: 'Navegación gerencial',
+        items: {
+          executive: 'Centro ejecutivo',
+          performance: 'Desempeño',
+          dataHealth: 'Data Health',
+        },
+      },
     },
   },
   en: {
@@ -1356,6 +1394,44 @@ export const dictionaries = {
           resolve: 'Resolve',
           support: 'Support',
           review: 'Review',
+        },
+      },
+      dailyNav: {
+        label: 'Daily management',
+        contextsAria: 'Daily management contexts',
+        items: {
+          review: 'Daily review',
+          actions: 'Role actions',
+          calendar: 'Operational calendar',
+        },
+      },
+      docsNav: {
+        label: 'Documentation',
+        contextsAria: 'Documentation contexts',
+        items: {
+          library: 'Library',
+          control: 'Document control',
+        },
+      },
+      attentionNav: {
+        label: 'Operational attention',
+        contextsAria: 'Operational attention contexts',
+        items: {
+          planning: 'Planning',
+          assistant: 'Ariel Assistant',
+          assistantData: 'Ariel data',
+          alerts: 'Alerts',
+          andon: 'Problems',
+        },
+      },
+      managementNav: {
+        sectionAria: 'Management context',
+        label: 'Management',
+        navAria: 'Management navigation',
+        items: {
+          executive: 'Executive center',
+          performance: 'Performance',
+          dataHealth: 'Data Health',
         },
       },
     },

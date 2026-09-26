@@ -10,14 +10,17 @@ const controlApiUrl = new URL('../app/api/dashboard/documentos-gestion/route.ts'
 
 test('Documentación exposes library and control as parallel contexts', async () => {
   const source = await readFile(navUrl, 'utf8');
-  assert.match(source, /label: 'Biblioteca'/);
-  assert.match(source, /label: 'Control documental'/);
+  const dict = await readFile(new URL('../lib/i18n/dictionaries.ts', import.meta.url), 'utf8');
+  assert.match(source, /href: '\/dashboard\/documentos'/);
+  assert.match(source, /href: '\/dashboard\/documentos-gestion'/);
+  assert.match(dict, /library: 'Biblioteca'/);
+  assert.match(dict, /control: 'Control documental'/);
   assert.doesNotMatch(source, /step:/);
 });
 
 test('shared documentation context is mounted once in the dashboard shell', async () => {
   const source = await readFile(shellUrl, 'utf8');
-  assert.match(source, /<DocumentationContextNav \/>/);
+  assert.match(source, /<DocumentationContextNav dictionary=\{dictionary\} \/>/);
 });
 
 test('library and control retain distinct responsibilities', async () => {

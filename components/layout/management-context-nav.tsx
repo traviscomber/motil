@@ -5,16 +5,18 @@ import { usePathname } from 'next/navigation';
 import { useModuleAccess } from '@/hooks/use-module-access';
 import { cn } from '@/lib/utils';
 
+import type { Dictionary } from '@/lib/i18n/dictionaries';
+
 type ManagementItem = {
   href: string;
-  label: string;
+  itemKey: 'executive' | 'performance' | 'dataHealth';
   canView: (check: (moduleKey: string) => boolean) => boolean;
 };
 
 const items: ManagementItem[] = [
   {
     href: '/dashboard/decisiones',
-    label: 'Centro ejecutivo',
+    itemKey: 'executive',
     canView: (check) => [
       'prod_operaciones',
       'mant_gerencial',
@@ -25,12 +27,12 @@ const items: ManagementItem[] = [
   },
   {
     href: '/dashboard/desempeno',
-    label: 'Desempeño',
+    itemKey: 'performance',
     canView: (check) => check('core_desempeno'),
   },
   {
     href: '/dashboard/calidad-datos/salud',
-    label: 'Data Health',
+    itemKey: 'dataHealth',
     canView: (check) => [
       'prod_operaciones',
       'mant_operaciones',
@@ -44,7 +46,8 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function ManagementContextNav() {
+export function ManagementContextNav({ dictionary }: { dictionary: Dictionary }) {
+  const t = dictionary.app.managementNav;
   const pathname = usePathname();
   const { canView, ready } = useModuleAccess();
   const visibleItems = ready ? items.filter((item) => item.canView(canView)) : [];
@@ -52,12 +55,12 @@ export function ManagementContextNav() {
   if (!ready || visibleItems.length === 0) return null;
 
   return (
-    <section className="border-b border-border" aria-label="Contexto de Gerencia">
+    <section className="border-b border-border" aria-label={t.sectionAria}>
       <div className="flex min-h-12 items-stretch overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <span className="flex shrink-0 items-center px-2 text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/55">
-          Gerencia
+          {t.label}
         </span>
-        <nav className="flex items-stretch" aria-label="Navegación gerencial">
+        <nav className="flex items-stretch" aria-label={t.navAria}>
           {visibleItems.map((item) => {
             const active = isActive(pathname, item.href);
             return (
@@ -70,7 +73,7 @@ export function ManagementContextNav() {
                   active ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
                 )}
               >
-                <span className="whitespace-nowrap">{item.label}</span>
+                <span className="whitespace-nowrap">{t.items[item.itemKey]}</span>
                 {active ? <span className="absolute inset-x-2.5 bottom-0 h-0.5 bg-primary" aria-hidden="true" /> : null}
               </Link>
             );

@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 
 const api = await readFile(new URL('../app/api/planificacion/reconciliacion/route.ts', import.meta.url), 'utf8');
 const page = await readFile(new URL('../app/dashboard/planificacion/datos/page.tsx', import.meta.url), 'utf8');
-const nav = await readFile(new URL('../components/layout/operational-attention-context-nav.tsx', import.meta.url), 'utf8');
+const dict = await readFile(new URL('../lib/i18n/dictionaries.ts', import.meta.url), 'utf8');
 
 test('planner reconciliation is organization scoped and writable by authorized planner role', () => {
   assert.match(api, /requireModuleAccess/);
@@ -38,7 +38,7 @@ test('workspace shows only unresolved decisions without redundant user labeling'
   assert.match(page, /Buscar otro activo/);
   assert.doesNotMatch(page, /Pregunta para Ariel/);
   assert.doesNotMatch(page, /Necesitan a Ariel/);
-  assert.match(nav, /Data de Ariel/);
+  assert.match(dict, /assistantData: 'Data de Ariel'/);
 });
 
 test('missing asset classifications stay separate from canonical asset mutation', () => {

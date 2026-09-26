@@ -3,27 +3,29 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import type { Dictionary } from '@/lib/i18n/dictionaries';
 
 const items = [
-  { href: '/dashboard/daily-management', label: 'Revisión diaria' },
-  { href: '/dashboard/acciones', label: 'Acciones del cargo' },
-  { href: '/dashboard/tareas', label: 'Calendario operacional' },
-];
+  { href: '/dashboard/daily-management', itemKey: 'review' },
+  { href: '/dashboard/acciones', itemKey: 'actions' },
+  { href: '/dashboard/tareas', itemKey: 'calendar' },
+] as const;
 
 const managedPaths = items.map((item) => item.href);
 
-export function DailyManagementContextNav() {
+export function DailyManagementContextNav({ dictionary }: { dictionary: Dictionary }) {
+  const t = dictionary.app.dailyNav;
   const pathname = usePathname();
   const visible = managedPaths.some((href) => pathname === href || pathname.startsWith(`${href}/`));
   if (!visible) return null;
 
   return (
-    <section className="border-b border-border bg-background" aria-label="Gestión diaria">
+    <section className="border-b border-border bg-background" aria-label={t.label}>
       <div className="flex min-h-11 items-stretch overflow-x-auto px-4 [scrollbar-width:none] md:px-6 xl:px-8 [&::-webkit-scrollbar]:hidden">
         <span className="flex shrink-0 items-center pr-3 text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/55">
-          Gestión diaria
+          {t.label}
         </span>
-        <nav className="flex items-stretch" aria-label="Contextos de Gestión diaria">
+        <nav className="flex items-stretch" aria-label={t.contextsAria}>
           {items.map((item) => {
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (
@@ -36,7 +38,7 @@ export function DailyManagementContextNav() {
                   active ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
                 )}
               >
-                <span className="whitespace-nowrap">{item.label}</span>
+                <span className="whitespace-nowrap">{t.items[item.itemKey]}</span>
                 {active ? <span className="absolute inset-x-3 bottom-0 h-0.5 bg-primary" aria-hidden="true" /> : null}
               </Link>
             );
