@@ -65,6 +65,15 @@ test('landing keeps the working auth entry and canonical CTAs', () => {
   assert.match(dict, /Mining haul truck/);
 });
 
+test('landing exposes a language switch between /es default and /en', () => {
+  assert.match(page, /ld-lang-switch/);
+  assert.match(page, /dict\.common\.languageSwitch/);
+  assert.match(page, /locale === 'en' \? '\/' : '\/en'/);
+  assert.match(page, /Switch to English/);
+  assert.match(page, /Cambiar a español/);
+  assert.match(css, /\.ld-lang-switch \{[\s\S]*?border: 1px solid var\(--ld-line\)/);
+});
+
 test('landing hero states one operation one source of truth better decisions', () => {
   assert.match(page, /One operation\./);
   assert.match(page, /One source of truth\./);

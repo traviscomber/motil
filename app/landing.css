@@ -178,6 +178,24 @@
 .motil-landing .ld-nav-cta:hover {
   border-color: var(--ld-text-2);
 }
+.motil-landing .ld-lang-switch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  height: 34px;
+  padding-inline: 8px;
+  border: 1px solid var(--ld-line);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: var(--ld-text-2);
+  text-decoration: none;
+  transition: border-color 160ms ease, color 160ms ease;
+}
+.motil-landing .ld-lang-switch:hover {
+  border-color: var(--ld-text-2);
+  color: var(--ld-text);
+}
 
 /* Two-column editorial split */
 .motil-landing .ld-split {

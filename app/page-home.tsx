@@ -46,7 +46,7 @@ const domains = [
 ];
 
 export default async function HomePage() {
-  const { dictionary: dict } = await getDictionaryForRequest();
+  const { locale, dictionary: dict } = await getDictionaryForRequest();
   const structuredData = buildStructuredData(dict.landing.seo.description, dict.landing.seo.orgDescription);
   return (
     <main className="motil-landing">
@@ -67,6 +67,14 @@ export default async function HomePage() {
           <Link href="#contexto" className="ld-nav-link">{dict.nav.system}</Link>
           <span className="ld-nav-divider" aria-hidden="true" />
           <Link href="/auth/login" className="ld-nav-cta">{dict.nav.login}</Link>
+          <Link
+            href={locale === 'en' ? '/' : '/en'}
+            className="ld-lang-switch"
+            aria-label={locale === 'en' ? 'Cambiar a español' : 'Switch to English'}
+            lang={locale === 'en' ? 'es' : 'en'}
+          >
+            {dict.common.languageSwitch}
+          </Link>
         </nav>
       </header>
 
