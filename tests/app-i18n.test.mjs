@@ -104,3 +104,33 @@ test('actions inbox is a server wrapper over a locale-aware client', () => {
     assert.doesNotMatch(inbox, new RegExp(literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `actions-inbox must not hardcode ${literal}`);
   }
 });
+
+test('context navs render every label from the dictionary', () => {
+  const daily = fs.readFileSync('components/layout/daily-management-context-nav.tsx', 'utf8');
+  const docs = fs.readFileSync('components/layout/documentation-context-nav.tsx', 'utf8');
+  const attention = fs.readFileSync('components/layout/operational-attention-context-nav.tsx', 'utf8');
+  const management = fs.readFileSync('components/layout/management-context-nav.tsx', 'utf8');
+  const shellSrc = fs.readFileSync('components/layout/dashboard-shell.tsx', 'utf8');
+  const decisionLayout = fs.readFileSync('app/dashboard/decisiones/layout.tsx', 'utf8');
+  const saludLayout = fs.readFileSync('app/dashboard/calidad-datos/salud/layout.tsx', 'utf8');
+  const desempenoLayout = fs.readFileSync('app/dashboard/desempeno/layout.tsx', 'utf8');
+
+  for (const nav of [daily, docs, attention, management]) {
+    assert.match(nav, /dictionary\.app\./);
+    assert.doesNotMatch(nav, /label: '/);
+  }
+  assert.match(daily, /dictionary\.app\.dailyNav/);
+  assert.match(docs, /dictionary\.app\.docsNav/);
+  assert.match(attention, /dictionary\.app\.attentionNav/);
+  assert.match(management, /dictionary\.app\.managementNav/);
+  assert.match(shellSrc, /<DocumentationContextNav dictionary=\{dictionary\} \/>/);
+  assert.match(shellSrc, /<OperationalAttentionContextNav dictionary=\{dictionary\} \/>/);
+  assert.match(decisionLayout, /getDictionaryForRequest\(\)/);
+  assert.match(decisionLayout, /<DecisionCenterShell dictionary=\{dictionary\}>/);
+  assert.match(saludLayout, /<ManagementContextNav dictionary=\{dictionary\} \/>/);
+  assert.match(desempenoLayout, /<ManagementContextNav dictionary=\{dictionary\} \/>/);
+  // No hardcoded nav labels may remain.
+  for (const literal of ['Revisión diaria', 'Acciones del cargo', 'Biblioteca', 'Control documental', 'Asistente Ariel', 'Centro ejecutivo', 'Navegación gerencial']) {
+    assert.doesNotMatch(daily + docs + attention + management, new RegExp(literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `context navs must not hardcode ${literal}`);
+  }
+});

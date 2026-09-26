@@ -3,24 +3,26 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import type { Dictionary } from '@/lib/i18n/dictionaries';
 
 const items = [
-  { href: '/dashboard/documentos', label: 'Biblioteca' },
-  { href: '/dashboard/documentos-gestion', label: 'Control documental' },
-];
+  { href: '/dashboard/documentos', itemKey: 'library' },
+  { href: '/dashboard/documentos-gestion', itemKey: 'control' },
+] as const;
 
-export function DocumentationContextNav() {
+export function DocumentationContextNav({ dictionary }: { dictionary: Dictionary }) {
+  const t = dictionary.app.docsNav;
   const pathname = usePathname();
   const visible = items.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
   if (!visible) return null;
 
   return (
-    <section className="border-b border-border bg-background" aria-label="Documentación">
+    <section className="border-b border-border bg-background" aria-label={t.label}>
       <div className="flex min-h-11 items-stretch overflow-x-auto px-4 [scrollbar-width:none] md:px-6 xl:px-8 [&::-webkit-scrollbar]:hidden">
         <span className="flex shrink-0 items-center pr-3 text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/55">
-          Documentación
+          {t.label}
         </span>
-        <nav className="flex items-stretch" aria-label="Contextos de Documentación">
+        <nav className="flex items-stretch" aria-label={t.contextsAria}>
           {items.map((item) => {
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (
@@ -33,7 +35,7 @@ export function DocumentationContextNav() {
                   active ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
                 )}
               >
-                <span className="whitespace-nowrap">{item.label}</span>
+                <span className="whitespace-nowrap">{t.items[item.itemKey]}</span>
                 {active ? <span className="absolute inset-x-3 bottom-0 h-0.5 bg-primary" aria-hidden="true" /> : null}
               </Link>
             );

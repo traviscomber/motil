@@ -4,7 +4,7 @@ import test from 'node:test';
 
 const routeUrl = new URL('../app/api/intelligence/decision-cases/sync/route.ts', import.meta.url);
 const productionUrl = new URL('../lib/intelligence/production-decision-cases.ts', import.meta.url);
-const layoutUrl = new URL('../app/dashboard/decisiones/layout.tsx', import.meta.url);
+const layoutUrl = new URL('../components/dashboard/decision-center-shell.tsx', import.meta.url);
 
 const source = await readFile(routeUrl, 'utf8');
 const production = await readFile(productionUrl, 'utf8');

@@ -1,20 +1,7 @@
-'use client';
+import { getDictionaryForRequest } from '@/lib/i18n/server';
+import { DecisionCenterShell } from '@/components/dashboard/decision-center-shell';
 
-import { usePathname } from 'next/navigation';
-import { DecisionCasesPanel } from '@/components/dashboard/decision-cases-panel';
-import { OperationalDecisionSync } from '@/components/dashboard/operational-decision-sync';
-import { ManagementContextNav } from '@/components/layout/management-context-nav';
-
-export default function DecisionCenterLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  const isDecisionHome = pathname === '/dashboard/decisiones' || pathname === '/dashboard/decisiones/';
-
-  return (
-    <div className="space-y-5">
-      <ManagementContextNav />
-      {isDecisionHome ? <OperationalDecisionSync /> : null}
-      {children}
-      {isDecisionHome ? <DecisionCasesPanel /> : null}
-    </div>
-  );
+export default async function DecisionCenterLayout({ children }: { children: React.ReactNode }) {
+  const { dictionary } = await getDictionaryForRequest();
+  return <DecisionCenterShell dictionary={dictionary}>{children}</DecisionCenterShell>;
 }

@@ -10,14 +10,17 @@ const leanUrl = new URL('../app/dashboard/lean/page.tsx', import.meta.url);
 
 test('Atención operacional separates alert signals from managed problems', async () => {
   const source = await readFile(navUrl, 'utf8');
-  assert.match(source, /label: 'Alertas'/);
-  assert.match(source, /label: 'Problemas'/);
+  const dict = await readFile(new URL('../lib/i18n/dictionaries.ts', import.meta.url), 'utf8');
+  assert.match(source, /href: '\/dashboard\/alertas'/);
+  assert.match(source, /href: '\/dashboard\/andon'/);
+  assert.match(dict, /alerts: 'Alertas'/);
+  assert.match(dict, /andon: 'Problemas'/);
   assert.doesNotMatch(source, /step:/);
 });
 
 test('shared operational attention context is mounted once in the dashboard shell', async () => {
   const source = await readFile(shellUrl, 'utf8');
-  assert.match(source, /<OperationalAttentionContextNav \/>/);
+  assert.match(source, /<OperationalAttentionContextNav dictionary=\{dictionary\} \/>/);
 });
 
 test('alerts remain signals while Andon owns the operational problem lifecycle', async () => {

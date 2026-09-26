@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 
 const routeUrl = new URL('../app/api/intelligence/decision-cases/route.ts', import.meta.url);
 const panelUrl = new URL('../components/dashboard/decision-cases-panel.tsx', import.meta.url);
-const layoutUrl = new URL('../app/dashboard/decisiones/layout.tsx', import.meta.url);
+const layoutUrl = new URL('../components/dashboard/decision-center-shell.tsx', import.meta.url);
 const read = (url) => readFile(url, 'utf8');
 
 test('Decision Center surfaces advisory cases only on the decisions home', async () => {
