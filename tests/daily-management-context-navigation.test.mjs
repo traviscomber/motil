@@ -4,7 +4,7 @@ import test from 'node:test';
 
 const contextNavUrl = new URL('../components/layout/daily-management-context-nav.tsx', import.meta.url);
 const shellUrl = new URL('../components/layout/dashboard-shell.tsx', import.meta.url);
-const calendarUrl = new URL('../app/dashboard/tareas/page.tsx', import.meta.url);
+const calendarUrl = new URL('../components/calendar/operational-calendar.tsx', import.meta.url);
 const actionsUrl = new URL('../components/actions/actions-inbox.tsx', import.meta.url);
 const headerUrl = new URL('../components/layout/header.tsx', import.meta.url);
 
@@ -30,8 +30,8 @@ test('calendar and cargo inbox remain semantically distinct', async () => {
   const actions = await readFile(actionsUrl, 'utf8');
   const dict = await readFile(new URL('../lib/i18n/dictionaries.ts', import.meta.url), 'utf8');
 
-  assert.match(calendar, /PageHeaderTitle>Calendario operacional/);
-  assert.match(calendar, /Compromisos abiertos con fecha/);
+  assert.match(dict, /title: 'Calendario operacional'/);
+  assert.match(dict, /Compromisos abiertos con fecha/);
   assert.match(calendar, /\/api\/calendar\/operational/);
   assert.match(dict, /title: 'Mis acciones'/);
   assert.match(actions, /\/api\/actions\/inbox/);
