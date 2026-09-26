@@ -133,13 +133,10 @@
   text-decoration: none;
   color: var(--ld-text);
 }
-.motil-landing .ld-wordmark strong {
+.motil-landing .ld-wordmark img {
   display: block;
-  font-family: var(--font-manrope), 'Manrope', sans-serif;
-  font-size: 26px;
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  line-height: 1;
+  width: 118px;
+  height: auto;
 }
 .motil-landing .ld-wordmark span {
   display: block;
@@ -422,8 +419,8 @@
   .motil-landing .ld-header {
     padding-block: 24px;
   }
-  .motil-landing .ld-wordmark strong {
-    font-size: 22px;
+  .motil-landing .ld-wordmark img {
+    width: 96px;
   }
   .motil-landing .ld-wordmark span {
     display: none;

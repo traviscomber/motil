@@ -47,7 +47,13 @@ export default function HomePage() {
 
       <header className="ld-header">
         <Link href="/" className="ld-wordmark" aria-label="MOTIL Mining Operating System">
-          <strong>MOTIL</strong>
+          <Image
+            src="/brand/motil-wordmark.png"
+            alt="MOTIL"
+            width={2094}
+            height={610}
+            priority
+          />
           <span>MINING OPERATING SYSTEM</span>
         </Link>
         <nav className="ld-nav" aria-label="Navegación principal">
