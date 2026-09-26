@@ -6,23 +6,21 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 
 const proxy = fs.readFileSync('proxy.ts', 'utf8');
-const dictModule = fs.readFileSync('lib/i18n/dictionaries.ts', 'utf8');
 const serverModule = fs.readFileSync('lib/i18n/server.ts', 'utf8');
 const layout = fs.readFileSync('app/layout.tsx', 'utf8');
 
 assert.ok(!fs.existsSync('middleware.ts'), 'middleware.ts must not exist; locale routing lives in proxy.ts (Next 16)');
 
 // Extrae los diccionarios transpilando el módulo real con el TypeScript del repo
-// y evaluando el objeto en un contexto aislado.
-function loadDictionaries() {
+// y cargándolo como módulo ESM en memoria (sin eval).
+async function loadDictionaries() {
   const ts = require('typescript');
   const source = fs.readFileSync('lib/i18n/dictionaries.ts', 'utf8');
   const js = ts.transpileModule(source, {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
+    compilerOptions: { module: ts.ModuleKind.ES2020, target: ts.ScriptTarget.ES2020 },
   }).outputText;
-  const module_ = { exports: {} };
-  new Function('module', 'exports', 'require', js)(module_, module_.exports, require);
-  return module_.exports.dictionaries;
+  const mod = await import(`data:text/javascript;base64,${Buffer.from(js).toString('base64')}`);
+  return mod.dictionaries;
 }
 
 function keyPaths(obj, prefix = '') {
@@ -35,8 +33,8 @@ function keyPaths(obj, prefix = '') {
   return paths.sort();
 }
 
-test('i18n dictionaries es/en have strict key parity', () => {
-  const dictionaries = loadDictionaries();
+test('i18n dictionaries es/en have strict key parity', async () => {
+  const dictionaries = await loadDictionaries();
   assert.ok(dictionaries.es, 'missing es dictionary');
   assert.ok(dictionaries.en, 'missing en dictionary');
   const esKeys = keyPaths(dictionaries.es);
