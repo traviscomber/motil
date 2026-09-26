@@ -88,3 +88,19 @@ test('dashboard home is a server wrapper over a locale-aware client', () => {
   }
   assert.match(shell, /pathname === '\/dashboard' \? <HomeDecisionPriorities locale=\{locale\} dictionary=\{dictionary\} \/> : null/);
 });
+
+test('actions inbox is a server wrapper over a locale-aware client', () => {
+  const actionsPage = fs.readFileSync('app/dashboard/acciones/page.tsx', 'utf8');
+  const inbox = fs.readFileSync('components/actions/actions-inbox.tsx', 'utf8');
+
+  assert.match(actionsPage, /getDictionaryForRequest\(\)/);
+  assert.match(actionsPage, /<ActionsInbox locale=\{locale\} dictionary=\{dictionary\} \/>/);
+  assert.match(inbox, /const t = dictionary\.app\.actions;/);
+  assert.match(inbox, /t\.lanes\[lane\]/);
+  assert.match(inbox, /t\.families\[key\]/);
+  assert.match(inbox, /t\.severity\[task\.severity\]/);
+  // No hardcoded actions copy may remain in the component.
+  for (const literal of ['Mis acciones', 'Operación al día', 'Escalaciones', 'Calidad de datos', 'Marcar pendiente', 'Operación actual']) {
+    assert.doesNotMatch(inbox, new RegExp(literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `actions-inbox must not hardcode ${literal}`);
+  }
+});

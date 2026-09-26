@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const apiUrl = new URL('../app/api/actions/state/route.ts', import.meta.url);
-const pageUrl = new URL('../app/dashboard/acciones/page.tsx', import.meta.url);
+const pageUrl = new URL('../components/actions/actions-inbox.tsx', import.meta.url);
 
 test('role action state is validated against the current cargo worklist before persistence', async () => {
   const source = await readFile(apiUrl, 'utf8');
