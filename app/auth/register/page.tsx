@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { AlertCircle, BarChart3, CheckCircle2 } from 'lucide-react';
+import { AlertCircle, CheckCircle2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -82,12 +83,17 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background to-muted p-4">
+    <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="w-full max-w-md">
         <div className="mb-8 flex justify-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-sidebar-primary">
-            <BarChart3 className="h-8 w-8 text-sidebar-primary-foreground" />
-          </div>
+          <Image
+            src="/brand/motil-wordmark.png"
+            alt="MOTIL"
+            width={2094}
+            height={610}
+            priority
+            className="h-10 w-auto"
+          />
         </div>
 
         <Card className="border-border">
