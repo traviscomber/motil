@@ -2,6 +2,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowDown, ArrowRight } from 'lucide-react';
 import { getDictionaryForRequest } from '@/lib/i18n/server';
+import { LanguageSwitch } from '@/components/landing/language-switch';
 import LandingStone from './landing-stone';
 import './landing.css';
 
@@ -67,18 +68,12 @@ export default async function HomePage() {
           <Link href="#contexto" className="ld-nav-link">{dict.nav.system}</Link>
           <span className="ld-nav-divider" aria-hidden="true" />
           <Link href="/auth/login" className="ld-nav-cta">{dict.nav.login}</Link>
-          {/* Plain anchor, not next/link: the switcher must trigger a full
-              document navigation. Client-side RSC fetches to /en go through
-              the proxy rewrite and return an empty flight in production, so a
-              soft navigation would leave the old locale's DOM in place. */}
-          <a
+          <LanguageSwitch
             href={locale === 'en' ? '/' : '/en'}
-            className="ld-lang-switch"
-            aria-label={locale === 'en' ? 'Cambiar a español' : 'Switch to English'}
+            label={dict.common.languageSwitch}
+            ariaLabel={locale === 'en' ? 'Cambiar a español' : 'Switch to English'}
             lang={locale === 'en' ? 'es' : 'en'}
-          >
-            {dict.common.languageSwitch}
-          </a>
+          />
         </nav>
       </header>
 

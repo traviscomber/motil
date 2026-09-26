@@ -66,15 +66,19 @@ test('landing keeps the working auth entry and canonical CTAs', () => {
 });
 
 test('landing exposes a language switch between /es default and /en', () => {
-  assert.match(page, /ld-lang-switch/);
+  const switchComponent = fs.readFileSync('components/landing/language-switch.tsx', 'utf8');
+  assert.match(page, /LanguageSwitch/);
   assert.match(page, /dict\.common\.languageSwitch/);
   assert.match(page, /locale === 'en' \? '\/' : '\/en'/);
   assert.match(page, /Switch to English/);
   assert.match(page, /Cambiar a español/);
-  // The switcher must be a plain anchor: client-side RSC fetches to /en
-  // return an empty flight under the proxy rewrite in production, so a soft
-  // next/link navigation leaves the old locale's DOM in place.
-  assert.match(page, /<a[\s\S]*?href=\{locale === 'en' \? '\/' : '\/en'\}/);
+  // The switcher must force a full document navigation: client-side RSC
+  // fetches to /en return empty diffs under the proxy rewrite in production,
+  // and the App Router soft-navigates even plain anchors, leaving the old
+  // locale's DOM in place. preventDefault + location.assign bypasses it.
+  assert.match(switchComponent, /className="ld-lang-switch"/);
+  assert.match(switchComponent, /preventDefault\(\)/);
+  assert.match(switchComponent, /window\.location\.assign\(href\)/);
   assert.match(css, /\.ld-lang-switch \{[\s\S]*?border: 1px solid var\(--ld-line\)/);
 });
 
