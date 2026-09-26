@@ -134,3 +134,19 @@ test('context navs render every label from the dictionary', () => {
     assert.doesNotMatch(daily + docs + attention + management, new RegExp(literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `context navs must not hardcode ${literal}`);
   }
 });
+
+test('operational calendar is a server wrapper over a locale-aware client', () => {
+  const calendarPage = fs.readFileSync('app/dashboard/tareas/page.tsx', 'utf8');
+  const calendar = fs.readFileSync('components/calendar/operational-calendar.tsx', 'utf8');
+
+  assert.match(calendarPage, /getDictionaryForRequest\(\)/);
+  assert.match(calendarPage, /<OperationalCalendar locale=\{locale\} dictionary=\{dictionary\} \/>/);
+  assert.match(calendar, /const t = dictionary\.app\.calendar;/);
+  assert.match(calendar, /t\.tabs\.(all|overdue|today|week)/);
+  assert.match(calendar, /relativeLabel\(task\.days_until, t\)/);
+  assert.match(calendar, /formatDate\(task\.date, dateLocale\)/);
+  // No hardcoded calendar copy may remain in the component.
+  for (const literal of ['Calendario operacional', 'Cargando compromisos', 'Próximos 7 días', 'No hay compromisos para este filtro']) {
+    assert.doesNotMatch(calendar, new RegExp(literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `operational-calendar must not hardcode ${literal}`);
+  }
+});
