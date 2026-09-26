@@ -1,33 +1,38 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowDown, ArrowRight } from 'lucide-react';
+import { getDictionaryForRequest } from '@/lib/i18n/server';
 import LandingStone from './landing-stone';
 import './landing.css';
 
-const structuredData = {
-  '@context': 'https://schema.org',
-  '@graph': [
-    {
-      '@type': 'SoftwareApplication',
-      name: 'MOTIL Mining OS',
-      applicationCategory: 'BusinessApplication',
-      applicationSubCategory: 'Sistema Operativo para Minería',
-      operatingSystem: 'Web',
-      url: 'https://www.motil.app',
-      description:
-        'Sistema Operativo para Minería en Chile que conecta producción, mantenimiento, inventario, compras, finanzas, RRHH, HSE y legal con trazabilidad operacional.',
-      areaServed: { '@type': 'Country', name: 'Chile' },
-      provider: { '@type': 'Organization', name: 'Neuralia', url: 'https://www.n3uralia.com' },
-    },
-    {
-      '@type': 'Organization',
-      name: 'Neuralia',
-      url: 'https://www.n3uralia.com',
-      description: 'Empresa chilena de desarrollo de software e inteligencia artificial, creadora de MOTIL Mining OS.',
-      areaServed: 'Chile',
-    },
-  ],
-};
+/* Structured data keeps its canonical skeleton literal (locks in
+   tests/landing-brand.test.mjs); only locale-dependent descriptions come
+   from the dictionary. */
+function buildStructuredData(description: string, orgDescription: string) {
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'SoftwareApplication',
+        name: 'MOTIL Mining OS',
+        applicationCategory: 'BusinessApplication',
+        applicationSubCategory: 'Sistema Operativo para Minería',
+        operatingSystem: 'Web',
+        url: 'https://www.motil.app',
+        description,
+        areaServed: { '@type': 'Country', name: 'Chile' },
+        provider: { '@type': 'Organization', name: 'Neuralia', url: 'https://www.n3uralia.com' },
+      },
+      {
+        '@type': 'Organization',
+        name: 'Neuralia',
+        url: 'https://www.n3uralia.com',
+        description: orgDescription,
+        areaServed: 'Chile',
+      },
+    ],
+  };
+}
 
 const flowLabels = ['People', 'Assets', 'Work', 'Materials', 'Production', 'Cost', 'Risk', 'Decisions'];
 /* Measured icon centers in /brand/context-flow.webp (2400px wide) so each
@@ -40,7 +45,9 @@ const domains = [
   { title: 'Decisions', items: 'Evidence · Context · Action' },
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  const { dictionary: dict } = await getDictionaryForRequest();
+  const structuredData = buildStructuredData(dict.landing.seo.description, dict.landing.seo.orgDescription);
   return (
     <main className="motil-landing">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
@@ -57,9 +64,9 @@ export default function HomePage() {
           <span>MINING OPERATING SYSTEM</span>
         </Link>
         <nav className="ld-nav" aria-label="Navegación principal">
-          <Link href="#contexto" className="ld-nav-link">Sistema</Link>
+          <Link href="#contexto" className="ld-nav-link">{dict.nav.system}</Link>
           <span className="ld-nav-divider" aria-hidden="true" />
-          <Link href="/auth/login" className="ld-nav-cta">Ingresar</Link>
+          <Link href="/auth/login" className="ld-nav-cta">{dict.nav.login}</Link>
         </nav>
       </header>
 
@@ -74,8 +81,8 @@ export default function HomePage() {
               MOTIL connects people, assets, production, maintenance and operational evidence in one mining operating system.
             </p>
             <div className="ld-ctas">
-              <Link href="/auth/login" className="ld-btn ld-btn-solid">Ingresar a MOTIL <ArrowRight size={16} strokeWidth={1.5} /></Link>
-              <Link href="#contexto" className="ld-btn ld-btn-ghost">Conocer el sistema <ArrowDown size={16} strokeWidth={1.5} /></Link>
+              <Link href="/auth/login" className="ld-btn ld-btn-solid">{dict.landing.ctaLogin} <ArrowRight size={16} strokeWidth={1.5} /></Link>
+              <Link href="#contexto" className="ld-btn ld-btn-ghost">{dict.landing.ctaExplore} <ArrowDown size={16} strokeWidth={1.5} /></Link>
             </div>
           </div>
           <LandingStone />
@@ -97,7 +104,7 @@ export default function HomePage() {
             <div className="ld-flow-inner">
               <Image
                 src="/brand/context-flow.webp"
-                alt="Flujo operacional: personas, activos, trabajo, materiales, producción, costo, riesgo y decisiones conectados en una línea"
+                alt={dict.landing.alts.flow}
                 width={2400}
                 height={800}
               />
@@ -153,7 +160,7 @@ export default function HomePage() {
           <div className="ld-mining-photo">
             <Image
               src="/brand/mining-truck.webp"
-              alt="Camión de acarreo minero en ruta de faena al atardecer, con montañas oscuras al fondo"
+              alt={dict.landing.alts.truck}
               width={2048}
               height={1152}
             />
@@ -172,14 +179,14 @@ export default function HomePage() {
               A mining operating system designed for real operations, ready to scale across increasingly connected sites.
             </p>
             <div className="ld-ctas">
-              <Link href="/auth/login" className="ld-btn ld-btn-solid">Ingresar a MOTIL <ArrowRight size={16} strokeWidth={1.5} /></Link>
-              <a href="https://www.n3uralia.com" target="_blank" rel="noreferrer" className="ld-btn ld-btn-ghost">Hablar con N3URALIA <ArrowRight size={16} strokeWidth={1.5} /></a>
+              <Link href="/auth/login" className="ld-btn ld-btn-solid">{dict.landing.ctaLogin} <ArrowRight size={16} strokeWidth={1.5} /></Link>
+              <a href="https://www.n3uralia.com" target="_blank" rel="noreferrer" className="ld-btn ld-btn-ghost">{dict.landing.ctaContact} <ArrowRight size={16} strokeWidth={1.5} /></a>
             </div>
             <p className="ld-latam-meta">CHILE&nbsp;&nbsp;/&nbsp;&nbsp;PERU&nbsp;&nbsp;/&nbsp;&nbsp;LATAM</p>
           </div>
           <Image
             src="/brand/latam-stone.webp"
-            alt="Sudamérica esculpida en piedra mineral oscura con vetas de cobre"
+            alt={dict.landing.alts.map}
             width={1024}
             height={1024}
             className="ld-map"
