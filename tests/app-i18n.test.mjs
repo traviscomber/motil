@@ -8,6 +8,8 @@ const shell = fs.readFileSync('components/layout/dashboard-shell.tsx', 'utf8');
 const sidebar = fs.readFileSync('components/layout/sidebar.tsx', 'utf8');
 const header = fs.readFileSync('components/layout/header.tsx', 'utf8');
 const langSwitch = fs.readFileSync('components/layout/app-language-switch.tsx', 'utf8');
+const homePage = fs.readFileSync('app/dashboard/page.tsx', 'utf8');
+const dashboardHome = fs.readFileSync('components/dashboard/dashboard-home.tsx', 'utf8');
 
 test('dashboard layout resolves locale server-side and feeds the shell', () => {
   assert.match(layout, /getDictionaryForRequest\(\)/);
@@ -67,4 +69,22 @@ test('app namespace carries chrome copy for both locales', () => {
   assert.match(dict, /superadmin: 'General administrator'/);
   assert.match(dict, /signOut: 'Sign out'/);
   assert.match(dict, /openUserMenu: 'Open user menu'/);
+});
+
+test('dashboard home is a server wrapper over a locale-aware client', () => {
+  assert.match(homePage, /getDictionaryForRequest\(\)/);
+  assert.match(homePage, /<DashboardHome locale=\{locale\} dictionary=\{dictionary\} \/>/);
+  assert.match(dashboardHome, /const t = dictionary\.app\.home;/);
+  assert.match(dashboardHome, /t\.modes\.plant/);
+  assert.match(dashboardHome, /t\.modes\.maintenance/);
+  assert.match(dashboardHome, /t\.modes\.drilling/);
+  assert.match(dashboardHome, /t\.modes\.management/);
+  assert.match(dashboardHome, /t\.modes\.general/);
+  const priorities = fs.readFileSync('components/dashboard/home-decision-priorities.tsx', 'utf8');
+  assert.match(priorities, /dictionary\.app\.home\.priorities/);
+  // No hardcoded role-mode copy may remain in the component.
+  for (const literal of ['Mi Planta', 'Mi Mantención', 'Mi Bodega', 'Resumen ejecutivo', 'Acciones pendientes', 'Por qué importa:']) {
+    assert.doesNotMatch(dashboardHome, new RegExp(literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `dashboard-home must not hardcode ${literal}`);
+  }
+  assert.match(shell, /pathname === '\/dashboard' \? <HomeDecisionPriorities locale=\{locale\} dictionary=\{dictionary\} \/> : null/);
 });

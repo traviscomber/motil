@@ -65,7 +65,7 @@ export function DashboardShell({ children, locale, dictionary }: { children: Rea
           <main className="flex-1 overflow-x-hidden bg-muted/20 px-4 py-5 md:px-6 md:py-6 xl:px-8 xl:py-7">
             <div className="motil-page space-y-6">
               {children}
-              {pathname === '/dashboard' ? <HomeDecisionPriorities /> : null}
+              {pathname === '/dashboard' ? <HomeDecisionPriorities locale={locale} dictionary={dictionary} /> : null}
             </div>
           </main>
         </DashboardPeriodProvider>

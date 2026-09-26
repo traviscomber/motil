@@ -5,12 +5,14 @@ import test from 'node:test';
 const scoreUrl = new URL('../lib/intelligence/decision-attention.ts', import.meta.url);
 const routeUrl = new URL('../app/api/intelligence/decision-cases/prioritized/route.ts', import.meta.url);
 const homeUrl = new URL('../components/dashboard/home-decision-priorities.tsx', import.meta.url);
-const dashboardUrl = new URL('../app/dashboard/page.tsx', import.meta.url);
+const dashboardUrl = new URL('../components/dashboard/dashboard-home.tsx', import.meta.url);
+const dictUrl = new URL('../lib/i18n/dictionaries.ts', import.meta.url);
 
 const score = await readFile(scoreUrl, 'utf8');
 const route = await readFile(routeUrl, 'utf8');
 const home = await readFile(homeUrl, 'utf8');
 const dashboard = await readFile(dashboardUrl, 'utf8');
+const dict = await readFile(dictUrl, 'utf8');
 
 test('attention scoring is deterministic and explainable without LLM inference', () => {
   assert.match(score, /export function deriveDecisionAttention/);
@@ -54,14 +56,14 @@ test('home consumes the top three prioritized cases across authorized domains', 
   for (const domain of ['maintenance', 'geology', 'inventory', 'procurement', 'production', 'finance', 'hse']) {
     assert.match(home, new RegExp(`${domain}:`));
   }
-  assert.match(home, /Por qué importa:/);
+  assert.match(dict, /whyItMatters: 'Por qué importa:'/);
   assert.match(home, /item\.attention\.level/);
   assert.match(home, /hse: '\/dashboard\/sostenibilidad'/);
 });
 
 test('executive home separates decisions from operational tasks', () => {
   assert.match(dashboard, /HomeDecisionPriorities/);
-  assert.match(dashboard, /mode === 'management' \? <HomeDecisionPriorities \/>/);
-  assert.match(dashboard, /Acciones pendientes/);
-  assert.match(dashboard, /separado de las decisiones priorizadas/);
+  assert.match(dashboard, /mode === 'management' \? <HomeDecisionPriorities dictionary=\{dictionary\} locale=\{locale\} \/>/);
+  assert.match(dict, /pendingTitle: 'Acciones pendientes'/);
+  assert.match(dict, /separado de las decisiones priorizadas/);
 });
