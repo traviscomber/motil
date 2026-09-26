@@ -11,7 +11,8 @@
   --ld-text-3: #747169;
   --ld-accent: #874034;
   --ld-accent-detail: #b95732;
-  --ld-paper: #e8e3d6;
+  --ld-paper: #ddd6c4;
+  --ld-paper-2: rgba(23, 23, 21, 0.55);
   --ld-ink: #171715;
   --ld-ink-2: rgba(23, 23, 21, 0.68);
 
@@ -250,24 +251,31 @@
   width: 100%;
   max-width: 1120px;
 }
+.motil-landing .ld-flow-inner {
+  width: 100%;
+}
 .motil-landing .ld-flow img {
   width: 100%;
   height: auto;
   display: block;
+  /* The artwork is visually heavy (dark 3D bronze on paper) — soften it so
+     the strip reads as one calibrated instrument, not a row of bulky toys. */
+  opacity: 0.82;
+  filter: saturate(0.82) brightness(1.04);
 }
 .motil-landing .ld-flow-labels {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 10px 16px;
-  margin-top: 20px;
-  padding-inline: 1%;
+  position: relative;
+  height: 18px;
+  margin-top: 22px;
 }
 .motil-landing .ld-flow-label {
+  position: absolute;
+  transform: translateX(-50%);
+  white-space: nowrap;
   font-size: 11px;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: rgba(23, 23, 21, 0.62);
+  color: var(--ld-paper-2);
 }
 .motil-landing .ld-flow-label-accent {
   color: var(--ld-accent);
@@ -426,6 +434,16 @@
   .motil-landing .ld-nav-cta {
     padding: 9px 16px;
     font-size: 11px;
+  }
+  .motil-landing .ld-flow-inner {
+    min-width: 560px;
+  }
+  .motil-landing .ld-flow {
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .motil-landing .ld-flow::-webkit-scrollbar {
+    display: none;
   }
   .motil-landing .ld-ctas {
     width: 100%;

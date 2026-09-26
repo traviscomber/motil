@@ -30,6 +30,9 @@ const structuredData = {
 };
 
 const flowLabels = ['People', 'Assets', 'Work', 'Materials', 'Production', 'Cost', 'Risk', 'Decisions'];
+/* Measured icon centers in /brand/context-flow.webp (2400px wide) so each
+   label sits exactly under its icon. Recompute if the artwork is re-exported. */
+const flowLabelCenters = [7.4, 20.88, 33.25, 45.1, 58.58, 69.38, 79.73, 92.4];
 
 const domains = [
   { title: 'Operations', items: 'Production · Maintenance · Field execution' },
@@ -85,18 +88,24 @@ export default function HomePage() {
             </p>
           </div>
           <div className="ld-flow">
-            <Image
-              src="/brand/context-flow.webp"
-              alt="Flujo operacional: personas, activos, trabajo, materiales, producción, costo, riesgo y decisiones conectados en una línea"
-              width={2400}
-              height={800}
-            />
-            <div className="ld-flow-labels" aria-hidden="true">
-              {flowLabels.map((label, index) => (
-                <span key={label} className={index === flowLabels.length - 1 ? 'ld-flow-label ld-flow-label-accent' : 'ld-flow-label'}>
-                  {label}
-                </span>
-              ))}
+            <div className="ld-flow-inner">
+              <Image
+                src="/brand/context-flow.webp"
+                alt="Flujo operacional: personas, activos, trabajo, materiales, producción, costo, riesgo y decisiones conectados en una línea"
+                width={2400}
+                height={800}
+              />
+              <div className="ld-flow-labels" aria-hidden="true">
+                {flowLabels.map((label, index) => (
+                  <span
+                    key={label}
+                    style={{ left: `${flowLabelCenters[index]}%` }}
+                    className={index === flowLabels.length - 1 ? 'ld-flow-label ld-flow-label-accent' : 'ld-flow-label'}
+                  >
+                    {label}
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
           <div className="ld-pillars">
