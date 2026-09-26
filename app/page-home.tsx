@@ -6,10 +6,9 @@ import { LanguageSwitch } from '@/components/landing/language-switch';
 import LandingStone from './landing-stone';
 import './landing.css';
 
-/* Structured data keeps its canonical skeleton literal (locks in
-   tests/landing-brand.test.mjs); only locale-dependent descriptions come
-   from the dictionary. */
-function buildStructuredData(description: string, orgDescription: string) {
+/* Structured data descriptions and category name come from the dictionary so
+   /en pages emit English schema; the canonical skeleton stays literal. */
+function buildStructuredData(description: string, orgDescription: string, category: string) {
   return {
     '@context': 'https://schema.org',
     '@graph': [
@@ -17,7 +16,7 @@ function buildStructuredData(description: string, orgDescription: string) {
         '@type': 'SoftwareApplication',
         name: 'MOTIL Mining OS',
         applicationCategory: 'BusinessApplication',
-        applicationSubCategory: 'Sistema Operativo para Minería',
+        applicationSubCategory: category,
         operatingSystem: 'Web',
         url: 'https://www.motil.app',
         description,
@@ -44,7 +43,7 @@ const flowLabelCenters = [7.4, 20.88, 33.25, 45.1, 58.58, 69.38, 79.73, 92.4];
 
 export default async function HomePage() {
   const { locale, dictionary: dict } = await getDictionaryForRequest();
-  const structuredData = buildStructuredData(dict.landing.seo.description, dict.landing.seo.orgDescription);
+  const structuredData = buildStructuredData(dict.landing.seo.description, dict.landing.seo.orgDescription, dict.common.miningOSCategory);
   return (
     <main className="motil-landing">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />

@@ -5,6 +5,9 @@ import fs from 'node:fs';
 const sitemap = fs.readFileSync('app/sitemap.ts', 'utf8');
 const llms = fs.existsSync('public/llms.txt') ? fs.readFileSync('public/llms.txt', 'utf8') : '';
 const home = fs.readFileSync('app/page-home.tsx', 'utf8');
+const mineria = fs.readFileSync('app/mineria-chile/page.tsx', 'utf8');
+const modulos = fs.readFileSync('app/modulos/[slug]/page.tsx', 'utf8');
+const dicts = fs.readFileSync('lib/i18n/dictionaries.ts', 'utf8');
 
 test('sitemap declares hreflang alternates (es-CL canonical, en, x-default) for every page', () => {
   assert.match(sitemap, /alternates: \{ languages: languages\('\/'\) \}/);
@@ -29,4 +32,21 @@ test('home JSON-LD enriches the Organization entity for generative engines', () 
   assert.match(home, /sameAs: \['https:\/\/www\.n3uralia\.com'\]/);
   assert.match(home, /brand: \{ '@type': 'Brand', name: 'MOTIL'/);
   assert.match(home, /areaServed: \['Chile', 'Peru', 'LATAM'\]/);
+});
+
+test('JSON-LD category and keywords are locale-aware (English schema on /en)', () => {
+  // The dictionary carries both languages; pages must not hardcode the category.
+  assert.match(dicts, /miningOSCategory: 'Sistema Operativo para Minería'/);
+  assert.match(dicts, /miningOSCategory: 'Mining Operating System'/);
+  const pages = [['home', home], ['mineria', mineria], ['modulos', modulos]];
+  for (const [name, src] of pages) {
+    assert.doesNotMatch(src, /applicationSubCategory: 'Sistema Operativo para Minería'/, `${name} must not hardcode the Spanish category`);
+    assert.match(src, /applicationSubCategory: (dict\.common\.miningOSCategory|category)/, `${name} must use the dictionary category`);
+  }
+  // Breadcrumb name on module pages must be locale-aware too.
+  assert.doesNotMatch(modulos, /name: 'Sistema Operativo para Minería', item: 'https:\/\/www\.motil\.app\/mineria-chile'/);
+  assert.match(modulos, /name: dict\.common\.miningOSCategory, item: 'https:\/\/www\.motil\.app\/mineria-chile'/);
+  // mineria-chile metadata keywords come from the dictionary (locale-specific).
+  assert.match(mineria, /keywords: \[\.\.\.meta\.keywords\]/);
+  assert.match(dicts, /keywords: \[/);
 });

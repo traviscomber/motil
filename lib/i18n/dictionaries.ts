@@ -15,6 +15,7 @@ export const dictionaries = {
     },
     common: {
       languageSwitch: 'EN',
+      miningOSCategory: 'Sistema Operativo para Minería',
     },
     landing: {
       wordmarkLine: 'SISTEMA OPERATIVO PARA MINERÍA',
@@ -82,6 +83,14 @@ export const dictionaries = {
             'MOTIL es un Sistema Operativo para Minería en Chile. Conecta producción, mantenimiento, inventario, compras, finanzas, RRHH, HSE y legal bajo una misma trazabilidad operacional.',
           ogTitle: 'Sistema Operativo para Minería en Chile | MOTIL',
           ogDescription: 'Una capa operacional común para conectar la faena completa con trazabilidad, evidencia y control por área.',
+          keywords: [
+            'sistema operativo para minería',
+            'sistemas operativos para minería',
+            'software de gestión minera Chile',
+            'software minero Chile',
+            'ERP minero',
+            'Mining Operating System',
+          ],
         },
         eyebrow: 'Sistema Operativo para Minería · Chile',
         h1: 'Sistema Operativo para Minería en Chile',
@@ -317,6 +326,7 @@ export const dictionaries = {
     },
     common: {
       languageSwitch: 'ES',
+      miningOSCategory: 'Mining Operating System',
     },
     landing: {
       wordmarkLine: 'MINING OPERATING SYSTEM',
@@ -384,6 +394,14 @@ export const dictionaries = {
             'MOTIL is a Mining Operating System in Chile. It connects production, maintenance, inventory, procurement, finance, HR, HSE and legal under one operational traceability.',
           ogTitle: 'Mining Operating System in Chile | MOTIL',
           ogDescription: 'A common operational layer to connect the entire mine site with traceability, evidence and per-area control.',
+          keywords: [
+            'mining operating system',
+            'mining operating systems',
+            'mining management software Chile',
+            'mining software Chile',
+            'mining ERP',
+            'Mining Operating System',
+          ],
         },
         eyebrow: 'Mining Operating System · Chile',
         h1: 'Mining Operating System in Chile',
