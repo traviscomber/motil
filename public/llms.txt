@@ -33,8 +33,16 @@ MOTIL connects operational areas in one system with traceability and auditable e
 
 - Landing: https://www.motil.app/ · https://www.motil.app/en
 - Mining Operating System in Chile: https://www.motil.app/mineria-chile · https://www.motil.app/en/mineria-chile
-- Modules: https://www.motil.app/modulos/{produccion,mantenimiento,inventario,compras,finanzas,rrhh,sostenibilidad,legal} — each also available under /en/modulos/.
-- llms.txt response format: this file follows the llms.txt convention (https://llmstxt.org).
+- Production: https://www.motil.app/modulos/produccion · https://www.motil.app/en/modulos/produccion
+- Maintenance: https://www.motil.app/modulos/mantenimiento · https://www.motil.app/en/modulos/mantenimiento
+- Inventory: https://www.motil.app/modulos/inventario · https://www.motil.app/en/modulos/inventario
+- Procurement: https://www.motil.app/modulos/compras · https://www.motil.app/en/modulos/compras
+- Finance: https://www.motil.app/modulos/finanzas · https://www.motil.app/en/modulos/finanzas
+- Human Resources: https://www.motil.app/modulos/rrhh · https://www.motil.app/en/modulos/rrhh
+- Sustainability and HSE: https://www.motil.app/modulos/sostenibilidad · https://www.motil.app/en/modulos/sostenibilidad
+- Legal: https://www.motil.app/modulos/legal · https://www.motil.app/en/modulos/legal
+
+Format: this file follows the llms.txt convention (https://llmstxt.org).
 
 ## Entities
 

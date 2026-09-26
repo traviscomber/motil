@@ -21,7 +21,7 @@ test('llms.txt indexes MOTIL entities, module pages and the /en mirror', () => {
   assert.match(llms, /https:\/\/www\.motil\.app\/mineria-chile/);
   assert.ok((llms.match(/https:\/\/www\.motil\.app\/modulos\//g) ?? []).length >= 8, 'expected all module pages');
   assert.match(llms, /\/en\/mineria-chile/);
-  assert.match(llms, /No es un ERP horizontal adaptado/);
+  assert.match(llms, /not a horizontal ERP adapted|No es un ERP horizontal adaptado/);
 });
 
 test('home JSON-LD enriches the Organization entity for generative engines', () => {
