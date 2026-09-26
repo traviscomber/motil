@@ -67,14 +67,18 @@ export default async function HomePage() {
           <Link href="#contexto" className="ld-nav-link">{dict.nav.system}</Link>
           <span className="ld-nav-divider" aria-hidden="true" />
           <Link href="/auth/login" className="ld-nav-cta">{dict.nav.login}</Link>
-          <Link
+          {/* Plain anchor, not next/link: the switcher must trigger a full
+              document navigation. Client-side RSC fetches to /en go through
+              the proxy rewrite and return an empty flight in production, so a
+              soft navigation would leave the old locale's DOM in place. */}
+          <a
             href={locale === 'en' ? '/' : '/en'}
             className="ld-lang-switch"
             aria-label={locale === 'en' ? 'Cambiar a español' : 'Switch to English'}
             lang={locale === 'en' ? 'es' : 'en'}
           >
             {dict.common.languageSwitch}
-          </Link>
+          </a>
         </nav>
       </header>
 

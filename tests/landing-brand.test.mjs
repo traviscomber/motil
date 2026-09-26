@@ -71,6 +71,10 @@ test('landing exposes a language switch between /es default and /en', () => {
   assert.match(page, /locale === 'en' \? '\/' : '\/en'/);
   assert.match(page, /Switch to English/);
   assert.match(page, /Cambiar a español/);
+  // The switcher must be a plain anchor: client-side RSC fetches to /en
+  // return an empty flight under the proxy rewrite in production, so a soft
+  // next/link navigation leaves the old locale's DOM in place.
+  assert.match(page, /<a[\s\S]*?href=\{locale === 'en' \? '\/' : '\/en'\}/);
   assert.match(css, /\.ld-lang-switch \{[\s\S]*?border: 1px solid var\(--ld-line\)/);
 });
 
