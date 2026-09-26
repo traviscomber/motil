@@ -46,7 +46,10 @@ export async function generateMetadata(): Promise<Metadata> {
       'software faena minera',
       'MOTIL Mining OS',
     ],
-    alternates: { canonical: '/' },
+    alternates: {
+      canonical: '/',
+      languages: { 'es-CL': '/', en: '/en', 'x-default': '/' },
+    },
     openGraph: {
       type: 'website',
       locale: es ? 'es_CL' : 'en_US',
