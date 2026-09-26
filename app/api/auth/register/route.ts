@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validar formato del correo
-    const emailRegex = /^[^\s@]+@[^\s@]+\[^\s@]+$/;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       return NextResponse.json(
         { error: 'Formato de correo inválido' },
