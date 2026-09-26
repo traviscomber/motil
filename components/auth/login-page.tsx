@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import { AlertCircle, CheckCircle2, ShieldCheck, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -75,6 +76,14 @@ export function LoginPage() {
     <main className="min-h-screen bg-background px-4 py-8 sm:px-6 lg:px-8" suppressHydrationWarning>
       <div className="mx-auto grid min-h-[calc(100vh-4rem)] w-full max-w-5xl items-center gap-10 lg:grid-cols-[1fr_420px]">
         <section className="order-2 space-y-6 lg:order-1">
+          <Image
+            src="/brand/motil-wordmark.png"
+            alt="MOTIL"
+            width={2094}
+            height={610}
+            priority
+            className="h-9 w-auto"
+          />
           <div className="inline-flex items-center gap-2 rounded-md border border-primary/25 bg-primary/10 px-3 py-2 text-sm font-medium text-primary">
             <ShieldCheck className="h-4 w-4" />
             Acceso seguro a Motil

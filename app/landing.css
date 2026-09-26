@@ -379,6 +379,12 @@
   text-transform: uppercase;
   color: var(--ld-text-3);
 }
+.motil-landing .ld-footer-strip .ld-footer-mark {
+  display: block;
+  width: 92px;
+  height: auto;
+  opacity: 0.9;
+}
 .motil-landing .ld-footer-strip nav {
   display: flex;
   gap: 14px;

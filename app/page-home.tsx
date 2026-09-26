@@ -186,7 +186,13 @@ export default function HomePage() {
           />
         </div>
         <footer className="ld-footer-strip">
-          <span>MOTIL&nbsp;&nbsp;|&nbsp;&nbsp;Mining Operating System</span>
+          <Image
+            src="/brand/motil-wordmark.png"
+            alt="MOTIL — Mining Operating System"
+            width={2094}
+            height={610}
+            className="ld-footer-mark"
+          />
           <nav aria-label="Áreas de impacto">
             <span>People</span><span>/</span><span>Assets</span><span>/</span><span>Operations</span><span>/</span><span>Real impact</span>
           </nav>
