@@ -27,7 +27,10 @@ test('landing uses the canonical mineral palette and never pure white or gradien
   assert.doesNotMatch(page, /#fff\b/i);
   assert.doesNotMatch(css, /(#ffffff|rgb\(255,\s*255,\s*255\))/i);
   assert.doesNotMatch(page, /(#ffffff|rgb\(255,\s*255,\s*255\))/i);
-  assert.doesNotMatch(css, /gradient/i);
+  // No color gradients anywhere. Alpha masks (mask-image) are exempt: they fade
+  // an image into the background without rendering a gradient.
+  const cssNoMasks = css.replace(/-webkit-mask-image:[^;]+;|mask-image:[^;]+;/g, '');
+  assert.doesNotMatch(cssNoMasks, /gradient/i);
   assert.doesNotMatch(page, /gradient/i);
 });
 
