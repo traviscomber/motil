@@ -59,6 +59,14 @@ test('root layout renders a dynamic html lang from the request locale', () => {
   assert.doesNotMatch(layout, /<html lang="es-CL"/);
 });
 
+test('root layout metadata is locale-aware (es default, en for /en)', () => {
+  assert.match(layout, /export async function generateMetadata/);
+  assert.match(layout, /const locale = await getLocale\(\)/);
+  assert.match(layout, /es_CL/);
+  assert.match(layout, /en_US/);
+  assert.doesNotMatch(layout, /export const metadata/);
+});
+
 test('server locale helper prefers header, falls back to cookie with es default', () => {
   assert.match(serverModule, /headers\(\)/);
   assert.match(serverModule, /LOCALE_HEADER/);

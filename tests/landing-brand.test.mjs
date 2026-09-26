@@ -6,6 +6,7 @@ const page = fs.readFileSync('app/page-home.tsx', 'utf8');
 const css = fs.readFileSync('app/landing.css', 'utf8');
 const layout = fs.readFileSync('app/layout.tsx', 'utf8');
 const stone = fs.readFileSync('app/landing-stone.tsx', 'utf8');
+const dict = fs.readFileSync('lib/i18n/dictionaries.ts', 'utf8');
 
 test('landing has exactly four principal sections in canonical order', () => {
   const sections = [...page.matchAll(/data-landing-section="([^"]+)"/g)].map((m) => m[1]);
@@ -51,9 +52,17 @@ test('landing keeps the working auth entry and canonical CTAs', () => {
   assert.ok(logins >= 3, `expected at least 3 auth entries, got ${logins}`);
   assert.match(page, /#contexto/);
   assert.match(page, /https:\/\/www\.n3uralia\.com/);
-  assert.match(page, /Ingresar a MOTIL/);
-  assert.match(page, /Conocer el sistema/);
-  assert.match(page, /Hablar con N3URALIA/);
+  // Locale-dependent chrome lives in the i18n dictionary, not in the JSX.
+  assert.match(page, /getDictionaryForRequest/);
+  assert.doesNotMatch(page, /Ingresar a MOTIL|Conocer el sistema|Hablar con N3URALIA/);
+  assert.match(dict, /Ingresar a MOTIL/);
+  assert.match(dict, /Conocer el sistema/);
+  assert.match(dict, /Hablar con N3URALIA/);
+  assert.match(dict, /Sign in to MOTIL/);
+  assert.match(dict, /Explore the system/);
+  assert.match(dict, /Talk to N3URALIA/);
+  assert.match(dict, /Camión de acarreo minero/);
+  assert.match(dict, /Mining haul truck/);
 });
 
 test('landing hero states one operation one source of truth better decisions', () => {
