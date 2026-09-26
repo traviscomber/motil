@@ -1,8 +1,9 @@
-import { type NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { verifyCustomSession } from '@/lib/auth/signed-session';
 import { resolveMaintenanceViewerMode } from '@/lib/maintenance/viewer-mode';
+import { LOCALE_COOKIE, LOCALE_HEADER } from '@/lib/i18n/dictionaries';
 
 const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
@@ -124,6 +125,46 @@ function clearCustomSession(response: NextResponse) {
 }
 
 export async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // i18n routing: /es/* es el default y redirige a la ruta sin prefijo;
+  // /en/* se reescribe a la misma ruta con locale en header + cookie.
+  if (pathname === '/es' || pathname.startsWith('/es/')) {
+    const url = request.nextUrl.clone();
+    url.pathname = pathname.replace(/^\/es/, '') || '/';
+    return withSecurityHeaders(NextResponse.redirect(url));
+  }
+
+  if (pathname === '/en' || pathname.startsWith('/en/')) {
+    const targetUrl = request.nextUrl.clone();
+    targetUrl.pathname = pathname.replace(/^\/en/, '') || '/';
+    const inner = new NextRequest(targetUrl, request);
+    const response = await proxyRequest(inner);
+
+    // Redirecciones/errores internos se devuelven tal cual (apuntan a rutas sin prefijo).
+    if (response.status >= 300 || response.headers.get('location')) {
+      return response;
+    }
+
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set(LOCALE_HEADER, 'en');
+    const rewritten = NextResponse.rewrite(targetUrl, { request: { headers: requestHeaders } });
+    for (const cookie of response.cookies.getAll()) rewritten.cookies.set(cookie);
+    rewritten.cookies.set(LOCALE_COOKIE, 'en', { path: '/', sameSite: 'lax' });
+    for (const [key, value] of response.headers) {
+      if (!key.startsWith('x-middleware')) rewritten.headers.set(key, value);
+    }
+    return withSecurityHeaders(rewritten);
+  }
+
+  const response = await proxyRequest(request);
+  if (request.nextUrl.pathname !== '/auth/callback' && response.cookies.get(LOCALE_COOKIE)?.value !== 'es') {
+    response.cookies.set(LOCALE_COOKIE, 'es', { path: '/', sameSite: 'lax' });
+  }
+  return response;
+}
+
+async function proxyRequest(request: NextRequest) {
   let response = NextResponse.next({
     request: {
       headers: request.headers,

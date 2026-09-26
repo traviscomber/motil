@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { Geist, Geist_Mono, Manrope, Montserrat } from 'next/font/google';
 import { ThemeProvider } from 'next-themes';
 import { Toaster } from 'sonner';
+import { getLocale } from '@/lib/i18n/server';
 import './globals.css';
 import './motil-system.css';
 
@@ -70,9 +71,10 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const locale = await getLocale();
   return (
-    <html lang="es-CL" className={`${geist.variable} ${geistMono.variable} ${montserrat.variable} ${manrope.variable} scroll-smooth`} suppressHydrationWarning>
+    <html lang={locale === 'en' ? 'en' : 'es-CL'} className={`${geist.variable} ${geistMono.variable} ${montserrat.variable} ${manrope.variable} scroll-smooth`} suppressHydrationWarning>
       <head><meta charSet="utf-8" /></head>
       <body className="bg-background font-sans text-foreground antialiased selection:bg-primary/20 selection:text-foreground">
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} storageKey="motil-theme" disableTransitionOnChange>
