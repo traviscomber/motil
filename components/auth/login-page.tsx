@@ -6,12 +6,7 @@ import { AlertCircle, CheckCircle2, ShieldCheck, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-
-const accessBenefits = [
-  'Acceso centralizado para operación, mantención y gerencia',
-  'Trazabilidad de acciones y evidencia de trabajo',
-  'Contexto y permisos aplicados según el usuario',
-];
+import type { Dictionary } from '@/lib/i18n/dictionaries';
 
 function getSafeRedirect() {
   if (typeof window === 'undefined') return '/dashboard';
@@ -21,7 +16,8 @@ function getSafeRedirect() {
   return redirect;
 }
 
-export function LoginPage() {
+export function LoginPage({ dictionary }: { dictionary: Dictionary }) {
+  const t = dictionary.auth.login;
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -30,9 +26,9 @@ export function LoginPage() {
   useEffect(() => {
     const errorMessage = new URLSearchParams(window.location.search).get('error');
     if (errorMessage) {
-      setError(errorMessage === 'session_expired' ? 'Tu sesión expiró. Inicia sesión nuevamente.' : errorMessage);
+      setError(errorMessage === 'session_expired' ? t.errors.sessionExpired : errorMessage);
     }
-  }, []);
+  }, [t.errors.sessionExpired]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -57,16 +53,16 @@ export function LoginPage() {
         });
 
         if (!sessionResponse.ok) {
-          setError('Las credenciales fueron aceptadas, pero la sesión no pudo establecerse. Intenta nuevamente.');
+          setError(t.errors.sessionFailed);
           return;
         }
 
         window.location.replace(getSafeRedirect());
         return;
       }
-      setError(data?.error || 'Credenciales inválidas');
+      setError(data?.error || t.errors.invalidCredentials);
     } catch {
-      setError('No fue posible conectar con el servicio de acceso. Intenta nuevamente.');
+      setError(t.errors.network);
     } finally {
       setIsLoading(false);
     }
@@ -86,33 +82,33 @@ export function LoginPage() {
           />
           <div className="inline-flex items-center gap-2 rounded-md border border-primary/25 bg-primary/10 px-3 py-2 text-sm font-medium text-primary">
             <ShieldCheck className="h-4 w-4" />
-            Acceso seguro a Motil
+            {t.badge}
           </div>
 
           <div className="space-y-3">
             <h1 className="max-w-2xl text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
-              Gestión operacional conectada y trazable
+              {t.heading}
             </h1>
             <p className="max-w-xl text-base text-muted-foreground sm:text-lg">
-              Accede a producción, mantenimiento, inventario, HSE, documentos y control financiero desde un solo entorno.
+              {t.subtitle}
             </p>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-md border border-border bg-card p-4">
               <Wrench className="mb-3 h-5 w-5 text-primary" />
-              <p className="font-semibold">Operación diaria</p>
-              <p className="mt-1 text-sm text-muted-foreground">Órdenes, activos, inventario y seguimiento en terreno.</p>
+              <p className="font-semibold">{t.cards[0].title}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{t.cards[0].text}</p>
             </div>
             <div className="rounded-md border border-border bg-card p-4">
               <CheckCircle2 className="mb-3 h-5 w-5 text-secondary" />
-              <p className="font-semibold">Control y evidencia</p>
-              <p className="mt-1 text-sm text-muted-foreground">Historial, documentos, permisos y decisiones trazables.</p>
+              <p className="font-semibold">{t.cards[1].title}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{t.cards[1].text}</p>
             </div>
           </div>
 
           <ul className="space-y-3 text-sm text-muted-foreground">
-            {accessBenefits.map((item) => (
+            {t.benefits.map((item) => (
               <li key={item} className="flex gap-2">
                 <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-secondary" />
                 <span>{item}</span>
@@ -124,8 +120,8 @@ export function LoginPage() {
         <section className="order-1 lg:order-2">
           <Card>
             <CardHeader className="space-y-2">
-              <CardTitle className="text-2xl">Iniciar sesión</CardTitle>
-              <CardDescription>Motil · Plataforma operacional</CardDescription>
+              <CardTitle className="text-2xl">{t.title}</CardTitle>
+              <CardDescription>{t.cardDescription}</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4" suppressHydrationWarning>
@@ -137,7 +133,7 @@ export function LoginPage() {
                 ) : null}
 
                 <div className="space-y-2">
-                  <label htmlFor="email" className="text-sm font-medium">Correo electrónico</label>
+                  <label htmlFor="email" className="text-sm font-medium">{t.emailLabel}</label>
                   <Input
                     id="email"
                     type="email"
@@ -152,7 +148,7 @@ export function LoginPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label htmlFor="password" className="text-sm font-medium">Contraseña</label>
+                  <label htmlFor="password" className="text-sm font-medium">{t.passwordLabel}</label>
                   <Input
                     id="password"
                     type="password"
@@ -166,11 +162,11 @@ export function LoginPage() {
                 </div>
 
                 <Button type="submit" className="w-full" disabled={isLoading} aria-busy={isLoading}>
-                  {isLoading ? 'Ingresando…' : 'Iniciar sesión'}
+                  {isLoading ? t.submitting : t.submit}
                 </Button>
 
                 <p className="text-center text-xs text-muted-foreground">
-                  Solicita acceso al administrador de tu organización cuando no tengas credenciales.
+                  {t.helpNote}
                 </p>
               </form>
             </CardContent>

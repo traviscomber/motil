@@ -6,6 +6,7 @@ const proxy = await readFile(new URL('../proxy.ts', import.meta.url), 'utf8');
 const loginRoute = await readFile(new URL('../app/api/auth/login/route.ts', import.meta.url), 'utf8');
 const authLoginPage = await readFile(new URL('../app/auth/login/page.tsx', import.meta.url), 'utf8');
 const loginPage = await readFile(new URL('../components/auth/login-page.tsx', import.meta.url), 'utf8');
+const dict = await readFile(new URL('../lib/i18n/dictionaries.ts', import.meta.url), 'utf8');
 
 test('public login bypasses stale custom-session cleanup before auth verification', () => {
   const publicGuard = proxy.indexOf("pathname.startsWith('/api/') && isPublicApiRoute(pathname)");
@@ -66,5 +67,5 @@ test('login confirms the authenticated session before redirecting', () => {
   assert.ok(loginRequest >= 0, 'expected login request');
   assert.ok(sessionCheck > loginRequest, 'session check must follow accepted credentials');
   assert.ok(redirect > sessionCheck, 'redirect must happen only after session verification');
-  assert.match(loginPage, /Las credenciales fueron aceptadas, pero la sesión no pudo establecerse/);
+  assert.match(dict, /Las credenciales fueron aceptadas, pero la sesión no pudo establecerse/);
 });
