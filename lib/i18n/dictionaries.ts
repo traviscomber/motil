@@ -17,9 +17,52 @@ export const dictionaries = {
       languageSwitch: 'EN',
     },
     landing: {
+      wordmarkLine: 'SISTEMA OPERATIVO PARA MINERÍA',
       ctaLogin: 'Ingresar a MOTIL',
       ctaExplore: 'Conocer el sistema',
       ctaContact: 'Hablar con N3URALIA',
+      hero: {
+        eyebrow: 'Sistema Operativo para Minería',
+        h1Lines: ['Una operación.', 'Una sola fuente de verdad.', 'Mejores decisiones.'],
+        body: 'MOTIL conecta personas, activos, producción, mantenimiento y evidencia operacional en un solo sistema operativo minero.',
+      },
+      context: {
+        aria: 'Un solo contexto operacional',
+        eyebrow: '01 — Un solo contexto operacional',
+        h2Lines: ['De la operación', 'al ', 'impacto real.'],
+        body: 'MOTIL conecta personas, activos, trabajo, materiales, producción, costo y riesgo en un solo contexto operacional.',
+        pillars: [
+          { title: 'Conectado', text: 'Un solo contexto operacional.' },
+          { title: 'Trazable', text: 'La evidencia sigue cada acción.' },
+          { title: 'Canónico', text: 'Una sola fuente de verdad.' },
+        ],
+      },
+      mining: {
+        aria: 'Construido para minería',
+        eyebrow: '02 — Construido para minería',
+        h2Lines: ['Operaciones reales.', 'Datos reales.', 'Decisiones reales.'],
+        body: 'De la actividad en terreno a las decisiones de gerencia, MOTIL mantiene la operación conectada en un contexto compartido.',
+        domains: [
+          { title: 'Operaciones', items: 'Producción · Mantenimiento · Ejecución en terreno' },
+          { title: 'Control', items: 'Activos · Materiales · Costo · Riesgo' },
+          { title: 'Decisiones', items: 'Evidencia · Contexto · Acción' },
+        ],
+      },
+      latam: {
+        aria: 'Chile y LATAM',
+        eyebrow: '03 — Chile / LATAM',
+        h2Lines: ['Construido en Chile.', 'Diseñado para ', 'LATAM.'],
+        body: 'Un sistema operativo para minería diseñado para operaciones reales, listo para escalar a faenas cada vez más conectadas.',
+        meta: 'CHILE / PERU / LATAM',
+      },
+      flow: {
+        labels: ['Personas', 'Activos', 'Trabajo', 'Materiales', 'Producción', 'Costo', 'Riesgo', 'Decisiones'],
+      },
+      footer: {
+        areas: ['Personas', 'Activos', 'Operaciones', 'Impacto real'],
+        areasAria: 'Áreas de impacto',
+        by: 'Una solución de N3URALIA',
+      },
       alts: {
         flow: 'Flujo operacional: personas, activos, trabajo, materiales, producción, costo, riesgo y decisiones conectados en una línea',
         truck: 'Camión de acarreo minero en ruta de faena al atardecer, con montañas oscuras al fondo',
@@ -104,9 +147,52 @@ export const dictionaries = {
       languageSwitch: 'ES',
     },
     landing: {
+      wordmarkLine: 'MINING OPERATING SYSTEM',
       ctaLogin: 'Sign in to MOTIL',
       ctaExplore: 'Explore the system',
       ctaContact: 'Talk to N3URALIA',
+      hero: {
+        eyebrow: 'Mining Operating System',
+        h1Lines: ['One operation.', 'One source of truth.', 'Better decisions.'],
+        body: 'MOTIL connects people, assets, production, maintenance and operational evidence in one mining operating system.',
+      },
+      context: {
+        aria: 'One operating context',
+        eyebrow: '01 — One operating context',
+        h2Lines: ['From operations', 'to ', 'real impact.'],
+        body: 'MOTIL connects people, assets, work, materials, production, cost and risk in one operational context.',
+        pillars: [
+          { title: 'Connected', text: 'One operational context.' },
+          { title: 'Traceable', text: 'Evidence follows every action.' },
+          { title: 'Canonical', text: 'One source of truth.' },
+        ],
+      },
+      mining: {
+        aria: 'Built for mining',
+        eyebrow: '02 — Built for mining',
+        h2Lines: ['Real operations.', 'Real data.', 'Real decisions.'],
+        body: 'From field activity to management decisions, MOTIL keeps the operation connected in one shared context.',
+        domains: [
+          { title: 'Operations', items: 'Production · Maintenance · Field execution' },
+          { title: 'Control', items: 'Assets · Materials · Cost · Risk' },
+          { title: 'Decisions', items: 'Evidence · Context · Action' },
+        ],
+      },
+      latam: {
+        aria: 'Chile and LATAM',
+        eyebrow: '03 — Chile / LATAM',
+        h2Lines: ['Built in Chile.', 'Designed for ', 'LATAM.'],
+        body: 'A mining operating system designed for real operations, ready to scale across increasingly connected sites.',
+        meta: 'CHILE / PERU / LATAM',
+      },
+      flow: {
+        labels: ['People', 'Assets', 'Work', 'Materials', 'Production', 'Cost', 'Risk', 'Decisions'],
+      },
+      footer: {
+        areas: ['People', 'Assets', 'Operations', 'Real impact'],
+        areasAria: 'Areas of impact',
+        by: 'A solution by N3URALIA',
+      },
       alts: {
         flow: 'Operational flow: people, assets, work, materials, production, cost, risk and decisions connected in one line',
         truck: 'Mining haul truck on a site road at dusk, with dark mountains in the background',
