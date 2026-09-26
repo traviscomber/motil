@@ -32,7 +32,7 @@ export const dictionaries = {
   },
 } as const;
 
-export type Dictionary = (typeof dictionaries)['es'];
+export type Dictionary = (typeof dictionaries)[Locale];
 export type Locale = keyof typeof dictionaries;
 
 export const DEFAULT_LOCALE: Locale = 'es';
