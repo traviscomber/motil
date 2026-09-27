@@ -4,7 +4,8 @@ import fs from 'node:fs';
 
 const workOrdersApi = fs.readFileSync('app/api/maintenance/work-orders/route.ts', 'utf8');
 const controlCenterApi = fs.readFileSync('app/api/maintenance/control-center/route.ts', 'utf8');
-const workOrdersPage = fs.readFileSync('app/dashboard/mantenimiento/ordenes-trabajo/page.tsx', 'utf8');
+const workOrdersPage = fs.readFileSync('components/maintenance/work-orders-queue.tsx', 'utf8');
+const dictionaries = fs.readFileSync('lib/i18n/dictionaries.ts', 'utf8');
 
 test('work orders expose an explicit operational versus historical scope without mutating history', () => {
   assert.match(workOrdersApi, /created_by:\s*string \| null/);
@@ -27,8 +28,7 @@ test('daily work order workspace defaults to Motil operations and keeps history 
   assert.match(workOrdersPage, /useState\('operational'\)/);
   assert.match(workOrdersPage, /operationalWorkOrders/);
   assert.match(workOrdersPage, /historicalWorkOrders/);
-  assert.match(workOrdersPage, /Operación Motil/);
-  assert.match(workOrdersPage, /Histórico/);
   assert.match(workOrdersPage, /record_scope !== 'historical'/);
-  assert.match(workOrdersPage, /Próximas intervenciones · Operación Motil/);
+  assert.match(dictionaries, /scope: \{ operational: 'Operación Motil', historical: 'Histórico', all: 'Todo' \}/);
+  assert.match(dictionaries, /title: 'Próximas intervenciones · Operación Motil'/);
 });
