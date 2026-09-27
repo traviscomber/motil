@@ -151,6 +151,21 @@ test('operational calendar is a server wrapper over a locale-aware client', () =
   }
 });
 
+test('maintenance home is a server wrapper over a locale-aware client', () => {
+  const maintenancePage = fs.readFileSync('app/dashboard/mantenimiento/page.tsx', 'utf8');
+  const maintenance = fs.readFileSync('components/dashboard/maintenance-home.tsx', 'utf8');
+
+  assert.match(maintenancePage, /getDictionaryForRequest\(\)/);
+  assert.match(maintenancePage, /<MaintenanceHome locale=\{locale\} dictionary=\{dictionary\} \/>/);
+  assert.match(maintenance, /const t = dictionary\.app\.maintenance;/);
+  assert.match(maintenance, /t\.queue\.titles\[mode as WorkMode\]/);
+  assert.match(maintenance, /t\.kinds\[kindKey\]/);
+  // No hardcoded maintenance copy may remain in the component.
+  for (const literal of ['Qué debo decidir o destrabar', 'Cola de planificación', 'Fuera de servicio', 'Calculando prioridades', 'Flujo operacional']) {
+    assert.doesNotMatch(maintenance, new RegExp(literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `maintenance-home must not hardcode ${literal}`);
+  }
+});
+
 test('daily review is a server wrapper over a locale-aware client', () => {
   const reviewPage = fs.readFileSync('app/dashboard/daily-management/page.tsx', 'utf8');
   const review = fs.readFileSync('components/dashboard/daily-review.tsx', 'utf8');

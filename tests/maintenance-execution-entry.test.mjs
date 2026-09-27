@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 
 const shell = await readFile(new URL('../components/layout/dashboard-shell.tsx', import.meta.url), 'utf8');
 const viewerMode = await readFile(new URL('../lib/maintenance/viewer-mode.ts', import.meta.url), 'utf8');
-const maintenanceHome = await readFile(new URL('../app/dashboard/mantenimiento/page.tsx', import.meta.url), 'utf8');
+const maintenanceHome = await readFile(new URL('../components/dashboard/maintenance-home.tsx', import.meta.url), 'utf8');
 const proxy = await readFile(new URL('../proxy.ts', import.meta.url), 'utf8');
 
 test('field maintenance executors enter through assigned-work maintenance home', () => {
@@ -22,7 +22,7 @@ test('execution routing reuses the canonical maintenance viewer-mode resolver', 
 });
 
 test('execution maintenance home is the assigned-work surface at every viewport', () => {
-  assert.match(maintenanceHome, /if\(mode==='execution'\)\{/);
+  assert.match(maintenanceHome, /if \(mode === 'execution'\) \{/);
   assert.match(maintenanceHome, /<MobileTerrainPanel \/>/);
   assert.match(maintenanceHome, /max-w-xl/);
   assert.doesNotMatch(maintenanceHome, /mode==='execution' \? 'hidden md:block'/);

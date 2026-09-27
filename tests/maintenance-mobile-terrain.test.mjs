@@ -2,12 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-const dashboard = await readFile(new URL('../app/dashboard/mantenimiento/page.tsx', import.meta.url), 'utf8');
+const dashboard = await readFile(new URL('../components/dashboard/maintenance-home.tsx', import.meta.url), 'utf8');
 const terrain = await readFile(new URL('../components/maintenance/mobile-terrain-panel.tsx', import.meta.url), 'utf8');
 const myWork = await readFile(new URL('../app/api/maintenance/my-work/route.ts', import.meta.url), 'utf8');
 
 test('execution users receive the dedicated assigned-work surface on every viewport', () => {
-  assert.match(dashboard, /if\(mode==='execution'\)\{/);
+  assert.match(dashboard, /if \(mode === 'execution'\) \{/);
   assert.match(dashboard, /<MobileTerrainPanel \/>/);
   assert.match(dashboard, /max-w-xl/);
   assert.doesNotMatch(dashboard, /md:hidden"><MobileTerrainPanel/);
