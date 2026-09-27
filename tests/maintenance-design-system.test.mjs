@@ -2,57 +2,60 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 
-const page = await fs.readFile('app/dashboard/mantenimiento/page.tsx', 'utf8');
+const page = await fs.readFile('components/dashboard/maintenance-home.tsx', 'utf8');
+const dict = await fs.readFile('lib/i18n/dictionaries.ts', 'utf8');
 const assistant = await fs.readFile('components/maintenance/maintenance-senior-assistant.tsx', 'utf8');
 
 test('maintenance workspaces simplify progressively down the role chain', () => {
-  assert.match(page, /leadership:\[/);
-  assert.match(page, /planning:\[/);
-  assert.match(page, /oversight:\[/);
-  assert.match(page, /general:\[/);
-  assert.match(page, /if\(mode==='execution'\)\{/);
+  assert.match(page, /leadership: \[/);
+  assert.match(page, /planning: \[/);
+  assert.match(page, /oversight: \[/);
+  assert.match(page, /general: \[/);
+  assert.match(page, /if \(mode === 'execution'\) \{/);
   assert.match(page, /<MobileTerrainPanel \/>/);
-  assert.match(page, /mode==='planning'\s*\? maintenanceFlow\.slice\(0,3\)/s);
-  assert.match(page, /Planificar → Preparar → Ejecutar/);
+  assert.match(page, /mode === 'planning'\s*\? maintenanceFlow\.slice\(0, 3\)/s);
+  assert.match(dict, /Planificar → Preparar → Ejecutar/);
 });
 
 test('maintenance planning queue stays focused on decisions that make work executable', () => {
-  assert.match(page, /planningKinds = new Set\(\['operational_review','preventive_overdue','assignment_needed','meter_review','operational_blocker'\]\)/);
-  assert.match(page, /Cola de planificación/);
-  assert.match(page, /Por asignar/);
-  assert.match(page, /Asignar trabajo/);
-  assert.match(page, /Qué debo dejar listo hoy/);
+  assert.match(page, /planningKinds = new Set\(\['operational_review', 'preventive_overdue', 'assignment_needed', 'meter_review', 'operational_blocker'\]\)/);
+  assert.match(dict, /Cola de planificación/);
+  assert.match(dict, /Por asignar/);
+  assert.match(dict, /Asignar trabajo/);
+  assert.match(dict, /Qué debo dejar listo hoy/);
   assert.doesNotMatch(page, /Cola de ejecución/);
   assert.doesNotMatch(page, /executionKinds = new Set/);
 });
 
 test('maintenance leadership queue contains only decisions owned by leadership', () => {
-  assert.match(page, /leadershipKinds = new Set\(\['operational_review','preventive_overdue','operational_blocker','ready_to_close','reliability'\]\)/);
-  assert.match(page, /rawActions\.filter\(\(action\)=>leadershipKinds\.has\(action\.kind\)\)/);
-  assert.match(page, /Qué debo decidir o destrabar/);
-  assert.match(page, /Decisiones de jefatura/);
-  assert.match(page, /Atender prioridad/);
+  assert.match(page, /leadershipKinds = new Set\(\['operational_review', 'preventive_overdue', 'operational_blocker', 'ready_to_close', 'reliability'\]\)/);
+  assert.match(page, /rawActions\.filter\(\(action\) => leadershipKinds\.has\(action\.kind\)\)/);
+  assert.match(dict, /Qué debo decidir o destrabar/);
+  assert.match(dict, /Decisiones de jefatura/);
+  assert.match(dict, /Atender prioridad/);
 });
 
 test('maintenance transversal oversight is read-focused and does not inherit operational ownership', () => {
-  assert.match(page, /oversightKinds = new Set\(\['operational_review','operational_blocker','reliability'\]\)/);
-  assert.match(page, /Impacto operativo de mantenimiento/);
-  assert.match(page, /Revisar impacto/);
-  assert.match(page, /Esta vista no asigna, ejecuta ni cierra trabajo/);
-  assert.match(page, /const showOwnedFlow = mode==='planning' \|\| mode==='leadership'/);
+  assert.match(page, /oversightKinds = new Set\(\['operational_review', 'operational_blocker', 'reliability'\]\)/);
+  assert.match(dict, /Impacto operativo de mantenimiento/);
+  assert.match(dict, /Revisar impacto/);
+  assert.match(dict, /Esta vista no asigna, ejecuta ni cierra trabajo/);
+  assert.match(page, /const showOwnedFlow = mode === 'planning' \|\| mode === 'leadership'/);
 });
 
 test('maintenance header exposes one secondary action and one role-aware primary action', () => {
   const actions = page.match(/<PageHeaderActions>(.*?)<\/PageHeaderActions>/s)?.[1] || '';
   assert.match(actions, /variant="outline"/);
-  assert.match(actions, />Actualizar</);
-  assert.match(actions, /Asignar trabajo/);
-  assert.match(actions, /Planificar/);
-  assert.match(actions, /Atender prioridad/);
-  assert.match(actions, /Revisar impacto/);
-  assert.match(actions, /Revisar órdenes/);
-  assert.doesNotMatch(actions, />Crear orden</);
+  assert.match(actions, /\{t\.refresh\}/);
   assert.equal((actions.match(/variant="outline"/g) || []).length, 1);
+});
+
+test('maintenance header primary actions come from the dictionary', () => {
+  for (const label of ['Asignar trabajo', 'Planificar', 'Atender prioridad', 'Revisar impacto', 'Revisar órdenes']) {
+    assert.match(dict, new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
+  const actions = page.match(/<PageHeaderActions>(.*?)<\/PageHeaderActions>/s)?.[1] || '';
+  assert.doesNotMatch(actions, />Crear orden</);
 });
 
 test('maintenance UI uses semantic theme tokens and no decorative hardcoded colors', () => {
@@ -70,5 +73,5 @@ test('floating maintenance assistant has accessible launcher and human authority
 
 test('control center avoids duplicate direct row actions', () => {
   assert.doesNotMatch(page, /Ficha 360/);
-  assert.match(page, /aria-label="Abrir acción"/);
+  assert.match(page, /aria-label=\{t\.openActionAria\}/);
 });

@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 const api = fs.readFileSync('app/api/maintenance/control-center/route.ts','utf8');
-const page = fs.readFileSync('app/dashboard/mantenimiento/page.tsx','utf8');
+const page = fs.readFileSync('components/dashboard/maintenance-home.tsx','utf8');
+const dict = fs.readFileSync('lib/i18n/dictionaries.ts','utf8');
 
 test('maintenance control center is maintenance-authorized and tenant scoped',()=>{
   assert.match(api,/MODULE_KEYS\.MANT_OPERACIONES/);
@@ -51,15 +52,15 @@ test('control center excludes historical work orders from operational actions',(
 });
 
 test('maintenance home stays role-aware while preserving direct factual routes',()=>{
-  assert.match(page,/Qué debo dejar listo hoy/);
-  assert.match(page,/Qué debo decidir o destrabar/);
-  assert.match(page,/Impacto operativo de mantenimiento/);
-  assert.match(page,/Estado de mantenimiento/);
-  assert.match(page,/Fuera de servicio/);
-  assert.match(page,/equipo\(s\) fuera de servicio requieren revisión humana/);
-  assert.match(page,/Preventivos pendientes/);
-  assert.match(page,/OT abiertas/);
-  assert.match(page,/Decision Intelligence/);
+  assert.match(dict,/Qué debo dejar listo hoy/);
+  assert.match(dict,/Qué debo decidir o destrabar/);
+  assert.match(dict,/Impacto operativo de mantenimiento/);
+  assert.match(dict,/Estado de mantenimiento/);
+  assert.match(dict,/Fuera de servicio/);
+  assert.match(dict,/equipo\(s\) fuera de servicio requieren revisión humana/);
+  assert.match(dict,/Preventivos pendientes/);
+  assert.match(dict,/OT abiertas/);
+  assert.match(dict,/Decision Intelligence/);
   assert.match(page,/preventivo-horas/);
   assert.match(page,/ordenes-trabajo\/cierre/);
   assert.match(page,/horometros/);

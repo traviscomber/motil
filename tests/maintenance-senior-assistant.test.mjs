@@ -4,7 +4,8 @@ import { readFile } from 'node:fs/promises';
 
 const routeUrl = new URL('../app/api/maintenance/senior-assistant/route.ts', import.meta.url);
 const probeUrl = new URL('../app/api/maintenance/senior-assistant/probe/route.ts', import.meta.url);
-const pageUrl = new URL('../app/dashboard/mantenimiento/page.tsx', import.meta.url);
+const pageUrl = new URL('../components/dashboard/maintenance-home.tsx', import.meta.url);
+const dictUrl = new URL('../lib/i18n/dictionaries.ts', import.meta.url);
 const globalWidgetUrl = new URL('../components/intelligence/senior-assistant-widget.tsx', import.meta.url);
 const specialistBodyUrl = new URL('../components/intelligence/specialist-assistant-body.tsx', import.meta.url);
 const contextUrl = new URL('../lib/intelligence/assistant-context.ts', import.meta.url);
@@ -65,7 +66,8 @@ test('global assistant exposes maintenance continuity without a local launcher',
     readFile(specialistBodyUrl, 'utf8'),
     readFile(contextUrl, 'utf8'),
   ]);
-  assert.match(page, /Decision Intelligence/);
+  const dict = await readFile(dictUrl, 'utf8');
+  assert.match(dict, /Decision Intelligence/);
   assert.doesNotMatch(page, /MaintenanceSeniorAssistant/);
   assert.match(widget, /\/api\/maintenance\/senior-assistant/);
   assert.match(body, /conversationId/);
