@@ -150,3 +150,19 @@ test('operational calendar is a server wrapper over a locale-aware client', () =
     assert.doesNotMatch(calendar, new RegExp(literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `operational-calendar must not hardcode ${literal}`);
   }
 });
+
+test('daily review is a server wrapper over a locale-aware client', () => {
+  const reviewPage = fs.readFileSync('app/dashboard/daily-management/page.tsx', 'utf8');
+  const review = fs.readFileSync('components/dashboard/daily-review.tsx', 'utf8');
+
+  assert.match(reviewPage, /getDictionaryForRequest\(\)/);
+  assert.match(reviewPage, /<DailyReview locale=\{locale\} dictionary=\{dictionary\} \/>/);
+  assert.match(review, /const t = dictionary\.app\.dailyReview;/);
+  assert.match(review, /ti\.production\.label/);
+  assert.match(review, /t\.meeting\.agenda\.map/);
+  assert.match(review, /fill\(ti\.safety\.findings, \{ n: safety\.open_ncs, m: safety\.overdue_cas \}\)/);
+  // No hardcoded daily-review copy may remain in the component.
+  for (const literal of ['Revisión diaria', 'Compromisos del día', 'Orden de la reunión', 'Información parcial', 'Indicadores diarios']) {
+    assert.doesNotMatch(review, new RegExp(literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `daily-review must not hardcode ${literal}`);
+  }
+});
