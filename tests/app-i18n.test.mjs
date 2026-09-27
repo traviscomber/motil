@@ -181,3 +181,19 @@ test('daily review is a server wrapper over a locale-aware client', () => {
     assert.doesNotMatch(review, new RegExp(literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `daily-review must not hardcode ${literal}`);
   }
 });
+
+test('work orders queue is a server wrapper over a locale-aware client', () => {
+  const workOrdersPage = fs.readFileSync('app/dashboard/mantenimiento/ordenes-trabajo/page.tsx', 'utf8');
+  const workOrders = fs.readFileSync('components/maintenance/work-orders-queue.tsx', 'utf8');
+
+  assert.match(workOrdersPage, /getDictionaryForRequest\(\)/);
+  assert.match(workOrdersPage, /<WorkOrdersQueue locale=\{locale\} dictionary=\{dictionary\} \/>/);
+  assert.match(workOrders, /const t = dictionary\.app\.workOrders;/);
+  assert.match(workOrders, /getStatusLabel\(order\.status, t\)/);
+  assert.match(workOrders, /t\.schedule\.title/);
+  assert.match(workOrders, /fill\(t\.counts, \{ filtered: filteredOrders\.length, total: workOrders\.length \}\)/);
+  // No hardcoded work-orders copy may remain in the component.
+  for (const literal of ['Órdenes de trabajo', 'Cierre progresivo', 'Nueva OT', 'Próximas intervenciones']) {
+    assert.doesNotMatch(workOrders, new RegExp(literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `work-orders-queue must not hardcode ${literal}`);
+  }
+});
