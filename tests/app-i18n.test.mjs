@@ -197,3 +197,19 @@ test('work orders queue is a server wrapper over a locale-aware client', () => {
     assert.doesNotMatch(workOrders, new RegExp(literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `work-orders-queue must not hardcode ${literal}`);
   }
 });
+
+test('work order create is a server wrapper over a locale-aware client', () => {
+  const createPage = fs.readFileSync('app/dashboard/mantenimiento/ordenes-trabajo/create/page.tsx', 'utf8');
+  const create = fs.readFileSync('components/maintenance/create-work-order.tsx', 'utf8');
+
+  assert.match(createPage, /getDictionaryForRequest\(\)/);
+  assert.match(createPage, /<CreateWorkOrder locale=\{locale\} dictionary=\{dictionary\} \/>/);
+  assert.match(create, /const t = dictionary\.app\.workOrderCreate;/);
+  assert.match(create, /t\.validation\.assetRequired/);
+  assert.match(create, /fill\(t\.reviewTitleTemplate, \{ asset: review\.asset_name \|\| review\.asset_code \|\| t\.fallbackEquipment \}\)/);
+  assert.match(create, /t\.assetStatus\[selectedAsset\.status as keyof typeof t\.assetStatus\]/);
+  // No hardcoded create copy may remain in the component.
+  for (const literal of ['Crear orden de trabajo', 'Trabajo a realizar', 'Crear OT y resolver revisión', 'Planificación inicial', 'Materiales / insumos solicitados']) {
+    assert.doesNotMatch(create, new RegExp(literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `create-work-order must not hardcode ${literal}`);
+  }
+});
