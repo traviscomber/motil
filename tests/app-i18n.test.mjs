@@ -230,3 +230,16 @@ test('work order detail is a server wrapper over a locale-aware client', () => {
     assert.doesNotMatch(detail, new RegExp(literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `work-order-detail must not hardcode ${literal}`);
   }
 });
+
+test('work order close page renders its header from the dictionary', () => {
+  const closePage = fs.readFileSync('app/dashboard/mantenimiento/ordenes-trabajo/cierre/page.tsx', 'utf8');
+
+  assert.match(closePage, /getDictionaryForRequest\(\)/);
+  assert.match(closePage, /export async function generateMetadata\(\)/);
+  assert.match(closePage, /const t = dictionary\.app\.workOrderClose;/);
+  assert.match(closePage, /<ProgressiveWorkOrderCloseQueue \/>/);
+  // No hardcoded close-page copy may remain in the page.
+  for (const literal of ['Qué falta para cerrar la siguiente OT', 'Cierre controlado de OT', 'decisión final en el usuario autorizado']) {
+    assert.doesNotMatch(closePage, new RegExp(literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `close page must not hardcode ${literal}`);
+  }
+});

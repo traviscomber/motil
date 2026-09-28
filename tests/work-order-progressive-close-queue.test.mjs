@@ -7,6 +7,7 @@ const migrationV2 = fs.readFileSync('supabase/migrations/20260827234500_integrat
 const api = fs.readFileSync('app/api/maintenance/work-order-close-queue/route.ts', 'utf8');
 const component = fs.readFileSync('components/maintenance/progressive-work-order-close-queue.tsx', 'utf8');
 const page = fs.readFileSync('app/dashboard/mantenimiento/ordenes-trabajo/cierre/page.tsx', 'utf8');
+const dictionaries = fs.readFileSync('lib/i18n/dictionaries.ts', 'utf8');
 const schedule = fs.readFileSync('components/maintenance/maintenance-schedule.tsx', 'utf8');
 
 test('closure readiness mirrors the safe close blockers', () => {
@@ -45,8 +46,9 @@ test('progressive closure exposes one next action and requires an explicit close
   assert.match(component, /complete_standard_plan_step/);
   assert.match(component, /setStepObservation\(''\)/);
   assert.match(component, /searchParams\.get\('workOrderId'\)/);
-  assert.match(page, /Qué falta para cerrar la siguiente OT/);
-  assert.match(page, /decisión final en el usuario autorizado/);
+  assert.match(page, /getDictionaryForRequest\(\)/);
+  assert.match(dictionaries, /title: 'Qué falta para cerrar la siguiente OT'/);
+  assert.match(dictionaries, /decisión final en el usuario autorizado/);
 });
 
 test('scheduled maintenance hands completion to the safe progressive closure flow', () => {

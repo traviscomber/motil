@@ -6,6 +6,7 @@ const reliability = await fs.readFile('app/dashboard/mantenimiento/confiabilidad
 const runtime = await fs.readFile('app/dashboard/mantenimiento/horometros/page.tsx', 'utf8');
 const decisions = await fs.readFile('app/dashboard/mantenimiento/decision-intelligence/page.tsx', 'utf8');
 const closurePage = await fs.readFile('app/dashboard/mantenimiento/ordenes-trabajo/cierre/page.tsx', 'utf8');
+const dictionaries = await fs.readFile('lib/i18n/dictionaries.ts', 'utf8');
 const closureQueue = await fs.readFile('components/maintenance/progressive-work-order-close-queue.tsx', 'utf8');
 
 test('97 reliability surface asks one decision question and never converts missing evidence to zero', () => {
@@ -39,8 +40,9 @@ test('97 decision intelligence exposes one explicit next decision without invent
 });
 
 test('97 controlled closure exposes one next evidence action and preserves unknown cost', () => {
-  assert.match(closurePage, /Qué falta para cerrar la siguiente OT/);
-  assert.match(closurePage, /una sola acción siguiente por vez/);
+  assert.match(closurePage, /getDictionaryForRequest\(\)/);
+  assert.match(dictionaries, /title: 'Qué falta para cerrar la siguiente OT'/);
+  assert.match(dictionaries, /una sola acción siguiente por vez/);
   assert.doesNotMatch(closurePage, /Volver a órdenes/);
   assert.match(closureQueue, /Siguiente acción/);
   assert.match(closureQueue, /lg:grid-cols-4/);
