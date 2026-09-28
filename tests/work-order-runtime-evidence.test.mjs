@@ -6,6 +6,7 @@ const migration = fs.readFileSync('supabase/migrations/20260827225500_require_ru
 const api = fs.readFileSync('app/api/maintenance/work-order-runtime-evidence/route.ts', 'utf8');
 const queueApi = fs.readFileSync('app/api/maintenance/work-order-close-queue/route.ts', 'utf8');
 const ui = fs.readFileSync('components/maintenance/progressive-work-order-close-queue.tsx', 'utf8');
+const dictionaries = fs.readFileSync('lib/i18n/dictionaries.ts', 'utf8');
 
 test('corrective OT closure requires resolved runtime evidence', () => {
   assert.match(migration, /lower\(coalesce\(v_wo\.work_type,''\)\)='correctivo'/i);
@@ -37,9 +38,9 @@ test('runtime evidence endpoint is maintenance authorized and tenant checked', (
 test('progressive close queue exposes horometer as one explicit next action', () => {
   assert.match(queueApi, /record_runtime_evidence:\s*\d+/);
   assert.match(queueApi, /missingRuntimeEvidence/);
-  assert.match(ui, /Resolver horómetro/);
-  assert.match(ui, /Registrar lectura/);
   assert.match(ui, /not_available/);
   assert.match(ui, /work-order-runtime-evidence/);
-  assert.match(ui, /Cerrar OT y congelar costo/);
+  assert.match(dictionaries, /recordRuntimeEvidence: 'Resolver horómetro'/);
+  assert.match(dictionaries, /registerReading: 'Registrar lectura'/);
+  assert.match(dictionaries, /closeFreeze: 'Cerrar OT y congelar costo'/);
 });

@@ -237,9 +237,23 @@ test('work order close page renders its header from the dictionary', () => {
   assert.match(closePage, /getDictionaryForRequest\(\)/);
   assert.match(closePage, /export async function generateMetadata\(\)/);
   assert.match(closePage, /const t = dictionary\.app\.workOrderClose;/);
-  assert.match(closePage, /<ProgressiveWorkOrderCloseQueue \/>/);
+  assert.match(closePage, /<ProgressiveWorkOrderCloseQueue locale=\{locale\} dictionary=\{dictionary\} \/>/);
   // No hardcoded close-page copy may remain in the page.
   for (const literal of ['Qué falta para cerrar la siguiente OT', 'Cierre controlado de OT', 'decisión final en el usuario autorizado']) {
     assert.doesNotMatch(closePage, new RegExp(literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `close page must not hardcode ${literal}`);
+  }
+});
+
+test('progressive close queue renders from the dictionary', () => {
+  const queue = fs.readFileSync('components/maintenance/progressive-work-order-close-queue.tsx', 'utf8');
+
+  assert.match(queue, /const t = dictionary\.app\.workOrderCloseQueue;/);
+  assert.match(queue, /ACTION_KEYS\[current\.next_action\]/);
+  assert.match(queue, /t\.actionTitles\[actionKey\]/);
+  assert.match(queue, /fill\(t\.planBadgeTemplate, \{ completed: current\.standard_plan_steps_completed \|\| 0, total: current\.standard_plan_steps_total \|\| 0 \}\)/);
+  assert.match(queue, /toLocaleString\(numberLocale\)/);
+  // No hardcoded close-queue copy may remain in the component.
+  for (const literal of ['Siguiente acción', 'Guardar y continuar', 'Cerrar OT y congelar costo', 'Marcar paso realizado', 'Resolver activo', 'Registrar causa raíz']) {
+    assert.doesNotMatch(queue, new RegExp(literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `close queue must not hardcode ${literal}`);
   }
 });

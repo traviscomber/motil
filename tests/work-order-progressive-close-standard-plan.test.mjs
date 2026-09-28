@@ -25,10 +25,10 @@ test('close queue API reads v2 and exposes plan progress', () => {
 
 test('progressive close executes the first pending plan step inline', () => {
   assert.match(queue, /next_plan_step_id/);
-  assert.match(queue, /Marcar paso realizado/);
+  assert.match(dictionaries, /markStepDone: 'Marcar paso realizado'/);
   assert.match(queue, /standard-plan/);
   assert.match(queue, /stepObservation/);
-  assert.match(queue, /Plan \{current\.standard_plan_steps_completed\}\/\{current\.standard_plan_steps_total\}/);
+  assert.match(queue, /fill\(t\.planBadgeTemplate, \{ completed: current\.standard_plan_steps_completed \|\| 0, total: current\.standard_plan_steps_total \|\| 0 \}\)/);
 });
 
 test('work order detail has one closure path', () => {

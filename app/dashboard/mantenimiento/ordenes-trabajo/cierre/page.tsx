@@ -14,7 +14,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function WorkOrderCloseQueuePage() {
-  const { dictionary } = await getDictionaryForRequest();
+  const { locale, dictionary } = await getDictionaryForRequest();
   const t = dictionary.app.workOrderClose;
 
   return (
@@ -26,7 +26,7 @@ export default async function WorkOrderCloseQueuePage() {
           <PageHeaderDescription>{t.description}</PageHeaderDescription>
         </PageHeaderContent>
       </PageHeader>
-      <ProgressiveWorkOrderCloseQueue />
+      <ProgressiveWorkOrderCloseQueue locale={locale} dictionary={dictionary} />
     </div>
   );
 }
