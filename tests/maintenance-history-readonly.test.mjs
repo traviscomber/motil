@@ -38,10 +38,11 @@ test('scope guard classifies imported work orders as historical and immutable', 
 
 test('work-order detail API and UI expose historical scope without operational controls', async () => {
   const api = await readFile('app/api/maintenance/work-orders/[id]/route.ts', 'utf8');
-  const page = await readFile('app/dashboard/mantenimiento/ordenes-trabajo/[id]/page.tsx', 'utf8');
+  const page = await readFile('components/maintenance/work-order-detail.tsx', 'utf8');
+  const dictionaries = await readFile('lib/i18n/dictionaries.ts', 'utf8');
   assert.match(api, /record_scope: row\.created_by \? 'operational' : 'historical'/);
   assert.match(api, /canEdit: access\.canWrite && recordScope === 'operational'/);
-  assert.match(page, /Histórico importado · solo lectura/);
   assert.match(page, /!isHistorical \? <>/);
-  assert.match(page, /No puede iniciarse, reabrirse, cerrarse, temporizarse/);
+  assert.match(dictionaries, /title: 'Histórico importado · solo lectura'/);
+  assert.match(dictionaries, /No puede iniciarse, reabrirse, cerrarse, temporizarse/);
 });

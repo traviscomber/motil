@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
-const detail = fs.readFileSync('app/dashboard/mantenimiento/ordenes-trabajo/[id]/page.tsx', 'utf8');
+const detail = fs.readFileSync('components/maintenance/work-order-detail.tsx', 'utf8');
 const readiness = fs.readFileSync('components/maintenance/work-order-execution-readiness.tsx', 'utf8');
 
 test('work order detail surfaces execution readiness before execution panels', () => {

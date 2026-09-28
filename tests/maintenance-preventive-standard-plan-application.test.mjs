@@ -5,7 +5,7 @@ import fs from 'node:fs';
 const preventiveApi = fs.readFileSync('app/api/maintenance/preventive-hours/route.ts', 'utf8');
 const planApi = fs.readFileSync('app/api/maintenance/work-orders/[id]/standard-plan/route.ts', 'utf8');
 const panel = fs.readFileSync('components/maintenance/work-order-standard-plan-panel.tsx', 'utf8');
-const detail = fs.readFileSync('app/dashboard/mantenimiento/ordenes-trabajo/[id]/page.tsx', 'utf8');
+const detail = fs.readFileSync('components/maintenance/work-order-detail.tsx', 'utf8');
 const apply = fs.readFileSync('lib/maintenance/apply-standard-job-plan.ts', 'utf8');
 
 test('preventive planning applies only an active approved standard plan for the same schedule', () => {

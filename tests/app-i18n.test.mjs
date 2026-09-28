@@ -213,3 +213,20 @@ test('work order create is a server wrapper over a locale-aware client', () => {
     assert.doesNotMatch(create, new RegExp(literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `create-work-order must not hardcode ${literal}`);
   }
 });
+
+test('work order detail is a server wrapper over a locale-aware client', () => {
+  const detailPage = fs.readFileSync('app/dashboard/mantenimiento/ordenes-trabajo/[id]/page.tsx', 'utf8');
+  const detail = fs.readFileSync('components/maintenance/work-order-detail.tsx', 'utf8');
+
+  assert.match(detailPage, /getDictionaryForRequest\(\)/);
+  assert.match(detailPage, /<WorkOrderDetail locale=\{locale\} dictionary=\{dictionary\} \/>/);
+  assert.match(detail, /const t = dictionary\.app\.workOrderDetail;/);
+  assert.match(detail, /statusLabel\(workOrder\.status, t\)/);
+  assert.match(detail, /typeLabel\(workOrder\.work_type, t\)/);
+  assert.match(detail, /toLocaleDateString\(dateLocale\)/);
+  assert.match(detail, /fill\(t\.financial\.readyTemplate, \{ code: selectedCostCenter\?\.code \|\| t\.financial\.readyDefault \}\)/);
+  // No hardcoded detail copy may remain in the component.
+  for (const literal of ['Histórico importado · solo lectura', 'Imputación financiera', 'Continuar cierre', 'Responsable operativo', 'Intervención']) {
+    assert.doesNotMatch(detail, new RegExp(literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `work-order-detail must not hardcode ${literal}`);
+  }
+});

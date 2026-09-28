@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-const page = await readFile(new URL('../app/dashboard/mantenimiento/ordenes-trabajo/[id]/page.tsx', import.meta.url), 'utf8');
+const page = await readFile(new URL('../components/maintenance/work-order-detail.tsx', import.meta.url), 'utf8');
 const flow = await readFile(new URL('../components/maintenance/mobile-work-order-flow.tsx', import.meta.url), 'utf8');
 
 test('only execution maintenance profiles receive the condensed work-order workspace', () => {

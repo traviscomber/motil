@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const route = await readFile(new URL('../app/api/maintenance/work-orders/[id]/route.ts', import.meta.url), 'utf8');
-const page = await readFile(new URL('../app/dashboard/mantenimiento/ordenes-trabajo/[id]/page.tsx', import.meta.url), 'utf8');
+const page = await readFile(new URL('../components/maintenance/work-order-detail.tsx', import.meta.url), 'utf8');
+const dictionaries = await readFile(new URL('../lib/i18n/dictionaries.ts', import.meta.url), 'utf8');
 
 test('work order mutations require maintenance edit access', () => {
   assert.match(route, /requireModuleAccess\(request, MODULE_KEYS\.MANT_OPERACIONES, true\)/);
@@ -16,7 +17,7 @@ test('cost center assignment is tenant scoped and validates active center', () =
 });
 
 test('work order detail exposes finance assignment state', () => {
-  assert.match(page, /Imputación financiera/);
-  assert.match(page, /Compras no podrá adjudicar una OC asociada a esta OT/);
   assert.match(page, /cost_center_id/);
+  assert.match(dictionaries, /title: 'Imputación financiera'/);
+  assert.match(dictionaries, /pending: 'Pendiente: Compras no podrá adjudicar una OC asociada a esta OT\.'/);
 });

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const detail = readFileSync('app/dashboard/mantenimiento/ordenes-trabajo/[id]/page.tsx', 'utf8');
+const detail = readFileSync('components/maintenance/work-order-detail.tsx', 'utf8');
 const flow = readFileSync('components/maintenance/mobile-work-order-flow.tsx', 'utf8');
 
 test('execution roles stay in the dedicated simple work-order workspace on every viewport', () => {
@@ -25,7 +25,7 @@ test('execution workspace exposes only job context, timer and controlled finish 
 
 test('administrative detail remains outside the execution-role early return', () => {
   const executionReturn = detail.indexOf('if (isExecution)');
-  const finance = detail.indexOf('Imputación financiera');
+  const finance = detail.indexOf('{t.financial.title}');
   const materials = detail.indexOf('<WorkOrderMaterialCoverage');
   const parts = detail.indexOf('<WorkOrderPartsPanel');
   const purchasing = detail.indexOf('<WorkOrderPurchasingFlow');
