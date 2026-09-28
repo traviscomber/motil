@@ -5,7 +5,8 @@ import fs from 'node:fs';
 const migration = fs.readFileSync('supabase/migrations/20260827234500_integrate_standard_plan_steps_into_close_readiness_v2.sql','utf8');
 const api = fs.readFileSync('app/api/maintenance/work-order-close-queue/route.ts','utf8');
 const queue = fs.readFileSync('components/maintenance/progressive-work-order-close-queue.tsx','utf8');
-const detail = fs.readFileSync('app/dashboard/mantenimiento/ordenes-trabajo/[id]/page.tsx','utf8');
+const detail = fs.readFileSync('components/maintenance/work-order-detail.tsx','utf8');
+const dictionaries = fs.readFileSync('lib/i18n/dictionaries.ts','utf8');
 
 test('close readiness v2 includes pending standard plan steps', () => {
   assert.match(migration, /work_order_standard_plan_execution_v1/);
@@ -32,7 +33,8 @@ test('progressive close executes the first pending plan step inline', () => {
 
 test('work order detail has one closure path', () => {
   assert.match(detail, /ordenes-trabajo\/cierre\?workOrderId=/);
-  assert.match(detail, /Continuar cierre/);
+  assert.match(detail, /t\.actions\.continueClose/);
+  assert.match(dictionaries, /continueClose: 'Continuar cierre'/);
   assert.doesNotMatch(detail, /Confirmar cierre/);
   assert.doesNotMatch(detail, /completeOrder/);
 });

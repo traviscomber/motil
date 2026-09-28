@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const route = await readFile(new URL('../app/api/maintenance/work-orders/[id]/route.ts', import.meta.url), 'utf8');
-const page = await readFile(new URL('../app/dashboard/mantenimiento/ordenes-trabajo/[id]/page.tsx', import.meta.url), 'utf8');
+const page = await readFile(new URL('../components/maintenance/work-order-detail.tsx', import.meta.url), 'utf8');
+const dictionaries = await readFile(new URL('../lib/i18n/dictionaries.ts', import.meta.url), 'utf8');
 
 test('work order assignment stores canonical person identity and derives the display name', () => {
   assert.match(route, /assigned_person_id\?: string \| null/);
@@ -22,7 +23,7 @@ test('work order detail exposes only linked active people as assignee choices', 
   assert.match(page, /const assignees = data\?\.assignees \|\| \[\]/);
   assert.match(page, /id="assignee"/);
   assert.match(page, /patchOrder\(\{\s*assigned_person_id:\s*event\.target\.value \|\| null\s*\}\)/);
-  assert.match(page, /Debe asignarse una persona operativa antes de iniciar/);
+  assert.match(dictionaries, /pending: 'Debe asignarse una persona operativa antes de iniciar\.'/);
 });
 
 test('desktop start is blocked until canonical responsibility exists', () => {
