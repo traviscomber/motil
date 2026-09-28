@@ -1159,6 +1159,15 @@ export const dictionaries = {
           pendingClose: 'Pendiente en cierre progresivo',
         },
       },
+      workOrderClose: {
+        meta: {
+          title: 'Cierre controlado de OT | Mantenimiento',
+          description: 'Cola operacional para completar la evidencia faltante y cerrar órdenes de trabajo con trazabilidad auditada.',
+        },
+        eyebrow: 'Mantenimiento · cierre controlado',
+        title: 'Qué falta para cerrar la siguiente OT',
+        description: 'MOTIL expone una sola acción siguiente por vez. El cierre sólo avanza con evidencia operacional suficiente y mantiene la decisión final en el usuario autorizado.',
+      },
     },
   },
   en: {
@@ -2315,6 +2324,15 @@ export const dictionaries = {
           noEvidence: 'No evidence uploaded',
           pendingClose: 'Pending in progressive closure',
         },
+      },
+      workOrderClose: {
+        meta: {
+          title: 'Controlled WO closure | Maintenance',
+          description: 'Operational queue to complete missing evidence and close work orders with audited traceability.',
+        },
+        eyebrow: 'Maintenance · controlled closure',
+        title: 'What is missing to close the next WO',
+        description: 'MOTIL exposes a single next action at a time. Closure only advances with sufficient operational evidence and keeps the final decision with the authorized user.',
       },
     },
   },
