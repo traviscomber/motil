@@ -5,6 +5,7 @@ import fs from 'node:fs';
 const api = fs.readFileSync('app/api/maintenance/availability/summary/route.ts', 'utf8');
 const ui = fs.readFileSync('components/maintenance/availability-semaphore.tsx', 'utf8');
 const page = fs.readFileSync('app/dashboard/mantenimiento/disponibilidad/page.tsx', 'utf8');
+const dictionaries = fs.readFileSync('lib/i18n/dictionaries.ts', 'utf8');
 
 test('availability uses canonical assets instead of cost centers as fleet truth', () => {
   assert.match(api, /canonical_assets_current/);
@@ -25,5 +26,6 @@ test('availability UI explains evidence gaps and links priority assets to 360', 
   assert.match(ui, /Ficha 360/);
   assert.doesNotMatch(ui, /Disponibilidad en Tiempo Real/);
   assert.doesNotMatch(ui, /por debajo del 70/);
-  assert.match(page, /cost centers no se interpretan como equipos/i);
+  assert.match(page, /getDictionaryForRequest\(\)/);
+  assert.match(dictionaries, /cost centers no se interpretan como equipos/i);
 });
