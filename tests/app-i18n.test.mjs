@@ -257,3 +257,18 @@ test('progressive close queue renders from the dictionary', () => {
     assert.doesNotMatch(queue, new RegExp(literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `close queue must not hardcode ${literal}`);
   }
 });
+
+test('cost center review is a server wrapper over a locale-aware client', () => {
+  const reviewPage = fs.readFileSync('app/dashboard/mantenimiento/ordenes-trabajo/imputacion/page.tsx', 'utf8');
+  const review = fs.readFileSync('components/maintenance/cost-center-review.tsx', 'utf8');
+
+  assert.match(reviewPage, /getDictionaryForRequest\(\)/);
+  assert.match(reviewPage, /<CostCenterReview locale=\{locale\} dictionary=\{dictionary\} \/>/);
+  assert.match(review, /const t = dictionary\.app\.costCenterReview;/);
+  assert.match(review, /fill\(t\.pendingCountTemplate, \{ n: rows\.length \}\)/);
+  assert.match(review, /current\.family_hint \|\| t\.fields\.noEvidence/);
+  // No hardcoded review copy may remain in the component.
+  for (const literal of ['Resolver imputación de OT', 'Una sola decisión principal por vez', 'Guardar y mostrar siguiente', 'Seleccionar centro de costo', 'No quedan OT pendientes de imputación']) {
+    assert.doesNotMatch(review, new RegExp(literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `cost-center-review must not hardcode ${literal}`);
+  }
+});
