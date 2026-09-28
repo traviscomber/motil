@@ -1280,6 +1280,17 @@ export const dictionaries = {
         saving: 'Guardando…',
         saveNext: 'Guardar y mostrar siguiente',
       },
+      availability: {
+        meta: {
+          title: 'Disponibilidad de equipos | Mantenimiento',
+          description: 'Estado observado, cobertura de evidencia y acciones de mantenimiento por equipo',
+        },
+        eyebrow: 'Mantenimiento · Evidencia operacional',
+        title: 'Disponibilidad de equipos',
+        description: 'Estado observado de la flota, cobertura de horómetro y detención, y equipos que requieren acción. El porcentaje de disponibilidad sólo aparece cuando exista una base temporal comparable.',
+        cta: 'Ver tablero de equipos',
+        note: 'La flota se toma del registro canónico; cost centers no se interpretan como equipos y ausencia de evidencia no se convierte en disponibilidad.',
+      },
     },
   },
   en: {
@@ -2557,6 +2568,17 @@ export const dictionaries = {
         openFull: 'Open full WO',
         saving: 'Saving…',
         saveNext: 'Save and show next',
+      },
+      availability: {
+        meta: {
+          title: 'Equipment availability | Maintenance',
+          description: 'Observed status, evidence coverage and maintenance actions per asset',
+        },
+        eyebrow: 'Maintenance · Operational evidence',
+        title: 'Equipment availability',
+        description: 'Observed fleet status, hour meter and downtime coverage, and equipment requiring action. The availability percentage only appears when a comparable time base exists.',
+        cta: 'View equipment board',
+        note: 'The fleet comes from the canonical registry; cost centers are not interpreted as equipment and missing evidence is not converted into availability.',
       },
     },
   },

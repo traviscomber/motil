@@ -272,3 +272,16 @@ test('cost center review is a server wrapper over a locale-aware client', () => 
     assert.doesNotMatch(review, new RegExp(literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `cost-center-review must not hardcode ${literal}`);
   }
 });
+
+test('availability page renders its header and metadata from the dictionary', () => {
+  const availabilityPage = fs.readFileSync('app/dashboard/mantenimiento/disponibilidad/page.tsx', 'utf8');
+
+  assert.match(availabilityPage, /getDictionaryForRequest\(\)/);
+  assert.match(availabilityPage, /export async function generateMetadata\(\)/);
+  assert.match(availabilityPage, /const t = dictionary\.app\.availability;/);
+  assert.match(availabilityPage, /<AvailabilitySemaphore \/>/);
+  // No hardcoded availability copy may remain in the page.
+  for (const literal of ['Disponibilidad de equipos', 'Ver tablero de equipos', 'cost centers no se interpretan como equipos']) {
+    assert.doesNotMatch(availabilityPage, new RegExp(literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `availability page must not hardcode ${literal}`);
+  }
+});
