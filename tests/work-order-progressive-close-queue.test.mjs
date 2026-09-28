@@ -37,9 +37,6 @@ test('closure queue API is maintenance authorized tenant scoped and reads v2', (
 });
 
 test('progressive closure exposes one next action and requires an explicit close click', () => {
-  assert.match(component, /Siguiente acción/);
-  assert.match(component, /Guardar y continuar/);
-  assert.match(component, /Cerrar OT y congelar costo/);
   assert.match(component, /performNextAction/);
   assert.match(component, /current\.next_action === 'close_work_order'/);
   assert.match(component, /status:\s*'completed'/);
@@ -47,8 +44,9 @@ test('progressive closure exposes one next action and requires an explicit close
   assert.match(component, /setStepObservation\(''\)/);
   assert.match(component, /searchParams\.get\('workOrderId'\)/);
   assert.match(page, /getDictionaryForRequest\(\)/);
-  assert.match(dictionaries, /title: 'Qué falta para cerrar la siguiente OT'/);
-  assert.match(dictionaries, /decisión final en el usuario autorizado/);
+  assert.match(dictionaries, /nextActionBadge: 'Siguiente acción'/);
+  assert.match(dictionaries, /saveContinue: 'Guardar y continuar'/);
+  assert.match(dictionaries, /closeFreeze: 'Cerrar OT y congelar costo'/);
 });
 
 test('scheduled maintenance hands completion to the safe progressive closure flow', () => {

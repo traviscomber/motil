@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import type { Dictionary, Locale } from '@/lib/i18n/dictionaries';
 
 type QueueRow = {
   work_order_id: string;
@@ -43,34 +44,40 @@ type QueueResponse = {
   canEdit?: boolean;
 };
 
+type CloseQueueT = Dictionary['app']['workOrderCloseQueue'];
+
+const ACTION_KEYS: Record<string, keyof CloseQueueT['actionTitles']> = {
+  resolve_asset: 'resolveAsset',
+  resolve_procurement: 'resolveProcurement',
+  resolve_parts: 'resolveParts',
+  resolve_materials: 'resolveMaterials',
+  resolve_external_services: 'resolveExternalServices',
+  resolve_labor: 'resolveLabor',
+  reconcile_external_cost: 'reconcileExternalCost',
+  complete_standard_plan_step: 'completeStandardPlanStep',
+  record_root_cause: 'recordRootCause',
+  record_preventive_actions: 'recordPreventiveActions',
+  record_actual_hours: 'recordActualHours',
+  record_runtime_evidence: 'recordRuntimeEvidence',
+  close_work_order: 'closeWorkOrder',
+};
+
+function fill(template: string, vars: Record<string, string | number>) {
+  return template.replace(/\{(\w+)\}/g, (_, key: string) => String(vars[key] ?? ''));
+}
+
 const fetcher = async (url: string): Promise<QueueResponse> => {
   const response = await fetch(url, { credentials: 'include' });
   const payload = await response.json().catch(() => null);
-  if (!response.ok) throw new Error(payload?.error || 'No se pudo cargar la cola de cierre');
+  if (!response.ok) throw new Error(payload?.error || 'request failed');
   return payload;
 };
 
-const actionCopy: Record<string, { title: string; description: string }> = {
-  resolve_asset: { title: 'Resolver activo', description: 'La OT necesita un activo canónico antes de cerrarse.' },
-  resolve_procurement: { title: 'Cerrar compras pendientes', description: 'Hay órdenes de compra emitidas o parcialmente recibidas.' },
-  resolve_parts: { title: 'Resolver repuestos', description: 'Hay repuestos emitidos pendientes de instalar o devolver.' },
-  resolve_materials: { title: 'Completar materiales', description: 'Hay requerimientos de materiales aún no satisfechos.' },
-  resolve_external_services: { title: 'Resolver servicios externos', description: 'Hay servicios externos pendientes de aprobación.' },
-  resolve_labor: { title: 'Cerrar horas abiertas', description: 'Hay registros de trabajo que todavía no tienen término.' },
-  reconcile_external_cost: { title: 'Reconciliar costo externo', description: 'Existe un posible doble conteo entre costo legado y servicios externos.' },
-  complete_standard_plan_step: { title: 'Ejecutar siguiente paso', description: 'Completa el primer paso pendiente del procedimiento estándar aplicado.' },
-  record_root_cause: { title: 'Registrar causa raíz', description: 'Describe la causa principal observada en esta intervención.' },
-  record_preventive_actions: { title: 'Registrar acción preventiva', description: 'Registra qué acción evitará o reducirá la recurrencia.' },
-  record_actual_hours: { title: 'Registrar horas reales', description: 'Ingresa las horas reales utilizadas en la intervención.' },
-  record_runtime_evidence: { title: 'Resolver horómetro', description: 'Registra la lectura al cierre o documenta por qué no está disponible.' },
-  close_work_order: { title: 'Cerrar OT', description: 'Todos los controles obligatorios están satisfechos. El cierre congelará el costo auditado.' },
-};
-
-function money(value: unknown) { return value == null ? '—' : `$${Number(value).toLocaleString('es-CL')}`; }
-function metric(value: number | undefined) { return value == null ? '—' : value.toLocaleString('es-CL'); }
 function localDateTimeValue() { const now = new Date(); const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000); return local.toISOString().slice(0, 16); }
 
-export function ProgressiveWorkOrderCloseQueue() {
+export function ProgressiveWorkOrderCloseQueue({ locale, dictionary }: { locale: Locale; dictionary: Dictionary }) {
+  const t = dictionary.app.workOrderCloseQueue;
+  const numberLocale = locale === 'en' ? 'en-US' : 'es-CL';
   const searchParams = useSearchParams();
   const selectedWorkOrderId = searchParams.get('workOrderId');
   const { data, error, isLoading, mutate } = useSWR<QueueResponse>('/api/maintenance/work-order-close-queue', fetcher, { revalidateOnFocus: false });
@@ -95,9 +102,9 @@ export function ProgressiveWorkOrderCloseQueue() {
     try {
       const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(body) });
       const payload = await response.json().catch(() => null);
-      if (!response.ok) throw new Error(payload?.error || 'No se pudo guardar');
+      if (!response.ok) throw new Error(payload?.error || t.errors.saveFailed);
       await mutate();
-    } catch (cause) { setActionError(cause instanceof Error ? cause.message : 'No se pudo guardar'); }
+    } catch (cause) { setActionError(cause instanceof Error ? cause.message : t.errors.saveFailed); }
     finally { setSaving(false); }
   }
 
@@ -107,56 +114,60 @@ export function ProgressiveWorkOrderCloseQueue() {
     try {
       const response = await fetch(`/api/maintenance/work-orders/${current.work_order_id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(body) });
       const payload = await response.json().catch(() => null);
-      if (!response.ok) throw new Error(payload?.error || 'No se pudo actualizar la OT');
+      if (!response.ok) throw new Error(payload?.error || t.errors.updateFailed);
       await mutate();
-    } catch (cause) { setActionError(cause instanceof Error ? cause.message : 'No se pudo actualizar la OT'); }
+    } catch (cause) { setActionError(cause instanceof Error ? cause.message : t.errors.updateFailed); }
     finally { setSaving(false); }
   }
 
   async function performNextAction() {
     if (!current) return;
     if (current.next_action === 'complete_standard_plan_step') {
-      if (!current.next_plan_step_id) return setActionError('No se encontró el paso pendiente.');
+      if (!current.next_plan_step_id) return setActionError(t.errors.notFoundStep);
       return request(`/api/maintenance/work-orders/${current.work_order_id}/standard-plan`, { stepId: current.next_plan_step_id, observation: stepObservation.trim() || null });
     }
-    if (current.next_action === 'record_root_cause') { const value=textValue.trim(); if(!value) return setActionError('Registra una causa raíz antes de guardar.'); return patchCurrent({ root_cause:value }); }
-    if (current.next_action === 'record_preventive_actions') { const value=textValue.trim(); if(!value) return setActionError('Registra una acción preventiva antes de guardar.'); return patchCurrent({ preventive_actions:value }); }
-    if (current.next_action === 'record_actual_hours') { const hours=Number(hoursValue); if(!Number.isFinite(hours)||hours<=0) return setActionError('Ingresa horas reales mayores que cero.'); return patchCurrent({ actual_duration_hours:hours }); }
+    if (current.next_action === 'record_root_cause') { const value=textValue.trim(); if(!value) return setActionError(t.errors.rootCauseRequired); return patchCurrent({ root_cause:value }); }
+    if (current.next_action === 'record_preventive_actions') { const value=textValue.trim(); if(!value) return setActionError(t.errors.preventiveRequired); return patchCurrent({ preventive_actions:value }); }
+    if (current.next_action === 'record_actual_hours') { const hours=Number(hoursValue); if(!Number.isFinite(hours)||hours<=0) return setActionError(t.errors.hoursInvalid); return patchCurrent({ actual_duration_hours:hours }); }
     if (current.next_action === 'record_runtime_evidence') {
       const body: Record<string, unknown> = { workOrderId: current.work_order_id, mode: meterMode };
-      if (meterMode === 'meter_reading') { const meterHours=Number(meterValue); if(!Number.isFinite(meterHours)||meterHours<0) return setActionError('Ingresa una lectura válida.'); if(!meterRecordedAt) return setActionError('Ingresa la fecha de lectura.'); body.meterHours=meterHours; body.recordedAt=new Date(meterRecordedAt).toISOString(); }
-      else { const reason=meterReason.trim(); if(!reason) return setActionError('Indica por qué el horómetro no está disponible.'); body.unavailableReason=reason; }
+      if (meterMode === 'meter_reading') { const meterHours=Number(meterValue); if(!Number.isFinite(meterHours)||meterHours<0) return setActionError(t.errors.meterInvalid); if(!meterRecordedAt) return setActionError(t.errors.meterDateRequired); body.meterHours=meterHours; body.recordedAt=new Date(meterRecordedAt).toISOString(); }
+      else { const reason=meterReason.trim(); if(!reason) return setActionError(t.errors.meterReasonRequired); body.unavailableReason=reason; }
       return request('/api/maintenance/work-order-runtime-evidence', body);
     }
     if (current.next_action === 'close_work_order') return patchCurrent({ status:'completed', root_cause:current.root_cause, preventive_actions:current.preventive_actions, actual_duration_hours:Number(current.actual_duration_hours||0) });
   }
 
-  if (isLoading) return <Card className="shadow-none"><CardContent className="p-6 text-sm text-muted-foreground">Cargando cola de cierre...</CardContent></Card>;
-  if (error) return <Card className="border-destructive/30 bg-destructive/5 shadow-none"><CardContent className="p-6 text-sm text-destructive">No se pudo cargar la cola de cierre.</CardContent></Card>;
+  function money(value: unknown) { return value == null ? '—' : `$${Number(value).toLocaleString(numberLocale)}`; }
+  function metric(value: number | undefined) { return value == null ? '—' : value.toLocaleString(numberLocale); }
 
-  const copy = current ? actionCopy[current.next_action] || { title:'Revisar OT', description:'Revisa la evidencia pendiente.' } : null;
+  if (isLoading) return <Card className="shadow-none"><CardContent className="p-6 text-sm text-muted-foreground">{t.loading}</CardContent></Card>;
+  if (error) return <Card className="border-destructive/30 bg-destructive/5 shadow-none"><CardContent className="p-6 text-sm text-destructive">{t.loadError}</CardContent></Card>;
+
+  const actionKey = current ? ACTION_KEYS[current.next_action] : undefined;
+  const copy = current ? actionKey ? { title: t.actionTitles[actionKey], description: t.actionDescriptions[actionKey] } : t.fallbackAction : null;
   const inline = current && ['complete_standard_plan_step','record_root_cause','record_preventive_actions','record_actual_hours','record_runtime_evidence','close_work_order'].includes(current.next_action);
 
   return <div className="space-y-6">
     <section aria-label="Estado de cierre" className="grid gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-2 lg:grid-cols-4">
       {[
-        ['OT abiertas', metric(summary?.openOrders)],
-        ['Listas para cerrar', metric(summary?.readyToClose)],
-        ['Bloqueadas', metric(summary?.blocked)],
-        ['Pasos pendientes', metric(summary?.pendingPlanSteps)],
+        [t.summary.openOrders, metric(summary?.openOrders)],
+        [t.summary.readyToClose, metric(summary?.readyToClose)],
+        [t.summary.blocked, metric(summary?.blocked)],
+        [t.summary.pendingPlanSteps, metric(summary?.pendingPlanSteps)],
       ].map(([label,value]) => <div key={String(label)} className="bg-card p-4"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p></div>)}
     </section>
 
-    {!current ? <Card className="shadow-none"><CardContent className="flex items-start gap-3 p-6"><CheckCircle2 className="mt-0.5 h-5 w-5"/><div><p className="font-medium">No hay OT pendientes de cierre</p><p className="mt-1 text-sm text-muted-foreground">La cola aparecerá automáticamente cuando existan órdenes abiertas.</p></div></CardContent></Card> : <Card className="shadow-none">
-      <CardHeader className="border-b border-border/70 pb-4"><div><div className="flex flex-wrap items-center gap-2"><Badge variant="outline">Siguiente acción</Badge><span className="font-mono text-xs text-muted-foreground">{current.work_order_number||'OT'}</span>{Number(current.standard_plan_steps_total||0)>0 ? <Badge variant="secondary">Plan {current.standard_plan_steps_completed}/{current.standard_plan_steps_total}</Badge> : null}</div><CardTitle className="mt-3 text-xl">{copy?.title}</CardTitle><p className="mt-1 text-sm text-muted-foreground">{copy?.description}</p></div></CardHeader>
+    {!current ? <Card className="shadow-none"><CardContent className="flex items-start gap-3 p-6"><CheckCircle2 className="mt-0.5 h-5 w-5"/><div><p className="font-medium">{t.empty.title}</p><p className="mt-1 text-sm text-muted-foreground">{t.empty.description}</p></div></CardContent></Card> : <Card className="shadow-none">
+      <CardHeader className="border-b border-border/70 pb-4"><div><div className="flex flex-wrap items-center gap-2"><Badge variant="outline">{t.nextActionBadge}</Badge><span className="font-mono text-xs text-muted-foreground">{current.work_order_number||'OT'}</span>{Number(current.standard_plan_steps_total||0)>0 ? <Badge variant="secondary">{fill(t.planBadgeTemplate, { completed: current.standard_plan_steps_completed || 0, total: current.standard_plan_steps_total || 0 })}</Badge> : null}</div><CardTitle className="mt-3 text-xl">{copy?.title}</CardTitle><p className="mt-1 text-sm text-muted-foreground">{copy?.description}</p></div></CardHeader>
       <CardContent className="space-y-5 p-6">
-        <div className="grid gap-3 md:grid-cols-3"><div><p className="text-xs text-muted-foreground">Equipo</p><p className="mt-1 font-medium">{current.asset?.name||'Sin activo'}</p><p className="text-xs text-muted-foreground">{current.asset?.asset_code||''}</p></div><div><p className="text-xs text-muted-foreground">Trabajo</p><p className="mt-1 font-medium">{current.title||'Sin título'}</p><p className="text-xs text-muted-foreground">{current.work_type||'Sin tipo'} · {current.priority||'Sin prioridad'}</p></div><div><p className="text-xs text-muted-foreground">Costo actual</p><p className="mt-1 font-medium">{money(current.total_cost)}</p><p className="text-xs text-muted-foreground">Se congela al cierre.</p></div></div>
-        {current.next_action==='complete_standard_plan_step' ? <div className="rounded-lg border p-4"><div className="flex items-center gap-2"><Badge variant="outline">Paso {current.next_plan_step_sequence}</Badge><p className="font-medium">{current.next_plan_step_title}</p></div>{current.next_plan_step_instructions ? <p className="mt-2 text-sm text-muted-foreground">{current.next_plan_step_instructions}</p> : null}{current.next_plan_step_control_requirement ? <p className="mt-2 text-sm"><span className="font-medium">Control:</span> {current.next_plan_step_control_requirement}</p> : null}{current.next_plan_step_document_reference ? <p className="mt-1 text-xs text-muted-foreground">Documento: {current.next_plan_step_document_reference}</p> : null}<textarea className="mt-4 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" rows={3} value={stepObservation} onChange={(e)=>setStepObservation(e.target.value)} placeholder="Observación de ejecución (opcional)"/></div> : null}
-        {(current.next_action==='record_root_cause'||current.next_action==='record_preventive_actions') ? <textarea className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" rows={4} value={textValue} onChange={(e)=>setTextValue(e.target.value)} placeholder={current.next_action==='record_root_cause'?'Causa principal observada...':'Acción preventiva ejecutada o recomendada...'}/> : null}
-        {current.next_action==='record_actual_hours' ? <Input type="number" min="0.01" step="0.25" value={hoursValue} onChange={(e)=>setHoursValue(e.target.value)} placeholder="Horas reales"/> : null}
-        {current.next_action==='record_runtime_evidence' ? <div className="space-y-4 rounded-lg border p-4"><div className="flex gap-2"><Button size="sm" variant={meterMode==='meter_reading'?'default':'outline'} onClick={()=>setMeterMode('meter_reading')}>Registrar lectura</Button><Button size="sm" variant={meterMode==='not_available'?'default':'outline'} onClick={()=>setMeterMode('not_available')}>No disponible</Button></div>{meterMode==='meter_reading'?<div className="grid gap-3 md:grid-cols-2"><Input type="number" min="0" step="0.1" value={meterValue} onChange={(e)=>setMeterValue(e.target.value)} placeholder="Lectura acumulada (h)"/><Input type="datetime-local" value={meterRecordedAt} onChange={(e)=>setMeterRecordedAt(e.target.value)}/></div>:<textarea className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" rows={3} value={meterReason} onChange={(e)=>setMeterReason(e.target.value)} placeholder="Motivo verificable..."/>}</div> : null}
+        <div className="grid gap-3 md:grid-cols-3"><div><p className="text-xs text-muted-foreground">{t.fields.equipment}</p><p className="mt-1 font-medium">{current.asset?.name||t.noAsset}</p><p className="text-xs text-muted-foreground">{current.asset?.asset_code||''}</p></div><div><p className="text-xs text-muted-foreground">{t.fields.work}</p><p className="mt-1 font-medium">{current.title||t.untitled}</p><p className="text-xs text-muted-foreground">{current.work_type||t.noType} · {current.priority||t.noPriority}</p></div><div><p className="text-xs text-muted-foreground">{t.fields.currentCost}</p><p className="mt-1 font-medium">{money(current.total_cost)}</p><p className="text-xs text-muted-foreground">{t.fields.freezesAtClose}</p></div></div>
+        {current.next_action==='complete_standard_plan_step' ? <div className="rounded-lg border p-4"><div className="flex items-center gap-2"><Badge variant="outline">{fill(t.step.badgeTemplate, { n: current.next_plan_step_sequence || '' })}</Badge><p className="font-medium">{current.next_plan_step_title}</p></div>{current.next_plan_step_instructions ? <p className="mt-2 text-sm text-muted-foreground">{current.next_plan_step_instructions}</p> : null}{current.next_plan_step_control_requirement ? <p className="mt-2 text-sm"><span className="font-medium">{t.step.controlLabel}</span> {current.next_plan_step_control_requirement}</p> : null}{current.next_plan_step_document_reference ? <p className="mt-1 text-xs text-muted-foreground">{fill(t.step.documentTemplate, { ref: current.next_plan_step_document_reference })}</p> : null}<textarea className="mt-4 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" rows={3} value={stepObservation} onChange={(e)=>setStepObservation(e.target.value)} placeholder={t.step.observationPlaceholder}/></div> : null}
+        {(current.next_action==='record_root_cause'||current.next_action==='record_preventive_actions') ? <textarea className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" rows={4} value={textValue} onChange={(e)=>setTextValue(e.target.value)} placeholder={current.next_action==='record_root_cause'?t.placeholders.rootCause:t.placeholders.preventiveActions}/> : null}
+        {current.next_action==='record_actual_hours' ? <Input type="number" min="0.01" step="0.25" value={hoursValue} onChange={(e)=>setHoursValue(e.target.value)} placeholder={t.placeholders.actualHours}/> : null}
+        {current.next_action==='record_runtime_evidence' ? <div className="space-y-4 rounded-lg border p-4"><div className="flex gap-2"><Button size="sm" variant={meterMode==='meter_reading'?'default':'outline'} onClick={()=>setMeterMode('meter_reading')}>{t.meter.registerReading}</Button><Button size="sm" variant={meterMode==='not_available'?'default':'outline'} onClick={()=>setMeterMode('not_available')}>{t.meter.notAvailable}</Button></div>{meterMode==='meter_reading'?<div className="grid gap-3 md:grid-cols-2"><Input type="number" min="0" step="0.1" value={meterValue} onChange={(e)=>setMeterValue(e.target.value)} placeholder={t.meter.readingPlaceholder}/><Input type="datetime-local" value={meterRecordedAt} onChange={(e)=>setMeterRecordedAt(e.target.value)}/></div>:<textarea className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" rows={3} value={meterReason} onChange={(e)=>setMeterReason(e.target.value)} placeholder={t.meter.reasonPlaceholder}/>}</div> : null}
         {actionError ? <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"><AlertCircle className="mr-2 inline h-4 w-4"/>{actionError}</div> : null}
-        <div className="flex flex-wrap gap-2">{inline && data?.canEdit ? <Button onClick={()=>void performNextAction()} disabled={saving}>{saving?'Guardando...':current.next_action==='close_work_order'?'Cerrar OT y congelar costo':current.next_action==='complete_standard_plan_step'?'Marcar paso realizado':'Guardar y continuar'}<ArrowRight className="ml-2 h-4 w-4"/></Button> : null}{!inline ? <Button asChild><Link href={`/dashboard/mantenimiento/ordenes-trabajo/${current.work_order_id}`}>Resolver en ficha<ArrowRight className="ml-2 h-4 w-4"/></Link></Button> : null}<Button asChild variant="outline"><Link href={`/dashboard/mantenimiento/ordenes-trabajo/${current.work_order_id}`}>Ver OT</Link></Button></div>
+        <div className="flex flex-wrap gap-2">{inline && data?.canEdit ? <Button onClick={()=>void performNextAction()} disabled={saving}>{saving?t.actions.saving:current.next_action==='close_work_order'?t.actions.closeFreeze:current.next_action==='complete_standard_plan_step'?t.actions.markStepDone:t.actions.saveContinue}<ArrowRight className="ml-2 h-4 w-4"/></Button> : null}{!inline ? <Button asChild><Link href={`/dashboard/mantenimiento/ordenes-trabajo/${current.work_order_id}`}>{t.actions.resolveInSheet}<ArrowRight className="ml-2 h-4 w-4"/></Link></Button> : null}<Button asChild variant="outline"><Link href={`/dashboard/mantenimiento/ordenes-trabajo/${current.work_order_id}`}>{t.actions.viewOrder}</Link></Button></div>
       </CardContent>
     </Card>}
   </div>;

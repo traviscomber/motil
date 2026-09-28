@@ -43,8 +43,8 @@ test('97 controlled closure exposes one next evidence action and preserves unkno
   assert.match(closurePage, /getDictionaryForRequest\(\)/);
   assert.match(dictionaries, /title: 'Qué falta para cerrar la siguiente OT'/);
   assert.match(dictionaries, /una sola acción siguiente por vez/);
+  assert.match(dictionaries, /nextActionBadge: 'Siguiente acción'/);
   assert.doesNotMatch(closurePage, /Volver a órdenes/);
-  assert.match(closureQueue, /Siguiente acción/);
   assert.match(closureQueue, /lg:grid-cols-4/);
   assert.match(closureQueue, /value == null \? '—'/);
   assert.doesNotMatch(closureQueue, /lg:grid-cols-6/);
