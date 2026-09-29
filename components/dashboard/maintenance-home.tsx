@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { PageHeader, PageHeaderActions, PageHeaderContent, PageHeaderDescription, PageHeaderEyebrow, PageHeaderTitle } from '@/components/ui/page-header';
 import { StatePanel } from '@/components/ui/state-panel';
 import { MobileTerrainPanel } from '@/components/maintenance/mobile-terrain-panel';
+import { AutopilotDecisionStrip } from '@/components/maintenance/autopilot-decision-strip';
 import type { Dictionary, Locale } from '@/lib/i18n/dictionaries';
 
 type ActionItem = { id: string; kind: string; priority: number; title: string; description: string; evidence: string; href: string; assetHref?: string | null };
@@ -190,6 +191,14 @@ export function MaintenanceHome({ locale, dictionary }: { locale: Locale; dictio
         <span>{t.flow.handoffProduction}</span><span>·</span><span>{t.flow.handoffWarehouse}</span><span>·</span><Link className="hover:text-foreground" href="/dashboard/compras">{t.flow.handoffProcurement}</Link><span>·</span><span>{t.flow.handoffFinance}</span>
       </div> : null}
     </section> : null}
+
+    {!isLoading && !error && summary ? <AutopilotDecisionStrip
+      locale={locale}
+      decisionCount={actions.length}
+      blockerCount={summary.operationallyBlocked || 0}
+      readyToCloseCount={summary.readyToClose || 0}
+      firstActionHref={actions[0]?.href || '/dashboard/mantenimiento/ordenes-trabajo'}
+    /> : null}
 
     {!isLoading && !error && Number(summary?.outOfServiceOperationalReviews || 0) > 0 ? <StatePanel tone="warning" title={fill(t.outOfServiceWarning.title, { n: summary?.outOfServiceOperationalReviews || 0 })} description={t.outOfServiceWarning.description} className="min-h-0 py-5" /> : null}
 
