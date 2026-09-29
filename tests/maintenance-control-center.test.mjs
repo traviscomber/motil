@@ -66,3 +66,14 @@ test('maintenance home stays role-aware while preserving direct factual routes',
   assert.match(page,/horometros/);
   assert.match(page,/confiabilidad/);
 });
+
+
+test('Autopilot prepares actions but preserves human authority',()=>{
+  assert.match(api,/autopilotPreparation/);
+  assert.match(api,/requiresHumanDecision: true/);
+  assert.match(api,/Supervisor valida la señal y decide si crea la OT/);
+  assert.match(api,/Planificador confirma ventana, alcance y recursos/);
+  assert.match(api,/Responsable autorizado revisa y ejecuta el cierre/);
+  assert.match(page,/Autopilot prepara:/);
+  assert.match(page,/Decisión humana:/);
+});
