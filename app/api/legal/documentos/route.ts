@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { resolveAuthContext } from '@/lib/api/auth-session';
+import { getSupabaseServerClient } from '@/lib/supabase-server';
 
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
@@ -15,12 +16,28 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const search = searchParams.get('search') || '';
   const category = searchParams.get('category') || '';
+  const server = getSupabaseServerClient();
+  const [membersResult, assetsResult] = await Promise.all([
+    server.from('user_roles').select('user_id').eq('organization_id', auth.organizationId),
+    server.from('maintenance_assets').select('id').eq('organization_id', auth.organizationId),
+  ]);
+  if (membersResult.error || assetsResult.error) {
+    return NextResponse.json({ error: membersResult.error?.message || assetsResult.error?.message || 'No se pudo resolver el ámbito organizacional' }, { status: 500 });
+  }
+  const memberIds = (membersResult.data || []).map((row) => String(row.user_id)).filter(Boolean);
+  const assetIds = (assetsResult.data || []).map((row) => String(row.id)).filter(Boolean);
+  const ownershipFilters: string[] = [];
+  if (memberIds.length) ownershipFilters.push(`uploaded_by.in.(${memberIds.join(',')})`);
+  if (assetIds.length) ownershipFilters.push(`asset_id.in.(${assetIds.join(',')})`);
 
-  let query = supabase
+  if (!ownershipFilters.length) return NextResponse.json({ documents: [], total: 0 });
+
+  let query = server
     .from('module_documents')
-    .select('id, document_name, document_type, description, status, file_path, file_url, uploaded_at, uploaded_by')
+    .select('id, document_name, document_type, category, description, status, file_path, file_url, uploaded_at, uploaded_by, valid_from, valid_until, expires_at, l1_status, l2_status, tags, asset_id')
     .eq('module', 'legal')
     .is('deleted_at', null)
+    .or(ownershipFilters.join(','))
     .order('uploaded_at', { ascending: false });
 
   if (search) {
@@ -52,9 +69,16 @@ export async function GET(request: NextRequest) {
         id: doc.id,
         title: doc.document_name,
         description: doc.description || '',
-        category: doc.document_type || 'legal',
+        category: doc.category || doc.document_type || 'legal',
         documentType: doc.document_type || 'legal',
-        status: doc.status || 'active',
+        status: doc.status || 'draft',
+        validFrom: doc.valid_from,
+        validUntil: doc.valid_until,
+        expiryDate: doc.expires_at || doc.valid_until,
+        l1Status: doc.l1_status,
+        l2Status: doc.l2_status,
+        tags: doc.tags || [],
+        assetId: doc.asset_id,
         fileUrl,
         filePath: doc.file_path,
         uploadedAt: doc.uploaded_at,
