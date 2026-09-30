@@ -38,6 +38,9 @@ export async function GET(request: NextRequest) {
     const maintenanceAllowed = access.canRead('maintenance');
     const inventoryAllowed = access.canRead('inventory');
     const procurementAllowed = access.canRead('procurement');
+    const hseAllowed = access.canRead('hse');
+    const legalAllowed = access.canRead('legal');
+    const financeAllowed = access.canRead('finance');
 
     const [
       productionChecks,
@@ -56,6 +59,12 @@ export async function GET(request: NextRequest) {
       reviewRequiredReconciliation,
       rawMeterRows,
       meterObservations,
+      hseDocuments,
+      hseCommitments,
+      hseInternalInspections,
+      hseExternalInspections,
+      legalCases,
+      financePayables,
     ] = await Promise.all([
       productionAllowed ? context.supabase.from('production_canonical_package_quality_v1').select('status').eq('organization_id', org) : emptyRows(),
       productionAllowed ? context.supabase.from('production_material_movements').select('movement_date').eq('organization_id', org).order('movement_date', { ascending: false }).limit(1) : emptyRows(),
@@ -73,9 +82,15 @@ export async function GET(request: NextRequest) {
       maintenanceAllowed ? context.supabase.from('maintenance_asset_reconciliation_v1').select('canonical_asset_id', { count: 'exact', head: true }).eq('organization_id', org).eq('reconciliation_status', 'review_required') : emptyRows(),
       maintenanceAllowed ? context.supabase.from('planning_asset_meter_readings').select('id', { count: 'exact', head: true }).eq('organization_id', org) : emptyRows(),
       maintenanceAllowed ? context.supabase.from('planning_asset_meter_observations_v1').select('id', { count: 'exact', head: true }).eq('organization_id', org) : emptyRows(),
+      hseAllowed ? context.supabase.from('module_documents').select('id,uploaded_at', { count: 'exact' }).eq('organization_id', org).eq('module', 'prevención').eq('category', 'documentos-hse').eq('provenance_status', 'canonical').eq('is_active', true) : emptyRows(),
+      hseAllowed ? context.supabase.from('hse_commitments').select('id,description,responsible,source_payload').eq('organization_id', org) : emptyRows(),
+      hseAllowed ? context.supabase.from('inspecciones_internas').select('id').eq('organization_id', org) : emptyRows(),
+      hseAllowed ? context.supabase.from('inspecciones_externas').select('id').eq('organization_id', org) : emptyRows(),
+      legalAllowed ? context.supabase.from('legal_cases').select('id,status,legal_owner,due_at,source_type,source_id').eq('organization_id', org) : emptyRows(),
+      financeAllowed ? context.supabase.from('procurement_accounts_payable').select('id,status,due_date,invoice_id,supplier_id').eq('organization_id', org) : emptyRows(),
     ] as Promise<QueryResult>[]);
 
-    const failures = [productionChecks, transportLatest, metallurgyLatest, drillingLatest, drillingQueue, inventoryOverview, inventorySnapshot, workOrders, poQuality, procurementExceptions, exceptionCenter, activeMaintenanceAssets, deterministicReconciliation, reviewRequiredReconciliation, rawMeterRows, meterObservations]
+    const failures = [productionChecks, transportLatest, metallurgyLatest, drillingLatest, drillingQueue, inventoryOverview, inventorySnapshot, workOrders, poQuality, procurementExceptions, exceptionCenter, activeMaintenanceAssets, deterministicReconciliation, reviewRequiredReconciliation, rawMeterRows, meterObservations, hseDocuments, hseCommitments, hseInternalInspections, hseExternalInspections, legalCases, financePayables]
       .map((result: QueryResult) => result.error)
       .filter(Boolean);
     if (failures.length) throw failures[0];
