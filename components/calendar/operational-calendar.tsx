@@ -20,7 +20,7 @@ import { FilterToolbar, FilterToolbarActions, FilterToolbarGroup } from '@/compo
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Dictionary, Locale } from '@/lib/i18n/dictionaries';
 
-type TaskSource = 'maintenance' | 'hse' | 'legal' | 'procurement';
+type TaskSource = 'maintenance' | 'hse' | 'legal' | 'procurement' | 'finance';
 type TaskItem = {
   id: string;
   source: TaskSource;
