@@ -41,6 +41,9 @@ const CLOSED_STATUSES = new Set([
   'cerrada',
   'realizada',
   'cancelada',
+  'reconciled',
+  'paid',
+  'pagado',
 ]);
 
 const PRIORITY_RANK: Record<CalendarPriority, number> = {
