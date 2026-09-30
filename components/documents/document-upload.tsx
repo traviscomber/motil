@@ -296,7 +296,6 @@ export function DocumentUpload({ module, category, onUploadSuccess, onCancel }: 
     setErrorMessage('');
 
     try {
-      const isLegalModule = normalizedModule === 'legal';
       const uploadFormData = new FormData();
       uploadFormData.append('file', file);
       uploadFormData.append('module', module);
@@ -308,7 +307,7 @@ export function DocumentUpload({ module, category, onUploadSuccess, onCancel }: 
       uploadFormData.append('validUntil', formData.validUntil);
       uploadFormData.append('bypassDuplicate', isDuplicateConfirmed ? 'true' : 'false');
 
-      const response = await fetch(isLegalModule ? '/api/legal/documentos' : '/api/sostenibilidad/upload-documento', {
+      const response = await fetch('/api/documents/upload', {
         method: 'POST',
         body: uploadFormData,
         credentials: 'include',
@@ -350,7 +349,7 @@ export function DocumentUpload({ module, category, onUploadSuccess, onCancel }: 
       setUploadStatus('error');
       setIsUploading(false);
     }
-  }, [file, module, category, documentType, formData, isDuplicateConfirmed, onUploadSuccess, normalizedModule, title]);
+  }, [file, module, category, documentType, formData, isDuplicateConfirmed, onUploadSuccess, title]);
 
   return (
     <Card className="w-full p-6">
