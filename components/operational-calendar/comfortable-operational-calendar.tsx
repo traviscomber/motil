@@ -16,6 +16,7 @@ import {
   Landmark,
   ShoppingCart,
   Wrench,
+  UsersRound,
   type LucideIcon,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -30,7 +31,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-type CalendarSource = 'maintenance' | 'hse' | 'legal' | 'procurement' | 'finance';
+type CalendarSource = 'maintenance' | 'hse' | 'legal' | 'procurement' | 'finance' | 'people';
 type CalendarScope = 'active' | 'historical' | 'all';
 type CalendarPeriod = '7' | '14' | 'month';
 
@@ -101,6 +102,11 @@ const SOURCE_META: Record<CalendarSource, { label: string; icon: LucideIcon; bar
     label: 'Finanzas',
     icon: Landmark,
     bar: 'border-slate-500/70 bg-slate-500/25 text-slate-50',
+  },
+  people: {
+    label: 'Personas',
+    icon: UsersRound,
+    bar: 'border-zinc-500/70 bg-zinc-500/25 text-zinc-50',
   },
 };
 
@@ -178,7 +184,7 @@ export function ComfortableOperationalCalendar() {
     today: 0,
     total: 0,
     historical: 0,
-    by_source: { maintenance: 0, hse: 0, legal: 0, procurement: 0, finance: 0 },
+    by_source: { maintenance: 0, hse: 0, legal: 0, procurement: 0, finance: 0, people: 0 },
   };
 
   const filteredItems = useMemo(() => {
@@ -217,7 +223,7 @@ export function ComfortableOperationalCalendar() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Calendario operativo continuo</h1>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
-            Actividades de Mantenimiento, HSE, Legal, Abastecimiento y Finanzas en una sola línea de tiempo de la organización.
+            Actividades de Mantenimiento, HSE, Legal, Abastecimiento, Finanzas y Personas en una sola línea de tiempo de la organización.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -263,6 +269,7 @@ export function ComfortableOperationalCalendar() {
             <SelectItem value="legal">Legal ({summary.by_source.legal})</SelectItem>
             <SelectItem value="procurement">Abastecimiento ({summary.by_source.procurement})</SelectItem>
             <SelectItem value="finance">Finanzas ({summary.by_source.finance})</SelectItem>
+            <SelectItem value="people">Personas ({summary.by_source.people})</SelectItem>
           </SelectContent>
         </Select>
         <Select value={period} onValueChange={(value) => setPeriod(value as CalendarPeriod)}>
