@@ -27,6 +27,7 @@ export default function PrevencionRiesgosPage() {
 
   const summary = data.summary || {};
   const upcoming = Array.isArray(data.upcoming) ? data.upcoming : [];
+  const commitmentActions = Array.isArray(data.commitmentActions) ? data.commitmentActions : [];
 
   return (
     <div className="space-y-6">
@@ -68,7 +69,7 @@ export default function PrevencionRiesgosPage() {
         <Link href="/dashboard/sostenibilidad/prevencion-riesgos/compromisos" className="rounded-lg border p-4 hover:bg-muted/30">
           <ShieldCheck className="h-4 w-4 text-muted-foreground" />
           <p className="mt-3 text-sm font-semibold">Compromisos</p>
-          <p className="mt-1 text-xs text-muted-foreground">{summary.commitments ?? '—'} registros con provenance desde archivo fuente.</p>
+          <p className="mt-1 text-xs text-muted-foreground">{summary.commitments ?? '—'} registros · {summary.commitmentsUnassigned ?? '—'} requieren asignar responsable.</p>
         </Link>
         <Link href="/dashboard/sostenibilidad/prevencion-riesgos/inspecciones" className="rounded-lg border p-4 hover:bg-muted/30">
           <ShieldCheck className="h-4 w-4 text-muted-foreground" />
@@ -81,6 +82,30 @@ export default function PrevencionRiesgosPage() {
           <p className="mt-1 text-xs text-muted-foreground">HSE, Legal, Mantenimiento y Abastecimiento en una sola agenda.</p>
         </Link>
       </section>
+
+      {commitmentActions.length ? (
+        <section>
+          <div className="mb-2">
+            <h2 className="text-base font-semibold">Acciones sobre compromisos</h2>
+            <p className="text-sm text-muted-foreground">Brechas reales de la fuente que requieren decisión humana; no se inventan responsables ni fechas.</p>
+          </div>
+          <div className="divide-y overflow-hidden rounded-lg border">
+            {commitmentActions.slice(0, 8).map((item: any) => (
+              <Link key={item.id} href="/dashboard/sostenibilidad/prevencion-riesgos/compromisos" className="flex items-start justify-between gap-4 px-4 py-3 hover:bg-muted/30">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="outline">{item.commitmentId}</Badge>
+                    {item.component ? <Badge variant="secondary">{item.component}</Badge> : null}
+                  </div>
+                  <p className="mt-2 line-clamp-2 text-sm font-medium">{item.description}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{item.actionRequired}</p>
+                </div>
+                <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" />
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <section>
         <div className="mb-2 flex items-end justify-between gap-3">
