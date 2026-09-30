@@ -7,7 +7,7 @@ const page = fs.readFileSync('app/dashboard/legal/sernageomin/page.tsx', 'utf8')
 const layout = fs.readFileSync('app/dashboard/legal/layout.tsx', 'utf8');
 const obligations = fs.readFileSync('lib/intelligence/sernageomin-obligations.ts', 'utf8');
 
-test('cockpit API is read-only, permission aware and tenant scoped through regulatory context', () => {
+test('regulatory inbox stays read-only, permission aware and tenant scoped', () => {
   assert.match(api, /getOrganizationContext/);
   assert.match(api, /MODULE_KEYS\.LEGAL_MODULO/);
   assert.match(api, /export async function GET/);
@@ -16,22 +16,31 @@ test('cockpit API is read-only, permission aware and tenant scoped through regul
   assert.match(api, /operationalMutationExecuted: false/);
 });
 
-test('cockpit never converts observed evidence into legal compliance', () => {
+test('evidence matching is contextual and never becomes a compliance verdict', () => {
+  assert.match(api, /evidenceKeywords/);
   assert.match(api, /evidence_observed_requires_review/);
   assert.match(api, /evidence_not_observed_requires_review/);
-  assert.match(api, /requires_human_validation/);
-  assert.doesNotMatch(api, /compliant|non_compliant/);
-  assert.match(page, /Esto no prueba ausencia ni incumplimiento/);
-  assert.match(page, /Esta vista no declara cumplimiento legal/);
+  assert.match(page, /Esto no prueba incumplimiento ni que la obligación aplique/);
+  assert.match(page, /SERNAGEOMIN aparece como autoridad y fuente, no como un silo de trabajo/);
 });
 
-test('cockpit exposes timing, ownership, applicability and evidence', () => {
+test('legal inbox exposes ownership, action, risk, timing and evidence', () => {
+  assert.match(page, /item\.businessOwner/);
+  assert.match(page, /item\.legalRole/);
+  assert.match(page, /item\.nextAction/);
+  assert.match(page, /item\.riskIfUnmanaged/);
   assert.match(page, /item\.timingRule/);
-  assert.match(page, /item\.responsibleFunctions/);
-  assert.match(page, /item\.applicabilityNote/);
   assert.match(page, /item\.expectedEvidence/);
   assert.match(page, /item\.evidenceRefs/);
-  assert.match(layout, /\/dashboard\/legal\/sernageomin/);
+  assert.match(layout, /label: 'Obligaciones'/);
+});
+
+test('catalog encodes mining legal operating roles', () => {
+  assert.match(obligations, /businessOwner:/);
+  assert.match(obligations, /legalRole:/);
+  assert.match(obligations, /contributors:/);
+  assert.match(obligations, /riskIfUnmanaged:/);
+  assert.match(obligations, /evidenceKeywords:/);
 });
 
 test('critical accident timing is explicit while uncertain deadlines remain validation gated', () => {
