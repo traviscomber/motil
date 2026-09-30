@@ -5,19 +5,19 @@ import test from 'node:test';
 const pageUrl = new URL('../app/dashboard/legal/page.tsx', import.meta.url);
 const trackerUrl = new URL('../components/legal/contracts-tracker.tsx', import.meta.url);
 
-test('legal summary does not fabricate zero compliance or current dates when evidence is missing', async () => {
+test('legal overview preserves source uncertainty and never fabricates operational state', async () => {
   const page = await readFile(pageUrl, 'utf8');
   const tracker = await readFile(trackerUrl, 'utf8');
 
-  assert.match(page, /if \(!summary\) return null/);
-  assert.match(page, /compliancePercent === null \? '—'/);
-  assert.match(page, /summary \? summary\.active_contracts : '—'/);
-  assert.match(page, /startDate: contract\.start_date \|\| null/);
-  assert.match(page, /endDate: contract\.end_date \|\| null/);
+  assert.match(page, /if \(!response\.ok\) throw new Error/);
+  assert.match(page, /contracts_pending_review \?\? '—'/);
+  assert.match(page, /expiring_contracts \?\? '—'/);
+  assert.match(page, /expiring_documents \?\? '—'/);
+  assert.match(page, /withMatchedEvidence \?\? '—'/);
+  assert.match(page, /Los datos faltantes no se sustituyen por cero ni por estados inferidos/);
+  assert.match(page, /No hay señales operacionales pendientes en las fuentes disponibles/);
   assert.doesNotMatch(page, /new Date\(\)\.toISOString\(\)/);
-  assert.match(page, /Documentos no disponibles/);
-  assert.match(page, /Contratos no disponibles/);
-  assert.match(page, /Cumplimiento no disponible/);
+  assert.doesNotMatch(page, /Cumplimiento.*100%|Cumplimiento.*0%/);
 
   assert.match(tracker, /endDate: string \| null/);
   assert.match(tracker, /Fecha de término no informada/);
