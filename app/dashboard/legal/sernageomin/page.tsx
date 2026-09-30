@@ -33,18 +33,6 @@ type Obligation = {
   evidenceCount: number;
   evidenceRefs: Array<{ canonicalRef: string; label: string; scope: string; freshnessAt: string | null }>;
   actionState: 'review_evidence' | 'validate_and_collect';
-  sourceModules: string[];
-  operationalContacts: Array<{
-    moduleKey: string;
-    accessLevel: string;
-    cargo: string;
-    people: Array<{ full_name: string | null; email: string | null }>;
-  }>;
-  legalContacts: Array<{
-    accessLevel: string;
-    cargo: string;
-    people: Array<{ full_name: string | null; email: string | null }>;
-  }>;
 };
 
 type Payload = {
@@ -57,14 +45,6 @@ type Payload = {
     withMatchedEvidence: number;
     withoutMatchedEvidence: number;
     requiringApplicabilityReview: number;
-  };
-  teamContext?: {
-    legalRoles: Array<{
-      cargo: string;
-      accessLevel: string;
-      people: Array<{ full_name: string | null; email: string | null }>;
-    }>;
-    note: string;
   };
   operatingModel?: {
     legal: string;
@@ -103,7 +83,7 @@ export default function MiningLegalObligationsPage() {
         <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Legal · Control regulatorio</p>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight">Obligaciones y acciones</h1>
         <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-          Legal recibe señales desde Operaciones, HSE, Mantenimiento, Producción, Finanzas y Contratos. Valida qué aplica, controla plazo y evidencia, y devuelve una acción clara al área responsable.
+          Legal valida qué aplica y controla la trazabilidad. El área dueña ejecuta la acción y entrega la evidencia. La autoridad es contexto. El trabajo Legal se organiza por obligación, acción, responsable y evidencia.
         </p>
       </header>
 
@@ -113,26 +93,6 @@ export default function MiningLegalObligationsPage() {
           <p><span className="font-medium">1. Legal</span><br /><span className="text-muted-foreground">{data.operatingModel?.legal}</span></p>
           <p><span className="font-medium">2. Área responsable</span><br /><span className="text-muted-foreground">{data.operatingModel?.businessOwner}</span></p>
           <p><span className="font-medium">3. Cierre</span><br /><span className="text-muted-foreground">{data.operatingModel?.closeRule}</span></p>
-        </div>
-      </section>
-
-      <section className="rounded-md border p-4">
-        <p className="text-sm font-semibold">Equipo Legal registrado</p>
-        <div className="mt-3 space-y-2">
-          {(data.teamContext?.legalRoles || []).map((role) => (
-            <div key={role.cargo} className="flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <span className="font-medium">{role.cargo}</span>
-                <span className="ml-2 text-xs text-muted-foreground">{role.accessLevel === 'ED' ? 'edita' : 'lectura'}</span>
-              </div>
-              <div className="text-sm text-muted-foreground">
-                {role.people.length
-                  ? role.people.map((person) => person.full_name || person.email).filter(Boolean).join(' · ')
-                  : 'Sin persona asignada'}
-              </div>
-            </div>
-          ))}
-          <p className="pt-1 text-xs text-muted-foreground">{data.teamContext?.note}</p>
         </div>
       </section>
 
@@ -176,45 +136,6 @@ export default function MiningLegalObligationsPage() {
             </div>
 
             <div className="mt-4 grid gap-4 border-t pt-4 lg:grid-cols-2">
-              <div className="lg:col-span-2">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Cómo interactúan los módulos con Legal</p>
-                <div className="mt-2 grid gap-2 md:grid-cols-2">
-                  <div className="rounded-md border bg-muted/20 p-3">
-                    <p className="text-xs font-medium">Origen operativo</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{item.sourceModules.join(' · ') || 'Sin módulo asociado'}</p>
-                    <div className="mt-2 space-y-1">
-                      {item.operationalContacts.length ? item.operationalContacts.slice(0, 8).map((contact, index) => (
-                        <p key={`${contact.moduleKey}-${contact.cargo}-${index}`} className="text-xs">
-                          <span className="font-medium">{contact.cargo}</span>
-                          <span className="text-muted-foreground">
-                            {' · '}
-                            {contact.people.length
-                              ? contact.people.map((person) => person.full_name || person.email).filter(Boolean).join(', ')
-                              : 'sin persona asignada'}
-                          </span>
-                        </p>
-                      )) : <p className="text-xs text-muted-foreground">No hay responsable nominal asociado en la data canónica.</p>}
-                    </div>
-                  </div>
-                  <div className="rounded-md border bg-muted/20 p-3">
-                    <p className="text-xs font-medium">Escalamiento a Legal</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{item.legalRole}</p>
-                    <div className="mt-2 space-y-1">
-                      {item.legalContacts.length ? item.legalContacts.map((contact, index) => (
-                        <p key={`${contact.cargo}-${index}`} className="text-xs">
-                          <span className="font-medium">{contact.cargo}</span>
-                          <span className="text-muted-foreground">
-                            {' · '}
-                            {contact.people.length
-                              ? contact.people.map((person) => person.full_name || person.email).filter(Boolean).join(', ')
-                              : 'sin persona asignada'}
-                          </span>
-                        </p>
-                      )) : <p className="text-xs text-muted-foreground">No hay cargo Legal configurado para esta organización.</p>}
-                    </div>
-                  </div>
-                </div>
-              </div>
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Próxima acción</p>
                 <p className="mt-1 text-sm font-medium leading-relaxed">{item.nextAction}</p>
