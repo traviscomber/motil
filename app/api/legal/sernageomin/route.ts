@@ -5,6 +5,17 @@ import { getOrganizationContext } from '@/lib/api/organization-context';
 import { getModuleAccessLevel, MODULE_KEYS } from '@/lib/api/module-access';
 import { loadRegulatoryIntelligenceContext } from '@/lib/intelligence/regulatory-intelligence-context';
 
+function normalize(value: unknown) {
+  return String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+}
+
+function evidenceText(item: { label: string; provenance?: Record<string, unknown> }) {
+  return normalize([item.label, ...Object.values(item.provenance || {})].join(' '));
+}
+
 export async function GET(request: NextRequest) {
   const context = await getOrganizationContext(request);
   if (!context.ok) return context.response;
@@ -28,13 +39,23 @@ export async function GET(request: NextRequest) {
 
   const evidence = regulatory.canonicalEvidence.items;
   const obligations = regulatory.obligations.map((obligation) => {
+    const allowedScopes = new Set<string>();
+    if (obligation.motilDomains.includes('documents')) allowedScopes.add('documents');
+    if (obligation.motilDomains.includes('assets')) allowedScopes.add('assets');
+    if (obligation.motilDomains.includes('hse')) allowedScopes.add('hse');
+    if (obligation.motilDomains.includes('inspections')) allowedScopes.add('inspections');
+
     const relevantEvidence = evidence.filter((item) => {
-      if (item.scope === 'documents' && obligation.motilDomains.includes('documents')) return true;
-      if (item.scope === 'assets' && obligation.motilDomains.includes('assets')) return true;
-      if (item.scope === 'hse' && obligation.motilDomains.includes('hse')) return true;
-      if (item.scope === 'inspections' && obligation.motilDomains.includes('inspections')) return true;
-      return false;
+      if (!allowedScopes.has(item.scope)) return false;
+      const text = evidenceText(item);
+      return obligation.evidenceKeywords.some((keyword) => text.includes(normalize(keyword)));
     });
+
+    const hasEvidence = relevantEvidence.length > 0;
+    const actionState = hasEvidence ? 'review_evidence' : 'validate_and_collect';
+    const nextAction = hasEvidence
+      ? `Revisar la evidencia candidata vinculada y confirmar si cubre la obligación. Luego: ${obligation.nextAction}`
+      : obligation.nextAction;
 
     return {
       ...obligation,
@@ -45,13 +66,18 @@ export async function GET(request: NextRequest) {
         scope: item.scope,
         freshnessAt: item.freshnessAt,
       })),
-      reviewState: relevantEvidence.length ? 'evidence_observed_requires_review' : 'evidence_not_observed_requires_review',
+      actionState,
+      nextAction,
+      reviewState: hasEvidence ? 'evidence_observed_requires_review' : 'evidence_not_observed_requires_review',
       applicabilityState: 'requires_human_validation',
-      responsibleState: 'role_suggested_not_assigned',
+      responsibleState: 'business_owner_defined_legal_accountability_visible',
       deadlineState: obligation.timingRule.includes('validar') || obligation.timingRule.includes('depende')
         ? 'requires_human_validation'
         : 'rule_available_requires_case_validation',
     };
+  }).sort((a, b) => {
+    const rank = { critical: 0, high: 1, medium: 2 } as const;
+    return rank[a.priority] - rank[b.priority];
   });
 
   return NextResponse.json({
@@ -61,14 +87,21 @@ export async function GET(request: NextRequest) {
     evidence,
     summary: {
       obligations: obligations.length,
-      withObservedEvidence: obligations.filter((item) => item.evidenceCount > 0).length,
+      critical: obligations.filter((item) => item.priority === 'critical').length,
+      withMatchedEvidence: obligations.filter((item) => item.evidenceCount > 0).length,
+      withoutMatchedEvidence: obligations.filter((item) => item.evidenceCount === 0).length,
       requiringApplicabilityReview: obligations.length,
       complianceVerdictCalculated: false,
+    },
+    operatingModel: {
+      legal: 'Valida aplicabilidad, interpreta la obligación, controla plazo y custodia trazabilidad.',
+      businessOwner: 'Ejecuta la acción técnica u operacional y produce la evidencia.',
+      closeRule: 'Legal no cierra una obligación sin evidencia suficiente y revisión humana.',
     },
     policy: regulatory.obligationPolicy,
     sourcePolicy: regulatory.policy,
     complianceVerdictCalculated: false,
     operationalMutationExecuted: false,
-    persistence: 'sernageomin_legal_cockpit_v1',
+    persistence: 'mining_legal_obligation_inbox_v2',
   });
 }
