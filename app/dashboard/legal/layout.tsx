@@ -7,8 +7,10 @@ import { cn } from '@/lib/utils';
 
 const controlItems = [
   { href: '/dashboard/legal', label: 'Resumen' },
+  { href: '/dashboard/legal/casos', label: 'Casos' },
   { href: '/dashboard/legal/sernageomin', label: 'Control regulatorio' },
-  { href: '/dashboard/legal/permisos-licencias', label: 'Permisos y licencias' },
+  { href: '/dashboard/legal/permisos-licencias', label: 'Permisos' },
+  { href: '/dashboard/legal/contratos', label: 'Contratos' },
   { href: '/dashboard/legal/documentos', label: 'Documentos' },
 ];
 
