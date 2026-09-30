@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getOrganizationContext } from '@/lib/api/organization-context';
 
-type CalendarSource = 'maintenance' | 'compliance' | 'procurement';
+type CalendarSource = 'maintenance' | 'hse' | 'legal' | 'procurement';
 type CalendarPriority = 'critical' | 'high' | 'medium' | 'low';
 type CalendarScope = 'active' | 'historical' | 'all';
 
@@ -142,6 +142,15 @@ function complianceKind(value: unknown) {
     report: 'Informe',
   };
   return labels[eventType] || 'Cumplimiento';
+}
+
+function complianceSource(value: unknown): CalendarSource {
+  const eventType = String(value ?? '').trim().toLowerCase();
+  return eventType === 'legal' ? 'legal' : 'hse';
+}
+
+function complianceSourceLabel(value: unknown) {
+  return complianceSource(value) === 'legal' ? 'Legal' : 'HSE';
 }
 
 function complianceHref(value: unknown) {
@@ -292,8 +301,8 @@ export async function GET(request: NextRequest) {
       const priority = normalizePriority(row.priority);
       items.push(buildItem({
         id: `compliance:${row.id}`,
-        source: 'compliance',
-        source_label: 'Cumplimiento',
+        source: complianceSource(row.event_type),
+        source_label: complianceSourceLabel(row.event_type),
         kind: complianceKind(row.event_type),
         date: row.due_date,
         title: row.title,
@@ -381,7 +390,8 @@ export async function GET(request: NextRequest) {
       historical: items.filter((item) => item.historical).length,
       by_source: {
         maintenance: items.filter((item) => item.source === 'maintenance').length,
-        compliance: items.filter((item) => item.source === 'compliance').length,
+        hse: items.filter((item) => item.source === 'hse').length,
+        legal: items.filter((item) => item.source === 'legal').length,
         procurement: items.filter((item) => item.source === 'procurement').length,
       },
     };
