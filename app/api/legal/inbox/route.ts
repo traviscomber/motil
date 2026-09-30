@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
   const organizationId = auth.context.organizationId;
   const today = todayKey();
 
-  const [casesResult, payablesResult, paymentRequestsResult] = await Promise.all([
+  const [casesResult, payablesResult, paymentRequestsResult, progressResult] = await Promise.all([
     auth.context.supabase
       .from('legal_cases')
       .select('id,title,reason,priority,operational_owner,legal_owner,due_at,status,evidence_status,source_module,source_href,updated_at,created_at')
@@ -69,18 +69,30 @@ export async function GET(request: NextRequest) {
       .eq('organization_id', organizationId)
       .order('created_at', { ascending: false })
       .limit(500),
+    auth.context.supabase
+      .from('contract_progress_updates')
+      .select('id,contract_id,execution_percentage,evidence_document_id,status,submitted_at,updated_at')
+      .eq('organization_id', organizationId)
+      .eq('status', 'submitted')
+      .order('submitted_at', { ascending: true })
+      .limit(500),
   ]);
 
   const warnings: string[] = [];
   if (casesResult.error) warnings.push('No se pudieron cargar los casos legales.');
   if (payablesResult.error) warnings.push('No se pudieron cargar las cuentas por pagar.');
   if (paymentRequestsResult.error) warnings.push('No se pudieron cargar las solicitudes de pago.');
+  if (progressResult.error && progressResult.error.code !== '42P01') {
+    warnings.push('No se pudieron cargar los avances contractuales pendientes.');
+  }
 
   const payableRows = payablesResult.data || [];
   const invoiceIds = payableRows.map((row) => row.invoice_id).filter(Boolean);
   const supplierIds = payableRows.map((row) => row.supplier_id).filter(Boolean);
+  const progressRows = progressResult.error ? [] : progressResult.data || [];
+  const progressContractIds = Array.from(new Set(progressRows.map((row) => row.contract_id).filter(Boolean)));
 
-  const [invoicesResult, suppliersResult, signaturesResult] = await Promise.all([
+  const [invoicesResult, suppliersResult, signaturesResult, progressContractsResult] = await Promise.all([
     invoiceIds.length
       ? auth.context.supabase
           .from('procurement_supplier_invoices')
@@ -100,14 +112,23 @@ export async function GET(request: NextRequest) {
       .select('id,request_id,decision,signer_id,signed_at')
       .eq('organization_id', organizationId)
       .limit(1000),
+    progressContractIds.length
+      ? auth.context.supabase
+          .from('contracts')
+          .select('id,contract_number,title,contractor_name,responsible_person,responsible_area')
+          .eq('organization_id', organizationId)
+          .in('id', progressContractIds)
+      : Promise.resolve({ data: [], error: null }),
   ]);
 
   if (invoicesResult.error) warnings.push('No se pudieron resolver las facturas.');
   if (suppliersResult.error) warnings.push('No se pudieron resolver los proveedores.');
   if (signaturesResult.error) warnings.push('No se pudieron resolver las firmas de pago.');
+  if (progressContractsResult.error) warnings.push('No se pudieron resolver los contratos de los avances.');
 
   const invoicesById = new Map((invoicesResult.data || []).map((row) => [row.id, row]));
   const suppliersById = new Map((suppliersResult.data || []).map((row) => [row.id, row]));
+  const progressContractsById = new Map((progressContractsResult.data || []).map((row) => [row.id, row]));
   const paymentRequestByPayable = new Map((paymentRequestsResult.data || []).map((row) => [row.payable_id, row]));
   const signaturesByRequest = new Map<string, number>();
 
@@ -177,7 +198,33 @@ export async function GET(request: NextRequest) {
       };
     });
 
-  const data = [...legalItems, ...financeItems].sort((a, b) => {
+  const progressItems = progressRows.map((row) => {
+    const contract = progressContractsById.get(row.contract_id);
+    return {
+      id: `contract-progress:${row.id}`,
+      kind: 'contract_progress',
+      area: 'Contratos',
+      title: contract?.title || contract?.contract_number || 'Avance contractual',
+      detail: contract?.contractor_name
+        ? `${contract.contractor_name} · Avance informado ${Number(row.execution_percentage).toFixed(1)}%`
+        : `Avance informado ${Number(row.execution_percentage).toFixed(1)}%`,
+      due_date: null,
+      days_until: null,
+      overdue: false,
+      status: 'submitted',
+      priority: row.evidence_document_id ? 'medium' : 'high',
+      owner: contract?.responsible_person || contract?.responsible_area || null,
+      evidence_status: row.evidence_document_id ? 'complete' : 'pending',
+      signatures_required: null,
+      signatures_done: null,
+      amount: null,
+      currency: null,
+      source_href: '/dashboard/legal/avances-contractistas',
+      updated_at: row.updated_at || row.submitted_at,
+    };
+  });
+
+  const data = [...legalItems, ...financeItems, ...progressItems].sort((a, b) => {
     if (a.overdue !== b.overdue) return a.overdue ? -1 : 1;
     if (a.due_date && b.due_date) return a.due_date.localeCompare(b.due_date);
     if (a.due_date) return -1;
