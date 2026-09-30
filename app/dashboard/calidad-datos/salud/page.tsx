@@ -56,7 +56,7 @@ export default function DataHealthPage() {
       <div>
         <p className="text-sm font-medium text-muted-foreground">Gobierno de datos · salud transversal</p>
         <h1 className="mt-1 text-3xl font-semibold tracking-tight">¿Qué datos son confiables hoy?</h1>
-        <p className="mt-2 max-w-3xl text-sm text-muted-foreground">Resume frescura, cobertura y calidad de Producción, Mantención, Inventario y Compras antes de usar sus indicadores para decidir.</p>
+        <p className="mt-2 max-w-3xl text-sm text-muted-foreground">Resume frescura, cobertura y calidad de las fuentes operacionales autorizadas antes de usar sus indicadores para decidir.</p>
       </div>
       <div className="flex gap-2">
         <Button asChild variant="outline"><Link href="/dashboard/calidad-datos">Conciliación</Link></Button>
