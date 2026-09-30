@@ -15,6 +15,7 @@ const supportItems = [
   { href: '/dashboard/bodega/productos-360', label: 'Producto 360°' },
   { href: '/dashboard/bodega/inteligencia', label: 'Inteligencia' },
   { href: '/dashboard/bodega/documentos', label: 'Documentos' },
+  { href: '/dashboard/bodega/fuentes', label: 'Fuentes' },
   { href: '/dashboard/bodega/importar-datos', label: 'Importar' },
 ];
 
