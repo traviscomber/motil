@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 
 const controlItems = [
   { href: '/dashboard/legal', label: 'Resumen' },
+  { href: '/dashboard/legal/sernageomin', label: 'SERNAGEOMIN' },
   { href: '/dashboard/legal/permisos-licencias', label: 'Permisos y licencias' },
   { href: '/dashboard/legal/documentos', label: 'Documentos' },
 ];
