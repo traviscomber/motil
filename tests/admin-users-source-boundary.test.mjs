@@ -7,7 +7,7 @@ const createUserUrl = new URL('../components/admin/create-user-form.tsx', import
 const usersPageUrl = new URL('../app/dashboard/admin/users/page.tsx', import.meta.url);
 const legacyImportUrl = new URL('../app/api/admin/users/import/route.ts', import.meta.url);
 
-test('admin users never turn a source error into zero registered users', async () => {
+test('admin users preserve unavailable-source state instead of reporting zero registered users', async () => {
   const source = await readFile(usersListUrl, 'utf8');
   assert.match(source, /if \(!response\.ok\)/);
   assert.match(source, /No fue posible cargar los usuarios/);
