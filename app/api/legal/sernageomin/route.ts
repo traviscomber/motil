@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getOrganizationContext, type OrganizationSuccessContext } from '@/lib/api/organization-context';
+import { getOrganizationContext } from '@/lib/api/organization-context';
 import { getModuleAccessLevel, MODULE_KEYS } from '@/lib/api/module-access';
 import { loadRegulatoryIntelligenceContext } from '@/lib/intelligence/regulatory-intelligence-context';
 
@@ -32,7 +32,7 @@ function moduleKeysForDomains(domains: string[]) {
 }
 
 async function loadModulePeople(
-  supabase: OrganizationSuccessContext['supabase'],
+  supabase: ReturnType<typeof import('@/lib/supabase-server').getSupabaseServerClient>,
   moduleKeys: string[],
 ) {
   if (!moduleKeys.length) return [];
