@@ -4,7 +4,7 @@ import test from 'node:test';
 
 const pageUrl = new URL('../app/dashboard/desempeno/page.tsx', import.meta.url);
 
-test('performance clears stale selection evidence and never turns a source error into zero KPIs', async () => {
+test('performance clears stale selection evidence and preserves unavailable-source state instead of zero KPIs', async () => {
   const page = await readFile(pageUrl, 'utf8');
 
   assert.match(page, /setPayload\(null\);/);
