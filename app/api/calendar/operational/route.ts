@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getOrganizationContext } from '@/lib/api/organization-context';
 
-type CalendarSource = 'maintenance' | 'hse' | 'legal' | 'procurement';
+type CalendarSource = 'maintenance' | 'hse' | 'legal' | 'procurement' | 'finance';
 type CalendarPriority = 'critical' | 'high' | 'medium' | 'low';
 type CalendarScope = 'active' | 'historical' | 'all';
 
@@ -197,7 +197,7 @@ export async function GET(request: NextRequest) {
   const endDate = scope === 'historical' ? today : addDays(today, days);
 
   try {
-    const [workOrdersResult, preventiveResult, complianceResult, requestsResult, ordersResult, internalInspectionsResult, externalInspectionsResult] = await Promise.all([
+    const [workOrdersResult, preventiveResult, complianceResult, requestsResult, ordersResult, internalInspectionsResult, externalInspectionsResult, payablesResult] = await Promise.all([
       context.supabase
         .from('maintenance_work_orders')
         .select('id,work_order_number,title,description,status,priority,scheduled_date,completion_date,closed_at,assigned_to_name')
@@ -265,6 +265,7 @@ export async function GET(request: NextRequest) {
     if (ordersResult.error) warnings.push('No se pudieron cargar las entregas de órdenes de compra.');
     if (internalInspectionsResult.error) warnings.push('No se pudieron cargar las inspecciones HSE internas.');
     if (externalInspectionsResult.error) warnings.push('No se pudieron cargar las inspecciones HSE externas.');
+    if (payablesResult.error) warnings.push('No se pudieron cargar los vencimientos financieros.');
 
     const items: OperationalCalendarItem[] = [];
 
@@ -388,6 +389,58 @@ export async function GET(request: NextRequest) {
       }, today));
     }
 
+
+    const payableInvoiceIds = (payablesResult.data || []).map((row) => row.invoice_id).filter(Boolean);
+    const { data: payableInvoices, error: payableInvoicesError } = payableInvoiceIds.length
+      ? await context.supabase
+          .from('procurement_supplier_invoices')
+          .select('id,invoice_number,supplier_id')
+          .eq('organization_id', context.organizationId)
+          .in('id', payableInvoiceIds)
+      : { data: [], error: null };
+    if (payableInvoicesError) warnings.push('No se pudieron resolver las facturas de Tesorería.');
+
+    const payableSupplierIds = Array.from(new Set((payablesResult.data || []).map((row) => row.supplier_id).filter(Boolean)));
+    const { data: payableSuppliers, error: payableSuppliersError } = payableSupplierIds.length
+      ? await context.supabase
+          .from('canonical_suppliers_v1')
+          .select('id,legal_name,trade_name')
+          .eq('organization_id', context.organizationId)
+          .in('id', payableSupplierIds)
+      : { data: [], error: null };
+    if (payableSuppliersError) warnings.push('No se pudieron resolver los proveedores de Tesorería.');
+
+    const payableInvoiceById = new Map((payableInvoices || []).map((row) => [row.id, row]));
+    const payableSupplierById = new Map((payableSuppliers || []).map((row) => [row.id, row]));
+
+    for (const row of payablesResult.data || []) {
+      if (!row.due_date || !includeForScope(row.status, scope)) continue;
+      const historical = isHistoricalStatus(row.status);
+      const invoice = row.invoice_id ? payableInvoiceById.get(row.invoice_id) : null;
+      const supplier = row.supplier_id ? payableSupplierById.get(row.supplier_id) : null;
+      const daysUntil = differenceInDays(row.due_date, today);
+      const priority: CalendarPriority = daysUntil < 0 ? 'critical' : daysUntil <= 7 ? 'high' : 'medium';
+
+      items.push(buildItem({
+        id: `finance-payable:${row.id}`,
+        source: 'finance',
+        source_label: 'Finanzas',
+        kind: 'Vencimiento de pago',
+        date: row.due_date,
+        title: invoice?.invoice_number ? `Pagar factura ${invoice.invoice_number}` : 'Obligación por pagar',
+        subtitle: normalizeText(supplier?.trade_name || supplier?.legal_name),
+        reference: normalizeText(invoice?.invoice_number),
+        status: normalizeText(row.status) || 'pending',
+        status_label: statusLabel(row.status),
+        priority,
+        owner: null,
+        location: null,
+        href: '/dashboard/finanzas/pagos',
+        historical,
+        completed_at: null,
+      }, today));
+    }
+
     const orderedRequestIds = new Set(
       (ordersResult.data || []).map((row) => row.intake_request_id).filter(Boolean),
     );
@@ -462,6 +515,7 @@ export async function GET(request: NextRequest) {
         hse: items.filter((item) => item.source === 'hse').length,
         legal: items.filter((item) => item.source === 'legal').length,
         procurement: items.filter((item) => item.source === 'procurement').length,
+        finance: items.filter((item) => item.source === 'finance').length,
       },
     };
 
