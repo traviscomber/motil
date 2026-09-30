@@ -39,21 +39,22 @@ type HseIncidentSource = HseRecord & {
 };
 
 type HseDocumentSource = HseRecord & {
-  nombre_documento?: string | null;
-  title?: string | null;
-  tipo?: string | null;
+  document_name?: string | null;
   document_type?: string | null;
-  version_actual?: string | null;
-  version?: string | null;
-  estado?: string | null;
-  fecha_actualizacion?: string | null;
+  document_type_category?: string | null;
+  version?: number | string | null;
+  status?: string | null;
+  provenance_status?: string | null;
+  canonical_role?: string | null;
+  canonical_section?: string | null;
+  uploaded_at?: string | null;
   updated_at?: string | null;
   created_at?: string | null;
-  descripcion?: string | null;
   description?: string | null;
-  url_documento?: string | null;
   file_url?: string | null;
-  storage_url?: string | null;
+  file_path?: string | null;
+  valid_until?: string | null;
+  expires_at?: string | null;
 };
 
 type HseTrainingSource = HseRecord & {
@@ -355,17 +356,13 @@ async function safeSelectRows<T extends HseRecord = HseRecord>(
 export function mapHseDocument(row: HseDocumentSource): HseDocument {
   return {
     id: row.id,
-    nombre: row.nombre_documento || row.title || 'Documento HSE',
-    tipo: normalizeText(row.tipo || row.document_type || 'procedimiento'),
-    version: row.version_actual || row.version || '1.0',
-    fecha_actualizacion:
-      row.fecha_actualizacion ||
-      row.updated_at ||
-      row.created_at ||
-      new Date().toISOString(),
-    estado: normalizeDocumentStatus(row.estado),
-    descripcion: row.descripcion || row.description || '',
-    url_documento: row.url_documento || row.file_url || row.storage_url || '',
+    nombre: row.document_name || 'Documento HSE',
+    tipo: normalizeText(row.document_type_category || row.document_type || 'documento'),
+    version: String(row.version || '1'),
+    fecha_actualizacion: row.updated_at || row.uploaded_at || row.created_at || '',
+    estado: row.provenance_status === 'canonical' ? 'vigente' : normalizeDocumentStatus(row.status),
+    descripcion: row.description || '',
+    url_documento: row.file_url || row.file_path || '',
   };
 }
 
@@ -522,9 +519,20 @@ export async function getHseModuleData(
     ),
     safeSelectRows(
       supabase,
-      'hse_master_documents',
-      'id, nombre_documento, tipo, descripcion, version_actual, estado, fecha_actualizacion, url_documento, created_at, updated_at',
-      { organizationId, organizationScoped: true, orderBy: 'fecha_actualizacion', ascending: false, limit: 50 }
+      'module_documents',
+      'id, document_name, document_type, document_type_category, description, version, status, provenance_status, canonical_role, canonical_section, uploaded_at, updated_at, created_at, file_url, file_path, valid_until, expires_at',
+      {
+        organizationId,
+        organizationScoped: true,
+        orderBy: 'uploaded_at',
+        ascending: false,
+        limit: 200,
+        filters: [
+          { type: 'eq', column: 'module', value: 'prevención' },
+          { type: 'eq', column: 'category', value: 'documentos-hse' },
+          { type: 'eq', column: 'is_active', value: true },
+        ],
+      }
     ),
     safeSelectRows(
       supabase,
@@ -598,17 +606,17 @@ export async function getHseModuleData(
       ? Math.round(
           (documents.filter((doc) => doc.estado === 'vigente').length / documents.length) * 100
         )
-      : 100;
+      : null;
   const trainingCompliance =
     trainings.length > 0
       ? Math.round(
           (trainings.filter((training) => training.estado === 'realizada').length / trainings.length) * 100
         )
-      : 100;
+      : null;
   const eppCompliance =
     epp.length > 0
       ? Math.round((epp.filter((item) => item.activo).length / epp.length) * 100)
-      : 100;
+      : null;
   const riskItems = riskMatrixRaw.filter((row: HseRiskSource) => normalizeText(row.status) !== 'mitigado');
   const riskCompliance =
     riskMatrixRaw.length > 0
@@ -617,7 +625,7 @@ export async function getHseModuleData(
             riskMatrixRaw.length) *
             100
         )
-      : 100;
+      : null;
 
   const complianceByArea = [
     { area: 'Documentos HSE', compliance: documentCompliance, target: 100 },
@@ -626,10 +634,10 @@ export async function getHseModuleData(
     { area: 'Riesgos', compliance: riskCompliance, target: 100 },
   ];
 
-  const complianceScore = Math.round(
-    complianceByArea.reduce((sum, item) => sum + item.compliance, 0) /
-      Math.max(complianceByArea.length, 1)
-  );
+  const availableCompliance = complianceByArea.filter((item) => typeof item.compliance === 'number');
+  const complianceScore = availableCompliance.length
+    ? Math.round(availableCompliance.reduce((sum, item) => sum + Number(item.compliance), 0) / availableCompliance.length)
+    : null;
 
   const dueRequirements = [
     ...requirementsRaw
@@ -702,7 +710,9 @@ export async function getHseModuleData(
             name: 'Seguridad Operacional',
             requirements: requirementsRaw.length || riskMatrixRaw.length,
             incidents: incidentsThisMonth.length,
-            compliance: clamp(Math.round((riskCompliance + trainingCompliance) / 2)),
+            compliance: typeof riskCompliance === 'number' && typeof trainingCompliance === 'number'
+              ? clamp(Math.round((riskCompliance + trainingCompliance) / 2))
+              : null,
           },
           {
             id: 'documentos',
@@ -716,7 +726,9 @@ export async function getHseModuleData(
             name: 'Personas y EPP',
             requirements: trainings.length + epp.length,
             incidents: openCorrectiveActions.length,
-            compliance: clamp(Math.round((trainingCompliance + eppCompliance) / 2)),
+            compliance: typeof trainingCompliance === 'number' && typeof eppCompliance === 'number'
+              ? clamp(Math.round((trainingCompliance + eppCompliance) / 2))
+              : null,
           },
         ];
 

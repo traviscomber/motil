@@ -329,6 +329,7 @@ export const dictionaries = {
         items: {
           home: 'Inicio',
           daily: 'Gestión diaria',
+          calendar: 'Calendario',
           production: 'Producción',
           geology: 'Geología',
           maintenance: 'Mantenimiento',
@@ -1618,6 +1619,7 @@ export const dictionaries = {
         items: {
           home: 'Home',
           daily: 'Daily management',
+          calendar: 'Calendar',
           production: 'Production',
           geology: 'Geology',
           maintenance: 'Maintenance',

@@ -9,6 +9,7 @@ const operationItems = [
   { href: '/dashboard/sostenibilidad/prevencion-riesgos', label: 'Resumen' },
   { href: '/dashboard/sostenibilidad/prevencion-riesgos/inspecciones', label: 'Inspecciones' },
   { href: '/dashboard/sostenibilidad/prevencion-riesgos/capacitaciones', label: 'Capacitaciones' },
+  { href: '/dashboard/sostenibilidad/prevencion-riesgos/compromisos', label: 'Compromisos' },
   { href: '/dashboard/sostenibilidad/prevencion-riesgos/epp', label: 'EPP' },
 ];
 
@@ -17,6 +18,7 @@ const controlItems = [
   { href: '/dashboard/sostenibilidad/prevencion-riesgos/epp/diagnostico', label: 'Diagnóstico EPP' },
   { href: '/dashboard/sostenibilidad/prevencion-riesgos/documentos-hse', label: 'Documentos' },
   { href: '/dashboard/sostenibilidad/prevencion-riesgos/carpeta-arranque', label: 'Carpeta de arranque' },
+  { href: '/dashboard/tareas', label: 'Calendario organización' },
 ];
 
 function isActive(pathname: string, href: string) {
