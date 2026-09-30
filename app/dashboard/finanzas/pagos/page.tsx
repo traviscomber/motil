@@ -346,7 +346,7 @@ export default function PayablesPage() {
         {isLoading ? <p className="text-sm text-muted-foreground">Cargando...</p> : null}
         {!isLoading && !payables.length ? <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">No hay facturas aprobadas para pago.</p> : null}
         {payables.map((row) => {
-          const openRequest = openRequestByPayable.get(row.id);
+          const currentRequest = openRequestByPayable.get(row.id);
           const overdueDays = row.days_to_due != null && row.days_to_due < 0 ? Math.abs(row.days_to_due) : 0;
           return <div key={row.id} className="rounded-lg border p-4">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -355,14 +355,14 @@ export default function PayablesPage() {
                   <p className="font-medium">Factura {row.invoice_number}</p>
                   <Badge variant="outline">{row.status}</Badge>
                   {overdueDays > 0 ? <Badge variant="destructive">{overdueDays} día(s) vencida</Badge> : null}
-                  {openRequest ? <Badge variant="secondary">{openRequest.signature_count}/{openRequest.required_signatures} firmas</Badge> : null}
+                  {currentRequest ? <Badge variant="secondary">{currentRequest.signature_count}/{currentRequest.required_signatures} firmas</Badge> : null}
                 </div>
                 <p className="mt-1 text-sm text-muted-foreground">{row.supplier_name} · aprobado {money(row.approved_amount,row.currency)} · pagado {money(row.paid_amount,row.currency)}</p>
                 <p className="mt-1 text-sm">Saldo {money(row.outstanding_amount,row.currency)}{row.due_date ? ` · vence ${row.due_date}` : ' · vencimiento pendiente'}</p>
               </div>
               <div className="flex flex-wrap gap-2">
                 {!row.due_date && canEdit ? <Button size="sm" variant="outline" onClick={() => openDue(row)}>Definir vencimiento</Button> : null}
-                {row.due_date && Number(row.outstanding_amount) > 0 && !openRequest && canEdit ? <Button size="sm" variant="outline" onClick={() => openRequest(row)}><ReceiptText className="mr-2 h-4 w-4" />Solicitar transferencia</Button> : null}
+                {row.due_date && Number(row.outstanding_amount) > 0 && !currentRequest && canEdit ? <Button size="sm" variant="outline" onClick={() => openRequest(row)}><ReceiptText className="mr-2 h-4 w-4" />Solicitar transferencia</Button> : null}
               </div>
             </div>
           </div>;
