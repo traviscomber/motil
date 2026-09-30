@@ -25,16 +25,17 @@ const supportItems: NavItem[] = [
   { href: '/dashboard/mantenimiento/maestranza', label: 'Maestranza' },
   { href: '/dashboard/mantenimiento/personal', label: 'Personal' },
   { href: '/dashboard/mantenimiento/indicadores', label: 'Indicadores' },
+  { href: '/dashboard/mantenimiento/fuentes', label: 'Fuentes' },
 ];
 
 const roleNavigation: Record<ViewerMode, { flow: string[]; support: string[] }> = {
   leadership: {
     flow: ['Planificar', 'Órdenes', 'Cierre'],
-    support: ['Resumen', 'Imputación', 'Activos', 'Maestranza', 'Personal', 'Indicadores'],
+    support: ['Resumen', 'Imputación', 'Activos', 'Maestranza', 'Personal', 'Indicadores', 'Fuentes'],
   },
   planning: {
     flow: ['Planificar', 'Órdenes'],
-    support: ['Resumen', 'Activos'],
+    support: ['Resumen', 'Activos', 'Fuentes'],
   },
   execution: {
     flow: ['Órdenes', 'Cierre'],
@@ -42,7 +43,7 @@ const roleNavigation: Record<ViewerMode, { flow: string[]; support: string[] }> 
   },
   general: {
     flow: ['Planificar', 'Órdenes', 'Cierre'],
-    support: ['Resumen', 'Imputación', 'Activos', 'Maestranza', 'Personal', 'Indicadores'],
+    support: ['Resumen', 'Imputación', 'Activos', 'Maestranza', 'Personal', 'Indicadores', 'Fuentes'],
   },
 };
 
