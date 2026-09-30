@@ -64,6 +64,7 @@ export async function POST(request: NextRequest) {
       const { data: existingDocs, error: searchError } = await supabase
         .from('module_documents')
         .select('id, document_name, status')
+        .eq('organization_id', auth.organizationId)
         .eq('module', module)
         .eq('category', category)
         .eq('document_name', file.name)
