@@ -16,6 +16,7 @@ const flowItems = [
 const supportItems = [
   { href: '/dashboard/compras/proveedores-360', label: 'Proveedores' },
   { href: '/dashboard/compras/devoluciones', label: 'Devoluciones' },
+  { href: '/dashboard/compras/documentos', label: 'Documentos' },
   { href: '/dashboard/compras/inteligencia', label: 'Análisis' },
   { href: '/dashboard/compras/importar-existencias', label: 'Importar' },
 ];

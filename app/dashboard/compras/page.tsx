@@ -1,24 +1,52 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowRight, Plus, Search, ShoppingCart } from 'lucide-react';
+import useSWR from 'swr';
+import { ArrowRight, FileText, PackageCheck, Plus, Search, ShoppingCart, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PageHeader, PageHeaderActions, PageHeaderContent, PageHeaderDescription, PageHeaderEyebrow, PageHeaderTitle } from '@/components/ui/page-header';
+import { StatePanel } from '@/components/ui/state-panel';
 import { OperationalPipelineBoard } from '@/components/pipeline/operational-pipeline-board';
+
+type Overview = {
+  canonical: {
+    purchaseOrders: number;
+    suppliers: number;
+  };
+  operational: {
+    intakeRequests: number;
+    operationalOrders: number;
+    receipts: number;
+    invoices: number;
+    accountsPayable: number;
+    documents: number;
+  };
+};
+
+const fetcher = async (url: string): Promise<Overview> => {
+  const response = await fetch(url, { credentials: 'include', cache: 'no-store' });
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(payload?.error || 'No se pudo cargar Compras');
+  return payload as Overview;
+};
 
 const shortcuts = [
   { href: '/dashboard/compras/control-proveedores/candidatos', label: 'Cotizar', description: 'Comparar proveedores habilitados y candidatos del rubro.', icon: Search },
   { href: '/dashboard/compras/flujo', label: 'Seguimiento', description: 'Revisar solicitudes, órdenes, recepciones y pendientes.', icon: ShoppingCart },
+  { href: '/dashboard/compras/proveedores-360', label: 'Proveedores', description: 'Ficha única con historial, contratos, facturas y desempeño.', icon: Users },
+  { href: '/dashboard/compras/documentos', label: 'Documentos', description: 'Respaldos de compra vinculados al núcleo documental de MOTIL.', icon: FileText },
 ];
 
 export default function ComprasPage() {
+  const { data, error, isLoading, mutate } = useSWR<Overview>('/api/procurement/overview', fetcher, { revalidateOnFocus: false });
+
   return (
     <div className="space-y-6">
       <PageHeader>
         <PageHeaderContent>
           <PageHeaderEyebrow>Abastecimiento</PageHeaderEyebrow>
           <PageHeaderTitle>Compras</PageHeaderTitle>
-          <PageHeaderDescription>Compra, cotiza y sigue cada requerimiento desde un flujo simple.</PageHeaderDescription>
+          <PageHeaderDescription>Fuente canónica de compras, proveedores y ejecución operacional en un solo flujo.</PageHeaderDescription>
         </PageHeaderContent>
         <PageHeaderActions>
           <Button asChild>
@@ -27,7 +55,33 @@ export default function ComprasPage() {
         </PageHeaderActions>
       </PageHeader>
 
-      <section className="grid gap-px overflow-hidden rounded-lg border bg-border md:grid-cols-2" aria-label="Acciones de compras">
+      {error ? (
+        <StatePanel
+          tone="error"
+          title="Resumen de Compras no disponible"
+          description="Las fuentes faltantes no se reemplazan por cero."
+          actions={<Button variant="outline" onClick={() => void mutate()}>Reintentar</Button>}
+          className="min-h-0"
+        />
+      ) : null}
+
+      <section className="grid gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-2 xl:grid-cols-6" aria-label="Resumen de Compras">
+        {[
+          ['OC canónicas', data?.canonical.purchaseOrders],
+          ['Proveedores', data?.canonical.suppliers],
+          ['Solicitudes', data?.operational.intakeRequests],
+          ['Órdenes operativas', data?.operational.operationalOrders],
+          ['Recepciones', data?.operational.receipts],
+          ['Facturas', data?.operational.invoices],
+        ].map(([label, value]) => (
+          <div key={String(label)} className="bg-card px-4 py-4">
+            <p className="text-xs text-muted-foreground">{label}</p>
+            <p className="mt-1 text-2xl font-semibold tracking-tight">{isLoading || value === undefined ? '—' : Number(value).toLocaleString('es-CL')}</p>
+          </div>
+        ))}
+      </section>
+
+      <section className="grid gap-px overflow-hidden rounded-lg border bg-border md:grid-cols-2 xl:grid-cols-4" aria-label="Acciones de compras">
         {shortcuts.map((item) => {
           const Icon = item.icon;
           return (
@@ -38,6 +92,24 @@ export default function ComprasPage() {
             </Link>
           );
         })}
+      </section>
+
+      <section className="grid gap-3 md:grid-cols-3">
+        <Link href="/dashboard/compras/flujo" className="rounded-lg border p-4 hover:bg-muted/30">
+          <PackageCheck className="h-4 w-4 text-muted-foreground" />
+          <p className="mt-3 text-sm font-semibold">Flujo operacional</p>
+          <p className="mt-1 text-xs text-muted-foreground">{data?.operational.receipts ?? '—'} recepciones · {data?.operational.invoices ?? '—'} facturas.</p>
+        </Link>
+        <Link href="/dashboard/compras/facturas" className="rounded-lg border p-4 hover:bg-muted/30">
+          <FileText className="h-4 w-4 text-muted-foreground" />
+          <p className="mt-3 text-sm font-semibold">Finanzas de proveedor</p>
+          <p className="mt-1 text-xs text-muted-foreground">{data?.operational.accountsPayable ?? '—'} cuentas por pagar registradas.</p>
+        </Link>
+        <Link href="/dashboard/compras/documentos" className="rounded-lg border p-4 hover:bg-muted/30">
+          <FileText className="h-4 w-4 text-muted-foreground" />
+          <p className="mt-3 text-sm font-semibold">Documentos</p>
+          <p className="mt-1 text-xs text-muted-foreground">{data?.operational.documents ?? '—'} documentos activos en el núcleo documental.</p>
+        </Link>
       </section>
 
       <section aria-labelledby="compras-pendientes" className="space-y-3">
