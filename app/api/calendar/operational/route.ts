@@ -258,6 +258,14 @@ export async function GET(request: NextRequest) {
         .gte('fecha_planificada', startDate)
         .lte('fecha_planificada', endDate)
         .limit(500),
+      context.supabase
+        .from('procurement_accounts_payable')
+        .select('id,invoice_id,supplier_id,currency,approved_amount,due_date,status')
+        .eq('organization_id', context.organizationId)
+        .not('due_date', 'is', null)
+        .gte('due_date', startDate)
+        .lte('due_date', endDate)
+        .limit(1000),
     ]);
 
     const warnings: string[] = [];
