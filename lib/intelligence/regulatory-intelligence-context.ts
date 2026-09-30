@@ -5,6 +5,7 @@ import {
 } from '@/lib/intelligence/regulatory-canonical-evidence';
 import { getRegulatoryInstallationContext } from '@/lib/intelligence/regulatory-installation-context';
 import { listRegulatorySources, REGULATORY_SOURCE_POLICY } from '@/lib/intelligence/regulatory-sources';
+import { listSernageominObligations, SERNAGEOMIN_OBLIGATIONS_POLICY } from '@/lib/intelligence/sernageomin-obligations';
 
 type RegulatoryContext = {
   supabase: any;
@@ -56,9 +57,13 @@ function buildPromptContext(input: {
   sources: ReturnType<typeof listRegulatorySources>;
   canonicalEvidence: Awaited<ReturnType<typeof loadRegulatoryCanonicalEvidence>>;
   installationContext: ReturnType<typeof getRegulatoryInstallationContext>;
+  obligations: ReturnType<typeof listSernageominObligations>;
 }) {
   const sourceRows = input.sources.map((source) =>
     `${source.id} | ${source.versionOrResolution || 'sin versión explícita'} | status=${source.status} | reviewed=${source.lastReviewedAt}`,
+  );
+  const obligationRows = input.obligations.map((item) =>
+    `${item.id} | cadence=${item.cadence} | trigger=${item.trigger} | human_validation_required=true`,
   );
   const coverageRows = input.canonicalEvidence.coverage.map((row) =>
     `${row.scope} | ${row.status} | source=${row.source}${row.reason ? ` | reason=${row.reason}` : ''}`,
@@ -73,6 +78,8 @@ function buildPromptContext(input: {
     'La evidencia operacional canónica de MOTIL mantiene precedencia. Una referencia regulatoria no convierte por sí sola un registro en cumplimiento ni incumplimiento.',
     `Fuentes regulatorias registradas: ${input.sources.length}`,
     ...sourceRows,
+    `Obligaciones operables registradas: ${input.obligations.length}`,
+    ...obligationRows,
     `RES 0886 approved_reference=${input.installationContext.nodeCount}; candidates_pending_review=${input.installationContext.extractionCandidateCount}`,
     'Cobertura de evidencia canónica autorizada:',
     ...coverageRows,
@@ -93,6 +100,7 @@ export async function loadRegulatoryIntelligenceContext(
       Promise.resolve(getRegulatoryInstallationContext()),
     ]);
     const sources = listRegulatorySources({ evidenceClass: 'regulatory_knowledge' });
+    const obligations = listSernageominObligations();
 
     return {
       available: true,
@@ -100,9 +108,12 @@ export async function loadRegulatoryIntelligenceContext(
       allowedScopes,
       sourceCount: sources.length,
       sources,
+      obligationCount: obligations.length,
+      obligations,
+      obligationPolicy: SERNAGEOMIN_OBLIGATIONS_POLICY,
       installationContext,
       canonicalEvidence,
-      promptContext: buildPromptContext({ sources, canonicalEvidence, installationContext }),
+      promptContext: buildPromptContext({ sources, canonicalEvidence, installationContext, obligations }),
       policy: REGULATORY_SOURCE_POLICY,
       complianceVerdictCalculated: false,
       operationalMutationExecuted: false,
@@ -118,6 +129,9 @@ export async function loadRegulatoryIntelligenceContext(
       allowedScopes: [] as RegulatoryCanonicalEvidenceScope[],
       sourceCount: 0,
       sources: [],
+      obligationCount: 0,
+      obligations: [],
+      obligationPolicy: SERNAGEOMIN_OBLIGATIONS_POLICY,
       installationContext: null,
       canonicalEvidence: null,
       promptContext: [
