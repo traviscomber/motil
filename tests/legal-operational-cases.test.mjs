@@ -20,7 +20,14 @@ test('legal referral sync uses deterministic source types and preserves case wor
   assert.match(source, /contract_review/);
   assert.match(source, /contract_expiry/);
   assert.match(source, /existingByKey/);
-  assert.doesNotMatch(source, /status: 'new',[\s\S]*\.update\(/);
+
+  const marker = ".from('legal_cases')\n      .update({";
+  const updateBlock = source.split(marker)[1] || '';
+  assert.ok(updateBlock, 'legal case source refresh must update the existing row');
+  const updatePayload = updateBlock.split('})')[0] || '';
+  assert.doesNotMatch(updatePayload, /status:/);
+  assert.doesNotMatch(updatePayload, /evidence_status:/);
+  assert.doesNotMatch(updatePayload, /legal_owner:/);
 });
 
 test('legal cases migration enables RLS and unique source deduplication', async () => {
