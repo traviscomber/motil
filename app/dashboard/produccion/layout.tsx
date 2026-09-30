@@ -28,6 +28,8 @@ const items: ProductionItem[] = [
   { href: '/dashboard/produccion/geologia', label: 'Geología', lane: 'technical', moduleKey: 'prod_geologia' },
   { href: '/dashboard/produccion/topografia', label: 'Topografía', lane: 'technical', moduleKey: 'prod_topografia' },
   { href: '/dashboard/produccion/quimica', label: 'Química', lane: 'technical', moduleKey: 'prod_quimica' },
+  { href: '/dashboard/produccion/fuentes', label: 'Fuentes', lane: 'technical', moduleKey: 'prod_operaciones' },
+  { href: '/dashboard/produccion/trazabilidad', label: 'Trazabilidad', lane: 'technical', moduleKey: 'prod_operaciones' },
 ];
 
 function isItemActive(pathname: string, item: ProductionItem) {
