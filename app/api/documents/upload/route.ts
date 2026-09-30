@@ -28,8 +28,8 @@ function safeParseJson(value: string) {
 export async function POST(request: NextRequest) {
   try {
     const auth = await resolveAuthContext(request);
-    if (!auth) {
-      return NextResponse.json({ error: 'No autenticado. Inicia sesiÃ³n nuevamente.' }, { status: 401 });
+    if (!auth || !auth.organizationId) {
+      return NextResponse.json({ error: 'No autorizado para cargar documentos sin organización activa.' }, { status: 401 });
     }
 
     const formData = await request.formData();
@@ -117,6 +117,7 @@ export async function POST(request: NextRequest) {
       .from('module_documents')
       .insert([
         {
+          organization_id: auth.organizationId,
           module,
           category,
           document_name: title || file.name,
@@ -131,6 +132,7 @@ export async function POST(request: NextRequest) {
           valid_from: validFrom || null,
           valid_until: validUntil || null,
           status: 'draft',
+          provenance_status: 'operational',
           uploaded_by: auth.user.id,
         },
       ])
