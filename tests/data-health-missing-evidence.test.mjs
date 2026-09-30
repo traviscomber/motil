@@ -23,3 +23,14 @@ test('empty maintenance inventory and procurement evidence remain unknown instea
   assert.match(source, /Sin evidencia suficiente para acreditar la salud del inventario/);
   assert.match(source, /Sin OC evaluables para acreditar calidad de Compras/);
 });
+
+
+test('HSE Legal and Finance keep absent evidence unknown and preserve source gaps', async () => {
+  const source = await readFile(apiUrl, 'utf8');
+  assert.match(source, /canonicalDocs\.length === 0[\s\S]*\? 'unknown'/);
+  assert.match(source, /normalizationGaps > 0[\s\S]*\? 'watch'/);
+  assert.match(source, /cases\.length === 0[\s\S]*\? 'unknown'/);
+  assert.match(source, /missingSource > 0 \|\| missingDeadline > 0[\s\S]*\? 'critical'/);
+  assert.match(source, /payables\.length === 0[\s\S]*\? 'unknown'/);
+  assert.match(source, /Completar vencimiento desde la factura o evidencia financiera; no inferirlo/);
+});
