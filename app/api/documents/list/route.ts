@@ -10,8 +10,8 @@ const BUCKET = 'module-documents';
 export async function GET(request: NextRequest) {
   try {
     const auth = await resolveAuthContext(request);
-    if (!auth) {
-      return NextResponse.json({ error: 'No autenticado. Inicia sesiÃ³n nuevamente.' }, { status: 401 });
+    if (!auth || !auth.organizationId) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
     const searchParams = request.nextUrl.searchParams;
@@ -30,6 +30,7 @@ export async function GET(request: NextRequest) {
       let query = supabase
         .from('module_documents')
         .select('*')
+        .eq('organization_id', auth.organizationId)
         .eq('module', module)
         .eq('is_active', true)
         .order('created_at', { ascending: false });
@@ -72,10 +73,6 @@ export async function GET(request: NextRequest) {
       );
 
       return NextResponse.json({ documents });
-    }
-
-    if (!auth.organizationId) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
     const data = await listDocumentsForOrganization(auth.organizationId, {
