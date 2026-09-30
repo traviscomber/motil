@@ -26,6 +26,8 @@ type CompliancePayload = {
   expiring_documents?: Array<{ id: string; title: string; expiry_date?: string }>;
 };
 
+type CasesPayload = { summary?: { total: number; new: number; in_review: number; action_required: number; waiting_area: number; closed: number } };
+
 type RegulatoryPayload = {
   summary?: {
     critical: number;
@@ -37,6 +39,11 @@ type RegulatoryPayload = {
 export default function LegalPage() {
   const { data: complianceData, error: complianceError, mutate: mutateCompliance } = useSWR<CompliancePayload>(
     '/api/legal/compliance',
+    fetcher,
+    { revalidateOnFocus: false },
+  );
+  const { data: casesData, error: casesError, mutate: mutateCases } = useSWR<CasesPayload>(
+    '/api/legal/cases',
     fetcher,
     { revalidateOnFocus: false },
   );
@@ -69,7 +76,8 @@ export default function LegalPage() {
     })),
   ].slice(0, 5);
 
-  const hasError = complianceError || regulatoryError;
+  const openCases = casesData?.summary ? casesData.summary.total - casesData.summary.closed : undefined;
+  const hasError = complianceError || regulatoryError || casesError;
 
   return (
     <div className="space-y-5">
@@ -86,13 +94,14 @@ export default function LegalPage() {
           tone="error"
           title="Parte del control Legal no pudo actualizarse"
           description="Los datos faltantes no se sustituyen por cero ni por estados inferidos."
-          actions={<Button variant="outline" size="sm" onClick={() => { void mutateCompliance(); void mutateRegulatory(); }}>Reintentar</Button>}
+          actions={<Button variant="outline" size="sm" onClick={() => { void mutateCompliance(); void mutateRegulatory(); void mutateCases(); }}>Reintentar</Button>}
           className="min-h-0"
         />
       ) : null}
 
-      <section className="grid overflow-hidden rounded-md border sm:grid-cols-4">
+      <section className="grid overflow-hidden rounded-md border sm:grid-cols-5">
         {[
+          ['Casos abiertos', openCases ?? '—'],
           ['Contratos por revisar', compliance?.contracts_pending_review ?? '—'],
           ['Contratos por vencer', compliance?.expiring_contracts ?? '—'],
           ['Documentos por vencer', compliance?.expiring_documents ?? '—'],
@@ -125,7 +134,12 @@ export default function LegalPage() {
         </div>
       </section>
 
-      <section className="grid gap-3 md:grid-cols-3">
+      <section className="grid gap-3 md:grid-cols-4">
+        <Link href="/dashboard/legal/casos" className="rounded-md border p-4 transition-colors hover:bg-muted/30">
+          <Scale className="h-4 w-4 text-muted-foreground" />
+          <p className="mt-3 text-sm font-semibold">Casos</p>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Señales operacionales convertidas en trabajo Legal trazable.</p>
+        </Link>
         <Link href="/dashboard/legal/sernageomin" className="rounded-md border p-4 transition-colors hover:bg-muted/30">
           <ShieldCheck className="h-4 w-4 text-muted-foreground" />
           <p className="mt-3 text-sm font-semibold">Control regulatorio</p>
