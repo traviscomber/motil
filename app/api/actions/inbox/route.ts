@@ -208,7 +208,94 @@ export async function GET(request: NextRequest) {
   }
 
   const rawTasks = (data || []) as RoleTask[];
-  const tasks = deduplicateTasks(rawTasks).map((task) => ({ ...task, module_route: resolveTaskRoute(task) }));
+
+  const { data: financeAccess } = await context.supabase
+    .from('role_matrix')
+    .select('access_level')
+    .eq('cargo_id', profile.cargo_id)
+    .eq('module_key', 'fin_finanzas')
+    .in('access_level', ['ED'])
+    .limit(1)
+    .maybeSingle();
+
+  const financeTasks: RoleTask[] = [];
+  if (financeAccess) {
+    const { data: transferRequests, error: transferError } = await context.supabase
+      .from('finance_payment_requests')
+      .select('id,payable_id,amount,currency,requested_payment_date,status,required_signatures,created_at')
+      .eq('organization_id', context.organizationId)
+      .in('status', ['pending_signatures', 'approved'])
+      .order('requested_payment_date', { ascending: true, nullsFirst: false })
+      .limit(100);
+
+    if (transferError) {
+      console.warn('[role-task-inbox] finance transfer lookup failed', transferError);
+    } else if (transferRequests?.length) {
+      const payableIds = Array.from(new Set(transferRequests.map((row) => row.payable_id)));
+      const requestIds = transferRequests.map((row) => row.id);
+      const [{ data: payables }, { data: signatures }] = await Promise.all([
+        context.supabase
+          .from('procurement_accounts_payable_v1')
+          .select('id,invoice_number,supplier_name,due_date,days_to_due')
+          .eq('organization_id', context.organizationId)
+          .in('id', payableIds),
+        context.supabase
+          .from('finance_payment_request_signatures')
+          .select('request_id,signer_id,decision')
+          .eq('organization_id', context.organizationId)
+          .in('request_id', requestIds),
+      ]);
+
+      const payableById = new Map((payables || []).map((row) => [row.id, row]));
+      for (const requestRow of transferRequests) {
+        const payable = payableById.get(requestRow.payable_id);
+        const approvedSignatures = (signatures || []).filter(
+          (row) => row.request_id === requestRow.id && row.decision === 'approved',
+        );
+        const signedByMe = approvedSignatures.some((row) => row.signer_id === context.userId);
+        if (requestRow.status === 'pending_signatures' && signedByMe) continue;
+
+        const dueAt = requestRow.requested_payment_date || payable?.due_date || null;
+        const overdue = Boolean(dueAt && new Date(`${dueAt}T23:59:59Z`).getTime() < Date.now());
+        const invoice = payable?.invoice_number || 'sin número';
+        const signatureCount = approvedSignatures.length;
+        const needsSignature = requestRow.status === 'pending_signatures';
+
+        financeTasks.push({
+          organization_id: context.organizationId,
+          cargo_id: profile.cargo_id,
+          cargo_name: cargoName || 'Finanzas',
+          task_key: `finance_transfer:${requestRow.id}`,
+          domain: 'finance',
+          severity: overdue ? 'critical' : 'warning',
+          priority_score: overdue ? 95 : needsSignature ? 80 : 85,
+          title: needsSignature
+            ? `Firmar transferencia · Factura ${invoice}`
+            : `Registrar transferencia · Factura ${invoice}`,
+          evidence_summary: needsSignature
+            ? `${signatureCount}/${requestRow.required_signatures} firmas · ${requestRow.currency} ${Number(requestRow.amount || 0).toLocaleString('es-CL')}`
+            : `Firmas completas · ${requestRow.currency} ${Number(requestRow.amount || 0).toLocaleString('es-CL')}`,
+          status: requestRow.status,
+          responsibility: 'owner',
+          role_action: needsSignature ? 'sign_transfer' : 'execute_transfer',
+          occurred_at: requestRow.created_at,
+          due_at: dueAt,
+          escalation_at: null,
+          age_hours: null,
+          urgency_state: overdue ? 'overdue' : 'current',
+          personal_status: null,
+          snoozed_until: null,
+          visible_now: true,
+          actions: [],
+          module_route: '/dashboard/finanzas/pagos',
+          urgency_label: overdue ? 'Vencido' : 'Pendiente',
+          responsibility_label: 'Responsable',
+        });
+      }
+    }
+  }
+
+  const tasks = deduplicateTasks([...rawTasks, ...financeTasks]).map((task) => ({ ...task, module_route: resolveTaskRoute(task) }));
   const now = Date.now();
   const backlogCutoff = now - 30 * 24 * 60 * 60 * 1000;
   const isOverdue = (task: RoleTask) => Boolean(task.due_at && new Date(task.due_at).getTime() < now);
