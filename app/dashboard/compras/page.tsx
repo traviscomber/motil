@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import useSWR from 'swr';
-import { ArrowRight, FileText, PackageCheck, Plus, Search, ShoppingCart, Users } from 'lucide-react';
+import { ArrowRight, Database, FileText, PackageCheck, Plus, Search, ShoppingCart, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PageHeader, PageHeaderActions, PageHeaderContent, PageHeaderDescription, PageHeaderEyebrow, PageHeaderTitle } from '@/components/ui/page-header';
 import { StatePanel } from '@/components/ui/state-panel';
@@ -94,7 +94,7 @@ export default function ComprasPage() {
         })}
       </section>
 
-      <section className="grid gap-3 md:grid-cols-3">
+      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <Link href="/dashboard/compras/flujo" className="rounded-lg border p-4 hover:bg-muted/30">
           <PackageCheck className="h-4 w-4 text-muted-foreground" />
           <p className="mt-3 text-sm font-semibold">Flujo operacional</p>
@@ -109,6 +109,11 @@ export default function ComprasPage() {
           <FileText className="h-4 w-4 text-muted-foreground" />
           <p className="mt-3 text-sm font-semibold">Documentos</p>
           <p className="mt-1 text-xs text-muted-foreground">{data?.operational.documents ?? '—'} documentos activos en el núcleo documental.</p>
+        </Link>
+        <Link href="/dashboard/compras/fuentes" className="rounded-lg border p-4 hover:bg-muted/30">
+          <Database className="h-4 w-4 text-muted-foreground" />
+          <p className="mt-3 text-sm font-semibold">Fuentes</p>
+          <p className="mt-1 text-xs text-muted-foreground">Provenance de OC y proveedores canónicos, separando baseline de archivo original.</p>
         </Link>
       </section>
 
