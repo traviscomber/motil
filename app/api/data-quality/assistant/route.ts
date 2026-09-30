@@ -239,6 +239,65 @@ export async function POST(request: NextRequest) {
       refs.push({ source: 'purchase_order_quality' }, { source: 'supplier_reconciliation_v1' }, { tool: 'read_data_health_procurement', mode: 'read' });
     }
 
+
+    if (access.canRead('hse')) {
+      const [documents, commitments, internalInspections, externalInspections] = await Promise.all([
+        context.supabase.from('module_documents').select('id,document_name,uploaded_at,provenance_status').eq('organization_id', org).eq('module', 'prevención').eq('category', 'documentos-hse').eq('provenance_status', 'canonical').eq('is_active', true).limit(200),
+        context.supabase.from('hse_commitments').select('id,description,responsible,source_file,source_payload').eq('organization_id', org).limit(200),
+        context.supabase.from('inspecciones_internas').select('id,numero_inspeccion,fecha_planificada,estado').eq('organization_id', org).limit(100),
+        context.supabase.from('inspecciones_externas').select('id,numero_inspeccion,fecha_planificada,estado').eq('organization_id', org).limit(100),
+      ]);
+      const failed = [documents, commitments, internalInspections, externalInspections].find((result) => result.error);
+      if (failed?.error) throw failed.error;
+      const commitmentRows = commitments.data || [];
+      evidence.hse = {
+        canonical_documents: documents.data || [],
+        commitments_total: commitmentRows.length,
+        commitments_with_normalization_gap: commitmentRows.filter((row: any) => {
+          const payload = row.source_payload || {};
+          return (String(payload['COMPROMISOS AMBIENTALES'] || '').trim() && !String(row.description || '').trim())
+            || (String(payload['RESPONSABLE'] || '').trim() && !String(row.responsible || '').trim());
+        }).length,
+        internal_inspections: internalInspections.data || [],
+        external_inspections: externalInspections.data || [],
+      };
+      refs.push({ source: 'module_documents' }, { source: 'hse_commitments' }, { tool: 'read_data_health_hse', mode: 'read' });
+    }
+
+    if (access.canRead('legal')) {
+      const cases = await context.supabase
+        .from('legal_cases')
+        .select('id,title,status,priority,legal_owner,operational_owner,due_at,source_type,source_id,evidence_status')
+        .eq('organization_id', org)
+        .limit(200);
+      if (cases.error) throw cases.error;
+      const rows = cases.data || [];
+      evidence.legal = {
+        cases_total: rows.length,
+        open_cases: rows.filter((row: any) => row.status !== 'closed'),
+        missing_legal_owner: rows.filter((row: any) => row.status !== 'closed' && !row.legal_owner).length,
+        missing_due_date: rows.filter((row: any) => row.status !== 'closed' && !row.due_at).length,
+      };
+      refs.push({ source: 'legal_cases' }, { tool: 'read_data_health_legal', mode: 'read' });
+    }
+
+    if (access.canRead('finance')) {
+      const payables = await context.supabase
+        .from('procurement_accounts_payable')
+        .select('id,status,due_date,invoice_id,supplier_id,currency,approved_amount')
+        .eq('organization_id', org)
+        .limit(200);
+      if (payables.error) throw payables.error;
+      const rows = payables.data || [];
+      evidence.finance = {
+        payables_total: rows.length,
+        missing_due_date: rows.filter((row: any) => !row.due_date).length,
+        missing_invoice_reference: rows.filter((row: any) => !row.invoice_id).length,
+        missing_supplier_reference: rows.filter((row: any) => !row.supplier_id).length,
+      };
+      refs.push({ source: 'procurement_accounts_payable' }, { tool: 'read_data_health_finance', mode: 'read' });
+    }
+
     const advisoryHandoffs = await loadSupportAdvisoryHandoffs(context, 'data_health', message);
     const advisoryContext = supportAdvisoryHandoffPrompt(
       advisoryHandoffs,
