@@ -14,6 +14,9 @@ test('data health scope is derived from existing operational permissions', async
   assert.match(source, /MODULE_KEYS\.MANT_OPERACIONES/);
   assert.match(source, /MODULE_KEYS\.BODEGA_INVENTARIO/);
   assert.match(source, /MODULE_KEYS\.FIN_COMPRAS/);
+  assert.match(source, /MODULE_KEYS\.HSE_TABLERO/);
+  assert.match(source, /MODULE_KEYS\.LEGAL_MODULO/);
+  assert.match(source, /MODULE_KEYS\.FIN_FINANZAS/);
   assert.match(source, /requireModuleAccess/);
   assert.match(source, /canRead/);
   assert.doesNotMatch(source, /data_health.*module|calidad.*module/i);
@@ -26,6 +29,9 @@ test('health endpoint queries only authorized domains', async () => {
   assert.match(source, /maintenanceAllowed \?/);
   assert.match(source, /inventoryAllowed \?/);
   assert.match(source, /procurementAllowed \?/);
+  assert.match(source, /hseAllowed \?/);
+  assert.match(source, /legalAllowed \?/);
+  assert.match(source, /financeAllowed \?/);
   assert.match(source, /Sólo se consultan y exponen dominios que el usuario puede leer según role_matrix/);
 });
 
