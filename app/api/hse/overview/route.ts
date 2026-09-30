@@ -88,6 +88,11 @@ export async function GET(request: NextRequest) {
       dueDate: row.due_date,
       status: row.status,
       sourceFile: row.source_file,
+      requiresOwner: !(text(row.responsible) || text(payload['RESPONSABLE'])),
+      actionRequired: !(text(row.responsible) || text(payload['RESPONSABLE']))
+        ? 'Asignar responsable HSE con evidencia organizacional; no inferir desde columnas ambiguas.'
+        : null,
+      calendarState: row.due_date ? 'dated' : 'no_source_date',
     };
   });
 
@@ -98,6 +103,18 @@ export async function GET(request: NextRequest) {
     day: '2-digit',
   }).format(new Date());
 
+  const commitmentActions = mappedCommitments
+    .filter((item) => item.requiresOwner)
+    .map((item) => ({
+      id: item.id,
+      commitmentId: item.commitmentId,
+      description: item.description,
+      component: item.component,
+      projectStage: item.projectStage,
+      actionRequired: item.actionRequired,
+      sourceFile: item.sourceFile,
+    }));
+
   const upcoming = (events.data || [])
     .filter((event) => event.due_date && String(event.due_date) >= today)
     .slice(0, 8);
@@ -106,6 +123,8 @@ export async function GET(request: NextRequest) {
     summary: {
       canonicalDocuments: (documents.data || []).filter((row) => row.provenance_status === 'canonical').length,
       commitments: mappedCommitments.length,
+      commitmentsUnassigned: commitmentActions.length,
+      commitmentsWithoutSourceDate: mappedCommitments.filter((item) => item.calendarState === 'no_source_date').length,
       internalInspections: internalInspections.data?.length || 0,
       externalInspections: externalInspections.data?.length || 0,
       calendarEvents: events.data?.length || 0,
@@ -113,6 +132,7 @@ export async function GET(request: NextRequest) {
       roles: roles.data?.length || 0,
     },
     commitments: mappedCommitments,
+    commitmentActions,
     inspections: {
       internal: internalInspections.data || [],
       external: externalInspections.data || [],
