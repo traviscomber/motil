@@ -3,9 +3,14 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getOrganizationContext } from '@/lib/api/organization-context';
 
+const allowedRoles = new Set(['superadmin', 'admin', 'manager']);
+
 export async function GET(request: NextRequest) {
   const context = await getOrganizationContext(request);
   if (!context.ok) return context.response;
+  if (!allowedRoles.has(String(context.role || '').trim().toLowerCase())) {
+    return NextResponse.json({ error: 'Forbidden: RRHH access required' }, { status: 403 });
+  }
 
   const { data: people, error } = await context.supabase
     .from('people')
