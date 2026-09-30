@@ -23,26 +23,47 @@ export async function GET(request: NextRequest) {
   const auth = await authorize(request);
   if (!auth.ok) return auth.response;
 
-  const { data, error } = await auth.context.supabase
-    .from('contract_progress_updates')
-    .select('id,contract_id,period_start,period_end,execution_percentage,progress_note,evidence_document_id,status,submitted_by,submitted_at,reviewed_by,reviewed_at,review_note,payment_request_id,created_at,updated_at')
-    .eq('organization_id', auth.context.organizationId)
-    .order('submitted_at', { ascending: false })
-    .limit(500);
+  const [contractOptionsResult, evidenceOptionsResult, ledgerResult] = await Promise.all([
+    auth.context.supabase
+      .from('contracts')
+      .select('id,contract_number,title,contractor_name,status')
+      .eq('organization_id', auth.context.organizationId)
+      .order('created_at', { ascending: false })
+      .limit(200),
+    auth.context.supabase
+      .from('module_documents')
+      .select('id,document_name,document_code,status,canonical_role,provenance_status')
+      .eq('organization_id', auth.context.organizationId)
+      .eq('module', 'legal')
+      .eq('is_active', true)
+      .order('uploaded_at', { ascending: false })
+      .limit(100),
+    auth.context.supabase
+      .from('contract_progress_updates')
+      .select('id,contract_id,period_start,period_end,execution_percentage,progress_note,evidence_document_id,status,submitted_by,submitted_at,reviewed_by,reviewed_at,review_note,payment_request_id,created_at,updated_at')
+      .eq('organization_id', auth.context.organizationId)
+      .order('submitted_at', { ascending: false })
+      .limit(500),
+  ]);
 
-  if (error) {
-    if (error.code === '42P01') {
+  const contractOptions = contractOptionsResult.data || [];
+  const evidenceOptions = evidenceOptionsResult.data || [];
+
+  if (ledgerResult.error) {
+    if (ledgerResult.error.code === '42P01') {
       return NextResponse.json({
         data: [],
+        contracts: contractOptions,
+        evidenceOptions,
         accessLevel: auth.access,
         schemaReady: false,
         summary: { total: 0, submitted: 0, approved: 0, rejected: 0, without_evidence: 0 },
       });
     }
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: ledgerResult.error.message }, { status: 500 });
   }
 
-  const rows = data || [];
+  const rows = ledgerResult.data || [];
   const contractIds = Array.from(new Set(rows.map((row) => row.contract_id).filter(Boolean)));
   const documentIds = Array.from(new Set(rows.map((row) => row.evidence_document_id).filter(Boolean)));
 
@@ -102,6 +123,8 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     data: items,
+    contracts: contractOptions,
+    evidenceOptions,
     accessLevel: auth.access,
     schemaReady: true,
     summary: {
@@ -147,6 +170,7 @@ export async function POST(request: NextRequest) {
       .select('id')
       .eq('id', evidenceDocumentId)
       .eq('organization_id', auth.context.organizationId)
+      .eq('is_active', true)
       .maybeSingle();
 
     if (evidenceError) return NextResponse.json({ error: evidenceError.message }, { status: 500 });
