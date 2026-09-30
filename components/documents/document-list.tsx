@@ -35,6 +35,9 @@ export interface Document {
   asset_id?: string | null;
   canonical_section?: string | null;
   extracted_data?: Record<string, unknown> | null;
+  organization_id?: string | null;
+  provenance_status?: 'operational' | 'canonical' | 'candidate' | 'supporting';
+  canonical_role?: 'canonical' | 'supporting' | 'plan_only' | null;
   createdAt: string;
   createdByUser: { name: string };
   expiryDate: string;
@@ -339,6 +342,11 @@ export function DocumentList({
                         <span className="text-xs text-muted-foreground truncate max-w-[300px]">
                           {doc.document_type_category}
                         </span>
+                      )}
+                      {doc.provenance_status === 'canonical' && (
+                        <Badge variant="secondary" className="text-[10px] uppercase tracking-wide">
+                          Fuente canónica
+                        </Badge>
                       )}
                       {doc.canonical_section && (
                         <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
