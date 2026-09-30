@@ -26,6 +26,8 @@ type LegalCase = {
 
 type CasesResponse = {
   data: LegalCase[];
+  accessLevel: 'ED' | 'LEC';
+  canWrite: boolean;
   summary: {
     total: number;
     new: number;
@@ -53,6 +55,8 @@ const STATUS_LABEL: Record<LegalCase['status'], string> = {
 
 export default function LegalCasesPage() {
   const [syncing, setSyncing] = useState(false);
+  const [savingCaseId, setSavingCaseId] = useState<string | null>(null);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
   const { data, error, isLoading, mutate } = useSWR<CasesResponse>('/api/legal/cases', fetcher, {
     revalidateOnFocus: false,
   });
@@ -68,6 +72,27 @@ export default function LegalCasesPage() {
       await mutate();
     } finally {
       setSyncing(false);
+    }
+  };
+
+  const updateCase = async (id: string, patch: Record<string, string>) => {
+    setSavingCaseId(id);
+    setActionMessage(null);
+    try {
+      const response = await fetch('/api/legal/cases', {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ id, ...patch }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        setActionMessage(payload?.error || 'No se pudo actualizar el caso Legal.');
+        return;
+      }
+      await mutate();
+    } finally {
+      setSavingCaseId(null);
     }
   };
 
@@ -106,6 +131,8 @@ export default function LegalCasesPage() {
         </Button>
       </header>
 
+      {actionMessage ? <StatePanel tone="warning" title="Acción Legal no aplicada" description={actionMessage} className="min-h-0" /> : null}
+
       <section className="grid overflow-hidden rounded-md border sm:grid-cols-5">
         {[
           ['Nuevos', data.summary.new],
@@ -141,13 +168,57 @@ export default function LegalCasesPage() {
                 <p className="mt-1">{item.legal_owner || 'Legal sin persona asignada'}</p>
               </div>
             </div>
-            {item.source_href ? (
-              <div className="mt-3 border-t pt-3">
+            <div className="mt-3 flex flex-wrap items-center gap-2 border-t pt-3">
+              {item.source_href ? (
                 <Button asChild variant="ghost" size="sm">
                   <Link href={item.source_href}>Ver fuente <ArrowRight className="ml-1 h-4 w-4" /></Link>
                 </Button>
-              </div>
-            ) : null}
+              ) : null}
+
+              <Badge variant="outline">
+                Evidencia: {item.evidence_status === 'complete' ? 'completa' : item.evidence_status === 'not_required' ? 'no requerida' : item.evidence_status === 'partial' ? 'parcial' : 'pendiente'}
+              </Badge>
+
+              {data.canWrite && item.status === 'new' ? (
+                <Button size="sm" variant="outline" disabled={savingCaseId === item.id} onClick={() => void updateCase(item.id, { status: 'in_review' })}>
+                  Iniciar revisión
+                </Button>
+              ) : null}
+
+              {data.canWrite && item.status === 'in_review' ? (
+                <>
+                  <Button size="sm" variant="outline" disabled={savingCaseId === item.id} onClick={() => void updateCase(item.id, { status: 'action_required' })}>
+                    Pedir acción
+                  </Button>
+                  <Button size="sm" variant="outline" disabled={savingCaseId === item.id} onClick={() => void updateCase(item.id, { status: 'waiting_area' })}>
+                    Esperar área
+                  </Button>
+                </>
+              ) : null}
+
+              {data.canWrite && (item.status === 'action_required' || item.status === 'waiting_area') ? (
+                <Button size="sm" variant="outline" disabled={savingCaseId === item.id} onClick={() => void updateCase(item.id, { status: 'in_review' })}>
+                  Retomar revisión
+                </Button>
+              ) : null}
+
+              {data.canWrite && !['complete', 'not_required'].includes(item.evidence_status) ? (
+                <>
+                  <Button size="sm" variant="ghost" disabled={savingCaseId === item.id} onClick={() => void updateCase(item.id, { evidence_status: 'complete' })}>
+                    Evidencia completa
+                  </Button>
+                  <Button size="sm" variant="ghost" disabled={savingCaseId === item.id} onClick={() => void updateCase(item.id, { evidence_status: 'not_required' })}>
+                    No requerida
+                  </Button>
+                </>
+              ) : null}
+
+              {data.canWrite && item.status !== 'new' && ['complete', 'not_required'].includes(item.evidence_status) ? (
+                <Button size="sm" disabled={savingCaseId === item.id} onClick={() => void updateCase(item.id, { status: 'closed' })}>
+                  Cerrar caso
+                </Button>
+              ) : null}
+            </div>
           </article>
         )) : (
           <p className="p-4 text-sm text-muted-foreground">No hay casos legales abiertos en las fuentes disponibles.</p>
