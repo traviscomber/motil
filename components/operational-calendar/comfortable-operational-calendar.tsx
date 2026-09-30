@@ -12,6 +12,7 @@ import {
   RefreshCw,
   Search,
   ShieldCheck,
+  FileCheck,
   ShoppingCart,
   Wrench,
   type LucideIcon,
@@ -28,7 +29,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-type CalendarSource = 'maintenance' | 'compliance' | 'procurement';
+type CalendarSource = 'maintenance' | 'hse' | 'legal' | 'procurement';
 type CalendarScope = 'active' | 'historical' | 'all';
 type CalendarPeriod = '7' | '14' | 'month';
 
@@ -80,10 +81,15 @@ const SOURCE_META: Record<CalendarSource, { label: string; icon: LucideIcon; bar
     icon: Wrench,
     bar: 'border-orange-500/70 bg-orange-500/25 text-orange-50',
   },
-  compliance: {
-    label: 'Cumplimiento',
+  hse: {
+    label: 'HSE',
     icon: ShieldCheck,
     bar: 'border-cyan-500/70 bg-cyan-500/25 text-cyan-50',
+  },
+  legal: {
+    label: 'Legal',
+    icon: FileCheck,
+    bar: 'border-sky-500/70 bg-sky-500/25 text-sky-50',
   },
   procurement: {
     label: 'Abastecimiento',
@@ -166,7 +172,7 @@ export function ComfortableOperationalCalendar() {
     today: 0,
     total: 0,
     historical: 0,
-    by_source: { maintenance: 0, compliance: 0, procurement: 0 },
+    by_source: { maintenance: 0, hse: 0, legal: 0, procurement: 0 },
   };
 
   const filteredItems = useMemo(() => {
@@ -205,7 +211,7 @@ export function ComfortableOperationalCalendar() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Calendario operativo continuo</h1>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
-            OT, cumplimiento y abastecimiento en una línea de tiempo clara. La vista inicial muestra siete días para facilitar la lectura.
+            Actividades de Mantenimiento, HSE, Legal y Abastecimiento en una sola línea de tiempo de la organización.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -247,7 +253,8 @@ export function ComfortableOperationalCalendar() {
           <SelectContent>
             <SelectItem value="all">Todas las áreas</SelectItem>
             <SelectItem value="maintenance">Mantenimiento ({summary.by_source.maintenance})</SelectItem>
-            <SelectItem value="compliance">Cumplimiento ({summary.by_source.compliance})</SelectItem>
+            <SelectItem value="hse">HSE ({summary.by_source.hse})</SelectItem>
+            <SelectItem value="legal">Legal ({summary.by_source.legal})</SelectItem>
             <SelectItem value="procurement">Abastecimiento ({summary.by_source.procurement})</SelectItem>
           </SelectContent>
         </Select>
