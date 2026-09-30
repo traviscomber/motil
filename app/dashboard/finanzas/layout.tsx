@@ -16,6 +16,7 @@ const controlItems = [
   { href: '/dashboard/finanzas/reportes', label: 'Reportes', moduleKey: 'fin_reportes' },
   { href: '/dashboard/finanzas/proveedores', label: 'Proveedores' },
   { href: '/dashboard/finanzas/trazabilidad', label: 'Trazabilidad' },
+  { href: '/dashboard/finanzas/fuentes', label: 'Fuentes' },
   { href: '/dashboard/finanzas/documentos', label: 'Documentos' },
 ];
 
