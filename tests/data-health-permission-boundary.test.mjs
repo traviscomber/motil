@@ -54,6 +54,9 @@ test('data health assistant is read-only and permission-aware', async () => {
   assert.match(assistant, /access\.canRead\('maintenance'\)/);
   assert.match(assistant, /access\.canRead\('inventory'\)/);
   assert.match(assistant, /access\.canRead\('procurement'\)/);
+  assert.match(assistant, /access\.canRead\('hse'\)/);
+  assert.match(assistant, /access\.canRead\('legal'\)/);
+  assert.match(assistant, /access\.canRead\('finance'\)/);
   assert.match(assistant, /READ_ONLY/);
   assert.match(assistant, /no corrige, concilia ni modifica fuentes|no corrige.*modifica/i);
   assert.match(widget, /\/api\/data-quality\/assistant/);
