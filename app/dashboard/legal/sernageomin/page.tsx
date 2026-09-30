@@ -83,7 +83,7 @@ export default function MiningLegalObligationsPage() {
         <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Legal · Control regulatorio</p>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight">Obligaciones y acciones</h1>
         <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-          Legal valida qué aplica y controla la trazabilidad. El área dueña ejecuta la acción y entrega la evidencia. La autoridad es contexto. El trabajo Legal se organiza por obligación, acción, responsable y evidencia.
+          Legal valida qué aplica y controla la trazabilidad. El área dueña ejecuta la acción y entrega la evidencia. SERNAGEOMIN aparece como autoridad y fuente, no como un silo de trabajo.
         </p>
       </header>
 
