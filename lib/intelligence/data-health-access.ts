@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { MODULE_KEYS, isAdminRole, requireModuleAccess } from '@/lib/api/module-access';
 
-export type DataHealthDomain = 'production' | 'maintenance' | 'inventory' | 'procurement';
+export type DataHealthDomain = 'production' | 'maintenance' | 'inventory' | 'procurement' | 'hse' | 'legal' | 'finance';
 
 const DOMAIN_MODULES = {
   production: MODULE_KEYS.PROD_OPERACIONES,
   maintenance: MODULE_KEYS.MANT_OPERACIONES,
   inventory: MODULE_KEYS.BODEGA_INVENTARIO,
   procurement: MODULE_KEYS.FIN_COMPRAS,
+  hse: MODULE_KEYS.HSE_TABLERO,
+  legal: MODULE_KEYS.LEGAL_MODULO,
+  finance: MODULE_KEYS.FIN_FINANZAS,
 } as const;
 
 export async function resolveDataHealthAccess(request: NextRequest) {
