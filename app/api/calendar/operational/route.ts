@@ -106,6 +106,10 @@ function statusLabel(value: unknown) {
     planned: 'Planificado',
     open: 'Abierto',
     in_progress: 'En curso',
+    new: 'Nuevo',
+    in_review: 'En revisión',
+    action_required: 'Acción requerida',
+    waiting_area: 'Esperando área',
     draft: 'Borrador',
     approved: 'Aprobado',
     issued: 'Emitida',
@@ -200,7 +204,7 @@ export async function GET(request: NextRequest) {
   const endDate = scope === 'historical' ? today : addDays(today, days);
 
   try {
-    const [workOrdersResult, preventiveResult, complianceResult, requestsResult, ordersResult, internalInspectionsResult, externalInspectionsResult, payablesResult, credentialsResult] = await Promise.all([
+    const [workOrdersResult, preventiveResult, complianceResult, requestsResult, ordersResult, internalInspectionsResult, externalInspectionsResult, payablesResult, credentialsResult, legalCasesResult] = await Promise.all([
       context.supabase
         .from('maintenance_work_orders')
         .select('id,work_order_number,title,description,status,priority,scheduled_date,completion_date,closed_at,assigned_to_name')
@@ -274,6 +278,14 @@ export async function GET(request: NextRequest) {
         .gte('expires_at', startDate)
         .lte('expires_at', endDate)
         .limit(1000),
+      context.supabase
+        .from('legal_cases')
+        .select('id,source_type,source_id,title,reason,priority,operational_owner,legal_owner,due_at,status,closed_at')
+        .eq('organization_id', context.organizationId)
+        .not('due_at', 'is', null)
+        .gte('due_at', startDate)
+        .lte('due_at', endDate)
+        .limit(1000),
     ]);
 
     const warnings: string[] = [];
@@ -286,6 +298,7 @@ export async function GET(request: NextRequest) {
     if (externalInspectionsResult.error) warnings.push('No se pudieron cargar las inspecciones HSE externas.');
     if (payablesResult.error) warnings.push('No se pudieron cargar los vencimientos financieros.');
     if (credentialsResult.error) warnings.push('No se pudieron cargar los vencimientos de credenciales de Personas.');
+    if (legalCasesResult.error) warnings.push('No se pudieron cargar los casos legales con plazo.');
 
     const items: OperationalCalendarItem[] = [];
 
@@ -359,6 +372,34 @@ export async function GET(request: NextRequest) {
         href: complianceHref(row.event_type),
         historical,
         completed_at: null,
+      }, today));
+    }
+
+
+    for (const row of legalCasesResult.data || []) {
+      if (!row.due_at || row.source_type === 'compliance_event' || !includeForScope(row.status, scope)) continue;
+      const historical = isHistoricalStatus(row.status);
+      items.push(buildItem({
+        id: `legal-case:${row.id}`,
+        source: 'legal',
+        source_label: 'Legal',
+        kind: row.source_type === 'contract_review'
+          ? 'Revisión contractual'
+          : row.source_type === 'contract_expiry'
+            ? 'Vencimiento contractual'
+            : 'Caso legal',
+        date: row.due_at,
+        title: row.title,
+        subtitle: normalizeText(row.reason),
+        reference: normalizeText(row.source_type),
+        status: normalizeText(row.status) || 'new',
+        status_label: statusLabel(row.status),
+        priority: normalizePriority(row.priority),
+        owner: normalizeText(row.legal_owner || row.operational_owner),
+        location: null,
+        href: '/dashboard/legal/casos',
+        historical,
+        completed_at: normalizeDate(row.closed_at),
       }, today));
     }
 
