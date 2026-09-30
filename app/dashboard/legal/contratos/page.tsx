@@ -20,12 +20,12 @@ export default function LegalContractsPage() {
     provider: contract.contractor_name || 'Sin contratista',
     startDate: contract.start_date || null,
     endDate: contract.end_date || null,
-    status: contract.status === 'Vencido' ? 'expired' : contract.status === 'Por Vencer' || contract.status === 'En Revisión' ? 'expiring' : 'active',
+    status: (contract.status === 'Vencido' ? 'expired' : contract.status === 'Por Vencer' || contract.status === 'En Revisión' ? 'expiring' : 'active') as 'active' | 'expiring' | 'expired',
     value: contract.contract_value
       ? new Intl.NumberFormat('es-CL', { style: 'currency', currency: contract.currency || 'CLP', minimumFractionDigits: 0 }).format(contract.contract_value)
       : '-',
-    approvalStatus: contract.compliance_status === 'Pendiente' ? 'pending' : contract.compliance_status === 'Incumplimiento' ? 'rejected' : 'approved',
-    fileUrl: contract.file_url,
+    approvalStatus: (contract.compliance_status === 'Pendiente' ? 'pending' : contract.compliance_status === 'Incumplimiento' ? 'rejected' : 'approved') as 'pending' | 'approved' | 'rejected',
+    fileUrl: contract.file_url || '',
   }));
 
   const handleAdd = async (payload: Record<string, string | number | boolean | File | null | undefined>) => {
