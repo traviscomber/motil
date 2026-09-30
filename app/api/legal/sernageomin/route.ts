@@ -12,6 +12,60 @@ function normalize(value: unknown) {
     .toLowerCase();
 }
 
+const DOMAIN_MODULES: Record<string, string[]> = {
+  hse: ['hse_incidente', 'hse_investigaciones', 'hse_documentacion'],
+  incidents: ['hse_incidente', 'hse_investigaciones'],
+  inspections: ['hse_investigaciones', 'hse_documentacion'],
+  maintenance: ['mant_operaciones', 'mant_documentos'],
+  assets: ['mant_operaciones', 'bodega_inventario'],
+  operations: ['prod_operaciones', 'mant_operaciones'],
+  production: ['prod_operaciones'],
+  contractors: ['legal_eecc', 'legal_contratos'],
+  finance: ['fin_compras'],
+  documents: ['legal_modulo', 'hse_documentacion'],
+  closure: ['legal_modulo', 'prod_operaciones'],
+  legal: ['legal_modulo'],
+};
+
+function moduleKeysForDomains(domains: string[]) {
+  return Array.from(new Set(domains.flatMap((domain) => DOMAIN_MODULES[domain] || [])));
+}
+
+async function loadModulePeople(
+  supabase: ReturnType<typeof import('@/lib/supabase-server').getSupabaseServerClient>,
+  moduleKeys: string[],
+) {
+  if (!moduleKeys.length) return [];
+  const { data: matrix } = await supabase
+    .from('role_matrix')
+    .select('cargo_id,module_key,access_level')
+    .in('module_key', moduleKeys)
+    .in('access_level', ['ED', 'LEC']);
+
+  const cargoIds = Array.from(new Set((matrix || []).map((row) => row.cargo_id).filter(Boolean)));
+  if (!cargoIds.length) return [];
+
+  const [{ data: cargos }, { data: profiles }] = await Promise.all([
+    supabase.from('cargos').select('id,name').in('id', cargoIds),
+    supabase.from('profiles').select('id,cargo_id,full_name,email').in('cargo_id', cargoIds),
+  ]);
+
+  const cargoById = new Map((cargos || []).map((cargo) => [cargo.id, cargo.name]));
+  const profilesByCargo = new Map<string, Array<{ full_name: string | null; email: string | null }>>();
+  for (const profile of profiles || []) {
+    const list = profilesByCargo.get(profile.cargo_id) || [];
+    list.push({ full_name: profile.full_name, email: profile.email });
+    profilesByCargo.set(profile.cargo_id, list);
+  }
+
+  return (matrix || []).map((row) => ({
+    moduleKey: row.module_key,
+    accessLevel: row.access_level,
+    cargo: cargoById.get(row.cargo_id) || 'Cargo sin nombre',
+    people: profilesByCargo.get(row.cargo_id) || [],
+  }));
+}
+
 function evidenceText(item: { label: string; provenance?: Record<string, unknown> }) {
   return normalize([item.label, ...Object.values(item.provenance || {})].join(' '));
 }
@@ -38,6 +92,10 @@ export async function GET(request: NextRequest) {
   }
 
   const evidence = regulatory.canonicalEvidence.items;
+  const allModuleKeys = Array.from(new Set(regulatory.obligations.flatMap((item) => moduleKeysForDomains(item.motilDomains))));
+  const modulePeople = await loadModulePeople(context.supabase, allModuleKeys);
+  const legalPeople = modulePeople.filter((item) => item.moduleKey === 'legal_modulo');
+
   const obligations = regulatory.obligations.map((obligation) => {
     const allowedScopes = new Set<string>();
     if (obligation.motilDomains.includes('documents')) allowedScopes.add('documents');
@@ -52,6 +110,20 @@ export async function GET(request: NextRequest) {
     });
 
     const hasEvidence = relevantEvidence.length > 0;
+    const sourceModules = moduleKeysForDomains(obligation.motilDomains);
+    const operationalContacts = modulePeople
+      .filter((item) => sourceModules.includes(item.moduleKey) && item.moduleKey !== 'legal_modulo')
+      .map((item) => ({
+        moduleKey: item.moduleKey,
+        accessLevel: item.accessLevel,
+        cargo: item.cargo,
+        people: item.people,
+      }));
+    const legalContacts = legalPeople.map((item) => ({
+      accessLevel: item.accessLevel,
+      cargo: item.cargo,
+      people: item.people,
+    }));
     const actionState = hasEvidence ? 'review_evidence' : 'validate_and_collect';
     const nextAction = hasEvidence
       ? `Revisar la evidencia candidata vinculada y confirmar si cubre la obligación. Luego: ${obligation.nextAction}`
@@ -59,6 +131,9 @@ export async function GET(request: NextRequest) {
 
     return {
       ...obligation,
+      sourceModules,
+      operationalContacts,
+      legalContacts,
       evidenceCount: relevantEvidence.length,
       evidenceRefs: relevantEvidence.slice(0, 8).map((item) => ({
         canonicalRef: item.canonicalRef,
@@ -92,6 +167,14 @@ export async function GET(request: NextRequest) {
       withoutMatchedEvidence: obligations.filter((item) => item.evidenceCount === 0).length,
       requiringApplicabilityReview: obligations.length,
       complianceVerdictCalculated: false,
+    },
+    teamContext: {
+      legalRoles: legalPeople.map((item) => ({
+        cargo: item.cargo,
+        accessLevel: item.accessLevel,
+        people: item.people,
+      })),
+      note: 'Los nombres provienen de perfiles canónicos asociados a cargos. Si un cargo no tiene persona asignada, MOTIL lo muestra sin inventar un responsable nominal.',
     },
     operatingModel: {
       legal: 'Valida aplicabilidad, interpreta la obligación, controla plazo y custodia trazabilidad.',
