@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getOrganizationContext } from '@/lib/api/organization-context';
 
-type CalendarSource = 'maintenance' | 'hse' | 'legal' | 'procurement' | 'finance';
+type CalendarSource = 'maintenance' | 'hse' | 'legal' | 'procurement' | 'finance' | 'people';
 type CalendarPriority = 'critical' | 'high' | 'medium' | 'low';
 type CalendarScope = 'active' | 'historical' | 'all';
 
@@ -200,7 +200,7 @@ export async function GET(request: NextRequest) {
   const endDate = scope === 'historical' ? today : addDays(today, days);
 
   try {
-    const [workOrdersResult, preventiveResult, complianceResult, requestsResult, ordersResult, internalInspectionsResult, externalInspectionsResult, payablesResult] = await Promise.all([
+    const [workOrdersResult, preventiveResult, complianceResult, requestsResult, ordersResult, internalInspectionsResult, externalInspectionsResult, payablesResult, credentialsResult] = await Promise.all([
       context.supabase
         .from('maintenance_work_orders')
         .select('id,work_order_number,title,description,status,priority,scheduled_date,completion_date,closed_at,assigned_to_name')
@@ -266,6 +266,14 @@ export async function GET(request: NextRequest) {
         .gte('due_date', startDate)
         .lte('due_date', endDate)
         .limit(1000),
+      context.supabase
+        .from('person_credentials')
+        .select('id,person_id,credential_type,credential_name,credential_number,expires_at,status')
+        .eq('organization_id', context.organizationId)
+        .not('expires_at', 'is', null)
+        .gte('expires_at', startDate)
+        .lte('expires_at', endDate)
+        .limit(1000),
     ]);
 
     const warnings: string[] = [];
@@ -277,6 +285,7 @@ export async function GET(request: NextRequest) {
     if (internalInspectionsResult.error) warnings.push('No se pudieron cargar las inspecciones HSE internas.');
     if (externalInspectionsResult.error) warnings.push('No se pudieron cargar las inspecciones HSE externas.');
     if (payablesResult.error) warnings.push('No se pudieron cargar los vencimientos financieros.');
+    if (credentialsResult.error) warnings.push('No se pudieron cargar los vencimientos de credenciales de Personas.');
 
     const items: OperationalCalendarItem[] = [];
 
@@ -400,6 +409,45 @@ export async function GET(request: NextRequest) {
       }, today));
     }
 
+
+
+    const credentialPersonIds = Array.from(new Set((credentialsResult.data || []).map((row) => row.person_id).filter(Boolean)));
+    const { data: credentialPeople, error: credentialPeopleError } = credentialPersonIds.length
+      ? await context.supabase
+          .from('people')
+          .select('id,full_name')
+          .eq('organization_id', context.organizationId)
+          .in('id', credentialPersonIds)
+      : { data: [], error: null };
+    if (credentialPeopleError) warnings.push('No se pudieron resolver las personas de las credenciales.');
+    const credentialPersonById = new Map((credentialPeople || []).map((row) => [row.id, row.full_name]));
+
+    for (const row of credentialsResult.data || []) {
+      if (!row.expires_at || !includeForScope(row.status, scope)) continue;
+      const historical = isHistoricalStatus(row.status);
+      const daysUntil = differenceInDays(row.expires_at, today);
+      const priority: CalendarPriority = daysUntil < 0 ? 'critical' : daysUntil <= 30 ? 'high' : 'medium';
+      const personName = row.person_id ? credentialPersonById.get(row.person_id) : null;
+
+      items.push(buildItem({
+        id: `people-credential:${row.id}`,
+        source: 'people',
+        source_label: 'Personas',
+        kind: 'Vencimiento de credencial',
+        date: row.expires_at,
+        title: row.credential_name ? `Vence ${row.credential_name}` : 'Vence credencial',
+        subtitle: normalizeText(row.credential_type),
+        reference: normalizeText(row.credential_number),
+        status: normalizeText(row.status) || 'vigente',
+        status_label: statusLabel(row.status),
+        priority,
+        owner: normalizeText(personName),
+        location: null,
+        href: row.person_id ? `/dashboard/rrhh/personas/${row.person_id}` : '/dashboard/rrhh',
+        historical,
+        completed_at: null,
+      }, today));
+    }
 
     const payableInvoiceIds = (payablesResult.data || []).map((row) => row.invoice_id).filter(Boolean);
     const { data: payableInvoices, error: payableInvoicesError } = payableInvoiceIds.length
@@ -527,6 +575,7 @@ export async function GET(request: NextRequest) {
         legal: items.filter((item) => item.source === 'legal').length,
         procurement: items.filter((item) => item.source === 'procurement').length,
         finance: items.filter((item) => item.source === 'finance').length,
+        people: items.filter((item) => item.source === 'people').length,
       },
     };
 
