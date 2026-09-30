@@ -267,6 +267,141 @@ export async function GET(request: NextRequest) {
       });
     }
 
+
+    if (hseAllowed) {
+      const canonicalDocs = hseDocuments.data || [];
+      const commitments = hseCommitments.data || [];
+      const normalizationGaps = commitments.filter((row: any) => {
+        const payload = row.source_payload || {};
+        const sourceDescription = String(payload['COMPROMISOS AMBIENTALES'] || '').trim();
+        const sourceResponsible = String(payload['RESPONSABLE'] || '').trim();
+        const normalizedDescription = String(row.description || '').trim();
+        const normalizedResponsible = String(row.responsible || '').trim();
+        return (sourceDescription && !normalizedDescription) || (sourceResponsible && !normalizedResponsible);
+      }).length;
+      const latestDocument = canonicalDocs
+        .map((row: any) => row.uploaded_at)
+        .filter(Boolean)
+        .sort()
+        .at(-1) || null;
+      const inspectionCount = (hseInternalInspections.data || []).length + (hseExternalInspections.data || []).length;
+      const hseStatus: HealthStatus = canonicalDocs.length === 0
+        ? 'unknown'
+        : normalizationGaps > 0
+          ? 'watch'
+          : 'healthy';
+
+      domains.push({
+        key: 'hse',
+        label: 'HSE',
+        status: hseStatus,
+        headline: canonicalDocs.length === 0
+          ? 'Sin documentos HSE canónicos evaluables'
+          : normalizationGaps > 0
+            ? `${normalizationGaps} compromiso(s) conservan evidencia fuente pendiente de normalización`
+            : 'Fuentes HSE canónicas sin brechas de normalización detectadas',
+        metrics: [
+          { label: 'Documentos canónicos activos', value: canonicalDocs.length },
+          { label: 'Última fuente documental', value: latestDocument },
+          { label: 'Compromisos preservados', value: commitments.length },
+          { label: 'Compromisos por normalizar', value: normalizationGaps },
+          { label: 'Inspecciones registradas', value: inspectionCount },
+        ],
+        action: canonicalDocs.length === 0
+          ? 'Recuperar la evidencia HSE antes de usar el módulo como fuente canónica.'
+          : normalizationGaps > 0
+            ? 'Normalizar responsable y descripción desde source_payload sin perder provenance.'
+            : 'Mantener provenance y normalización en nuevas cargas HSE.',
+        href: '/dashboard/sostenibilidad/prevencion-riesgos',
+      });
+    }
+
+    if (legalAllowed) {
+      const cases = legalCases.data || [];
+      const openCases = cases.filter((row: any) => row.status !== 'closed');
+      const missingOwner = openCases.filter((row: any) => !row.legal_owner).length;
+      const missingDeadline = openCases.filter((row: any) => !row.due_at).length;
+      const missingSource = openCases.filter((row: any) => !row.source_type || !row.source_id).length;
+      const legalStatus: HealthStatus = cases.length === 0
+        ? 'unknown'
+        : missingSource > 0 || missingDeadline > 0
+          ? 'critical'
+          : missingOwner > 0
+            ? 'watch'
+            : 'healthy';
+
+      domains.push({
+        key: 'legal',
+        label: 'Legal',
+        status: legalStatus,
+        headline: cases.length === 0
+          ? 'Sin casos legales evaluables'
+          : missingSource > 0
+            ? `${missingSource} caso(s) sin referencia de origen`
+            : missingDeadline > 0
+              ? `${missingDeadline} caso(s) abiertos sin plazo`
+              : missingOwner > 0
+                ? `${missingOwner} caso(s) abiertos sin responsable Legal nominal`
+                : 'Casos legales con fuente, plazo y responsable trazables',
+        metrics: [
+          { label: 'Casos totales', value: cases.length },
+          { label: 'Casos abiertos', value: openCases.length },
+          { label: 'Sin responsable Legal', value: missingOwner },
+          { label: 'Sin plazo', value: missingDeadline },
+          { label: 'Sin referencia fuente', value: missingSource },
+        ],
+        action: missingSource > 0
+          ? 'Reconciliar el origen antes de continuar el caso.'
+          : missingDeadline > 0
+            ? 'Definir plazo sólo desde evidencia real del caso.'
+            : missingOwner > 0
+              ? 'Asignar responsable Legal nominal cuando exista la persona/cargo canónico.'
+              : cases.length === 0
+                ? 'Sin evidencia suficiente para acreditar la salud del flujo Legal.'
+                : 'Mantener fuente y trazabilidad en nuevas derivaciones.',
+        href: '/dashboard/legal/casos',
+      });
+    }
+
+    if (financeAllowed) {
+      const payables = financePayables.data || [];
+      const missingDueDate = payables.filter((row: any) => !row.due_date).length;
+      const missingInvoice = payables.filter((row: any) => !row.invoice_id).length;
+      const missingSupplier = payables.filter((row: any) => !row.supplier_id).length;
+      const financeStatus: HealthStatus = payables.length === 0
+        ? 'unknown'
+        : missingDueDate > 0 || missingInvoice > 0 || missingSupplier > 0
+          ? 'watch'
+          : 'healthy';
+
+      domains.push({
+        key: 'finance',
+        label: 'Finanzas',
+        status: financeStatus,
+        headline: payables.length === 0
+          ? 'Sin obligaciones por pagar evaluables'
+          : missingDueDate > 0
+            ? `${missingDueDate} obligación(es) por pagar sin fecha de vencimiento`
+            : missingInvoice > 0 || missingSupplier > 0
+              ? 'Hay obligaciones financieras con referencias incompletas'
+              : 'Obligaciones por pagar con referencias y fechas trazables',
+        metrics: [
+          { label: 'Obligaciones evaluadas', value: payables.length },
+          { label: 'Sin vencimiento', value: missingDueDate },
+          { label: 'Sin factura vinculada', value: missingInvoice },
+          { label: 'Sin proveedor vinculado', value: missingSupplier },
+        ],
+        action: missingDueDate > 0
+          ? 'Completar vencimiento desde la factura o evidencia financiera; no inferirlo.'
+          : missingInvoice > 0 || missingSupplier > 0
+            ? 'Reconciliar factura y proveedor antes del pago.'
+            : payables.length === 0
+              ? 'Recuperar evidencia financiera antes de declarar el dominio confiable.'
+              : 'Sin acción de calidad prioritaria.',
+        href: '/dashboard/finanzas/pagos',
+      });
+    }
+
     const rank: Record<HealthStatus, number> = { critical: 3, watch: 2, unknown: 1, healthy: 0 };
     const overall = domains.reduce<HealthStatus>((worst, domain) => rank[domain.status as HealthStatus] > rank[worst] ? domain.status as HealthStatus : worst, 'healthy');
 
