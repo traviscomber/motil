@@ -9,6 +9,7 @@ const controlItems = [
   { href: '/dashboard/legal', label: 'Resumen' },
   { href: '/dashboard/legal/inbox', label: 'Inbox' },
   { href: '/dashboard/legal/casos', label: 'Casos' },
+  { href: '/dashboard/legal/control-contractual', label: 'Control contractual' },
   { href: '/dashboard/legal/sernageomin', label: 'Obligaciones' },
   { href: '/dashboard/legal/plazos-fatales', label: 'Plazos fatales' },
   { href: '/dashboard/legal/propiedad-minera', label: 'Propiedad minera' },
