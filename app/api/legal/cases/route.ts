@@ -34,6 +34,8 @@ export async function GET(request: NextRequest) {
   const rows = data || [];
   return NextResponse.json({
     data: rows,
+    accessLevel: auth.access,
+    canWrite: auth.access === 'ED',
     summary: {
       total: rows.length,
       new: rows.filter((row) => row.status === 'new').length,
@@ -58,7 +60,28 @@ export async function PATCH(request: NextRequest) {
 
   const allowedStatuses = new Set(['new','in_review','action_required','waiting_area','closed']);
   const allowedEvidence = new Set(['pending','partial','complete','not_required']);
+
+  const { data: current, error: currentError } = await auth.context.supabase
+    .from('legal_cases')
+    .select('id,status,evidence_status')
+    .eq('id', id)
+    .eq('organization_id', auth.context.organizationId)
+    .maybeSingle();
+
+  if (currentError) return NextResponse.json({ error: currentError.message }, { status: 500 });
+  if (!current) return NextResponse.json({ error: 'Caso Legal no encontrado' }, { status: 404 });
+
   const payload: Record<string, unknown> = { updated_at: new Date().toISOString() };
+
+  if (body.status === 'closed') {
+    const effectiveEvidence = body.evidence_status ?? current.evidence_status;
+    if (!['complete', 'not_required'].includes(effectiveEvidence)) {
+      return NextResponse.json({ error: 'No se puede cerrar un caso Legal sin evidencia completa o marcada como no requerida.' }, { status: 409 });
+    }
+    if (current.status === 'new') {
+      return NextResponse.json({ error: 'El caso debe pasar por revisión Legal antes del cierre.' }, { status: 409 });
+    }
+  }
 
   if (body.status !== undefined) {
     if (!allowedStatuses.has(body.status)) return NextResponse.json({ error: 'status inválido' }, { status: 400 });
