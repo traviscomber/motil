@@ -42,6 +42,12 @@ type WorkOrderPayload = {
   description?: string | null;
   requestedMaterials?: string | null;
   requested_materials?: string | null;
+  materials?: Array<{
+    canonicalProductId?: string;
+    canonical_product_id?: string;
+    quantityRequired?: number | string;
+    quantity_required?: number | string;
+  }>;
   workType?: string;
   work_type?: string;
   priority?: string;
@@ -146,6 +152,34 @@ async function recordRequestedMaterials(
   if (error) throw error;
 }
 
+
+async function recordStructuredMaterials(
+  context: Awaited<ReturnType<typeof getOrganizationContext>> & { ok: true },
+  workOrderId: string,
+  materials: WorkOrderPayload['materials'],
+) {
+  const rows = Array.isArray(materials) ? materials : [];
+  if (rows.length === 0) return;
+
+  const normalized = rows.map((item) => ({
+    canonicalProductId: item.canonicalProductId || item.canonical_product_id || '',
+    quantityRequired: Number(item.quantityRequired ?? item.quantity_required ?? 0),
+    requiredDate: null,
+    notes: null,
+  }));
+
+  if (normalized.some((item) => !item.canonicalProductId || !Number.isFinite(item.quantityRequired) || item.quantityRequired <= 0)) {
+    throw new Error('Los insumos seleccionados tienen datos inválidos');
+  }
+
+  const { error } = await context.supabase.rpc('replace_work_order_material_requirements_v1', {
+    p_organization_id: context.organizationId,
+    p_work_order_id: workOrderId,
+    p_materials: normalized,
+  });
+  if (error) throw error;
+}
+
 export async function GET(request: NextRequest) {
   const context = await getOrganizationContext(request);
   if (!context.ok) return context.response;
@@ -192,6 +226,7 @@ export async function POST(request: NextRequest) {
     const reviewId = body.reviewId || body.review_id || null;
     const assignedPersonId = body.assignedPersonId || body.assigned_person_id || null;
     const requestedMaterials = body.requestedMaterials || body.requested_materials || null;
+    const materials = body.materials || [];
     if (!canonicalAssetId) return NextResponse.json({ error: 'Selecciona un activo canónico' }, { status: 400 });
     if (!body.title?.trim()) return NextResponse.json({ error: 'Describe brevemente el trabajo a realizar' }, { status: 400 });
     if (!context.authUserId) {
@@ -296,6 +331,7 @@ export async function POST(request: NextRequest) {
       if (assignedLinkedOrderError) throw assignedLinkedOrderError;
 
       await recordRequestedMaterials(context, assignedLinkedOrder as WorkOrderRow, requestedMaterials);
+      await recordStructuredMaterials(context, assignedLinkedOrder.id, materials);
 
       return NextResponse.json({
         data: mapWorkOrder(assignedLinkedOrder as WorkOrderRow, asset as CanonicalAssetRow),
@@ -335,6 +371,7 @@ export async function POST(request: NextRequest) {
     }).select('*').single();
     if (error) throw error;
     await recordRequestedMaterials(context, data as WorkOrderRow, requestedMaterials);
+    await recordStructuredMaterials(context, data.id, materials);
     return NextResponse.json({ data: mapWorkOrder(data as WorkOrderRow, asset as CanonicalAssetRow) }, { status: 201 });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'No se pudo crear la orden de trabajo';
