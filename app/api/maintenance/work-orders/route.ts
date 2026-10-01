@@ -201,6 +201,40 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const { data: creatorPerson, error: creatorPersonError } = await context.supabase
+      .from('people')
+      .select('id,full_name')
+      .eq('organization_id', context.organizationId)
+      .eq('profile_id', context.userId)
+      .eq('employment_status', 'active')
+      .maybeSingle();
+    if (creatorPersonError) throw creatorPersonError;
+
+    const canCreateWorkOrder = ['Ariel López', 'Mauricio Astudillo'].includes(String(creatorPerson?.full_name || ''));
+    if (!canCreateWorkOrder) {
+      return NextResponse.json(
+        { error: 'Solo Ariel López y Mauricio Astudillo pueden crear órdenes de trabajo' },
+        { status: 403 }
+      );
+    }
+
+    if (!assignedPersonId) {
+      return NextResponse.json({ error: 'Selecciona primero al responsable de la OT' }, { status: 400 });
+    }
+
+    const { data: assignedPerson, error: assignedPersonError } = await context.supabase
+      .from('people')
+      .select('id,full_name')
+      .eq('organization_id', context.organizationId)
+      .eq('id', assignedPersonId)
+      .eq('employment_status', 'active')
+      .not('profile_id', 'is', null)
+      .maybeSingle();
+    if (assignedPersonError) throw assignedPersonError;
+    if (!assignedPerson) {
+      return NextResponse.json({ error: 'La persona seleccionada no está disponible como responsable' }, { status: 400 });
+    }
+
     const { data: asset, error: assetError } = await context.supabase
       .from('maintenance_canonical_assets_v1')
       .select('id,asset_code,name,asset_type,is_active')
@@ -248,10 +282,23 @@ export async function POST(request: NextRequest) {
         .eq('id', result.work_order_id)
         .single();
       if (linkedOrderError) throw linkedOrderError;
-      await recordRequestedMaterials(context, linkedOrder as WorkOrderRow, requestedMaterials);
+      const { data: assignedLinkedOrder, error: assignedLinkedOrderError } = await context.supabase
+        .from('maintenance_work_orders')
+        .update({
+          assigned_person_id: assignedPerson.id,
+          assigned_to_name: assignedPerson.full_name,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('organization_id', context.organizationId)
+        .eq('id', result.work_order_id)
+        .select('*')
+        .single();
+      if (assignedLinkedOrderError) throw assignedLinkedOrderError;
+
+      await recordRequestedMaterials(context, assignedLinkedOrder as WorkOrderRow, requestedMaterials);
 
       return NextResponse.json({
-        data: mapWorkOrder(linkedOrder as WorkOrderRow, asset as CanonicalAssetRow),
+        data: mapWorkOrder(assignedLinkedOrder as WorkOrderRow, asset as CanonicalAssetRow),
         review: {
           id: reviewId,
           status: result.review_status,
@@ -260,13 +307,7 @@ export async function POST(request: NextRequest) {
       }, { status: review.linked_work_order_id ? 200 : 201 });
     }
 
-    let assignedPersonName = body.assignedToName || body.assigned_to_name || null;
-    if (assignedPersonId) {
-      const { data: person, error: personError } = await context.supabase.from('people').select('id,full_name').eq('organization_id', context.organizationId).eq('id', assignedPersonId).eq('employment_status', 'active').maybeSingle();
-      if (personError) throw personError;
-      if (!person) return NextResponse.json({ error: 'La persona seleccionada no está disponible' }, { status: 400 });
-      assignedPersonName = person.full_name;
-    }
+    const assignedPersonName = assignedPerson.full_name;
 
     const { count } = await context.supabase.from('maintenance_work_orders').select('*', { head: true, count: 'exact' }).eq('organization_id', context.organizationId);
     const workOrderNumber = `WO-${new Date().getFullYear()}-${String((count || 0) + 1).padStart(4, '0')}`;
