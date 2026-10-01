@@ -30,6 +30,11 @@ type Asset = {
   type: string;
   status: string;
   model: string | null;
+  specs?: {
+    location?: string | null;
+    license_plate?: string | null;
+    cost_center_code?: string | null;
+  } | null;
 };
 
 type Assignee = {
@@ -124,7 +129,7 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
     const needle = assetQuery.trim().toLowerCase();
     if (!needle) return assets.slice(0, 10);
     return assets.filter((asset) =>
-      [asset.code, asset.name, asset.type, asset.model]
+      [asset.code, asset.name, asset.type, asset.model, asset.specs?.location, asset.specs?.license_plate, asset.specs?.cost_center_code]
         .map((value) => String(value || '').toLowerCase())
         .join(' ')
         .includes(needle),
@@ -234,7 +239,7 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
           <PageHeaderEyebrow>{t.eyebrow}</PageHeaderEyebrow>
           <PageHeaderTitle>{t.title}</PageHeaderTitle>
           <PageHeaderDescription>
-            Selecciona el equipo, describe el trabajo y crea la OT. Lo demás se completa durante el seguimiento.
+            Elige primero al responsable, luego busca el equipo y define el trabajo. Los insumos son opcionales.
           </PageHeaderDescription>
         </PageHeaderContent>
         <PageHeaderActions>
@@ -428,7 +433,7 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
       <Card className="shadow-none">
         <CardHeader className="pb-4">
           <CardTitle className="text-base">3. Cuándo</CardTitle>
-          <CardDescription>La OT puede crearse sin duración, materiales ni horómetro.</CardDescription>
+          <CardDescription>La OT puede crearse sin duración ni horómetro. Los insumos de bodega son opcionales.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
