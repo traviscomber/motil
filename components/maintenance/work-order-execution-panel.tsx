@@ -33,8 +33,16 @@ type WorkOrderPart = {
   stock?: { part_code?: string; part_name?: string } | null;
 };
 
+type MaintenanceWorker = {
+  id: string;
+  full_name: string;
+  role_title?: string | null;
+  profile_id?: string | null;
+};
+
 type LaborEntry = {
   id: string;
+  technician_id?: string | null;
   technician_name: string;
   hours: number;
   hourly_cost: number;
@@ -79,7 +87,7 @@ export function WorkOrderExecutionPanel({ workOrderId }: { workOrderId: string }
     workOrderId ? `/api/maintenance/work-orders/${workOrderId}/execution` : null,
     fetcher,
   );
-  const [technicianName, setTechnicianName] = useState('');
+  const [technicianId, setTechnicianId] = useState('');
   const [hours, setHours] = useState('');
   const [hourlyCost, setHourlyCost] = useState('');
   const [laborNotes, setLaborNotes] = useState('');
@@ -95,6 +103,8 @@ export function WorkOrderExecutionPanel({ workOrderId }: { workOrderId: string }
   const workOrder = (data?.workOrder || {}) as WorkOrderSummary;
   const parts = (Array.isArray(data?.parts) ? data.parts : []) as WorkOrderPart[];
   const labor = (Array.isArray(data?.labor) ? data.labor : []) as LaborEntry[];
+  const workers = (Array.isArray(data?.workers) ? data.workers : []) as MaintenanceWorker[];
+  const selectedWorker = workers.find((worker) => worker.id === technicianId);
   const services = (Array.isArray(data?.externalServices) ? data.externalServices : []) as ExternalService[];
   const events = (Array.isArray(data?.events) ? data.events : []) as WorkOrderEvent[];
   const costs = data?.costs || {};
@@ -125,7 +135,8 @@ export function WorkOrderExecutionPanel({ workOrderId }: { workOrderId: string }
     const saved = await execute(
       {
         action: 'add_labor',
-        technicianName,
+        technicianId,
+        technicianName: selectedWorker?.full_name || '',
         hours: Number(hours),
         hourlyCost: Number(hourlyCost || 0),
         notes: laborNotes || null,
@@ -133,7 +144,7 @@ export function WorkOrderExecutionPanel({ workOrderId }: { workOrderId: string }
       'labor',
     );
     if (saved) {
-      setTechnicianName('');
+      setTechnicianId('');
       setHours('');
       setHourlyCost('');
       setLaborNotes('');
@@ -219,10 +230,10 @@ export function WorkOrderExecutionPanel({ workOrderId }: { workOrderId: string }
         <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Clock3 className="h-4 w-4" />Mano de obra</CardTitle></CardHeader>
         <CardContent className="space-y-5">
           <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-            <div><Label htmlFor="labor-technician">Técnico</Label><Input id="labor-technician" className="mt-2" value={technicianName} onChange={(event) => setTechnicianName(event.target.value)} placeholder="Nombre completo" /></div>
+            <div><Label htmlFor="labor-technician">Persona</Label><select id="labor-technician" className="mt-2 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={technicianId} onChange={(event) => setTechnicianId(event.target.value)}><option value="">Seleccionar persona</option>{workers.map((worker) => <option key={worker.id} value={worker.id}>{worker.full_name}{worker.role_title ? ` · ${worker.role_title}` : ''}</option>)}</select></div>
             <div><Label htmlFor="labor-hours">Horas</Label><Input id="labor-hours" className="mt-2" type="number" min="0.1" step="0.1" value={hours} onChange={(event) => setHours(event.target.value)} /></div>
             <div><Label htmlFor="labor-cost">Costo por hora</Label><Input id="labor-cost" className="mt-2" type="number" min="0" value={hourlyCost} onChange={(event) => setHourlyCost(event.target.value)} /></div>
-            <div className="flex items-end"><Button className="w-full" onClick={addLabor} disabled={busyKey === 'labor' || !technicianName.trim() || Number(hours) <= 0}>Registrar</Button></div>
+            <div className="flex items-end"><Button className="w-full" onClick={addLabor} disabled={busyKey === 'labor' || !technicianId || Number(hours) <= 0}>Registrar</Button></div>
           </div>
           <div><Label htmlFor="labor-notes">Trabajo realizado</Label><Input id="labor-notes" className="mt-2" value={laborNotes} onChange={(event) => setLaborNotes(event.target.value)} placeholder="Actividad, especialidad u observación" /></div>
           {labor.length > 0 ? <div className="divide-y rounded-lg border">{labor.map((entry) => (
