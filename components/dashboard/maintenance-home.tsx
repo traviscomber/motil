@@ -160,7 +160,10 @@ export function MaintenanceHome({ locale, dictionary }: { locale: Locale; dictio
       <PageHeaderActions>
         <Button variant="outline" onClick={() => void mutate()} disabled={isLoading}><RefreshCw className="h-4 w-4" />{t.refresh}</Button>
         {mode === 'planning'
-          ? <Button asChild><Link href={firstAssignment?.href || '/dashboard/mantenimiento/preventivo-horas'}><Clock3 className="h-4 w-4" />{firstAssignment ? t.cta.assignWork : t.cta.plan}</Link></Button>
+          ? <>
+              <Button asChild variant="outline"><Link href={firstAssignment?.href || '/dashboard/mantenimiento/ordenes-trabajo'}><Clock3 className="h-4 w-4" />{firstAssignment ? t.cta.assignWork : t.cta.reviewOrders}</Link></Button>
+              <Button asChild><Link href="/dashboard/mantenimiento/ordenes-trabajo/create"><Wrench className="h-4 w-4" />Nueva OT</Link></Button>
+            </>
           : mode === 'leadership' && firstLeadershipAction
             ? <Button asChild><Link href={firstLeadershipAction.href}><ArrowRight className="h-4 w-4" />{t.cta.attendPriority}</Link></Button>
             : mode === 'oversight'
