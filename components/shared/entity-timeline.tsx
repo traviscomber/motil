@@ -16,6 +16,8 @@ type TimelineEvent = {
   amount?: number | string | null;
   currency?: string | null;
   description?: string | null;
+  actor_id?: string | null;
+  actor_name?: string | null;
 };
 
 type Response = { events?: TimelineEvent[] };
@@ -28,7 +30,7 @@ const fetcher = async (url: string): Promise<Response> => {
 };
 
 const date = (value?: string | null) =>
-  value ? new Intl.DateTimeFormat('es-CL', { dateStyle: 'medium' }).format(new Date(value)) : 'Sin fecha';
+  value ? new Intl.DateTimeFormat('es-CL', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : 'Sin fecha';
 
 const money = (value: unknown, currency = 'CLP') =>
   new Intl.NumberFormat('es-CL', { style: 'currency', currency, maximumFractionDigits: 0 }).format(Number(value || 0));
@@ -45,6 +47,18 @@ const eventLabels: Record<string, string> = {
   installation: 'Instalación',
   return: 'Devolución',
   completed: 'Cierre',
+  work_order_created: 'OT creada',
+  status_changed: 'Estado actualizado',
+  assignee_changed: 'Responsable actualizado',
+  priority_changed: 'Prioridad actualizada',
+  cost_center_changed: 'Centro de costo actualizado',
+  schedule_changed: 'Fecha planificada actualizada',
+  work_type_changed: 'Tipo de trabajo actualizado',
+  planned_hours_changed: 'Horas planificadas actualizadas',
+  actual_hours_changed: 'Horas reales actualizadas',
+  root_cause_changed: 'Causa raíz actualizada',
+  preventive_actions_changed: 'Acciones preventivas actualizadas',
+  meter_changed: 'Lectura operacional actualizada',
 };
 
 export function EntityTimeline({ entity, id, limit = 20 }: { entity: Entity; id: string; limit?: number }) {
@@ -77,7 +91,7 @@ export function EntityTimeline({ entity, id, limit = 20 }: { entity: Entity; id:
               </Badge>
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium">{event.description || eventLabels[event.event_type] || event.event_type}</p>
-                <p className="truncate text-xs text-muted-foreground">{event.source_table} · {event.source_record_id}</p>
+                <p className="truncate text-xs text-muted-foreground">{event.actor_name ? `${event.actor_name} · ` : ''}{event.source_table} · {event.source_record_id}</p>
               </div>
               <p className="text-sm font-semibold tabular-nums md:text-right">
                 {event.amount !== null && event.amount !== undefined ? money(event.amount, event.currency || 'CLP') : '—'}
