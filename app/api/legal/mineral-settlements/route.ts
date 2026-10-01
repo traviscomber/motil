@@ -4,6 +4,71 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getOrganizationContext } from '@/lib/api/organization-context';
 import { getModuleAccessLevel, MODULE_KEYS } from '@/lib/api/module-access';
 
+type SettlementRow = {
+  id: string;
+  settlement_number: string;
+  settlement_date: string;
+  contract_id: string | null;
+  settlement_document_id: string | null;
+  currency: string;
+  gross_amount: number | null;
+  deductions_amount: number | null;
+  net_amount: number | null;
+  due_date: string | null;
+  status: string;
+  payable_id: string | null;
+  payment_request_id: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type ShipmentRow = {
+  id: string;
+  shipment_date: string | null;
+  shipment_number: string | null;
+  destination: string | null;
+  carrier_name_raw: string | null;
+  vehicle_plate_raw: string | null;
+  normalized_metric_tons: number | null;
+  normalization_status?: string | null;
+  validation_status: string | null;
+};
+
+type ContractRow = {
+  id: string;
+  contract_number: string | null;
+  title: string | null;
+  contractor_name: string | null;
+  status?: string | null;
+};
+
+type DocumentRow = {
+  id: string;
+  document_name: string;
+  document_code: string | null;
+  status: string | null;
+  canonical_role?: string | null;
+  provenance_status?: string | null;
+  file_url?: string | null;
+};
+
+type PaymentRow = {
+  id: string;
+  status: string;
+  amount: number;
+  currency: string;
+  executed_at: string | null;
+  bank_reference: string | null;
+  evidence_document_id: string | null;
+};
+
+type SettlementShipmentRow = {
+  settlement_id: string;
+  shipment_id: string;
+  settled_metric_tons: number | null;
+};
+
 async function authorize(request: NextRequest) {
   const context = await getOrganizationContext(request);
   if (!context.ok) return { ok: false as const, response: context.response };
@@ -23,13 +88,14 @@ export async function GET(request: NextRequest) {
   const auth = await authorize(request);
   if (!auth.ok) return auth.response;
 
-  const [settlementsResult, shipmentsResult, contractsResult, documentsResult] = await Promise.all([
-    auth.context.supabase
-      .from('mineral_settlements')
-      .select('id,settlement_number,settlement_date,contract_id,settlement_document_id,currency,gross_amount,deductions_amount,net_amount,due_date,status,payable_id,payment_request_id,notes,created_at,updated_at')
-      .eq('organization_id', auth.context.organizationId)
-      .order('settlement_date', { ascending: false })
-      .limit(500),
+  const settlementsResult = await auth.context.supabase
+    .from('mineral_settlements')
+    .select('id,settlement_number,settlement_date,contract_id,settlement_document_id,currency,gross_amount,deductions_amount,net_amount,due_date,status,payable_id,payment_request_id,notes,created_at,updated_at')
+    .eq('organization_id', auth.context.organizationId)
+    .order('settlement_date', { ascending: false })
+    .limit(500);
+
+  const [shipmentsResult, contractsResult, documentsResult] = await Promise.all([
     auth.context.supabase
       .from('production_concentrate_shipments')
       .select('id,shipment_date,shipment_number,destination,carrier_name_raw,vehicle_plate_raw,normalized_metric_tons,normalization_status,validation_status')
@@ -56,9 +122,9 @@ export async function GET(request: NextRequest) {
     if (settlementsResult.error.code === '42P01') {
       return NextResponse.json({
         data: [],
-        shipmentOptions: shipmentsResult.data || [],
-        contractOptions: contractsResult.data || [],
-        documentOptions: documentsResult.data || [],
+        shipmentOptions: (shipmentsResult.data || []) as ShipmentRow[],
+        contractOptions: (contractsResult.data || []) as ContractRow[],
+        documentOptions: (documentsResult.data || []) as DocumentRow[],
         accessLevel: auth.access,
         schemaReady: false,
         summary: { total: 0, submitted: 0, approved: 0, paid: 0, without_document: 0 },
@@ -67,80 +133,80 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: settlementsResult.error.message }, { status: 500 });
   }
 
-  const rows = settlementsResult.data || [];
+  const rows = (settlementsResult.data || []) as SettlementRow[];
   const settlementIds = rows.map((row) => row.id);
-  const contractIds = Array.from(new Set(rows.map((row) => row.contract_id).filter(Boolean)));
-  const documentIds = Array.from(new Set(rows.map((row) => row.settlement_document_id).filter(Boolean)));
-  const paymentRequestIds = Array.from(new Set(rows.map((row) => row.payment_request_id).filter(Boolean)));
+  const contractIds = rows.flatMap((row) => row.contract_id ? [row.contract_id] : []);
+  const documentIds = rows.flatMap((row) => row.settlement_document_id ? [row.settlement_document_id] : []);
+  const paymentRequestIds = rows.flatMap((row) => row.payment_request_id ? [row.payment_request_id] : []);
 
-  const [linksResult, selectedContractsResult, selectedDocumentsResult, paymentRequestsResult] = await Promise.all([
-    settlementIds.length
-      ? auth.context.supabase
-          .from('mineral_settlement_shipments')
-          .select('settlement_id,shipment_id,settled_metric_tons')
-          .eq('organization_id', auth.context.organizationId)
-          .in('settlement_id', settlementIds)
-      : Promise.resolve({ data: [], error: null }),
-    contractIds.length
-      ? auth.context.supabase
-          .from('contracts')
-          .select('id,contract_number,title,contractor_name')
-          .eq('organization_id', auth.context.organizationId)
-          .in('id', contractIds)
-      : Promise.resolve({ data: [], error: null }),
-    documentIds.length
-      ? auth.context.supabase
-          .from('module_documents')
-          .select('id,document_name,document_code,status,file_url')
-          .eq('organization_id', auth.context.organizationId)
-          .in('id', documentIds)
-      : Promise.resolve({ data: [], error: null }),
-    paymentRequestIds.length
-      ? auth.context.supabase
-          .from('finance_payment_requests')
-          .select('id,status,amount,currency,executed_at,bank_reference,evidence_document_id')
-          .eq('organization_id', auth.context.organizationId)
-          .in('id', paymentRequestIds)
-      : Promise.resolve({ data: [], error: null }),
-  ]);
+  let links: SettlementShipmentRow[] = [];
+  let selectedContracts: ContractRow[] = [];
+  let selectedDocuments: DocumentRow[] = [];
+  let paymentRequests: PaymentRow[] = [];
 
-  const shipmentIds = Array.from(new Set((linksResult.data || []).map((row) => row.shipment_id).filter(Boolean)));
-  const selectedShipmentsResult = shipmentIds.length
-    ? await auth.context.supabase
-        .from('production_concentrate_shipments')
-        .select('id,shipment_date,shipment_number,destination,carrier_name_raw,vehicle_plate_raw,normalized_metric_tons,validation_status')
-        .eq('organization_id', auth.context.organizationId)
-        .in('id', shipmentIds)
-    : { data: [], error: null };
+  if (settlementIds.length) {
+    const result = await auth.context.supabase
+      .from('mineral_settlement_shipments')
+      .select('settlement_id,shipment_id,settled_metric_tons')
+      .eq('organization_id', auth.context.organizationId)
+      .in('settlement_id', settlementIds);
+    if (result.error) return NextResponse.json({ error: result.error.message }, { status: 500 });
+    links = (result.data || []) as SettlementShipmentRow[];
+  }
 
-  const contractsById = new Map((selectedContractsResult.data || []).map((row) => [row.id, row]));
-  const documentsById = new Map((selectedDocumentsResult.data || []).map((row) => [row.id, row]));
-  const paymentsById = new Map((paymentRequestsResult.data || []).map((row) => [row.id, row]));
-  const shipmentsById = new Map((selectedShipmentsResult.data || []).map((row) => [row.id, row]));
+  if (contractIds.length) {
+    const result = await auth.context.supabase
+      .from('contracts')
+      .select('id,contract_number,title,contractor_name')
+      .eq('organization_id', auth.context.organizationId)
+      .in('id', Array.from(new Set(contractIds)));
+    if (result.error) return NextResponse.json({ error: result.error.message }, { status: 500 });
+    selectedContracts = (result.data || []) as ContractRow[];
+  }
 
-  type ShipmentLink = {
-    settlement_id: string;
-    shipment_id: string;
-    settled_metric_tons: number | null;
-    shipment: {
-      id: string;
-      shipment_date: string | null;
-      shipment_number: string | null;
-      destination: string | null;
-      carrier_name_raw: string | null;
-      vehicle_plate_raw: string | null;
-      normalized_metric_tons: number | null;
-      validation_status: string | null;
-    } | null;
-  };
+  if (documentIds.length) {
+    const result = await auth.context.supabase
+      .from('module_documents')
+      .select('id,document_name,document_code,status,file_url')
+      .eq('organization_id', auth.context.organizationId)
+      .in('id', Array.from(new Set(documentIds)));
+    if (result.error) return NextResponse.json({ error: result.error.message }, { status: 500 });
+    selectedDocuments = (result.data || []) as DocumentRow[];
+  }
 
-  const linksBySettlement = new Map<string, ShipmentLink[]>();
-  for (const link of linksResult.data || []) {
+  if (paymentRequestIds.length) {
+    const result = await auth.context.supabase
+      .from('finance_payment_requests')
+      .select('id,status,amount,currency,executed_at,bank_reference,evidence_document_id')
+      .eq('organization_id', auth.context.organizationId)
+      .in('id', Array.from(new Set(paymentRequestIds)));
+    if (result.error) return NextResponse.json({ error: result.error.message }, { status: 500 });
+    paymentRequests = (result.data || []) as PaymentRow[];
+  }
+
+  const shipmentIds = Array.from(new Set(links.map((row) => row.shipment_id)));
+  let selectedShipments: ShipmentRow[] = [];
+
+  if (shipmentIds.length) {
+    const result = await auth.context.supabase
+      .from('production_concentrate_shipments')
+      .select('id,shipment_date,shipment_number,destination,carrier_name_raw,vehicle_plate_raw,normalized_metric_tons,validation_status')
+      .eq('organization_id', auth.context.organizationId)
+      .in('id', shipmentIds);
+    if (result.error) return NextResponse.json({ error: result.error.message }, { status: 500 });
+    selectedShipments = (result.data || []) as ShipmentRow[];
+  }
+
+  const contractsById = new Map<string, ContractRow>(selectedContracts.map((row) => [row.id, row]));
+  const documentsById = new Map<string, DocumentRow>(selectedDocuments.map((row) => [row.id, row]));
+  const paymentsById = new Map<string, PaymentRow>(paymentRequests.map((row) => [row.id, row]));
+  const shipmentsById = new Map<string, ShipmentRow>(selectedShipments.map((row) => [row.id, row]));
+  const linksBySettlement = new Map<string, Array<SettlementShipmentRow & { shipment: ShipmentRow | null }>>();
+
+  for (const link of links) {
     const list = linksBySettlement.get(link.settlement_id) || [];
     list.push({
-      settlement_id: String(link.settlement_id),
-      shipment_id: String(link.shipment_id),
-      settled_metric_tons: link.settled_metric_tons === null ? null : Number(link.settled_metric_tons),
+      ...link,
       shipment: shipmentsById.get(link.shipment_id) || null,
     });
     linksBySettlement.set(link.settlement_id, list);
@@ -156,16 +222,16 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     data,
-    shipmentOptions: shipmentsResult.data || [],
-    contractOptions: contractsResult.data || [],
-    documentOptions: documentsResult.data || [],
+    shipmentOptions: (shipmentsResult.data || []) as ShipmentRow[],
+    contractOptions: (contractsResult.data || []) as ContractRow[],
+    documentOptions: (documentsResult.data || []) as DocumentRow[],
     accessLevel: auth.access,
     schemaReady: true,
     summary: {
       total: data.length,
       submitted: data.filter((item) => item.status === 'submitted').length,
       approved: data.filter((item) => item.status === 'approved').length,
-      paid: data.filter((item) => item.status === 'paid' || Boolean(item.payment && item.payment.executed_at)).length,
+      paid: data.filter((item) => item.status === 'paid' || Boolean(item.payment?.executed_at)).length,
       without_document: data.filter((item) => !item.settlement_document_id).length,
     },
   });
@@ -181,8 +247,8 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
   const settlementNumber = String(body.settlement_number || '').trim();
   const settlementDate = String(body.settlement_date || '').trim();
-  const shipmentIds = Array.isArray(body.shipment_ids)
-    ? Array.from(new Set(body.shipment_ids.map((value: unknown) => String(value || '').trim()).filter(Boolean)))
+  const shipmentIds: string[] = Array.isArray(body.shipment_ids)
+    ? Array.from(new Set<string>(body.shipment_ids.map((value: unknown) => String(value || '').trim()).filter(Boolean)))
     : [];
 
   if (!settlementNumber) return NextResponse.json({ error: 'settlement_number requerido' }, { status: 400 });
@@ -265,7 +331,7 @@ export async function POST(request: NextRequest) {
 
   const { error: linksError } = await auth.context.supabase
     .from('mineral_settlement_shipments')
-    .insert(shipmentIds.map((shipmentId: string) => ({
+    .insert(shipmentIds.map((shipmentId) => ({
       organization_id: auth.context.organizationId,
       settlement_id: settlement.id,
       shipment_id: shipmentId,
