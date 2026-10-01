@@ -6,6 +6,7 @@ import { getOrganizationContext } from '@/lib/api/organization-context';
 type WorkOrderRow = {
   id: string;
   work_order_number: string;
+  assigned_person_id: string | null;
   assigned_to_name: string | null;
   status: string | null;
   work_type: string | null;
@@ -51,30 +52,32 @@ export async function GET(request: NextRequest) {
 
     const { data: workOrders, error } = await context.supabase
       .from('maintenance_work_orders')
-      .select('id,work_order_number,assigned_to_name,status,work_type,priority,planned_duration_hours,actual_duration_hours,scheduled_date,completion_date')
+      .select('id,work_order_number,assigned_person_id,assigned_to_name,status,work_type,priority,planned_duration_hours,actual_duration_hours,scheduled_date,completion_date')
       .eq('organization_id', context.organizationId)
       .gte('created_at', since.toISOString())
       .order('created_at', { ascending: false });
     if (error) throw error;
 
-    const { data: profiles, error: profilesError } = await context.supabase
-      .from('profiles')
-      .select('full_name,cargo_id,cargos(name)')
-      .eq('organization_id', context.organizationId);
-    if (profilesError) throw profilesError;
+    const { data: people, error: peopleError } = await context.supabase
+      .from('people')
+      .select('id,full_name,role_title,employment_status')
+      .eq('organization_id', context.organizationId)
+      .eq('employment_status', 'active');
+    if (peopleError) throw peopleError;
 
-    const profileMap = new Map<string, { cargoName: string; workerType: WorkerType | null }>();
-    for (const profile of profiles || []) {
-      const cargoName = (profile.cargos as { name?: string } | null)?.name || 'Sin cargo';
-      profileMap.set(String(profile.full_name || '').trim(), {
+    const peopleMap = new Map<string, { name: string; cargoName: string; workerType: WorkerType | null }>();
+    for (const person of people || []) {
+      const cargoName = String(person.role_title || 'Sin cargo');
+      peopleMap.set(String(person.id), {
+        name: String(person.full_name || '').trim(),
         cargoName,
         workerType: classifyWorker(cargoName),
       });
     }
 
     const rows = (Array.isArray(workOrders) ? workOrders : []) as WorkOrderRow[];
-    const assignedRows = rows.filter((row) => Boolean(row.assigned_to_name?.trim()));
-    const eligibleRows = assignedRows.filter((row) => profileMap.get(row.assigned_to_name!.trim())?.workerType);
+    const assignedRows = rows.filter((row) => Boolean(row.assigned_person_id));
+    const eligibleRows = assignedRows.filter((row) => peopleMap.get(String(row.assigned_person_id))?.workerType);
     const unclassifiedAssignments = assignedRows.length - eligibleRows.length;
 
     const workerMap = new Map<string, {
@@ -98,13 +101,13 @@ export async function GET(request: NextRequest) {
 
     const now = Date.now();
     for (const workOrder of eligibleRows) {
-      const name = workOrder.assigned_to_name!.trim();
-      const profile = profileMap.get(name)!;
-      const workerType = profile.workerType!;
-      const key = `${name}::${profile.cargoName}`;
+      const person = peopleMap.get(String(workOrder.assigned_person_id))!;
+      const name = person.name || workOrder.assigned_to_name?.trim() || 'Sin nombre';
+      const workerType = person.workerType!;
+      const key = String(workOrder.assigned_person_id);
       const existing = workerMap.get(key) ?? {
         name,
-        cargo: profile.cargoName,
+        cargo: person.cargoName,
         workerType,
         total: 0,
         completed: 0,
