@@ -118,11 +118,29 @@ export async function GET(request: NextRequest) {
   const paymentsById = new Map((paymentRequestsResult.data || []).map((row) => [row.id, row]));
   const shipmentsById = new Map((selectedShipmentsResult.data || []).map((row) => [row.id, row]));
 
-  const linksBySettlement = new Map<string, Array<Record<string, unknown>>>();
+  type ShipmentLink = {
+    settlement_id: string;
+    shipment_id: string;
+    settled_metric_tons: number | null;
+    shipment: {
+      id: string;
+      shipment_date: string | null;
+      shipment_number: string | null;
+      destination: string | null;
+      carrier_name_raw: string | null;
+      vehicle_plate_raw: string | null;
+      normalized_metric_tons: number | null;
+      validation_status: string | null;
+    } | null;
+  };
+
+  const linksBySettlement = new Map<string, ShipmentLink[]>();
   for (const link of linksResult.data || []) {
     const list = linksBySettlement.get(link.settlement_id) || [];
     list.push({
-      ...link,
+      settlement_id: String(link.settlement_id),
+      shipment_id: String(link.shipment_id),
+      settled_metric_tons: link.settled_metric_tons === null ? null : Number(link.settled_metric_tons),
       shipment: shipmentsById.get(link.shipment_id) || null,
     });
     linksBySettlement.set(link.settlement_id, list);
@@ -147,7 +165,7 @@ export async function GET(request: NextRequest) {
       total: data.length,
       submitted: data.filter((item) => item.status === 'submitted').length,
       approved: data.filter((item) => item.status === 'approved').length,
-      paid: data.filter((item) => item.status === 'paid' || item.payment?.executed_at).length,
+      paid: data.filter((item) => item.status === 'paid' || Boolean(item.payment && item.payment.executed_at)).length,
       without_document: data.filter((item) => !item.settlement_document_id).length,
     },
   });
