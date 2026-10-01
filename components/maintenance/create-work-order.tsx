@@ -32,6 +32,12 @@ type Asset = {
   model: string | null;
 };
 
+type Assignee = {
+  id: string;
+  full_name: string;
+  role_title: string | null;
+};
+
 type DrillingReview = {
   review_id: string;
   source_report_id: string;
@@ -59,6 +65,7 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
   const searchParams = useSearchParams();
   const initialAssetId = searchParams.get('assetId') || '';
   const reviewId = searchParams.get('reviewId') || '';
+  const [assignedPersonId, setAssignedPersonId] = useState('');
   const [canonicalAssetId, setCanonicalAssetId] = useState(initialAssetId);
   const [title, setTitle] = useState(searchParams.get('title') || '');
   const [description, setDescription] = useState(searchParams.get('description') || '');
@@ -79,6 +86,7 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
   };
 
   const { data, error, isLoading, mutate } = useSWR('/api/maintenance/equipment', fetcher, { revalidateOnFocus: false });
+  const { data: assigneeData, error: assigneeError, isLoading: assigneesLoading } = useSWR('/api/maintenance/assignees', fetcher, { revalidateOnFocus: false });
   const {
     data: reviewData,
     error: reviewError,
@@ -86,6 +94,7 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
   } = useSWR(reviewId ? `/api/maintenance/drilling-reviews/${reviewId}` : null, fetcher, { revalidateOnFocus: false });
 
   const assets = useMemo(() => (Array.isArray(data?.equipment) ? (data.equipment as Asset[]) : []), [data]);
+  const assignees = useMemo(() => (Array.isArray(assigneeData?.assignees) ? (assigneeData.assignees as Assignee[]) : []), [assigneeData]);
   const selectedAsset = assets.find((asset) => asset.id === canonicalAssetId) || null;
   const review = (reviewData?.review || null) as DrillingReview | null;
 
@@ -105,6 +114,7 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
   }, [review, canonicalAssetId, title, description, t]);
 
   const validate = () => {
+    if (!assignedPersonId) return 'Selecciona primero al responsable de la OT';
     if (!canonicalAssetId) return t.validation.assetRequired;
     if (review && review.canonical_asset_id !== canonicalAssetId) return t.validation.reviewAssetMismatch;
     if (!title.trim()) return t.validation.titleRequired;
@@ -125,6 +135,7 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
+          assignedPersonId,
           canonicalAssetId,
           reviewId: reviewId || null,
           title: title.trim(),
@@ -190,8 +201,33 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
 
       <Card className="shadow-none">
         <CardHeader className="pb-4">
-          <CardTitle className="text-base">1. Qué hay que hacer</CardTitle>
-          <CardDescription>Estos son los únicos datos necesarios para abrir la OT.</CardDescription>
+          <CardTitle className="text-base">1. Responsable</CardTitle>
+          <CardDescription>Primero define quién será responsable de la OT.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="space-y-2">
+            <Label htmlFor="assignee">Responsable de la OT</Label>
+            <Select value={assignedPersonId} onValueChange={setAssignedPersonId} disabled={assigneesLoading || Boolean(assigneeError)}>
+              <SelectTrigger id="assignee">
+                <SelectValue placeholder={assigneesLoading ? 'Cargando responsables...' : 'Seleccionar responsable'} />
+              </SelectTrigger>
+              <SelectContent>
+                {assignees.map((person) => (
+                  <SelectItem key={person.id} value={person.id}>
+                    {person.full_name}{person.role_title ? ` · ${person.role_title}` : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {assigneeError ? <p className="text-xs text-destructive">{assigneeError.message}</p> : null}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="shadow-none">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-base">2. Qué hay que hacer</CardTitle>
+          <CardDescription>Selecciona el equipo y describe el trabajo.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="space-y-2">
@@ -244,7 +280,7 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
 
       <Card className="shadow-none">
         <CardHeader className="pb-4">
-          <CardTitle className="text-base">2. Cuándo</CardTitle>
+          <CardTitle className="text-base">3. Cuándo</CardTitle>
           <CardDescription>La OT puede crearse sin duración, materiales ni horómetro.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -287,7 +323,7 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
         <p className="hidden text-sm text-muted-foreground sm:block">Después podrás asignar responsable, repuestos y seguimiento.</p>
         <div className="ml-auto flex gap-2">
           <Button asChild variant="outline"><Link href="/dashboard/mantenimiento/ordenes-trabajo">{t.cancel}</Link></Button>
-          <Button onClick={submit} disabled={submitting || isLoading || Boolean(error) || reviewLoading || Boolean(reviewError) || Boolean(review?.linked_work_order_id)}>
+          <Button onClick={submit} disabled={submitting || isLoading || assigneesLoading || Boolean(error) || Boolean(assigneeError) || reviewLoading || Boolean(reviewError) || Boolean(review?.linked_work_order_id)}>
             {submitting ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
             {submitting ? t.creating : reviewId ? t.createAndResolve : t.create}
           </Button>
