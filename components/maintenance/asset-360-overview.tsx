@@ -154,6 +154,19 @@ type Asset360Response = {
   nextPreventive?: Asset360NextPreventive;
   recentEvents?: Asset360RecentEvent[];
   auditedInterventions?: Asset360AuditedIntervention[];
+  laborEntries?: Array<{
+    id: string;
+    work_order_id?: string | null;
+    technician_id?: string | null;
+    technician_name?: string | null;
+    hours?: number | string | null;
+    hourly_cost?: number | string | null;
+    total_cost?: number | string | null;
+    started_at?: string | null;
+    ended_at?: string | null;
+    notes?: string | null;
+    created_at?: string | null;
+  }>;
   installedParts?: Asset360PartsRow[];
   pendingParts?: Asset360PartsRow[];
   economicHistory?: Asset360EconomicHistoryRow[];
@@ -328,6 +341,7 @@ export function Asset360Overview({
 
   const recentEvents = data.recentEvents || [];
   const auditedInterventions = data.auditedInterventions || [];
+  const laborEntries = data.laborEntries || [];
   const installedParts = data.installedParts || [];
   const pendingParts = data.pendingParts || [];
   const maintenancePlanning = data.maintenancePlanning || [];
@@ -551,6 +565,7 @@ export function Asset360Overview({
       <Asset360HistorySection
         auditedInterventions={auditedInterventions}
         recentEvents={recentEvents}
+        laborEntries={laborEntries}
       />
 
       <Asset360MaterialsSection

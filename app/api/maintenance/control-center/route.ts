@@ -15,6 +15,30 @@ type ActionItem = {
   assetHref?: string | null;
 };
 
+type AutopilotPreparation = {
+  state: 'prepared';
+  risk: 'low' | 'medium' | 'high';
+  requiresHumanDecision: true;
+  preparedAction: string;
+  authority: string;
+};
+
+const autopilotPreparation = (action: ActionItem): AutopilotPreparation => {
+  const byKind: Record<string, Omit<AutopilotPreparation, 'state' | 'requiresHumanDecision'>> = {
+    operational_review: { risk: 'high', preparedAction: 'Abrir OT correctiva preconfigurada desde la evidencia operacional', authority: 'Supervisor valida la señal y decide si crea la OT' },
+    preventive_overdue: { risk: 'medium', preparedAction: 'Abrir la intervención preventiva con activo y vencimiento ya contextualizados', authority: 'Planificador confirma ventana, alcance y recursos' },
+    assignment_needed: { risk: 'medium', preparedAction: 'Abrir la OT pendiente de responsable', authority: 'Planificador asigna la persona responsable' },
+    meter_review: { risk: 'high', preparedAction: 'Abrir la evidencia de horómetro contradictoria', authority: 'Persona autorizada valida la lectura canónica' },
+    operational_blocker: { risk: 'high', preparedAction: 'Abrir el bloqueo exacto que impide continuar o cerrar', authority: 'Responsable operativo resuelve el bloqueo en su flujo canónico' },
+    plan_step: { risk: 'medium', preparedAction: 'Abrir el siguiente paso pendiente del plan estándar', authority: 'Ejecutor autorizado registra la ejecución real' },
+    ready_to_close: { risk: 'high', preparedAction: 'Abrir la OT con controles de cierre satisfechos', authority: 'Responsable autorizado revisa y ejecuta el cierre' },
+    closure_evidence: { risk: 'medium', preparedAction: 'Abrir la evidencia faltante para cierre auditado', authority: 'Responsable completa o valida la evidencia requerida' },
+    reliability: { risk: 'medium', preparedAction: 'Abrir la recurrencia validada para revisión', authority: 'Supervisor o confiabilidad decide la acción posterior' },
+  };
+  const prepared = byKind[action.kind] || { risk: 'medium' as const, preparedAction: 'Abrir el contexto operacional asociado', authority: 'Una persona autorizada toma la decisión' };
+  return { state: 'prepared', requiresHumanDecision: true, ...prepared };
+};
+
 const assetHref = (assetId: unknown) => assetId ? `/dashboard/mantenimiento/equipos/${encodeURIComponent(String(assetId))}/ficha` : null;
 
 const isOutOfServiceReview = (row: any) => {
@@ -177,7 +201,10 @@ export async function GET(request: NextRequest) {
         recurringReliabilityAssets: reliabilityRows.filter((row:any) => row.has_recurring_root_cause).length,
         totalActions: actions.length,
       },
-      actions: actions.slice(0, 100),
+      actions: actions.slice(0, 100).map((action) => ({
+        ...action,
+        autopilot: autopilotPreparation(action),
+      })),
       canEdit: access.canWrite,
       semantics: {
         preventiveGrouping: 'Las pautas vencidas del mismo activo, vencimiento y frecuencia se agrupan sólo para coordinar la intervención. Cada pauta conserva su identidad y su OT independiente.',

@@ -40,14 +40,30 @@ export type Asset360AuditedIntervention = {
   } | null;
 };
 
+export type Asset360LaborEntry = {
+  id: string;
+  work_order_id?: string | null;
+  technician_id?: string | null;
+  technician_name?: string | null;
+  hours?: number | string | null;
+  hourly_cost?: number | string | null;
+  total_cost?: number | string | null;
+  started_at?: string | null;
+  ended_at?: string | null;
+  notes?: string | null;
+  created_at?: string | null;
+};
+
 export function Asset360HistorySection({
   auditedInterventions,
   recentEvents,
+  laborEntries,
 }: {
   auditedInterventions: Asset360AuditedIntervention[];
   recentEvents: Asset360RecentEvent[];
+  laborEntries: Asset360LaborEntry[];
 }) {
-  if (auditedInterventions.length === 0 && recentEvents.length === 0) return null;
+  if (auditedInterventions.length === 0 && recentEvents.length === 0 && laborEntries.length === 0) return null;
 
   return (
     <details className="group rounded-lg border border-border bg-card">
@@ -89,6 +105,34 @@ export function Asset360HistorySection({
         ) : (
           <div className="p-4 text-sm text-muted-foreground">Sin cierres auditados.</div>
         )}
+
+        {laborEntries.length > 0 ? (
+          <div className="border-t border-border p-4">
+            <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+              Personal registrado
+            </p>
+            <div className="mt-3 divide-y divide-border">
+              {laborEntries.slice(0, 8).map((entry) => (
+                <div key={entry.id} className="grid gap-2 py-3 sm:grid-cols-[minmax(0,1fr)_100px_120px] sm:items-center">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{entry.technician_name || 'Persona no informada'}</p>
+                    <p className="mt-1 truncate text-xs text-muted-foreground">
+                      {entry.notes || 'Trabajo registrado en OT'}
+                    </p>
+                  </div>
+                  <div className="sm:text-right">
+                    <p className="text-xs text-muted-foreground">Horas</p>
+                    <p className="text-sm font-medium">{entry.hours != null ? Number(entry.hours).toLocaleString('es-CL') : '—'}</p>
+                  </div>
+                  <div className="sm:text-right">
+                    <p className="text-xs text-muted-foreground">Costo</p>
+                    <p className="text-sm font-medium">{money(entry.total_cost ?? 0)}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
 
         {recentEvents.length > 0 || auditedInterventions.length > 3 ? (
           <details className="group border-t border-border px-4 py-4">

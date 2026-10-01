@@ -95,7 +95,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       validation_status: asset.validation_status,
     };
 
-    const { ordersResult, closeResult, preventiveResult, runtimeResult, reliabilityResult, runtimeReliabilityResult, snapshotsResult, partsResult, eventsResult, statusHistoryResult, planningResult, operationalStateResult, operatingSpineResult, supplyChainResult, procurementOrdersResult, costCenterPurchaseHistoryResult, namePurchaseHistoryResult, economicHistoryResult, drillingHistoryResult, drillEconomicsResult, drillingReviewResult, maintenancePriorityResult, financeReconciliationResult, runtimeCostResult, meterHistoryResult, drillEvidenceResult, drillEconomicsChangeResult, taskCandidatesResult, standardPlanResult, identityHistoryResult, exactCostCenterDetailResult, costCenterMatchResult, sourceErrors } = await queryAsset360Sources(context, id, asset, purchaseSelect);
+    const { ordersResult, closeResult, preventiveResult, runtimeResult, reliabilityResult, runtimeReliabilityResult, snapshotsResult, partsResult, laborResult, eventsResult, statusHistoryResult, planningResult, operationalStateResult, operatingSpineResult, supplyChainResult, procurementOrdersResult, costCenterPurchaseHistoryResult, namePurchaseHistoryResult, economicHistoryResult, drillingHistoryResult, drillEconomicsResult, drillingReviewResult, maintenancePriorityResult, financeReconciliationResult, runtimeCostResult, meterHistoryResult, drillEvidenceResult, drillEconomicsChangeResult, taskCandidatesResult, standardPlanResult, identityHistoryResult, exactCostCenterDetailResult, costCenterMatchResult, sourceErrors } = await queryAsset360Sources(context, id, asset, purchaseSelect);
 
     const closeRows = closeResult.data || [];
     const preventives = [...(preventiveResult.data || [])].sort((a: any, b: any) => {
@@ -488,6 +488,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       auditedInterventions,
       installedParts,
       pendingParts,
+      laborEntries: laborResult.data || [],
       recentEvents: eventsResult.data || [],
       statusHistory: statusHistoryResult.data || [],
       maintenancePlanning: planningResult.data || [],
@@ -517,6 +518,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         mttr: 'Sólo desde horas reales de correctivos auditados.',
         cost: 'Sólo desde el último snapshot auditado de cada cierre de OT.',
         parts: 'Cantidades observadas en work_order_parts; no se infiere stock disponible.',
+        labor: 'Personas y horas registradas en work_order_labor_entries, vinculadas a la OT y al activo.',
       },
     });
   } catch (error) {

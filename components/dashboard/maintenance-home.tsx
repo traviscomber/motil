@@ -9,9 +9,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { PageHeader, PageHeaderActions, PageHeaderContent, PageHeaderDescription, PageHeaderEyebrow, PageHeaderTitle } from '@/components/ui/page-header';
 import { StatePanel } from '@/components/ui/state-panel';
 import { MobileTerrainPanel } from '@/components/maintenance/mobile-terrain-panel';
+import { AutopilotDecisionStrip } from '@/components/maintenance/autopilot-decision-strip';
+import { CanonicalMaintenanceOverview } from '@/components/maintenance/canonical-maintenance-overview';
 import type { Dictionary, Locale } from '@/lib/i18n/dictionaries';
 
-type ActionItem = { id: string; kind: string; priority: number; title: string; description: string; evidence: string; href: string; assetHref?: string | null };
+type ActionItem = { id: string; kind: string; priority: number; title: string; description: string; evidence: string; href: string; assetHref?: string | null; autopilot?: { state: 'prepared'; risk: 'low' | 'medium' | 'high'; requiresHumanDecision: true; preparedAction: string; authority: string } };
 type Response = {
   summary?: { openWorkOrders: number; unassignedOpenWorkOrders: number; overdueHourSchedules: number; unplannedOverdueHourSchedules: number; unplannedOverdueInterventionGroups: number; plannedOverdueHourSchedules: number; pendingOperationalReviews: number; outOfServiceOperationalReviews: number; operationallyBlocked: number; pendingPlanSteps: number; readyToClose: number; recurringReliabilityAssets: number; totalActions: number };
   actions?: ActionItem[];
@@ -191,6 +193,16 @@ export function MaintenanceHome({ locale, dictionary }: { locale: Locale; dictio
       </div> : null}
     </section> : null}
 
+    <CanonicalMaintenanceOverview />
+
+    {!isLoading && !error && summary ? <AutopilotDecisionStrip
+      locale={locale}
+      decisionCount={actions.length}
+      blockerCount={summary.operationallyBlocked || 0}
+      readyToCloseCount={summary.readyToClose || 0}
+      firstActionHref={actions[0]?.href || '/dashboard/mantenimiento/ordenes-trabajo'}
+    /> : null}
+
     {!isLoading && !error && Number(summary?.outOfServiceOperationalReviews || 0) > 0 ? <StatePanel tone="warning" title={fill(t.outOfServiceWarning.title, { n: summary?.outOfServiceOperationalReviews || 0 })} description={t.outOfServiceWarning.description} className="min-h-0 py-5" /> : null}
 
     {error ? <StatePanel tone="error" title={t.error.title} description={error.message} actions={<Button variant="outline" onClick={() => void mutate()}>{t.error.retry}</Button>} className="min-h-0 py-5" /> : null}
@@ -202,7 +214,7 @@ export function MaintenanceHome({ locale, dictionary }: { locale: Locale; dictio
           const kindKey = (action.kind in kindMeta ? action.kind : kindFallback) as KindKey;
           const meta = kindMeta[kindKey];
           const Icon = meta.icon;
-          return <div key={action.id} className="grid gap-3 p-4 md:grid-cols-[40px_1fr_auto] md:items-center"><div className="flex h-9 w-9 items-center justify-center rounded-md border bg-background"><Icon className="h-4 w-4" /></div><Link href={action.href} className="min-w-0 rounded-sm outline-none hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring"><div className="flex flex-wrap items-center gap-2"><span className="text-xs tabular-nums text-muted-foreground">#{index + 1}</span><Badge variant={meta.variant}>{t.kinds[kindKey]}</Badge><p className="font-medium">{action.title}</p></div><p className="mt-1 text-sm text-muted-foreground">{action.description}</p><p className="mt-1 text-xs text-muted-foreground">{fill(t.evidenceLabel, { text: action.evidence })}</p></Link><Button asChild variant="ghost" size="icon-sm" aria-label={t.openActionAria}><Link href={action.href}><ArrowRight className="h-4 w-4" /></Link></Button></div>;
+          return <div key={action.id} className="grid gap-3 p-4 md:grid-cols-[40px_1fr_auto] md:items-center"><div className="flex h-9 w-9 items-center justify-center rounded-md border bg-background"><Icon className="h-4 w-4" /></div><Link href={action.href} className="min-w-0 rounded-sm outline-none hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring"><div className="flex flex-wrap items-center gap-2"><span className="text-xs tabular-nums text-muted-foreground">#{index + 1}</span><Badge variant={meta.variant}>{t.kinds[kindKey]}</Badge><p className="font-medium">{action.title}</p></div><p className="mt-1 text-sm text-muted-foreground">{action.description}</p><p className="mt-1 text-xs text-muted-foreground">{fill(t.evidenceLabel, { text: action.evidence })}</p>{action.autopilot ? <div className="mt-2 border-l border-border pl-3 text-xs leading-5 text-muted-foreground"><p><span className="font-medium text-foreground">Autopilot prepara:</span> {action.autopilot.preparedAction}</p><p><span className="font-medium text-foreground">Decisión humana:</span> {action.autopilot.authority}</p></div> : null}</Link><Button asChild variant="ghost" size="icon-sm" aria-label={t.openActionAria}><Link href={action.href}><ArrowRight className="h-4 w-4" /></Link></Button></div>;
         })}</div> : null}
       </CardContent>
     </Card>
