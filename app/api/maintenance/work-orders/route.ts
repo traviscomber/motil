@@ -42,6 +42,12 @@ type WorkOrderPayload = {
   description?: string | null;
   requestedMaterials?: string | null;
   requested_materials?: string | null;
+  materials?: Array<{
+    canonicalProductId?: string;
+    canonical_product_id?: string;
+    quantityRequired?: number | string;
+    quantity_required?: number | string;
+  }>;
   workType?: string;
   work_type?: string;
   priority?: string;
@@ -146,6 +152,34 @@ async function recordRequestedMaterials(
   if (error) throw error;
 }
 
+
+async function recordStructuredMaterials(
+  context: Awaited<ReturnType<typeof getOrganizationContext>> & { ok: true },
+  workOrderId: string,
+  materials: WorkOrderPayload['materials'],
+) {
+  const rows = Array.isArray(materials) ? materials : [];
+  if (rows.length === 0) return;
+
+  const normalized = rows.map((item) => ({
+    canonicalProductId: item.canonicalProductId || item.canonical_product_id || '',
+    quantityRequired: Number(item.quantityRequired ?? item.quantity_required ?? 0),
+    requiredDate: null,
+    notes: null,
+  }));
+
+  if (normalized.some((item) => !item.canonicalProductId || !Number.isFinite(item.quantityRequired) || item.quantityRequired <= 0)) {
+    throw new Error('Los insumos seleccionados tienen datos inválidos');
+  }
+
+  const { error } = await context.supabase.rpc('replace_work_order_material_requirements_v1', {
+    p_organization_id: context.organizationId,
+    p_work_order_id: workOrderId,
+    p_materials: normalized,
+  });
+  if (error) throw error;
+}
+
 export async function GET(request: NextRequest) {
   const context = await getOrganizationContext(request);
   if (!context.ok) return context.response;
@@ -192,6 +226,7 @@ export async function POST(request: NextRequest) {
     const reviewId = body.reviewId || body.review_id || null;
     const assignedPersonId = body.assignedPersonId || body.assigned_person_id || null;
     const requestedMaterials = body.requestedMaterials || body.requested_materials || null;
+    const materials = body.materials || [];
     if (!canonicalAssetId) return NextResponse.json({ error: 'Selecciona un activo canónico' }, { status: 400 });
     if (!body.title?.trim()) return NextResponse.json({ error: 'Describe brevemente el trabajo a realizar' }, { status: 400 });
     if (!context.authUserId) {
@@ -199,6 +234,40 @@ export async function POST(request: NextRequest) {
         { error: 'La identidad autenticada no está vinculada al perfil operacional' },
         { status: 409 }
       );
+    }
+
+    const { data: creatorPerson, error: creatorPersonError } = await context.supabase
+      .from('people')
+      .select('id,full_name')
+      .eq('organization_id', context.organizationId)
+      .eq('profile_id', context.userId)
+      .eq('employment_status', 'active')
+      .maybeSingle();
+    if (creatorPersonError) throw creatorPersonError;
+
+    const canCreateWorkOrder = ['Ariel López', 'Mauricio Astudillo'].includes(String(creatorPerson?.full_name || ''));
+    if (!canCreateWorkOrder) {
+      return NextResponse.json(
+        { error: 'Solo Ariel López y Mauricio Astudillo pueden crear órdenes de trabajo' },
+        { status: 403 }
+      );
+    }
+
+    if (!assignedPersonId) {
+      return NextResponse.json({ error: 'Selecciona primero al responsable de la OT' }, { status: 400 });
+    }
+
+    const { data: assignedPerson, error: assignedPersonError } = await context.supabase
+      .from('people')
+      .select('id,full_name')
+      .eq('organization_id', context.organizationId)
+      .eq('id', assignedPersonId)
+      .eq('employment_status', 'active')
+      .not('profile_id', 'is', null)
+      .maybeSingle();
+    if (assignedPersonError) throw assignedPersonError;
+    if (!assignedPerson) {
+      return NextResponse.json({ error: 'La persona seleccionada no está disponible como responsable' }, { status: 400 });
     }
 
     const { data: asset, error: assetError } = await context.supabase
@@ -248,10 +317,24 @@ export async function POST(request: NextRequest) {
         .eq('id', result.work_order_id)
         .single();
       if (linkedOrderError) throw linkedOrderError;
-      await recordRequestedMaterials(context, linkedOrder as WorkOrderRow, requestedMaterials);
+      const { data: assignedLinkedOrder, error: assignedLinkedOrderError } = await context.supabase
+        .from('maintenance_work_orders')
+        .update({
+          assigned_person_id: assignedPerson.id,
+          assigned_to_name: assignedPerson.full_name,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('organization_id', context.organizationId)
+        .eq('id', result.work_order_id)
+        .select('*')
+        .single();
+      if (assignedLinkedOrderError) throw assignedLinkedOrderError;
+
+      await recordRequestedMaterials(context, assignedLinkedOrder as WorkOrderRow, requestedMaterials);
+      await recordStructuredMaterials(context, assignedLinkedOrder.id, materials);
 
       return NextResponse.json({
-        data: mapWorkOrder(linkedOrder as WorkOrderRow, asset as CanonicalAssetRow),
+        data: mapWorkOrder(assignedLinkedOrder as WorkOrderRow, asset as CanonicalAssetRow),
         review: {
           id: reviewId,
           status: result.review_status,
@@ -260,13 +343,7 @@ export async function POST(request: NextRequest) {
       }, { status: review.linked_work_order_id ? 200 : 201 });
     }
 
-    let assignedPersonName = body.assignedToName || body.assigned_to_name || null;
-    if (assignedPersonId) {
-      const { data: person, error: personError } = await context.supabase.from('people').select('id,full_name').eq('organization_id', context.organizationId).eq('id', assignedPersonId).eq('employment_status', 'active').maybeSingle();
-      if (personError) throw personError;
-      if (!person) return NextResponse.json({ error: 'La persona seleccionada no está disponible' }, { status: 400 });
-      assignedPersonName = person.full_name;
-    }
+    const assignedPersonName = assignedPerson.full_name;
 
     const { count } = await context.supabase.from('maintenance_work_orders').select('*', { head: true, count: 'exact' }).eq('organization_id', context.organizationId);
     const workOrderNumber = `WO-${new Date().getFullYear()}-${String((count || 0) + 1).padStart(4, '0')}`;
@@ -294,6 +371,7 @@ export async function POST(request: NextRequest) {
     }).select('*').single();
     if (error) throw error;
     await recordRequestedMaterials(context, data as WorkOrderRow, requestedMaterials);
+    await recordStructuredMaterials(context, data.id, materials);
     return NextResponse.json({ data: mapWorkOrder(data as WorkOrderRow, asset as CanonicalAssetRow) }, { status: 201 });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'No se pudo crear la orden de trabajo';

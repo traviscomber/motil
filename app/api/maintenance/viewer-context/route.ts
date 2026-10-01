@@ -34,10 +34,22 @@ export async function GET(request: NextRequest) {
 
     const mode = resolveMaintenanceViewerMode(cargoName);
 
+    const { data: creatorPerson, error: creatorPersonError } = await context.supabase
+      .from('people')
+      .select('id,full_name')
+      .eq('organization_id', context.organizationId)
+      .eq('profile_id', access.user.id)
+      .eq('employment_status', 'active')
+      .maybeSingle();
+    if (creatorPersonError) throw creatorPersonError;
+
+    const canCreateWorkOrder = ['Ariel López', 'Mauricio Astudillo'].includes(String(creatorPerson?.full_name || ''));
+
     return NextResponse.json({
       mode,
       cargoName,
       canEdit: access.canWrite,
+      canCreateWorkOrder,
     });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'No se pudo resolver el contexto de mantenimiento' }, { status: 500 });

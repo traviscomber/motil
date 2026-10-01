@@ -19,7 +19,7 @@ type Response = {
   actions?: ActionItem[];
 };
 type ViewerMode = 'leadership' | 'planning' | 'execution' | 'oversight' | 'general';
-type ViewerContext = { mode?: ViewerMode; cargoName?: string | null; canEdit?: boolean };
+type ViewerContext = { mode?: ViewerMode; cargoName?: string | null; canEdit?: boolean; canCreateWorkOrder?: boolean };
 type Metric = readonly [string, string | number, string, string];
 
 const fetcher = async <T,>(url: string): Promise<T> => {
@@ -97,7 +97,7 @@ export function MaintenanceHome({ locale, dictionary }: { locale: Locale; dictio
   const md = t.metricDetails;
   const metricsByMode: Record<WorkMode, readonly Metric[]> = {
     leadership: [
-      [ml.outOfService, summary?.outOfServiceOperationalReviews ?? '—', md.requireDecision, '/dashboard/mantenimiento/ordenes-trabajo/create'],
+      [ml.outOfService, summary?.outOfServiceOperationalReviews ?? '—', md.requireDecision, viewer?.canCreateWorkOrder ? '/dashboard/mantenimiento/ordenes-trabajo/create' : '/dashboard/mantenimiento/ordenes-trabajo'],
       [ml.preventivePending, summary?.unplannedOverdueHourSchedules ?? '—', preventiveGroupDetail, '/dashboard/mantenimiento/preventivo-horas'],
       [ml.openWorkOrders, summary?.openWorkOrders ?? '—', md.workInProgress, '/dashboard/mantenimiento/ordenes-trabajo'],
       [ml.blockers, summary?.operationallyBlocked ?? '—', md.unblock, '/dashboard/mantenimiento/ordenes-trabajo/cierre'],
@@ -159,8 +159,8 @@ export function MaintenanceHome({ locale, dictionary }: { locale: Locale; dictio
       </PageHeaderContent>
       <PageHeaderActions>
         <Button variant="outline" onClick={() => void mutate()} disabled={isLoading}><RefreshCw className="h-4 w-4" />{t.refresh}</Button>
-        {mode === 'planning'
-          ? <Button asChild><Link href={firstAssignment?.href || '/dashboard/mantenimiento/preventivo-horas'}><Clock3 className="h-4 w-4" />{firstAssignment ? t.cta.assignWork : t.cta.plan}</Link></Button>
+        {viewer?.canCreateWorkOrder
+          ? <Button asChild><Link href="/dashboard/mantenimiento/ordenes-trabajo/create"><Wrench className="h-4 w-4" />Nueva OT</Link></Button>
           : mode === 'leadership' && firstLeadershipAction
             ? <Button asChild><Link href={firstLeadershipAction.href}><ArrowRight className="h-4 w-4" />{t.cta.attendPriority}</Link></Button>
             : mode === 'oversight'
