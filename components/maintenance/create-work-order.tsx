@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import useSWR from 'swr';
-import { ArrowLeft, ChevronDown, LoaderCircle, Plus } from 'lucide-react';
+import { ArrowLeft, ChevronDown, LoaderCircle, PackageSearch, Plus, Search, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -38,6 +38,20 @@ type Assignee = {
   role_title: string | null;
 };
 
+type MaterialCatalogItem = {
+  productId: string;
+  productCode: string | null;
+  productName: string | null;
+  family: string | null;
+  unit: string | null;
+  quantityAvailable: number;
+  warehouses: string[];
+};
+
+type PlannedMaterial = MaterialCatalogItem & {
+  quantityRequired: number;
+};
+
 type DrillingReview = {
   review_id: string;
   source_report_id: string;
@@ -67,9 +81,12 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
   const reviewId = searchParams.get('reviewId') || '';
   const [assignedPersonId, setAssignedPersonId] = useState('');
   const [canonicalAssetId, setCanonicalAssetId] = useState(initialAssetId);
+  const [assetQuery, setAssetQuery] = useState('');
   const [title, setTitle] = useState(searchParams.get('title') || '');
   const [description, setDescription] = useState(searchParams.get('description') || '');
-  const [requestedMaterials, setRequestedMaterials] = useState('');
+  const [materialQuery, setMaterialQuery] = useState('');
+  const [materialQuantity, setMaterialQuantity] = useState('1');
+  const [plannedMaterials, setPlannedMaterials] = useState<PlannedMaterial[]>([]);
   const [workType, setWorkType] = useState(searchParams.get('workType') || 'corrective');
   const [priority, setPriority] = useState(searchParams.get('priority') || 'medium');
   const [scheduledDate, setScheduledDate] = useState(searchParams.get('scheduledDate') || new Date().toISOString().slice(0, 10));
@@ -87,6 +104,12 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
 
   const { data, error, isLoading, mutate } = useSWR('/api/maintenance/equipment', fetcher, { revalidateOnFocus: false });
   const { data: assigneeData, error: assigneeError, isLoading: assigneesLoading } = useSWR('/api/maintenance/assignees', fetcher, { revalidateOnFocus: false });
+  const normalizedMaterialQuery = materialQuery.trim();
+  const { data: materialData, isLoading: materialsLoading } = useSWR(
+    normalizedMaterialQuery.length >= 2 ? `/api/maintenance/material-catalog?q=${encodeURIComponent(normalizedMaterialQuery)}` : null,
+    fetcher,
+    { revalidateOnFocus: false },
+  );
   const {
     data: reviewData,
     error: reviewError,
@@ -95,8 +118,24 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
 
   const assets = useMemo(() => (Array.isArray(data?.equipment) ? (data.equipment as Asset[]) : []), [data]);
   const assignees = useMemo(() => (Array.isArray(assigneeData?.assignees) ? (assigneeData.assignees as Assignee[]) : []), [assigneeData]);
+  const materialRows = useMemo(() => (Array.isArray(materialData?.rows) ? (materialData.rows as MaterialCatalogItem[]) : []), [materialData]);
   const selectedAsset = assets.find((asset) => asset.id === canonicalAssetId) || null;
+  const filteredAssets = useMemo(() => {
+    const needle = assetQuery.trim().toLowerCase();
+    if (!needle) return assets.slice(0, 10);
+    return assets.filter((asset) =>
+      [asset.code, asset.name, asset.type, asset.model]
+        .map((value) => String(value || '').toLowerCase())
+        .join(' ')
+        .includes(needle),
+    ).slice(0, 10);
+  }, [assetQuery, assets]);
   const review = (reviewData?.review || null) as DrillingReview | null;
+
+  useEffect(() => {
+    if (!selectedAsset || assetQuery) return;
+    setAssetQuery(`${selectedAsset.code} · ${selectedAsset.name}`);
+  }, [selectedAsset, assetQuery]);
 
   useEffect(() => {
     if (!review) return;
@@ -121,7 +160,32 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
     if (!scheduledDate) return t.validation.dateRequired;
     if (plannedHours && (!Number.isFinite(Number(plannedHours)) || Number(plannedHours) < 0)) return t.validation.plannedHoursInvalid;
     if (meterReading && (!Number.isFinite(Number(meterReading)) || Number(meterReading) < 0)) return t.validation.meterReadingInvalid;
+    if (plannedMaterials.some((item) => !Number.isFinite(item.quantityRequired) || item.quantityRequired <= 0)) return 'Revisa las cantidades de insumos';
     return null;
+  };
+
+  const chooseAsset = (asset: Asset) => {
+    setCanonicalAssetId(asset.id);
+    setAssetQuery(`${asset.code} · ${asset.name}`);
+  };
+
+  const addMaterial = (item: MaterialCatalogItem) => {
+    const quantity = Number(materialQuantity || 0);
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      toast.error('Ingresa una cantidad válida');
+      return;
+    }
+    setPlannedMaterials((current) => {
+      const existing = current.find((row) => row.productId === item.productId);
+      if (existing) {
+        return current.map((row) => row.productId === item.productId
+          ? { ...row, quantityRequired: row.quantityRequired + quantity }
+          : row);
+      }
+      return [...current, { ...item, quantityRequired: quantity }];
+    });
+    setMaterialQuery('');
+    setMaterialQuantity('1');
   };
 
   const submit = async () => {
@@ -140,7 +204,10 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
           reviewId: reviewId || null,
           title: title.trim(),
           description: description.trim() || null,
-          requestedMaterials: requestedMaterials.trim() || null,
+          materials: plannedMaterials.map((item) => ({
+            canonicalProductId: item.productId,
+            quantityRequired: item.quantityRequired,
+          })),
           workType,
           priority,
           scheduledDate,
@@ -231,11 +298,33 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="space-y-2">
-            <Label htmlFor="asset">{t.fields.asset}</Label>
-            <Select value={canonicalAssetId} onValueChange={setCanonicalAssetId} disabled={isLoading || Boolean(error) || Boolean(reviewId)}>
-              <SelectTrigger id="asset"><SelectValue placeholder={isLoading ? t.fields.loadingAssets : t.fields.selectAsset} /></SelectTrigger>
-              <SelectContent>{assets.map((asset) => <SelectItem key={asset.id} value={asset.id}>{asset.code} · {asset.name}</SelectItem>)}</SelectContent>
-            </Select>
+            <Label htmlFor="asset-search">{t.fields.asset}</Label>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="asset-search"
+                value={assetQuery}
+                onChange={(event) => {
+                  setAssetQuery(event.target.value);
+                  if (!reviewId) setCanonicalAssetId('');
+                }}
+                placeholder={isLoading ? t.fields.loadingAssets : 'Buscar por código, equipo, modelo o faena'}
+                className="pl-9"
+                disabled={isLoading || Boolean(error) || Boolean(reviewId)}
+              />
+            </div>
+            {!reviewId && assetQuery !== (selectedAsset ? `${selectedAsset.code} · ${selectedAsset.name}` : '') ? (
+              <div className="max-h-56 overflow-y-auto rounded-md border bg-card">
+                {filteredAssets.length === 0 ? (
+                  <p className="p-3 text-sm text-muted-foreground">No hay equipos con ese criterio.</p>
+                ) : filteredAssets.map((asset) => (
+                  <button key={asset.id} type="button" onClick={() => chooseAsset(asset)} className="block w-full border-b px-3 py-2 text-left last:border-b-0 hover:bg-muted/50">
+                    <p className="text-sm font-medium">{asset.code} · {asset.name}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{asset.type}{asset.model ? ` · ${asset.model}` : ''}</p>
+                  </button>
+                ))}
+              </div>
+            ) : null}
             {selectedAsset ? (
               <p className="text-xs text-muted-foreground">
                 {selectedAsset.type}{selectedAsset.model ? ` · ${selectedAsset.model}` : ''} · {t.assetStatus[selectedAsset.status as keyof typeof t.assetStatus] || selectedAsset.status}
@@ -282,6 +371,60 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
         </CardContent>
       </Card>
 
+      <details className="group rounded-lg border bg-card" open={plannedMaterials.length > 0}>
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-sm font-medium">
+          <span className="flex items-center gap-2"><PackageSearch className="h-4 w-4" />Insumos de bodega <span className="font-normal text-muted-foreground">(opcional)</span></span>
+          <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
+        </summary>
+        <div className="space-y-4 border-t px-5 py-5">
+          <p className="text-sm text-muted-foreground">Selecciona lo que debería estar disponible para ejecutar la OT. No descuenta stock todavía.</p>
+          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_100px]">
+            <div className="space-y-2">
+              <Label htmlFor="material-search">Buscar insumo</Label>
+              <Input id="material-search" value={materialQuery} onChange={(event) => setMaterialQuery(event.target.value)} placeholder="Código o nombre, mínimo 2 caracteres" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="material-qty">Cantidad</Label>
+              <Input id="material-qty" type="number" min="0.01" step="0.01" value={materialQuantity} onChange={(event) => setMaterialQuantity(event.target.value)} />
+            </div>
+          </div>
+          {normalizedMaterialQuery.length >= 2 ? (
+            <div className="max-h-56 overflow-y-auto rounded-md border bg-card">
+              {materialsLoading ? <p className="p-3 text-sm text-muted-foreground">Buscando insumos…</p> : materialRows.length === 0 ? <p className="p-3 text-sm text-muted-foreground">Sin coincidencias.</p> : materialRows.map((item) => (
+                <button key={item.productId} type="button" onClick={() => addMaterial(item)} className="block w-full border-b px-3 py-2 text-left last:border-b-0 hover:bg-muted/50">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{item.productCode || 'Sin código'} · {item.productName || 'Producto'}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">{item.warehouses.length ? item.warehouses.join(', ') : 'Sin bodega informada'}</p>
+                    </div>
+                    <span className={item.quantityAvailable > 0 ? 'shrink-0 text-xs text-muted-foreground' : 'shrink-0 text-xs text-destructive'}>
+                      {item.quantityAvailable > 0 ? `${item.quantityAvailable} disponibles` : 'Sin stock'}
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          ) : null}
+          {plannedMaterials.length > 0 ? (
+            <div className="divide-y rounded-md border">
+              {plannedMaterials.map((item) => (
+                <div key={item.productId} className="flex items-center justify-between gap-3 p-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{item.productCode || 'Sin código'} · {item.productName || 'Producto'}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      Requerido: {item.quantityRequired} {item.unit || 'unid.'} · Stock libre: {item.quantityAvailable}
+                    </p>
+                  </div>
+                  <Button type="button" variant="ghost" size="icon-sm" aria-label="Quitar insumo" onClick={() => setPlannedMaterials((current) => current.filter((row) => row.productId !== item.productId))}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      </details>
+
       <Card className="shadow-none">
         <CardHeader className="pb-4">
           <CardTitle className="text-base">3. Cuándo</CardTitle>
@@ -316,15 +459,11 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
               <SelectContent><SelectItem value="hours">{t.meterUnits.hours}</SelectItem><SelectItem value="km">{t.meterUnits.km}</SelectItem><SelectItem value="cycles">{t.meterUnits.cycles}</SelectItem></SelectContent>
             </Select>
           </div>
-          <div className="space-y-2 sm:col-span-2">
-            <Label htmlFor="requested-materials">{t.fields.materials}</Label>
-            <Textarea id="requested-materials" value={requestedMaterials} onChange={(event) => setRequestedMaterials(event.target.value)} placeholder={t.fields.materialsPlaceholder} rows={2} />
-          </div>
         </div>
       </details>
 
       <div className="sticky bottom-3 z-10 flex items-center justify-between gap-3 rounded-lg border bg-background/95 p-3 shadow-sm backdrop-blur">
-        <p className="hidden text-sm text-muted-foreground sm:block">Después podrás asignar responsable, repuestos y seguimiento.</p>
+        <p className="hidden text-sm text-muted-foreground sm:block">El responsable, equipo e insumos quedan ligados a la OT desde el inicio.</p>
         <div className="ml-auto flex gap-2">
           <Button asChild variant="outline"><Link href="/dashboard/mantenimiento/ordenes-trabajo">{t.cancel}</Link></Button>
           <Button onClick={submit} disabled={submitting || isLoading || assigneesLoading || Boolean(error) || Boolean(assigneeError) || reviewLoading || Boolean(reviewError) || Boolean(review?.linked_work_order_id)}>
