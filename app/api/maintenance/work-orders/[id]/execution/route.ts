@@ -47,6 +47,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     if (firstError) throw firstError;
     if (!orderResult.data) return NextResponse.json({ error: 'La orden no existe' }, { status: 404 });
 
+    const { data: workers, error: workersError } = await context.supabase
+      .from('people')
+      .select('id,full_name,role_title,profile_id,employment_status')
+      .eq('organization_id', context.organizationId)
+      .eq('employment_status', 'active')
+      .order('full_name');
+    if (workersError) throw workersError;
+
     const cost = costsResult.data;
     const costs = cost ? { ...cost, external_cost: cost.effective_external_cost, latest_snapshot: snapshotResult.data?.[0] || null } : {
       parts_cost: 0,
@@ -70,6 +78,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       workOrder: orderResult.data,
       parts: partsResult.data || [],
       labor: laborResult.data || [],
+      workers: workers || [],
       externalServices: servicesResult.data || [],
       events: eventsResult.data || [],
       costs,
@@ -111,12 +120,21 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     if (body.action === 'add_labor') {
-      if (!body.technicianName?.trim() || !body.hours || body.hours <= 0) return NextResponse.json({ error: 'Técnico y horas son obligatorios' }, { status: 400 });
+      if (!body.technicianId || !body.hours || body.hours <= 0) return NextResponse.json({ error: 'Persona y horas son obligatorias' }, { status: 400 });
+      const { data: worker, error: workerError } = await context.supabase
+        .from('people')
+        .select('id,full_name,employment_status')
+        .eq('organization_id', context.organizationId)
+        .eq('id', body.technicianId)
+        .eq('employment_status', 'active')
+        .maybeSingle();
+      if (workerError) throw workerError;
+      if (!worker) return NextResponse.json({ error: 'La persona seleccionada no está activa en el maestro de personas.' }, { status: 400 });
       const { data, error } = await context.supabase.rpc('add_work_order_labor', {
         p_organization_id: context.organizationId,
         p_work_order_id: id,
-        p_technician_id: body.technicianId || null,
-        p_technician_name: body.technicianName.trim(),
+        p_technician_id: worker.id,
+        p_technician_name: worker.full_name,
         p_hours: body.hours,
         p_hourly_cost: Math.max(0, Number(body.hourlyCost || 0)),
         p_notes: body.notes || null,
