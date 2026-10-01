@@ -236,7 +236,11 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
               <SelectTrigger id="asset"><SelectValue placeholder={isLoading ? t.fields.loadingAssets : t.fields.selectAsset} /></SelectTrigger>
               <SelectContent>{assets.map((asset) => <SelectItem key={asset.id} value={asset.id}>{asset.code} · {asset.name}</SelectItem>)}</SelectContent>
             </Select>
-            {selectedAsset ? <p className="text-xs text-muted-foreground">{selectedAsset.type}{selectedAsset.model ? ` · ${selectedAsset.model}` : ''}</p> : null}
+            {selectedAsset ? (
+              <p className="text-xs text-muted-foreground">
+                {selectedAsset.type}{selectedAsset.model ? ` · ${selectedAsset.model}` : ''} · {t.assetStatus[selectedAsset.status as keyof typeof t.assetStatus] || selectedAsset.status}
+              </p>
+            ) : null}
           </div>
 
           <div className="space-y-2">
