@@ -148,16 +148,20 @@ test('asset 360 history section owns the audited intervention and recent event t
   assert.match(historySection, /export type Asset360AuditedIntervention = \{/);
   assert.match(historySection, /closure_sequence\?: number \| null;/);
   assert.match(historySection, /preventive_actions\?: string \| null;/);
+  assert.match(historySection, /export type Asset360LaborEntry = \{/);
+  assert.match(historySection, /technician_name\?: string \| null;/);
+  assert.match(historySection, /hours\?: number \| string \| null;/);
 });
 
 test('asset 360 history section renders audited closures and recent activity', () => {
   assert.match(historySection, /export function Asset360HistorySection\(/);
-  assert.match(historySection, /if \(auditedInterventions\.length === 0 && recentEvents\.length === 0\) return null;/);
+  assert.match(historySection, /if \(auditedInterventions\.length === 0 && recentEvents\.length === 0 && laborEntries\.length === 0\) return null;/);
   assert.match(historySection, /title="Historial de mantención"/);
   assert.match(historySection, /Últimas intervenciones auditadas/);
   assert.match(historySection, /Sin cierres auditados\./);
   assert.match(historySection, /Más historial/);
   assert.match(historySection, /Actividad reciente/);
+  assert.match(historySection, /Personal registrado/);
 });
 
 test('asset 360 overview delegates maintenance history to the history section', () => {
@@ -165,6 +169,7 @@ test('asset 360 overview delegates maintenance history to the history section', 
   assert.match(overview, /<Asset360HistorySection[ \n]/);
   assert.match(overview, /auditedInterventions=\{auditedInterventions\}/);
   assert.match(overview, /recentEvents=\{recentEvents\}/);
+  assert.match(overview, /laborEntries=\{laborEntries\}/);
   assert.match(overview, /auditedInterventions\?: Asset360AuditedIntervention\[\]/);
   assert.match(overview, /recentEvents\?: Asset360RecentEvent\[\]/);
   assert.doesNotMatch(overview, /Últimas intervenciones auditadas/);
