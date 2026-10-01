@@ -12,6 +12,7 @@ export function DocumentUploadForm() {
   const [title, setTitle] = useState('');
   const [docType, setDocType] = useState('contrato');
   const [category, setCategory] = useState('legal');
+  const [expiryDate, setExpiryDate] = useState('');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
@@ -31,7 +32,7 @@ export function DocumentUploadForm() {
       formData.append('title', resolvedTitle);
       formData.append('documentType', docType);
       formData.append('category', category);
-      formData.append('expiryDate', new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString());
+      if (expiryDate) formData.append('expiryDate', expiryDate);
 
       const res = await fetch('/api/legal/documentos/upload', {
         method: 'POST',
@@ -46,6 +47,7 @@ export function DocumentUploadForm() {
       toast({ title: 'Éxito', description: `Documento cargado: ${resolvedTitle}` });
       setFile(null);
       setTitle('');
+      setExpiryDate('');
     } catch (err) {
       toast({ title: 'Error', description: err instanceof Error ? err.message : 'La carga falló' });
     } finally {
@@ -97,6 +99,17 @@ export function DocumentUploadForm() {
             <SelectItem value="operacional">Operacional</SelectItem>
           </SelectContent>
         </Select>
+      </div>
+      <div>
+        <label className="text-sm font-medium">Vencimiento</label>
+        <Input
+          type="date"
+          value={expiryDate}
+          onChange={(e) => setExpiryDate(e.target.value)}
+        />
+        <p className="mt-1 text-xs text-muted-foreground">
+          Opcional. Si el documento no tiene vencimiento acreditado, se deja sin fecha.
+        </p>
       </div>
       <Button type="submit" disabled={loading} className="gap-2">
         <Upload className="h-4 w-4" />
