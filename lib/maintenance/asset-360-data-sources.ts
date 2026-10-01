@@ -98,7 +98,7 @@ export async function queryAsset360Sources(
           .eq('organization_id', context.organizationId)
       : Promise.resolve({ data: [], error: null });
 
-  const [ordersResult, closeResult, preventiveResult, runtimeResult, reliabilityResult, runtimeReliabilityResult, snapshotsResult, partsResult, eventsResult, statusHistoryResult, planningResult, operationalStateResult, operatingSpineResult, supplyChainResult, procurementOrdersResult, costCenterPurchaseHistoryResult, namePurchaseHistoryResult, economicHistoryResult, drillingHistoryResult, drillEconomicsResult, drillingReviewResult, maintenancePriorityResult, financeReconciliationResult, runtimeCostResult, meterHistoryResult, drillEvidenceResult, drillEconomicsChangeResult, taskCandidatesResult, standardPlanResult, identityHistoryResult, exactCostCenterDetailResult, costCenterMatchResult] = await Promise.all([
+  const [ordersResult, closeResult, preventiveResult, runtimeResult, reliabilityResult, runtimeReliabilityResult, snapshotsResult, partsResult, laborResult, eventsResult, statusHistoryResult, planningResult, operationalStateResult, operatingSpineResult, supplyChainResult, procurementOrdersResult, costCenterPurchaseHistoryResult, namePurchaseHistoryResult, economicHistoryResult, drillingHistoryResult, drillEconomicsResult, drillingReviewResult, maintenancePriorityResult, financeReconciliationResult, runtimeCostResult, meterHistoryResult, drillEvidenceResult, drillEconomicsChangeResult, taskCandidatesResult, standardPlanResult, identityHistoryResult, exactCostCenterDetailResult, costCenterMatchResult] = await Promise.all([
     context.supabase
       .from('maintenance_operational_work_order_flow_v1')
       .select('work_order_id,work_order_number,status,priority,work_type,scheduled_date,assigned_person_name,flow_status,open_purchase_order_count,quantity_requested,quantity_issued,quantity_installed,total_cost')
@@ -149,6 +149,13 @@ export async function queryAsset360Sources(
       .eq('canonical_asset_id', id)
       .order('created_at', { ascending: false })
       .limit(200),
+    context.supabase
+      .from('work_order_labor_entries')
+      .select('id,work_order_id,technician_id,technician_name,hours,hourly_cost,total_cost,started_at,ended_at,notes,created_at')
+      .eq('organization_id', context.organizationId)
+      .eq('canonical_asset_id', id)
+      .order('created_at', { ascending: false })
+      .limit(100),
     context.supabase
       .from('work_order_events')
       .select('id,work_order_id,event_type,event_at,actor_name,summary')
@@ -318,6 +325,7 @@ export async function queryAsset360Sources(
     ['runtimeReliability', runtimeReliabilityResult],
     ['closureSnapshots', snapshotsResult],
     ['parts', partsResult],
+    ['labor', laborResult],
     ['events', eventsResult],
     ['statusHistory', statusHistoryResult],
     ['maintenancePlanning', planningResult],
@@ -363,6 +371,7 @@ export async function queryAsset360Sources(
     runtimeReliabilityResult,
     snapshotsResult,
     partsResult,
+    laborResult,
     eventsResult,
     statusHistoryResult,
     planningResult,
