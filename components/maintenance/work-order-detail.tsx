@@ -138,7 +138,7 @@ export function WorkOrderDetail({ locale, dictionary }: { locale: Locale; dictio
           <h1 className="mt-2 text-2xl font-semibold tracking-tight">{workOrder.title || t.untitled}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{workOrder.asset_code || t.noCode} · {workOrder.asset_name || t.noAsset}</p>
         </div>
-        <Button asChild variant="outline"><Link href={`/dashboard/mantenimiento/assets/${workOrder.canonical_asset_id || workOrder.asset_id}`}>Ficha 360</Link></Button>
+        <Button asChild variant="outline"><Link href={`/dashboard/mantenimiento/equipos/${workOrder.canonical_asset_id || workOrder.asset_id}`}>Ficha 360</Link></Button>
       </section>
 
       <Card className="shadow-none">
