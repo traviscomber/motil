@@ -49,6 +49,7 @@ async function loadAssignees(context: Awaited<ReturnType<typeof getOrganizationC
     .select('id,full_name,role_title,profile_id')
     .eq('organization_id', context.organizationId)
     .eq('employment_status', 'active')
+    .not('profile_id', 'is', null)
     .order('full_name');
   if (error) throw error;
   return data || [];
@@ -60,6 +61,7 @@ async function resolveAssignee(context: Awaited<ReturnType<typeof getOrganizatio
     .eq('organization_id', context.organizationId)
     .eq('id', personId)
     .eq('employment_status', 'active')
+    .not('profile_id', 'is', null)
     .maybeSingle();
   if (error) throw error;
   if (!data) throw new Error('El responsable seleccionado no es una persona operativa activa y vinculada.');
