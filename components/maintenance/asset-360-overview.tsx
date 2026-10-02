@@ -642,6 +642,7 @@ export function Asset360Overview({
         evidenceDomainCount={operatingSpine?.evidence_domain_count}
         financeReconciliation={financeReconciliation}
         identityHistory={identityHistory}
+        unavailableSources={data.unavailableSources || []}
       />
     </div>
   );
