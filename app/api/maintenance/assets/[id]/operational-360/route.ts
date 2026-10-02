@@ -86,6 +86,33 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       acquisition_cost: sourcePayload.acquisition_cost ?? canonicalCurrent?.acquisition_cost ?? null,
       expected_lifespan_years: sourcePayload.expected_lifespan_years ?? canonicalCurrent?.expected_lifespan_years ?? null,
       baseline_mtbf_hours: sourcePayload.mtbf_hours ?? canonicalCurrent?.mtbf_hours ?? null,
+      source_year:
+        sourcePayload.year != null && Number.isFinite(Number(sourcePayload.year))
+          ? Number(sourcePayload.year)
+          : null,
+      source_assignment:
+        typeof sourcePayload.assignment === 'string' && sourcePayload.assignment.trim()
+          ? sourcePayload.assignment.trim()
+          : null,
+      source_last_record:
+        typeof sourcePayload.last_record === 'string' && sourcePayload.last_record.trim()
+          ? sourcePayload.last_record.trim()
+          : null,
+      source_maintenance_records:
+        sourcePayload.maintenance_records != null && Number.isFinite(Number(sourcePayload.maintenance_records))
+          ? Number(sourcePayload.maintenance_records)
+          : null,
+      source_maintenance_spend:
+        sourcePayload.aggregated_spend != null && Number.isFinite(Number(sourcePayload.aggregated_spend))
+          ? Number(sourcePayload.aggregated_spend)
+          : null,
+      source_history_evidence_source:
+        sourcePayload.maintenance_records != null ||
+        sourcePayload.aggregated_spend != null ||
+        sourcePayload.assignment != null ||
+        sourcePayload.year != null
+          ? 'maintenance_canonical_assets_v1.source_payload'
+          : null,
       source_file: asset.source_file,
       source_sheet: asset.source_sheet,
       source_row: asset.source_row,
