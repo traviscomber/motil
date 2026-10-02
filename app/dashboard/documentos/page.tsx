@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import useSWR from 'swr';
 import { toast } from 'sonner';
-import { AlertCircle, ArrowRight, CheckCircle, Clock, FileText, Plus } from 'lucide-react';
+import { ArrowRight, Plus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -141,10 +141,10 @@ export default function DocumentosDashboard() {
 
   const statValue = (key: keyof DocumentStats) => statsLoading || !stats ? '—' : stats[key].toLocaleString('es-CL');
   const summaryCards = [
-    { label: 'Total', value: statValue('total'), icon: <FileText className="h-4 w-4" /> },
-    { label: 'Aprobados', value: statValue('approved'), icon: <CheckCircle className="h-4 w-4" /> },
-    { label: 'Pendientes', value: statValue('pending'), icon: <Clock className="h-4 w-4" /> },
-    { label: 'Vencidos', value: statValue('expired'), icon: <AlertCircle className="h-4 w-4" /> },
+    { label: 'Documentos', value: statValue('total') },
+    { label: 'Aprobados', value: statValue('approved') },
+    { label: 'Pendientes', value: statValue('pending') },
+    { label: 'Vencidos', value: statValue('expired') },
   ];
   const documentList = documentsError
     ? <StatePanel tone="error" title="Biblioteca no disponible" description="La falla de la fuente no se interpreta como una biblioteca vacía." />
@@ -152,24 +152,24 @@ export default function DocumentosDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
+      <header className="flex flex-col gap-4 border-b pb-5 md:flex-row md:items-end md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground mb-2">Gestión de Documentos</h1>
-          <p className="text-muted-foreground">Administra documentos y aprobaciones con trazabilidad de fuente.</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Documentación</p><h1 className="mt-1 text-3xl font-semibold tracking-tight">Biblioteca</h1>
+          <p className="mt-2 text-sm text-muted-foreground">Documentos, búsqueda y aprobaciones con trazabilidad de fuente.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button asChild variant="outline"><Link href="/dashboard/documentos/importar"><ArrowRight className="mr-2 h-4 w-4" />Importar documentos</Link></Button>
           <Button onClick={() => setUploadModalOpen(true)}><Plus className="mr-2 h-4 w-4" />Subir documento</Button>
         </div>
-      </div>
+      </header>
 
       {anySourceError ? <StatePanel tone="error" title="Parte de Documentación no pudo actualizarse" description="Las listas o cifras afectadas permanecen sin dato; no se sustituyen por cero." actions={<Button variant="outline" onClick={() => void refreshAll()}>Reintentar</Button>} className="min-h-0" /> : null}
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        {summaryCards.map(({ label, value, icon }) => <Card key={label}><CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">{icon}{label}</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold text-foreground">{value}</p></CardContent></Card>)}
+      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border bg-border md:grid-cols-4">
+        {summaryCards.map(({ label, value }) => <div key={label} className="bg-card p-4"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-2xl font-semibold">{value}</p></div>)}
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-3">
         <TabsList>
           <TabsTrigger value="all">Todos</TabsTrigger>
           <TabsTrigger value="pending">Pendientes ({stats ? stats.pending : '—'})</TabsTrigger>
