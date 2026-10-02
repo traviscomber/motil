@@ -9,7 +9,7 @@ const myWork = await readFile(new URL('../app/api/maintenance/my-work/route.ts',
 test('execution users receive the dedicated assigned-work surface on every viewport', () => {
   assert.match(dashboard, /if \(mode === 'execution'\) \{/);
   assert.match(dashboard, /<MobileTerrainPanel \/>/);
-  assert.match(dashboard, /max-w-xl/);
+  assert.match(dashboard, /mobileExecution \? 'mx-auto w-full max-w-md' : 'mx-auto w-full max-w-2xl'/);
   assert.doesNotMatch(dashboard, /md:hidden"><MobileTerrainPanel/);
   assert.doesNotMatch(dashboard, /mode==='execution' \? 'hidden md:block' : undefined/);
 });
@@ -36,4 +36,12 @@ test('my-work API requires canonical person linkage and scopes work orders to th
   assert.match(myWork, /\.from\('maintenance_work_orders'\)/);
   assert.match(myWork, /\.eq\('assigned_person_id', person\.id\)/);
   assert.match(myWork, /terminalStatuses/);
+});
+
+
+test('legacy mobile route uses the same minimal assigned-work surface', async () => {
+  const mobileRoute = await readFile(new URL('../app/dashboard/mantenimiento/movil/page.tsx', import.meta.url), 'utf8');
+  assert.match(mobileRoute, /MobileTerrainPanel/);
+  assert.doesNotMatch(mobileRoute, /MaintenanceMobilePanel/);
+  assert.doesNotMatch(mobileRoute, /Dashboard gerencial/);
 });
