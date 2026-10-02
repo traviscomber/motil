@@ -607,7 +607,7 @@ export async function POST(request: NextRequest) {
       result = canonicalFallbackAnswer(message, canonical.context);
       runtimeMode = 'canonical_fallback';
     }
-    const toolsUsed = result.toolAudit.map(({ name, mode }: { name: string; mode: string }) => ({ name, mode }));
+    const toolsUsed = result.toolAudit.map(({ name, mode }) => ({ name, mode }));
     const sourceRefs = [
       ...canonical.sources.map((source) => ({ source })),
       ...toolsUsed.map((tool) => ({ tool: tool.name, mode: tool.mode })),
