@@ -49,3 +49,10 @@ test('people provenance and health are visible', async () => {
   assert.match(widget, /search_people: 'Personas'/);
   assert.match(widget, /get_person_work_context: 'Contexto de persona'/);
 });
+
+
+test('canonical fallback recognizes natural person-first OT phrasing', async () => {
+  const route = await readFile(routeUrl, 'utf8');
+  assert.match(route, /ot tiene/);
+  assert.match(route, /ots tiene/);
+});
