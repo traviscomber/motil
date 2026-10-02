@@ -67,3 +67,15 @@ test('Ficha 360 includes canonical monthly drill economics when available', asyn
   assert.match(drilling, /Serie mensual costo \+ producción/);
   assert.match(drilling, /cost_clp_per_meter/);
 });
+
+
+test('Ficha 360 distinguishes unavailable canonical sources from missing evidence', async () => {
+  const [overview, coverage] = await Promise.all([
+    readFile(overviewUrl, 'utf8'),
+    readFile(coverageUrl, 'utf8'),
+  ]);
+  assert.match(overview, /unavailableSources=\{data\.unavailableSources \|\| \[\]\}/);
+  assert.match(coverage, /Fuentes temporalmente no disponibles/);
+  assert.match(coverage, /no se interpretan como datos inexistentes/);
+  assert.match(coverage, /drillEconomicsMonthly: 'Serie mensual costo \+ producción'/);
+});
