@@ -2,6 +2,8 @@ export type MaintenanceSeniorToolMode = 'read' | 'prepare_only'
 
 export type MaintenanceSeniorToolName =
   | 'search_assets'
+  | 'search_people'
+  | 'get_person_work_context'
   | 'get_maintenance_attention_queue'
   | 'get_maintenance_attention_context'
   | 'get_asset_context'
@@ -27,6 +29,7 @@ export type MaintenanceSeniorToolDefinition = {
 
 export type MaintenanceCanonicalToolContext = {
   assets?: any[]
+  people?: any[]
   pending_operational_reviews?: any[]
   observed_conditions_90d?: any[]
   preventive_hour_status?: any[]
@@ -58,6 +61,8 @@ export type MaintenancePreparedDecisionCase = {
 
 const toolModes: Record<MaintenanceSeniorToolName, MaintenanceSeniorToolMode> = {
   search_assets: 'read',
+  search_people: 'read',
+  get_person_work_context: 'read',
   get_maintenance_attention_queue: 'read',
   get_maintenance_attention_context: 'read',
   get_asset_context: 'read',
@@ -75,6 +80,34 @@ const assetIdSchema = {
 }
 
 export const maintenanceSeniorTools: MaintenanceSeniorToolDefinition[] = [
+  {
+    type: 'function',
+    name: 'search_people',
+    description: 'READ. Busca personas canónicas activas por nombre, apellido, correo o cargo dentro de la organización. Tolera tildes y pequeñas variaciones de escritura. No modifica personas ni permisos.',
+    strict: true,
+    parameters: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Nombre, apellido, correo o cargo mencionado por el usuario.' },
+      },
+      required: ['query'],
+      additionalProperties: false,
+    },
+  },
+  {
+    type: 'function',
+    name: 'get_person_work_context',
+    description: 'READ. Recupera identidad laboral canónica, jefatura, reportes directos y OT abiertas asignadas a una persona ya resuelta. Úsala para preguntas como "qué tiene Joaquín", "quién depende de Mauricio" o "qué OT tiene esta persona".',
+    strict: true,
+    parameters: {
+      type: 'object',
+      properties: {
+        person_id: { type: 'string', description: 'ID canónico de people obtenido desde search_people o el contexto del usuario.' },
+      },
+      required: ['person_id'],
+      additionalProperties: false,
+    },
+  },
   {
     type: 'function',
     name: 'search_assets',
@@ -263,6 +296,79 @@ function normalizedText(value: unknown) {
   return String(value ?? '').trim().toLowerCase()
 }
 
+function normalizedPersonText(value: unknown) {
+  return String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9@.]+/g, ' ')
+    .trim()
+}
+
+function editDistance(a: string, b: string) {
+  const left = a || ''
+  const right = b || ''
+  const dp = Array.from({ length: left.length + 1 }, (_, i) => i)
+  for (let j = 1; j <= right.length; j += 1) {
+    let previous = dp[0]
+    dp[0] = j
+    for (let i = 1; i <= left.length; i += 1) {
+      const current = dp[i]
+      dp[i] = Math.min(
+        dp[i] + 1,
+        dp[i - 1] + 1,
+        previous + (left[i - 1] === right[j - 1] ? 0 : 1),
+      )
+      previous = current
+    }
+  }
+  return dp[left.length]
+}
+
+function personMatchScore(person: any, rawQuery: unknown) {
+  const query = normalizedPersonText(rawQuery)
+  if (!query) return 0
+  const queryTokens = query.split(/\s+/).filter(Boolean)
+  const fields = [
+    person?.full_name,
+    person?.email,
+    person?.role_title,
+    person?.normalized_name,
+  ].map(normalizedPersonText).filter(Boolean)
+  const joined = fields.join(' ')
+  if (joined.includes(query)) return 100
+
+  let score = 0
+  const fieldTokens = joined.split(/\s+/).filter(Boolean)
+  for (const q of queryTokens) {
+    if (fieldTokens.includes(q)) {
+      score += 20
+      continue
+    }
+    if (q.length >= 4 && fieldTokens.some((token) => token.startsWith(q) || q.startsWith(token))) {
+      score += 12
+      continue
+    }
+    if (q.length >= 4 && fieldTokens.some((token) => Math.abs(token.length - q.length) <= 1 && editDistance(token, q) <= 1)) {
+      score += 8
+    }
+  }
+  return score
+}
+
+function publicPerson(person: any, context: MaintenanceCanonicalToolContext) {
+  const supervisor = (context.people || []).find((row) => String(row?.id || '') === String(person?.supervisor_person_id || ''))
+  return {
+    person_id: person?.id || null,
+    full_name: person?.full_name || null,
+    role_title: person?.role_title || null,
+    email: person?.email || null,
+    employment_status: person?.employment_status || null,
+    supervisor_person_id: person?.supervisor_person_id || null,
+    supervisor_name: supervisor?.full_name || null,
+  }
+}
+
 function cappedLimit(value: unknown, fallback = 10) {
   const parsed = Number(value)
   if (!Number.isFinite(parsed)) return fallback
@@ -350,6 +456,47 @@ export function executeMaintenanceSeniorTool(
   const args = rawArgs && typeof rawArgs === 'object' && !Array.isArray(rawArgs)
     ? rawArgs as Record<string, unknown>
     : {}
+
+  if (name === 'search_people') {
+    const query = String(args.query || '').trim()
+    if (!query) throw new Error('query es obligatorio para buscar personas')
+    const rows = (context.people || [])
+      .filter((person) => String(person?.employment_status || '').toLowerCase() === 'active')
+      .map((person) => ({ person, score: personMatchScore(person, query) }))
+      .filter(({ score }) => score > 0)
+      .sort((a, b) => b.score - a.score || String(a.person?.full_name || '').localeCompare(String(b.person?.full_name || ''), 'es'))
+      .slice(0, 10)
+      .map(({ person }) => publicPerson(person, context))
+    return {
+      mode,
+      rows,
+      semantics: 'Identidad laboral desde people canónico. Coincidencia tolerante a tildes y pequeñas variaciones; si hay más de una persona plausible, el usuario debe confirmar.',
+    }
+  }
+
+  if (name === 'get_person_work_context') {
+    const personId = String(args.person_id || '').trim()
+    if (!personId) throw new Error('person_id es obligatorio para esta herramienta')
+    const person = (context.people || []).find((row) => String(row?.id || '') === personId)
+    if (!person) throw new Error('La persona no existe en el directorio canónico autorizado')
+    const directReports = (context.people || [])
+      .filter((row) => String(row?.supervisor_person_id || '') === personId && String(row?.employment_status || '').toLowerCase() === 'active')
+      .map((row) => publicPerson(row, context))
+    const assignedOpenWorkOrders = (context.operational_work_orders || [])
+      .filter((row) => String(row?.assigned_person_id || '') === personId)
+      .filter((row) => !['closed', 'cerrada', 'cerrado', 'completed', 'completada', 'completado', 'cancelled', 'cancelada', 'cancelado'].includes(normalizedText(row?.status)))
+    const createdWorkOrders = person?.profile_id
+      ? (context.operational_work_orders || []).filter((row) => String(row?.created_by || '') === String(person.profile_id))
+      : []
+    return {
+      mode,
+      person: publicPerson(person, context),
+      direct_reports: directReports,
+      assigned_open_work_orders: assignedOpenWorkOrders,
+      created_work_orders: createdWorkOrders.slice(0, 20),
+      semantics: 'La identidad y jerarquía provienen de people canónico; las OT reflejan registros operacionales disponibles y no implican responsabilidad causal por una falla.',
+    }
+  }
 
   if (name === 'search_assets') {
     const query = normalizedText(args.query)
