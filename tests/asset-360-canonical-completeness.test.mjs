@@ -52,3 +52,18 @@ test('Ficha 360 surfaces canonical validation notes and lifecycle provenance', a
   assert.match(lifecycle, /Estado de ciclo de vida/);
   assert.match(coverage, /Notas de calidad canónica/);
 });
+
+
+test('Ficha 360 includes canonical monthly drill economics when available', async () => {
+  const [sources, route, overview, drilling] = await Promise.all([
+    readFile(new URL('../lib/maintenance/asset-360-data-sources.ts', import.meta.url), 'utf8'),
+    readFile(routeUrl, 'utf8'),
+    readFile(overviewUrl, 'utf8'),
+    readFile(new URL('../components/maintenance/asset-360/drilling-section.tsx', import.meta.url), 'utf8'),
+  ]);
+  assert.match(sources, /drill_asset_unit_economics_monthly_v1/);
+  assert.match(route, /drillEconomicsMonthly/);
+  assert.match(overview, /drillEconomicsMonthly/);
+  assert.match(drilling, /Serie mensual costo \+ producción/);
+  assert.match(drilling, /cost_clp_per_meter/);
+});
