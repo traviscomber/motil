@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
   if (!context.ok) return context.response;
 
   try {
+    const orderId = request.nextUrl.searchParams.get('orderId')?.trim();
     const workOrderId = request.nextUrl.searchParams.get('workOrderId')?.trim();
     let pipelineQuery = context.supabase
       .from('operational_procurement_pipeline')
@@ -20,6 +21,7 @@ export async function GET(request: NextRequest) {
       .eq('organization_id', context.organizationId)
       .order('required_date', { ascending: true, nullsFirst: false });
     if (workOrderId) pipelineQuery = pipelineQuery.eq('work_order_id', workOrderId);
+    if (orderId) pipelineQuery = pipelineQuery.eq('order_id', orderId);
     const { data: pipeline, error: pipelineError } = await pipelineQuery;
     if (pipelineError) {
       console.error('[procurement/operational-pipeline:view]', pipelineError);
