@@ -25,7 +25,7 @@ test('Ficha 360 exposes canonical imported vehicle history without promoting it 
   assert.match(identity, /Año informado/);
   assert.match(identity, /Asignación/);
   assert.match(identity, /Conteo histórico importado; no equivale a OT auditadas/);
-  assert.match(economics, /Histórico importado/);
+  assert.match(economics, /Monto histórico importado/);
   assert.match(economics, /moneda no informada y no reconciliado como costo auditado de OT/);
   assert.match(coverage, /Histórico importado del maestro canónico/);
 });
