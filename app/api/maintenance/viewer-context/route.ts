@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
     }
 
     const mode = resolveMaintenanceViewerMode(cargoName);
+    const mobileExecution = String(cargoName || '').trim().toLowerCase().startsWith('mecánico');
 
     const { data: creatorPerson, error: creatorPersonError } = await context.supabase
       .from('people')
@@ -50,6 +51,7 @@ export async function GET(request: NextRequest) {
       cargoName,
       canEdit: access.canWrite,
       canCreateWorkOrder,
+      mobileExecution,
     });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'No se pudo resolver el contexto de mantenimiento' }, { status: 500 });
