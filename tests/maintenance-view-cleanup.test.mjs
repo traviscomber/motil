@@ -6,6 +6,7 @@ const mobilePage = await readFile(new URL('../app/dashboard/mantenimiento/movil/
 const mobileLegacy = await readFile(new URL('../components/maintenance/maintenance-mobile-panel.tsx', import.meta.url), 'utf8');
 const personnel = await readFile(new URL('../components/maintenance/technician-performance-board.tsx', import.meta.url), 'utf8');
 const home = await readFile(new URL('../components/dashboard/maintenance-home.tsx', import.meta.url), 'utf8');
+const workOrders = await readFile(new URL('../components/maintenance/work-orders-queue.tsx', import.meta.url), 'utf8');
 
 test('maintenance mobile route uses assigned work instead of the legacy global mobile dashboard', () => {
   assert.match(mobilePage, /MobileTerrainPanel/);
@@ -33,4 +34,13 @@ test('personnel summary stays within the MOTIL two-to-four metric rule', () => {
 test('maintenance home does not repeat static people and vehicle canonical overviews', () => {
   assert.doesNotMatch(home, /CanonicalMaintenanceOverview/);
   assert.doesNotMatch(home, /canonical-maintenance-overview/);
+});
+
+
+test('work-order queue keeps planning and closure in their dedicated routes', () => {
+  assert.doesNotMatch(workOrders, /MaintenanceSchedule/);
+  assert.doesNotMatch(workOrders, /progressiveClose/);
+  assert.doesNotMatch(workOrders, /getStatusClass/);
+  assert.match(workOrders, /getStatusVariant/);
+  assert.match(workOrders, /xl:grid-cols-\[minmax\(240px,1fr\)_170px_170px_auto\]/);
 });
