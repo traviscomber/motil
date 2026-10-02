@@ -64,7 +64,7 @@ export default function DesempenoPage() {
 
   return <div className="space-y-6">
     <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-      <div><p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Gestión</p><h1 className="mt-1 text-2xl font-semibold tracking-tight">Desempeño</h1><p className="mt-2 max-w-3xl text-sm text-muted-foreground">KPIs operacionales trazables por cargo y dominio. No es una evaluación personal.</p></div>
+      <div><p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Gestión</p><h1 className="mt-1 text-2xl font-semibold tracking-tight">Desempeño operacional</h1><p className="mt-2 max-w-3xl text-sm text-muted-foreground">KPIs operacionales trazables por cargo y dominio. No es una evaluación personal.</p></div>
       <Select value={selection} onValueChange={setSelection}><SelectTrigger className="w-full md:w-[340px]"><SelectValue placeholder="Seleccionar cargo o persona" /></SelectTrigger><SelectContent><SelectItem value="TODOS">Todos los cargos medidos</SelectItem>{(payload?.profiles || []).map((profile) => <SelectItem key={profile.id} value={`PROFILE:${profile.id}`}>{profile.full_name || 'Sin nombre'} · {profile.cargo_name || profile.role || 'Sin cargo'}</SelectItem>)}<SelectItem value="GERENTE">GERENTE · ejecutivo</SelectItem><SelectItem value="SUBGERENTE OP.">SUBGERENTE OP. · ejecutivo</SelectItem><SelectItem value="PRESIDENTE">PRESIDENTE · ejecutivo</SelectItem>{(payload?.cargos || []).filter((item) => !['GERENTE','SUBGERENTE OP.','PRESIDENTE'].includes(item)).map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent></Select>
     </div>
 
