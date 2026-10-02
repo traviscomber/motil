@@ -28,3 +28,14 @@ test('timer migration provides atomic state transitions and service-role-only ex
   assert.match(migration, /revoke all on function public\.update_work_order_timer[\s\S]*from authenticated/);
   assert.match(migration, /grant execute on function public\.update_work_order_timer[\s\S]*to service_role/);
 });
+
+
+test('timer is restricted to assigned mechanic work and excludes workshop roles', () => {
+  assert.match(route, /resolveMaintenanceViewerMode/);
+  assert.match(route, /mode === 'workshop'/);
+  assert.match(route, /El temporizador móvil no está asignado a este cargo/);
+  assert.match(route, /mode !== 'execution'/);
+  assert.match(route, /\.eq\('profile_id', context\.userId\)/);
+  assert.match(route, /\.select\('assigned_person_id'\)/);
+  assert.match(route, /Esta orden no está asignada a tu identidad operativa/);
+});
