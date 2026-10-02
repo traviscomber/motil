@@ -65,6 +65,46 @@ export type Asset360CoverageAsset = {
   imported_at?: string | null;
 };
 
+const unavailableSourceLabel = (source: string) => {
+  const labels: Record<string, string> = {
+    workOrders: 'Órdenes de trabajo',
+    closeReadiness: 'Preparación de cierre',
+    preventives: 'Mantenimiento preventivo',
+    runtime: 'Uso / horómetro',
+    reliability: 'Confiabilidad auditada',
+    runtimeReliability: 'Confiabilidad por uso',
+    closureSnapshots: 'Cierres auditados',
+    parts: 'Repuestos',
+    labor: 'Mano de obra',
+    events: 'Eventos de OT',
+    statusHistory: 'Historial de estado',
+    maintenancePlanning: 'Planificación de mantenimiento',
+    operationalState: 'Estado operacional consolidado',
+    operatingSpine: 'Trazabilidad operacional',
+    supplyChain: 'Abastecimiento',
+    procurementOrders: 'Órdenes de compra',
+    purchaseHistoryCostCenter: 'Compras por centro de costo',
+    purchaseHistoryName: 'Compras por identidad',
+    economicHistory: 'Historial económico',
+    drillingHistory: 'Producción de perforación',
+    drillEconomics: 'Economía de perforación',
+    drillEconomicsMonthly: 'Serie mensual costo + producción',
+    drillingReview: 'Revisión de señales operacionales',
+    maintenancePriority: 'Prioridad de mantenimiento',
+    financeReconciliation: 'Conciliación financiera',
+    runtimeCost: 'Costo por uso',
+    meterHistory: 'Historial de medidor',
+    drillEvidence: 'Evidencia operacional 90 días',
+    drillEconomicsChange: 'Cambio económico mensual',
+    taskCandidates: 'Tareas candidatas',
+    standardPlans: 'Planes estándar',
+    identityHistory: 'Historial de identidad',
+    exactCostCenterDetail: 'Centro de costo',
+    costCenterMatch: 'Resolución de centro de costo',
+  };
+  return labels[source] || source;
+};
+
 const evidenceSourceLabel = (source?: string | null) => {
   if (!source) return 'Sin fuente resuelta';
   const labels: Record<string, string> = {
@@ -105,6 +145,7 @@ export function Asset360CoverageSection({
   evidenceDomainCount,
   financeReconciliation,
   identityHistory,
+  unavailableSources,
 }: {
   coverageItems: ReadonlyArray<readonly [string, boolean, string]>;
   coverageAvailableCount: number;
@@ -122,6 +163,7 @@ export function Asset360CoverageSection({
   evidenceDomainCount?: number | string | null;
   financeReconciliation?: Asset360FinanceReconciliation;
   identityHistory: Asset360IdentityHistoryRow[];
+  unavailableSources: string[];
 }) {
   const sourceLabel = asset.source_file?.startsWith('public.')
     ? 'Maestro de activos'
@@ -152,6 +194,20 @@ export function Asset360CoverageSection({
             {coverageAvailableCount}/{coverageItems.length} capas con evidencia. Sin brechas detectadas.
           </div>
         )}
+
+        {unavailableSources.length > 0 ? (
+          <div className="border-t border-border p-4">
+            <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+              Fuentes temporalmente no disponibles
+            </p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              La ficha conserva lo que sí está respaldado. Estas fuentes no se interpretan como datos inexistentes:
+            </p>
+            <p className="mt-2 text-sm font-medium">
+              {unavailableSources.map(unavailableSourceLabel).join(' · ')}
+            </p>
+          </div>
+        ) : null}
 
         <details className="group border-t border-border px-4 py-4">
           <summary className="cursor-pointer list-none">
