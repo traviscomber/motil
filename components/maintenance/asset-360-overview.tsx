@@ -54,6 +54,7 @@ import {
 import {
   Asset360DrillingSection,
   Asset360DrillEconomics,
+  Asset360DrillEconomicsMonthlyRow,
   Asset360DrillEconomicsChange,
   Asset360DrillingHistoryRow,
   Asset360DrillingMaintenanceReviewRow,
@@ -180,6 +181,7 @@ type Asset360Response = {
   pendingParts?: Asset360PartsRow[];
   economicHistory?: Asset360EconomicHistoryRow[];
   drillEconomics?: Asset360DrillEconomics;
+  drillEconomicsMonthly?: Asset360DrillEconomicsMonthlyRow[];
   drillingMaintenanceReview?: Asset360DrillingMaintenanceReviewRow[];
   drillingHistory?: Asset360DrillingHistoryRow[];
   maintenanceTaskCandidates?: Asset360MaintenanceTaskCandidate[];
@@ -592,6 +594,7 @@ export function Asset360Overview({
         lastDrillingDate={operatingSpine?.last_drilling_date}
         drillOperationalEvidence={drillOperationalEvidence}
         drillEconomics={drillEconomics}
+        drillEconomicsMonthly={data.drillEconomicsMonthly || []}
         drillEconomicsChange={drillEconomicsChange}
         drillingMaintenanceReview={drillingMaintenanceReview}
       />
