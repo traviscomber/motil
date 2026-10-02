@@ -104,6 +104,8 @@ type Asset360Response = {
     mobility_class?: string | null;
     lifecycle_state?: string | null;
     lifecycle_reason?: string | null;
+    lifecycle_changed_at?: string | null;
+    lifecycle_changed_by?: string | null;
     acquisition_date?: string | null;
     acquisition_cost?: number | string | null;
     expected_lifespan_years?: number | string | null;
@@ -121,6 +123,7 @@ type Asset360Response = {
     updated_at?: string | null;
     is_active?: boolean | null;
     validation_status?: string | null;
+    validation_notes?: string[];
     cost_center_evidence_source?: string | null;
     location_evidence_source?: string | null;
     location_evidence_at?: string | null;
@@ -613,6 +616,10 @@ export function Asset360Overview({
         remainingLifeYears={remainingLifeYears}
         acquisitionDate={asset.acquisition_date}
         acquisitionCost={asset.acquisition_cost}
+        lifecycleState={asset.lifecycle_state}
+        lifecycleReason={asset.lifecycle_reason}
+        lifecycleChangedAt={asset.lifecycle_changed_at}
+        lifecycleChangedBy={asset.lifecycle_changed_by}
       />
 
       <Asset360CoverageSection
