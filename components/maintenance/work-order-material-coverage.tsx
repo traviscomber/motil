@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from 'react';
 import useSWR from 'swr';
+import { useModuleAccess } from '@/hooks/use-module-access';
+import { OperationalPipelineBoard } from '@/components/pipeline/operational-pipeline-board';
 import { AlertTriangle, CheckCircle2, PackageCheck, PackageSearch, Plus, ShoppingCart, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -59,11 +61,13 @@ const shortage = (row: MaterialRow) => Number(row.shortage ?? row.quantity_short
 const rowKey = (row: MaterialRow) => row.requirement_id || row.id || row.product_id || `${row.product_code}-${row.product_name}`;
 
 export function WorkOrderMaterialCoverage({ workOrderId }: { workOrderId: string }) {
+  const { ready, canView } = useModuleAccess();
   const { data, error, isLoading, mutate } = useSWR(`/api/maintenance/work-orders/${workOrderId}/materials`, fetcher);
   const [issuing, setIssuing] = useState(false);
   const [sending, setSending] = useState(false);
   const [saving, setSaving] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [trackingOpen, setTrackingOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<CatalogRow | null>(null);
   const [quantity, setQuantity] = useState('1');
@@ -166,7 +170,7 @@ export function WorkOrderMaterialCoverage({ workOrderId }: { workOrderId: string
           : { title: 'Materiales listos para ejecución', detail: `${issuedTotal} de ${requiredTotal} unidad(es) requeridas ya fueron entregadas.`, action: 'ready' as const };
 
   return (
-    <Card className="shadow-none">
+    <div className="space-y-3"><Card className="shadow-none">
       <CardHeader className="space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
@@ -232,5 +236,7 @@ export function WorkOrderMaterialCoverage({ workOrderId }: { workOrderId: string
         })}</div> : null}
       </CardContent>
     </Card>
+    {!isLoading && !error && alreadySent && ready && canView('fin_compras') ? <details className="rounded-lg border px-4 py-3" onToggle={(event) => setTrackingOpen(event.currentTarget.open)}><summary className="cursor-pointer text-sm font-medium">Seguimiento de Compras para esta OT</summary>{trackingOpen ? <div className="mt-3"><OperationalPipelineBoard workOrderId={workOrderId} /></div> : null}</details> : null}
+    </div>
   );
 }

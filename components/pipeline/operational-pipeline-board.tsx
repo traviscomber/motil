@@ -7,9 +7,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatePanel } from '@/components/ui/state-panel';
+import { useModuleAccess } from '@/hooks/use-module-access';
 
 type PipelineItem = {
   pipeline_id: string;
+  work_order_id?: string | null;
   request_number?: string | null;
   work_order_number?: string | null;
   work_order_title?: string | null;
@@ -71,8 +73,11 @@ function stageLabel(value: string) {
   return stageLabels[normalized] || value || 'Pendiente';
 }
 
-export function OperationalPipelineBoard() {
-  const { data, error, isLoading, mutate } = useSWR<Response>('/api/pipeline/operational?limit=20', fetcher, {
+export function OperationalPipelineBoard({ workOrderId }: { workOrderId?: string } = {}) {
+  const { ready, canView } = useModuleAccess();
+  const query = new URLSearchParams({ limit: '20' });
+  if (workOrderId) query.set('workOrderId', workOrderId);
+  const { data, error, isLoading, mutate } = useSWR<Response>(`/api/pipeline/operational?${query.toString()}`, fetcher, {
     revalidateOnFocus: false,
   });
   const items = data?.data || [];
@@ -86,7 +91,7 @@ export function OperationalPipelineBoard() {
       <CardContent>
         {isLoading ? <StatePanel tone="loading" title="Cargando seguimiento" className="border-0 bg-transparent" /> : null}
         {error ? <StatePanel tone="error" title="No fue posible cargar el seguimiento" description={error.message} actions={<Button variant="outline" onClick={() => void mutate()}>Reintentar</Button>} className="border-0 bg-transparent" /> : null}
-        {!isLoading && !error && items.length === 0 ? <StatePanel tone="neutral" title="No hay compras abiertas" description="Los casos pendientes aparecerán aquí cuando exista una solicitud, cotización, orden o recepción en curso." className="border-0 bg-transparent" /> : null}
+        {!isLoading && !error && items.length === 0 ? <StatePanel tone="neutral" title={workOrderId ? 'No hay compras abiertas para esta OT' : 'No hay compras abiertas'} description={workOrderId ? 'No se encontraron solicitudes abiertas vinculadas a esta orden de trabajo.' : 'Los casos pendientes aparecerán aquí cuando exista una solicitud, cotización, orden o recepción en curso.'} className="border-0 bg-transparent" /> : null}
 
         {!isLoading && !error && items.length > 0 ? (
           <div className="divide-y">
@@ -107,6 +112,7 @@ export function OperationalPipelineBoard() {
                     <p className="mt-1 truncate text-sm text-muted-foreground">
                       {[item.work_order_title, item.asset_code, item.asset_name, item.supplier_name].filter(Boolean).join(' · ') || 'Sin información adicional'}
                     </p>
+                    {item.work_order_id && ready && canView('mant_operaciones') ? <Link className="mt-2 inline-block text-xs underline underline-offset-4" href={`/dashboard/mantenimiento/ordenes-trabajo/${encodeURIComponent(item.work_order_id)}`}>Ver OT {item.work_order_number || 'de origen'}</Link> : null}
                     <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
                       <div className="h-full bg-foreground" style={{ width: `${Math.max(0, Math.min(100, item.progress_percent || 0))}%` }} />
                     </div>
