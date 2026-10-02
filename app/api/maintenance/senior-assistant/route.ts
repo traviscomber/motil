@@ -119,6 +119,21 @@ async function resolveCargo(db: ReturnType<typeof getSupabaseAdmin>, userId: str
   return cargo?.name || null;
 }
 
+async function resolvePersonIdentity(
+  db: ReturnType<typeof getSupabaseAdmin>,
+  organizationId: string,
+  userId: string,
+) {
+  const { data } = await db
+    .from('people')
+    .select('id,full_name,email,role_title,employment_status,supervisor_person_id,profile_id')
+    .eq('organization_id', organizationId)
+    .eq('profile_id', userId)
+    .eq('employment_status', 'active')
+    .maybeSingle();
+  return data || null;
+}
+
 async function extractDurableMemory(args: { message: string; existingMemory: string[] }) {
   const instructions = `Extrae memoria durable útil para personalizar futuras conversaciones del Asistente Senior de Mantenimiento de MOTIL. Usa SOLAMENTE afirmaciones explícitas del usuario. Nunca guardes contraseñas, secretos, tokens, datos médicos ni inferencias sensibles. Nunca conviertas una afirmación del usuario sobre una máquina, falla, causa, repuesto, prioridad o intervención en evidencia canónica de mantenimiento. Guarda sólo preferencias de trabajo, responsabilidades declaradas, terminología interna, contexto laboral estable, reglas de decisión declaradas u observaciones de contexto que deban seguir tratándose como aportes del usuario. Devuelve JSON puro, sin markdown, como un arreglo de objetos {"type":"preference|responsibility|terminology|working_context|decision_rule|observation","text":"...","confidence":0.0}. Máximo 3 objetos. Si no hay memoria durable, devuelve [].`;
   const input = `MEMORIA YA CONOCIDA:\n${args.existingMemory.join('\n') || 'Ninguna'}\n\nMENSAJE NUEVO DEL USUARIO:\n${args.message}`;
@@ -151,7 +166,7 @@ async function buildCanonicalMaintenanceContext(
   organizationId: string,
 ) {
   const windowStart = new Date(Date.now() - 89 * DAY_MS).toISOString().slice(0, 10);
-  const [reviews, operationalReports, preventive, workOrders, reliability, closeReadiness, assets] = await Promise.all([
+  const [reviews, operationalReports, preventive, workOrders, reliability, closeReadiness, assets, people] = await Promise.all([
     db.from('drilling_maintenance_review_queue_v1')
       .select('review_id,canonical_asset_id,asset_code,asset_name,operation_date,review_reason,equipment_status_raw,machine_observations,review_status,has_linked_work_order')
       .eq('organization_id', organizationId).eq('review_status', 'pending').eq('has_linked_work_order', false).limit(50),
@@ -165,7 +180,7 @@ async function buildCanonicalMaintenanceContext(
       .select('schedule_id,canonical_asset_id,asset_code,asset_name,task_name,frequency_hours,effective_current_meter,due_meter,meter_evidence_source,meter_basis_conflict,hour_status,remaining_hours,generated_work_order_id')
       .eq('organization_id', organizationId).limit(100),
     db.from('maintenance_work_orders')
-      .select('id,work_order_number,canonical_asset_id,title,description,work_type,status,priority,scheduled_date,completion_date,actual_duration_hours,down_time_hours,root_cause,preventive_actions,external_cost,created_by')
+      .select('id,work_order_number,canonical_asset_id,assigned_person_id,assigned_to_name,title,description,work_type,status,priority,scheduled_date,completion_date,actual_duration_hours,down_time_hours,root_cause,preventive_actions,external_cost,created_by')
       .eq('organization_id', organizationId).not('created_by', 'is', null).limit(100),
     db.from('maintenance_reliability_base_v1')
       .select('work_order_id,canonical_asset_id,asset_code,asset_name,root_cause,root_cause_key,work_type,actual_duration_hours,down_time_hours,total_cost,closed_at')
@@ -176,6 +191,12 @@ async function buildCanonicalMaintenanceContext(
     db.from('maintenance_canonical_assets_v1')
       .select('id,asset_code,name,asset_type,category,manufacturer,model,cost_center_code,is_active,validation_status')
       .eq('organization_id', organizationId).limit(200),
+    db.from('people')
+      .select('id,full_name,normalized_name,email,employment_status,role_title,supervisor_person_id,profile_id')
+      .eq('organization_id', organizationId)
+      .eq('employment_status', 'active')
+      .order('full_name', { ascending: true })
+      .limit(200),
   ]);
 
   const queryErrors = [
@@ -186,6 +207,7 @@ async function buildCanonicalMaintenanceContext(
     ['maintenance_reliability_base_v1', reliability.error],
     ['work_order_close_readiness_v2', closeReadiness.error],
     ['maintenance_canonical_assets_v1', assets.error],
+    ['people', people.error],
   ] as const;
   const failedQuery = queryErrors.find(([, error]) => Boolean(error));
   if (failedQuery) {
@@ -257,6 +279,7 @@ async function buildCanonicalMaintenanceContext(
         authority: 'El mantenedor/supervisor valida diagnóstico, prioridad e intervención. El asistente no crea ni cierra OT.',
       },
       assets: assets.data || [],
+      people: people.data || [],
       pending_operational_reviews: reviews.data || [],
       observed_conditions_90d: observedConditions90d,
       preventive_hour_status: preventive.data || [],
@@ -547,7 +570,7 @@ export async function POST(request: NextRequest) {
           .limit(HISTORY_LIMIT)
       : Promise.resolve({ data: [], error: null });
 
-    const [historyResult, memoryResult, cargo, canonical, advisoryHandoffs] = await Promise.all([
+    const [historyResult, memoryResult, cargo, personIdentity, canonical, advisoryHandoffs] = await Promise.all([
       historyQuery,
       db.from('maintenance_ai_user_memory')
         .select('memory_type,memory_text,confidence')
@@ -557,6 +580,7 @@ export async function POST(request: NextRequest) {
         .order('updated_at', { ascending: false })
         .limit(20),
       resolveCargo(db, context.userId),
+      resolvePersonIdentity(db, context.organizationId, context.userId),
       buildCanonicalMaintenanceContext(db, context.organizationId),
       loadSupportAdvisoryHandoffs(context, 'maintenance', message),
     ]);
@@ -574,7 +598,7 @@ export async function POST(request: NextRequest) {
       'En Mantención, revalida activos, observaciones, OT, preventivos, materiales, cierre y confiabilidad con las herramientas READ/PREPARE_ONLY. Un caso previo no confirma diagnóstico, causa raíz, criticidad, probabilidad de falla ni prioridad de intervención.',
     );
 
-    const instructions = `Eres el Asistente Senior de Mantenimiento de MOTIL para una operación minera chilena. Respondes como copiloto técnico de un jefe de mantenimiento, planificador o supervisor.\n\nCONTEXTO DEL USUARIO:\n- Usuario: ${userIdentity}\n- Cargo: ${cargo || 'no informado'}\n- Nivel de acceso: ${accessLevel}\n- Memoria de trabajo declarada por el usuario: ${memory.length ? memory.join(' | ') : 'sin memoria durable registrada'}\nLa memoria de usuario sirve para personalizar forma de trabajo y continuidad, pero NUNCA reemplaza evidencia canónica sobre activos, fallas, causas, repuestos, prioridades o intervenciones.\n\nREGLAS DE AUTORIDAD Y SEGURIDAD:\n1. Usa únicamente el CONTEXTO CANÓNICO y las herramientas READ/PREPARE_ONLY entregadas para afirmaciones operacionales. Si falta evidencia, dilo explícitamente.\n2. Distingue siempre DATO CANÓNICO, INTERPRETACIÓN PROFESIONAL, HIPÓTESIS A REVISAR y RECOMENDACIÓN/PRÓXIMA ACCIÓN cuando corresponda.\n3. Un porcentaje de reportes fuera de servicio u observados describe frecuencia histórica observada; jamás lo llames probabilidad de falla.\n4. Separa causas mecánicas de restricciones externas como falta de agua, corte de energía o falta de dotación.\n5. No uses UAT, simulaciones o pruebas como evidencia de confiabilidad real.\n6. No declares causa raíz si no está validada. No declares MTBF/MTTR predictivo si no existe evidencia suficiente.\n7. No inventes repuestos, costos, horas, manuales, tolerancias ni procedimientos OEM.\n8. No crees, cierres, priorices de forma irreversible ni autorices una OT. Puedes recomendar qué revisar y por qué; la decisión final es humana.\n9. Si existe evidencia contradictoria, muéstrala. Si una máquina tuvo reportes degradados y también muchos reportes operativos normales, incluye ambos.\n10. Prioriza respuestas operacionales y concretas: qué sabemos, qué nos preocupa, qué falta confirmar y cuál es el siguiente dato/acción de mayor valor.\n11. La conversación reciente aporta continuidad, pero una afirmación previa del usuario no se transforma por repetición en dato canónico.\n12. Cuando una pregunta requiera activos, señales, preventivos, OT o preparación de cierre específicos, usa las herramientas READ en vez de inferir desde memoria o conversación.\n13. PREPARE_ONLY puede estructurar un borrador de Decision Case para revisión humana, pero no lo persiste como verdad operacional, no lo aprueba, no autoriza y no ejecuta ninguna acción.\n14. No muestres al usuario call_id, argumentos JSON crudos, resultados JSON crudos ni detalles internos de herramientas. Resume la evidencia operacional relevante.\n15. Un score de atención sólo ordena revisión humana de forma determinística; no es probabilidad de falla, criticidad OEM, diagnóstico ni autorización de prioridad.\n16. HANDOFF ADVISORY es contexto NO CANÓNICO y sólo define qué revalidar. Nunca conserva diagnóstico, causa, prioridad, severidad ni vigencia sin respaldo del contexto canónico y de las herramientas actuales.\n\nCuando el usuario pregunte qué equipo requiere atención, usa la cola de atención y luego profundiza con herramientas del activo cuando sea necesario. Compara señales observadas, estado fuera de servicio, preventivos, OT abiertas y evidencia de cierre. No conviertas un ranking operacional en riesgo probabilístico.`;
+    const instructions = `Eres el Asistente Senior de Mantenimiento de MOTIL para una operación minera chilena. Respondes como copiloto técnico de un jefe de mantenimiento, planificador o supervisor.\n\nCONTEXTO DEL USUARIO:\n- Usuario: ${personIdentity?.full_name || userIdentity}\n- Persona canónica: ${personIdentity?.id || 'no vinculada'}\n- Cargo: ${personIdentity?.role_title || cargo || 'no informado'}\n- Nivel de acceso: ${accessLevel}\n- Memoria de trabajo declarada por el usuario: ${memory.length ? memory.join(' | ') : 'sin memoria durable registrada'}\nLa memoria de usuario sirve para personalizar forma de trabajo y continuidad, pero NUNCA reemplaza evidencia canónica sobre activos, fallas, causas, repuestos, prioridades o intervenciones.\n\nREGLAS DE AUTORIDAD Y SEGURIDAD:\n1. Usa únicamente el CONTEXTO CANÓNICO y las herramientas READ/PREPARE_ONLY entregadas para afirmaciones operacionales. Si falta evidencia, dilo explícitamente.\n2. Distingue siempre DATO CANÓNICO, INTERPRETACIÓN PROFESIONAL, HIPÓTESIS A REVISAR y RECOMENDACIÓN/PRÓXIMA ACCIÓN cuando corresponda.\n3. Un porcentaje de reportes fuera de servicio u observados describe frecuencia histórica observada; jamás lo llames probabilidad de falla.\n4. Separa causas mecánicas de restricciones externas como falta de agua, corte de energía o falta de dotación.\n5. No uses UAT, simulaciones o pruebas como evidencia de confiabilidad real.\n6. No declares causa raíz si no está validada. No declares MTBF/MTTR predictivo si no existe evidencia suficiente.\n7. No inventes repuestos, costos, horas, manuales, tolerancias ni procedimientos OEM.\n8. No crees, cierres, priorices de forma irreversible ni autorices una OT. Puedes recomendar qué revisar y por qué; la decisión final es humana.\n9. Si existe evidencia contradictoria, muéstrala. Si una máquina tuvo reportes degradados y también muchos reportes operativos normales, incluye ambos.\n10. Prioriza respuestas operacionales y concretas: qué sabemos, qué nos preocupa, qué falta confirmar y cuál es el siguiente dato/acción de mayor valor.\n11. La conversación reciente aporta continuidad, pero una afirmación previa del usuario no se transforma por repetición en dato canónico.\n12. Cuando una pregunta requiera activos, señales, preventivos, OT o preparación de cierre específicos, usa las herramientas READ en vez de inferir desde memoria o conversación.\n13. PREPARE_ONLY puede estructurar un borrador de Decision Case para revisión humana, pero no lo persiste como verdad operacional, no lo aprueba, no autoriza y no ejecuta ninguna acción.\n14. No muestres al usuario call_id, argumentos JSON crudos, resultados JSON crudos ni detalles internos de herramientas. Resume la evidencia operacional relevante.\n15. Un score de atención sólo ordena revisión humana de forma determinística; no es probabilidad de falla, criticidad OEM, diagnóstico ni autorización de prioridad.\n16. HANDOFF ADVISORY es contexto NO CANÓNICO y sólo define qué revalidar. Nunca conserva diagnóstico, causa, prioridad, severidad ni vigencia sin respaldo del contexto canónico y de las herramientas actuales.\n17. Cuando el usuario mencione una persona por nombre, apellido, correo, cargo o una variante de escritura, usa search_people antes de asumir identidad. Para preguntas sobre sus OT, equipo o dependencia, usa get_person_work_context.\n18. Distingue siempre identidad de persona, cargo y responsabilidad operacional. No atribuyas una falla, intervención o decisión a alguien sólo porque una OT esté asignada o creada por esa persona.\n19. Si una búsqueda de persona devuelve más de una coincidencia plausible, muestra las opciones y pide confirmación; no elijas silenciosamente.\n\nCuando el usuario pregunte qué equipo requiere atención, usa la cola de atención y luego profundiza con herramientas del activo cuando sea necesario. Compara señales observadas, estado fuera de servicio, preventivos, OT abiertas y evidencia de cierre. No conviertas un ranking operacional en riesgo probabilístico.`;
 
     const canonicalAvailability = {
       generated_at: canonical.context.generated_at,
@@ -582,6 +606,7 @@ export async function POST(request: NextRequest) {
       available_sources: canonical.sources,
       available_evidence_counts: {
         assets: canonical.context.assets.length,
+        people: canonical.context.people.length,
         pending_operational_reviews: canonical.context.pending_operational_reviews.length,
         observed_conditions_90d: canonical.context.observed_conditions_90d.length,
         preventive_hour_status: canonical.context.preventive_hour_status.length,
