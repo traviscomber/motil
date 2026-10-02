@@ -397,7 +397,7 @@ export async function GET(request: NextRequest) {
         priority: normalizePriority(row.priority),
         owner: normalizeText(row.legal_owner || row.operational_owner),
         location: null,
-        href: '/dashboard/legal/casos',
+        href: `/dashboard/legal/casos?caseId=${encodeURIComponent(row.id)}`,
         historical,
         completed_at: normalizeDate(row.closed_at),
       }, today));
@@ -535,7 +535,7 @@ export async function GET(request: NextRequest) {
         priority,
         owner: null,
         location: null,
-        href: '/dashboard/finanzas/pagos',
+        href: `/dashboard/finanzas/pagos?invoiceId=${encodeURIComponent(row.invoice_id)}`,
         historical,
         completed_at: null,
       }, today));

@@ -18,7 +18,8 @@ export async function GET(request: NextRequest) {
   const auth = await authorize(request);
   if (!auth.ok) return auth.response;
 
-  const { data, error } = await auth.context.supabase
+  const caseId = request.nextUrl.searchParams.get('caseId')?.trim();
+  let query = auth.context.supabase
     .from('legal_cases')
     .select('*')
     .eq('organization_id', auth.context.organizationId)
@@ -27,6 +28,8 @@ export async function GET(request: NextRequest) {
     .order('created_at', { ascending: false })
     .limit(1000);
 
+  if (caseId) query = query.eq('id', caseId);
+  const { data, error } = await query;
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
