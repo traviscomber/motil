@@ -166,13 +166,11 @@ export function MaintenancePersonnelPerformanceBoard() {
       </div>
 
       {summary ? (
-        <div className="grid gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-5">
+        <div className="grid gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-3">
           {[
-            ['Personal identificable', summary.activeWorkers],
             ['Mecánicos', summary.mechanics],
             ['Operarios', summary.operators],
             ['OT con cargo válido', summary.totalWorkOrders],
-            ['Completación OT', `${summary.completionRate}%`],
           ].map(([label, value]) => <div key={label} className="bg-card px-4 py-3"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-xl font-semibold">{value}</p></div>)}
         </div>
       ) : null}
