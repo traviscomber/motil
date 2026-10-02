@@ -79,3 +79,36 @@ test('Ficha 360 distinguishes unavailable canonical sources from missing evidenc
   assert.match(coverage, /no se interpretan como datos inexistentes/);
   assert.match(coverage, /drillEconomicsMonthly: 'Serie mensual costo \+ producción'/);
 });
+
+
+test('organizes the Ficha 360 in stable operational domains with sticky navigation', async () => {
+  const overview = await readFile(overviewUrl, 'utf8');
+  for (const label of ['Resumen', 'Operación', 'Mantención', 'Economía', 'Historia', 'Evidencia']) {
+    assert.match(overview, new RegExp(label));
+  }
+  assert.match(overview, /aria-label="Secciones de la Ficha 360"/);
+  assert.match(overview, /sticky top-12/);
+
+  const operation = overview.indexOf('id="operacion"');
+  const maintenance = overview.indexOf('id="mantenimiento"');
+  const economics = overview.indexOf('id="economia"');
+  const history = overview.indexOf('id="historia"');
+  const evidence = overview.indexOf('id="evidencia"');
+
+  assert.ok(operation > 0);
+  assert.ok(maintenance > operation);
+  assert.ok(economics > maintenance);
+  assert.ok(history > economics);
+  assert.ok(evidence > history);
+});
+
+test('keeps attention directly after identity before deep Ficha 360 domains', async () => {
+  const overview = await readFile(overviewUrl, 'utf8');
+  const identity = overview.indexOf('<Asset360IdentityHeader');
+  const attention = overview.indexOf('<Asset360AttentionCard');
+  const nav = overview.indexOf('<Asset360SectionNav');
+
+  assert.ok(identity > 0);
+  assert.ok(attention > identity);
+  assert.ok(nav > attention);
+});
