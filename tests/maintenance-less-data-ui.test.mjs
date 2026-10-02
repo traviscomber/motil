@@ -8,8 +8,8 @@ const personnelPage = await readFile(new URL('../app/dashboard/mantenimiento/per
 const personnelBoard = await readFile(new URL('../components/maintenance/technician-performance-board.tsx', import.meta.url), 'utf8');
 
 test('maintenance shell keeps only primary role navigation visible', () => {
-  assert.match(layout, /leadership:[\s\S]*support:\s*\['Resumen', 'Activos', 'Indicadores'\]/);
-  assert.match(layout, /planning:[\s\S]*support:\s*\['Resumen', 'Activos'\]/);
+  assert.match(layout, /leadership:[\s\S]*support:\s*\['Resumen', 'Activos', 'Indicadores', 'Fuentes'\]/);
+  assert.match(layout, /planning:[\s\S]*support:\s*\['Resumen', 'Activos', 'Fuentes'\]/);
   assert.match(layout, /execution:[\s\S]*flow:\s*\[\][\s\S]*support:\s*\['Resumen'\]/);
   assert.match(layout, /general:[\s\S]*support:\s*\['Resumen', 'Activos'\]/);
   assert.doesNotMatch(layout, /support:\s*\[[^\]]*'Imputación'[^\]]*'Maestranza'[^\]]*'Personal'[^\]]*'Fuentes'/);
