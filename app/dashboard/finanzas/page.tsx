@@ -71,7 +71,7 @@ export default function FinanzasPage() {
       </section>
 
       <section className="space-y-3 border-t pt-5">
-        <div><h2 className="text-lg font-semibold">Forecast de caja</h2><p className="text-sm text-muted-foreground">Obligaciones por fecha de vencimiento. Las cuentas sin fecha quedan visibles como excepción.</p></div>
+        <div><h2 className="text-lg font-semibold">Forecast de caja</h2><p className="text-sm text-muted-foreground">Obligaciones por vencimiento. Las cuentas sin fecha se mantienen fuera del forecast y visibles como excepción.</p></div>
         {cashForecast.length === 0 ? <div className="rounded-lg border px-4 py-5 text-sm text-muted-foreground">No hay obligaciones aprobadas con saldo pendiente para proyectar.</div> : cashForecast.map((row) => <div key={`forecast-${String(row.currency)}`} className="space-y-2 rounded-lg border p-4">
           <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-sm font-semibold">{String(row.currency || '')}</p><p className="text-xs text-muted-foreground">{number(row.open_payables)} obligación(es) abiertas</p></div><p className="text-sm font-semibold tabular-nums">Saldo {currencyMoney(row.total_outstanding_amount, row.currency)}</p></div>
           <div className="grid gap-px overflow-hidden rounded-md border bg-border sm:grid-cols-2 xl:grid-cols-5">
