@@ -14,7 +14,7 @@ test('maintenance viewer context preserves canonical cargo instead of synthetic 
 test('maintenance role routing stays explicit for every canonical maintenance cargo family', () => {
   assert.match(viewerMode, /jefe departamento de mantenimiento/);
   assert.match(viewerMode, /jefe de planificación/);
-  assert.match(viewerMode, /jefe de equipos móviles y estacionarios/);
+  assert.match(viewerMode, /jefe de equipos móviles y estacionarios'\) return 'planning'/);
   assert.match(viewerMode, /gerente operaciones/);
   assert.match(viewerMode, /jefe sostenibilidad/);
   assert.match(viewerMode, /return 'oversight'/);
@@ -22,4 +22,10 @@ test('maintenance role routing stays explicit for every canonical maintenance ca
   assert.match(viewerMode, /cargo\.startsWith\('jefe de taller mina'\)/);
   assert.match(viewerMode, /encargado de camionetas y camiones/);
   assert.match(viewerMode, /cargo === 'soldador'/);
+});
+
+
+test('phone execution surface is explicit and limited to mechanic cargos', () => {
+  assert.match(route, /const mobileExecution = String\(cargoName \|\| ''\).*startsWith\('mecánico'\)/s);
+  assert.match(route, /mobileExecution,/);
 });

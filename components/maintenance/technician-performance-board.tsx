@@ -155,7 +155,7 @@ export function MaintenancePersonnelPerformanceBoard() {
       <div className="flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-base font-semibold">Desempeño por persona</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Mecánicos y operarios se evalúan con metodologías distintas. No se mezclan en un ranking único.</p>
+          <p className="mt-1 text-sm text-muted-foreground">OT y carga por persona, sin mezclar cargos ni inventar evaluación cuando falta evidencia.</p>
         </div>
         <Select value={days} onValueChange={setDays}>
           <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
@@ -166,9 +166,8 @@ export function MaintenancePersonnelPerformanceBoard() {
       </div>
 
       {summary ? (
-        <div className="grid gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-5">
+        <div className="grid gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-2 xl:grid-cols-4">
           {[
-            ['Personal identificable', summary.activeWorkers],
             ['Mecánicos', summary.mechanics],
             ['Operarios', summary.operators],
             ['OT con cargo válido', summary.totalWorkOrders],
