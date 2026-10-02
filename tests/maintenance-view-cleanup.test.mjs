@@ -7,6 +7,8 @@ const mobileLegacy = await readFile(new URL('../components/maintenance/maintenan
 const personnel = await readFile(new URL('../components/maintenance/technician-performance-board.tsx', import.meta.url), 'utf8');
 const home = await readFile(new URL('../components/dashboard/maintenance-home.tsx', import.meta.url), 'utf8');
 const workOrders = await readFile(new URL('../components/maintenance/work-orders-queue.tsx', import.meta.url), 'utf8');
+const workOrderDetail = await readFile(new URL('../components/maintenance/work-order-detail.tsx', import.meta.url), 'utf8');
+const workOrderDetailRoute = await readFile(new URL('../app/api/maintenance/work-orders/[id]/route.ts', import.meta.url), 'utf8');
 
 test('maintenance mobile route uses assigned work instead of the legacy global mobile dashboard', () => {
   assert.match(mobilePage, /MobileTerrainPanel/);
@@ -43,4 +45,14 @@ test('work-order queue keeps planning and closure in their dedicated routes', ()
   assert.doesNotMatch(workOrders, /getStatusClass/);
   assert.match(workOrders, /getStatusVariant/);
   assert.match(workOrders, /xl:grid-cols-\[minmax\(240px,1fr\)_170px_170px_auto\]/);
+});
+
+
+test('workshop work-order detail stays minimal and assigned-only', () => {
+  assert.match(workOrderDetail, /const isWorkshop = viewer\?\.mode === 'workshop'/);
+  assert.match(workOrderDetail, /Esta vista muestra sólo la orden asignada/);
+  assert.match(workOrderDetailRoute, /mapRestrictedWorkOrder/);
+  assert.match(workOrderDetailRoute, /Esta orden no está asignada a tu identidad operativa/);
+  assert.match(workOrderDetailRoute, /surface\.mode === 'workshop'/);
+  assert.match(workOrderDetailRoute, /modo de solo lectura/);
 });
