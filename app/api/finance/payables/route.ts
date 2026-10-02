@@ -10,10 +10,14 @@ export async function GET(request: NextRequest) {
   const context = await getOrganizationContext(request);
   if (!context.ok) return context.response;
 
-  const [{ data: payables, error: payablesError }, { data: payments, error: paymentsError }] = await Promise.all([
-    context.supabase.from('procurement_accounts_payable_v1').select('*').eq('organization_id', context.organizationId).order('due_date', { ascending: true, nullsFirst: true }),
-    context.supabase.from('procurement_supplier_payments').select('id,organization_id,payable_id,amount,currency,payment_date,payment_reference,notes,recorded_at,reconciled_at,reconciliation_reference,reconciliation_notes').eq('organization_id', context.organizationId).order('payment_date', { ascending: false }),
-  ]);
+  const invoiceId = request.nextUrl.searchParams.get('invoiceId')?.trim();
+  let payableQuery = context.supabase.from('procurement_accounts_payable_v1').select('*').eq('organization_id', context.organizationId).order('due_date', { ascending: true, nullsFirst: true });
+  if (invoiceId) payableQuery = payableQuery.eq('invoice_id', invoiceId);
+  const { data: payables, error: payablesError } = await payableQuery;
+  let paymentQuery = context.supabase.from('procurement_supplier_payments').select('id,organization_id,payable_id,amount,currency,payment_date,payment_reference,notes,recorded_at,reconciled_at,reconciliation_reference,reconciliation_notes').eq('organization_id', context.organizationId).order('payment_date', { ascending: false });
+  const payableIds = (payables || []).map((row) => row.id);
+  if (invoiceId && payableIds.length) paymentQuery = paymentQuery.in('payable_id', payableIds);
+  const { data: payments, error: paymentsError } = invoiceId && !payableIds.length ? { data: [], error: null } : await paymentQuery;
   if (payablesError || paymentsError) {
     console.error('[finance/payables]', payablesError || paymentsError);
     return NextResponse.json({ payables: [], payments: [], canEdit: access.canWrite, error: 'No se pudo cargar cuentas por pagar' }, { status: 500 });

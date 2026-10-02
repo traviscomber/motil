@@ -101,6 +101,7 @@ export function ProgressiveInvoiceWorkflow() {
   const exceptionInvoice = openExceptions.length ? summaries.find((row) => row.invoice_id === openExceptions[0].invoice_id) : null;
   const pendingReceiptInvoice = summaries.find((row) => row.match_status === 'pending_receipt' && invoices.find((invoice) => invoice.id === row.invoice_id)?.status !== 'approved');
   const approvableInvoice = summaries.find((row) => row.match_status === 'matched' && invoices.find((invoice) => invoice.id === row.invoice_id)?.status !== 'approved');
+  const approvedInvoice = invoices.find((row) => row.status === 'approved');
   const approvedCount = invoices.filter((row) => row.status === 'approved').length;
 
   const counts = {
@@ -192,7 +193,7 @@ export function ProgressiveInvoiceWorkflow() {
   } else if (approvedCount > 0) {
     nextActionLabel = 'Continuar a Tesorería';
     nextActionDescription = 'Las facturas aprobadas pasan a cuentas por pagar; el pago no vuelve a reconocer costo operacional.';
-    nextActionControl = <Button asChild><Link href="/dashboard/finanzas/pagos"><ArrowRight className="mr-2 h-4 w-4" />Ir a Pagos</Link></Button>;
+    nextActionControl = ready && canView('fin_finanzas') ? <Button asChild><Link href={orderId && approvedInvoice ? `/dashboard/finanzas/pagos?invoiceId=${encodeURIComponent(approvedInvoice.id)}&orderId=${encodeURIComponent(orderId)}` : '/dashboard/finanzas/pagos'}><ArrowRight className="mr-2 h-4 w-4" />Ir a Pagos</Link></Button> : null;
   }
 
   return <div className="space-y-6">

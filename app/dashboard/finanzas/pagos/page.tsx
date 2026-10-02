@@ -1,5 +1,8 @@
 'use client';
 
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { useModuleAccess } from '@/hooks/use-module-access';
 import { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { CheckCircle2, Clock3, Landmark, ReceiptText } from 'lucide-react';
@@ -32,7 +35,13 @@ type Payment = { id:string; payable_id:string; amount:number; currency:string; p
 type DialogMode = 'due' | 'pay' | 'reconcile' | null;
 
 export default function PayablesPage() {
-  const { data, error, isLoading, mutate } = useSWR('/api/finance/payables', fetcher);
+  const params = useSearchParams();
+  const invoiceId = params.get('invoiceId')?.trim();
+  const orderId = params.get('orderId')?.trim();
+  const { ready, canView } = useModuleAccess();
+  const endpoint = invoiceId ? `/api/finance/payables?invoiceId=${encodeURIComponent(invoiceId)}` : '/api/finance/payables';
+  const { data: result, error, isLoading, mutate } = useSWR(endpoint, fetcher);
+  const data = error ? undefined : result;
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [dialogMode, setDialogMode] = useState<DialogMode>(null);
@@ -125,6 +134,8 @@ export default function PayablesPage() {
   }
 
   return <div className="space-y-6">
+    {invoiceId ? <div className="flex flex-wrap gap-4 text-sm"><Link href="/dashboard/finanzas/pagos" className="underline underline-offset-4">Ver todas las cuentas por pagar</Link>{ready && canView('fin_compras') ? <Link href={orderId ? `/dashboard/compras/facturas?orderId=${encodeURIComponent(orderId)}` : '/dashboard/compras/facturas'} className="underline underline-offset-4">Volver al control de factura</Link> : null}</div> : null}
+    {invoiceId && !isLoading && !error && !payables.length ? <p className="rounded-lg border p-3 text-sm text-muted-foreground">No se encontró una cuenta por pagar para esta factura. Revise su aprobación en Compras.</p> : null}
     <section className="border-b border-border/70 pb-6"><p className="text-sm font-medium text-muted-foreground">Finanzas · Tesorería</p><h1 className="mt-1 text-3xl font-semibold tracking-tight">Factura aprobada → vencimiento → pago → conciliación</h1><p className="mt-2 max-w-3xl text-sm text-muted-foreground">Una sola acción principal por vez. El costo ya fue reconocido por la recepción aceptada; Tesorería administra obligación, salida de caja y conciliación.</p></section>
     {message ? <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{message}</div> : null}
     {error ? <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error.message}</div> : null}
