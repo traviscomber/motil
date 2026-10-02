@@ -56,7 +56,6 @@ export default function DesempenoPage() {
 
   const rows = useMemo(() => !payload ? [] : mergeScorecards(payload.rows, payload.executive), [payload]);
   const domains = new Set(rows.map((row) => row.domain).filter(Boolean)).size;
-  const cargosVisible = new Set(rows.map((row) => row.cargo_name).filter(Boolean)).size;
   const withData = rows.filter((row) => row.measured_value !== null).length;
   const withoutTargets = rows.filter((row) => row.target_value === null || row.target_value === undefined).length;
   const person = payload?.person || null;
