@@ -67,7 +67,7 @@ export function ProduccionDashboard(){
     </PageHeader>
 
     <section aria-label="Operación actual" className="space-y-3">
-      <div><p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Ahora</p><h2 className="mt-1 text-lg font-semibold tracking-tight">Operación actual</h2></div>
+      <div><p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Ahora</p><h2 className="mt-1 text-lg font-semibold tracking-tight">Ejecución del período</h2></div>
       <div className="grid gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-2 xl:grid-cols-6">
         <Metric icon={Factory} label="Tratado" value={p?tons(p.treatedTons,1):'—'} detail={plan?`${pct(plan.treatmentProgressPct)} del plan de mineral a planta`:'Sin plan activo'}/>
         <Metric icon={Target} label="Ritmo mensual" value={paceLabel} detail={plan?`Índice ${pct(plan.paceIndexPct)} · calendario ${pct(p?.calendarProgressPct)}`:'Sin comparación'}/>
@@ -124,7 +124,7 @@ function CoverageOverview({data}:{data:Overview}){
         <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Fuentes</p>
         <h2 id="production-coverage-title" className="mt-1 text-lg font-semibold tracking-tight">Estado de fuentes</h2>
       </div>
-      <p className="max-w-xl text-xs leading-5 text-muted-foreground">Detalle secundario de cobertura; sin fuente nunca se representa como cero.</p>
+      <p className="max-w-xl text-xs leading-5 text-muted-foreground">Detalle secundario de cobertura. Sin fuente nunca se representa como cero.</p>
     </div>
 
     <div className="overflow-hidden rounded-lg border bg-card divide-y">
