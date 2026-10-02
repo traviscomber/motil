@@ -306,7 +306,7 @@ function canonicalFallbackAnswer(message: string, context: any) {
   const toolsUsed: Array<{ name: string; mode: 'read' }> = [];
   const peopleSearch = executeMaintenanceSeniorTool('search_people', { query: message }, context) as any;
   const personRows = Array.isArray(peopleSearch?.rows) ? peopleSearch.rows : [];
-  const isPeopleQuestion = /\b(quien|quién|persona|responsable|asignad[oa]|equipo de|reporta a|depende de|jefe|supervisor|ot de|ots de|tiene .*ot)\b/i.test(message);
+  const isPeopleQuestion = /\b(quien|quién|persona|responsable|asignad[oa]|equipo de|reporta a|depende de|jefe|supervisor|ot de|ots de|ot tiene|ots tiene|tiene .*ot)\b/i.test(message);
 
   if (isPeopleQuestion && personRows.length) {
     if (personRows.length > 1) {
