@@ -8,7 +8,7 @@ import { ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type ViewerMode = 'leadership' | 'planning' | 'execution' | 'general';
-type ViewerContext = { mode?: ViewerMode };
+type ViewerContext = { mode?: ViewerMode; mobileExecution?: boolean };
 
 type NavItem = { href: string; label: string; step?: number };
 
@@ -31,19 +31,19 @@ const supportItems: NavItem[] = [
 const roleNavigation: Record<ViewerMode, { flow: string[]; support: string[] }> = {
   leadership: {
     flow: ['Planificar', 'Órdenes', 'Cierre'],
-    support: ['Resumen', 'Imputación', 'Activos', 'Maestranza', 'Personal', 'Indicadores', 'Fuentes'],
+    support: ['Resumen', 'Activos', 'Indicadores'],
   },
   planning: {
     flow: ['Planificar', 'Órdenes'],
-    support: ['Resumen', 'Activos', 'Fuentes'],
+    support: ['Resumen', 'Activos'],
   },
   execution: {
-    flow: ['Órdenes', 'Cierre'],
+    flow: [],
     support: ['Resumen'],
   },
   general: {
     flow: ['Planificar', 'Órdenes', 'Cierre'],
-    support: ['Resumen', 'Imputación', 'Activos', 'Maestranza', 'Personal', 'Indicadores', 'Fuentes'],
+    support: ['Resumen', 'Activos'],
   },
 };
 
