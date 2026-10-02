@@ -3,10 +3,10 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import useSWR from 'swr';
-import { AlertCircle, CheckCircle, Clock, FileText, FolderOpen, Plus, Search, XCircle } from 'lucide-react';
+import { AlertCircle, CheckCircle, Clock, FolderOpen, Plus, Search, XCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 
 const fetcher = async (url: string) => {
@@ -118,7 +118,7 @@ export default function DocumentosGestionPage() {
         </Button>
       </header>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-px overflow-hidden rounded-lg border bg-border md:grid-cols-3">
         <div className="bg-card p-4"><p className="text-xs text-muted-foreground">Documentos</p><p className="mt-1 text-2xl font-semibold">{stats.total}</p></div>
         <div className="bg-card p-4"><p className="text-xs text-muted-foreground">Pendientes</p><p className="mt-1 text-2xl font-semibold">{stats.pending}</p></div>
         <div className="bg-card p-4"><p className="text-xs text-muted-foreground">Por vencer</p><p className="mt-1 text-2xl font-semibold">{expiringDocuments.length}</p></div>
@@ -136,7 +136,7 @@ export default function DocumentosGestionPage() {
 
         <section><div className="mb-2"><h2 className="text-base font-semibold">Vencimientos próximos</h2><p className="text-sm text-muted-foreground">Prioridades de control documental.</p></div><div className="divide-y overflow-hidden rounded-lg border">
             {expiringDocuments.length === 0 ? <p className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">No hay documentos próximos a vencer.</p> : expiringDocuments.slice(0, 6).map((doc) => (
-              <div key={doc.id} className="flex items-center justify-between gap-3 rounded-lg border p-3">
+              <div key={doc.id} className="flex items-center justify-between gap-3 px-4 py-3">
                 <div className="min-w-0"><p className="truncate font-medium">{doc.nombre || 'Documento sin nombre'}</p><p className="text-xs text-muted-foreground">{doc.documentId || 'Sin ID'}</p></div>
                 {statusBadge(doc.estado)}
               </div>
@@ -150,7 +150,7 @@ export default function DocumentosGestionPage() {
             <div className="divide-y border-y">
               {filteredCategories.map((category) => (
                 <Link key={category.id} href={`/dashboard/documentos-gestion/${category.id}`} className="border-b py-3 transition-colors last:border-b-0 hover:bg-muted/30">
-                  <div className="flex items-center justify-between gap-4 px-1"><div className="min-w-0"><p className="font-medium">{category.name || category.id}</p><p className="mt-1 truncate text-sm text-muted-foreground">{category.description || 'Documentos asociados a esta categoría.'}</p></div><div className="flex shrink-0 items-center gap-2"><Badge variant="outline">{category.count || 0}</Badge>{(category.pendingApprovals || 0) > 0 && <span className="text-xs font-medium text-[var(--secondary)]">{category.pendingApprovals} pendientes</span>}</div></div>}
+                  <div className="flex items-center justify-between gap-4 px-1"><div className="min-w-0"><p className="font-medium">{category.name || category.id}</p><p className="mt-1 truncate text-sm text-muted-foreground">{category.description || 'Documentos asociados a esta categoría.'}</p></div><div className="flex shrink-0 items-center gap-2"><Badge variant="outline">{category.count || 0}</Badge>{(category.pendingApprovals || 0) > 0 && <span className="text-xs font-medium text-[var(--secondary)]">{category.pendingApprovals} pendientes</span>}</div></div>
                 </Link>
               ))}
             </div>
