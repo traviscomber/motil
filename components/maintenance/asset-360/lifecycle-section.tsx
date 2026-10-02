@@ -13,6 +13,10 @@ export function Asset360LifecycleSection({
   remainingLifeYears,
   acquisitionDate,
   acquisitionCost,
+  lifecycleState,
+  lifecycleReason,
+  lifecycleChangedAt,
+  lifecycleChangedBy,
 }: {
   hasLifecycleEvidence: boolean;
   assetAgeYears: number | null;
@@ -20,6 +24,10 @@ export function Asset360LifecycleSection({
   remainingLifeYears: number | null;
   acquisitionDate?: string | null;
   acquisitionCost?: number | string | null;
+  lifecycleState?: string | null;
+  lifecycleReason?: string | null;
+  lifecycleChangedAt?: string | null;
+  lifecycleChangedBy?: string | null;
 }) {
   if (!hasLifecycleEvidence) return null;
 
@@ -44,6 +52,20 @@ export function Asset360LifecycleSection({
             meta={expectedLifespan != null ? `Vida esperada ${number(expectedLifespan, 0)} años` : null}
           />
         </div>
+        {lifecycleState || lifecycleReason || lifecycleChangedAt || lifecycleChangedBy ? (
+          <div className="border-t border-border px-4 py-3">
+            <p className="text-xs text-muted-foreground">Estado de ciclo de vida</p>
+            <p className="mt-1 text-sm font-medium">{lifecycleState || 'Estado no informado'}</p>
+            {lifecycleReason ? <p className="mt-1 text-xs text-muted-foreground">{lifecycleReason}</p> : null}
+            {lifecycleChangedAt || lifecycleChangedBy ? (
+              <p className="mt-1 text-xs text-muted-foreground">
+                {lifecycleChangedAt ? `Actualizado ${date(lifecycleChangedAt)}` : 'Actualización registrada'}
+                {lifecycleChangedBy ? ` · ${lifecycleChangedBy}` : ''}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
         {acquisitionCost != null ? (
           <div className="border-t border-border px-4 py-3">
             <p className="text-xs text-muted-foreground">Costo de adquisición</p>
