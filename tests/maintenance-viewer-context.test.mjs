@@ -23,3 +23,9 @@ test('maintenance role routing stays explicit for every canonical maintenance ca
   assert.match(viewerMode, /encargado de camionetas y camiones/);
   assert.match(viewerMode, /cargo === 'soldador'/);
 });
+
+
+test('phone execution surface is explicit and limited to mechanic cargos', () => {
+  assert.match(route, /const mobileExecution = String\(cargoName \|\| ''\).*startsWith\('mecánico'\)/s);
+  assert.match(route, /mobileExecution,/);
+});
