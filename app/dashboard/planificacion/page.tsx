@@ -132,7 +132,7 @@ export default function PlanificacionPage() {
           <PageHeaderEyebrow>Planificación</PageHeaderEyebrow>
           <PageHeaderTitle>Qué necesita atención</PageHeaderTitle>
           <PageHeaderDescription>
-            Prioridades, bloqueos y plan activo en una sola vista. La decisión y programación siguen en manos del responsable.
+            Prioridades, bloqueos y plan activo. MOTIL calcula; Ariel valida y programa.
           </PageHeaderDescription>
         </PageHeaderContent>
         <PageHeaderActions>
@@ -169,7 +169,7 @@ export default function PlanificacionPage() {
         <>
           <section className="space-y-3">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Prioridad</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Plan maestro Ariel</p>
               <h2 className="mt-1 text-lg font-semibold">Qué va primero</h2>
               <p className="mt-1 text-sm text-muted-foreground">Equipos reconciliados, ordenados por prioridad. Los no reconciliados quedan fuera de la cola.</p>
             </div>
