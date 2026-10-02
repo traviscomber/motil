@@ -131,7 +131,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       validation_notes: Array.isArray(asset.validation_notes) ? asset.validation_notes : [],
     };
 
-    const { ordersResult, closeResult, preventiveResult, runtimeResult, reliabilityResult, runtimeReliabilityResult, snapshotsResult, partsResult, laborResult, eventsResult, statusHistoryResult, planningResult, operationalStateResult, operatingSpineResult, supplyChainResult, procurementOrdersResult, costCenterPurchaseHistoryResult, namePurchaseHistoryResult, economicHistoryResult, drillingHistoryResult, drillEconomicsResult, drillingReviewResult, maintenancePriorityResult, financeReconciliationResult, runtimeCostResult, meterHistoryResult, drillEvidenceResult, drillEconomicsChangeResult, taskCandidatesResult, standardPlanResult, identityHistoryResult, exactCostCenterDetailResult, costCenterMatchResult, sourceErrors } = await queryAsset360Sources(context, id, asset, purchaseSelect);
+    const { ordersResult, closeResult, preventiveResult, runtimeResult, reliabilityResult, runtimeReliabilityResult, snapshotsResult, partsResult, laborResult, eventsResult, statusHistoryResult, planningResult, operationalStateResult, operatingSpineResult, supplyChainResult, procurementOrdersResult, costCenterPurchaseHistoryResult, namePurchaseHistoryResult, economicHistoryResult, drillingHistoryResult, drillEconomicsResult, drillEconomicsMonthlyResult, drillingReviewResult, maintenancePriorityResult, financeReconciliationResult, runtimeCostResult, meterHistoryResult, drillEvidenceResult, drillEconomicsChangeResult, taskCandidatesResult, standardPlanResult, identityHistoryResult, exactCostCenterDetailResult, costCenterMatchResult, sourceErrors } = await queryAsset360Sources(context, id, asset, purchaseSelect);
 
     const closeRows = closeResult.data || [];
     const preventives = [...(preventiveResult.data || [])].sort((a: any, b: any) => {
@@ -537,6 +537,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       economicHistory: economicHistoryResult.data || [],
       drillingHistory: drillingHistoryResult.data || [],
       drillEconomics: drillEconomicsResult.data || null,
+      drillEconomicsMonthly: drillEconomicsMonthlyResult.data || [],
       drillingMaintenanceReview: drillingReviewResult.data || [],
       maintenancePriority: maintenancePriorityResult.data || null,
       financeReconciliation: financeReconciliationResult.data || null,
