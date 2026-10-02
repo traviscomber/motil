@@ -304,8 +304,41 @@ function canonicalFallbackAnswer(message: string, context: any) {
   const assetsById = new Map((context.assets || []).map((row: any) => [String(row?.id || ''), row]));
   const lines: string[] = [];
   const toolsUsed: Array<{ name: string; mode: 'read' }> = [];
+  const peopleSearch = executeMaintenanceSeniorTool('search_people', { query: message }, context) as any;
+  const personRows = Array.isArray(peopleSearch?.rows) ? peopleSearch.rows : [];
+  const isPeopleQuestion = /\b(quien|quién|persona|responsable|asignad[oa]|equipo de|reporta a|depende de|jefe|supervisor|ot de|ots de|tiene .*ot)\b/i.test(message);
 
-  if (/preventiv|vencid|hor[oó]metro|pauta/.test(normalized)) {
+  if (isPeopleQuestion && personRows.length) {
+    if (personRows.length > 1) {
+      lines.push('DATO CANÓNICO');
+      lines.push('Encontré más de una persona que podría coincidir:');
+      for (const person of personRows.slice(0, 5)) {
+        lines.push('- ' + (person.full_name || 'Sin nombre') + ' · ' + (person.role_title || 'cargo no informado'));
+      }
+      lines.push('', 'PRÓXIMA ACCIÓN', 'Indica el nombre o apellido de la persona que quieres revisar para no atribuir OT o responsabilidades a quien no corresponde.');
+      toolsUsed.push({ name: 'search_people', mode: 'read' });
+    } else {
+      const person = personRows[0];
+      const work = executeMaintenanceSeniorTool('get_person_work_context', { person_id: person.person_id }, context) as any;
+      lines.push('DATO CANÓNICO');
+      lines.push((person.full_name || 'Persona') + ' · ' + (person.role_title || 'cargo no informado') + '.');
+      if (person.supervisor_name) lines.push('Jefatura: ' + person.supervisor_name + '.');
+      const directReports = Array.isArray(work?.direct_reports) ? work.direct_reports : [];
+      if (directReports.length) lines.push('Equipo directo: ' + directReports.map((row: any) => row.full_name + (row.role_title ? ' (' + row.role_title + ')' : '')).join(' · ') + '.');
+      const assigned = Array.isArray(work?.assigned_open_work_orders) ? work.assigned_open_work_orders : [];
+      if (assigned.length) {
+        lines.push('OT abiertas asignadas:');
+        for (const row of assigned.slice(0, 8)) {
+          lines.push('- ' + (row.work_order_number || 'OT') + ' · ' + (row.title || 'sin título') + ' · ' + (row.status || 'sin estado') + '.');
+        }
+      } else {
+        lines.push('No tiene OT abiertas asignadas en el contexto operacional cargado.');
+      }
+      lines.push('', 'INTERPRETACIÓN PROFESIONAL', 'La asignación de una OT indica responsabilidad de ejecución o seguimiento; no prueba autoría de una falla ni de una decisión técnica.');
+      lines.push('', 'PRÓXIMA ACCIÓN', 'Si necesitas detalle, revisa una OT específica o el equipo directo de esta persona.');
+      toolsUsed.push({ name: 'search_people', mode: 'read' }, { name: 'get_person_work_context', mode: 'read' });
+    }
+  } else if (/preventiv|vencid|hor[oó]metro|pauta/.test(normalized)) {
     const rows = (context.preventive_hour_status || [])
       .filter((row: any) => ['due', 'overdue', 'vencido', 'vencida'].includes(String(row?.hour_status || '').toLowerCase()))
       .sort((a: any, b: any) => Number(a?.remaining_hours ?? 0) - Number(b?.remaining_hours ?? 0))
