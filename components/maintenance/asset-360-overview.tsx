@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import useSWR from 'swr';
 import {
   Activity,
@@ -231,7 +231,7 @@ function Asset360SectionNav() {
   return (
     <nav
       aria-label="Secciones de la Ficha 360"
-      className="sticky top-0 z-20 -mx-1 overflow-x-auto border-y border-border bg-background/95 px-1 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80"
+      className="sticky top-12 z-20 -mx-1 overflow-x-auto border-y border-border bg-background/95 px-1 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80"
     >
       <div className="flex min-w-max items-center gap-1">
         {asset360Sections.map(([id, label]) => (
@@ -257,7 +257,7 @@ function Asset360Domain({
   id: string;
   title: string;
   description: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <section id={id} className="scroll-mt-20 space-y-4">
