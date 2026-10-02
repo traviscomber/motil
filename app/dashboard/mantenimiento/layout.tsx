@@ -31,11 +31,11 @@ const supportItems: NavItem[] = [
 const roleNavigation: Record<ViewerMode, { flow: string[]; support: string[] }> = {
   leadership: {
     flow: ['Planificar', 'Órdenes', 'Cierre'],
-    support: ['Resumen', 'Activos', 'Indicadores'],
+    support: ['Resumen', 'Activos', 'Indicadores', 'Fuentes'],
   },
   planning: {
     flow: ['Planificar', 'Órdenes'],
-    support: ['Resumen', 'Activos'],
+    support: ['Resumen', 'Activos', 'Fuentes'],
   },
   execution: {
     flow: [],
