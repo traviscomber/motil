@@ -54,6 +54,10 @@ export type Asset360CoverageAsset = {
   license_plate_evidence_source?: string | null;
   reference_family?: string | null;
   reference_family_evidence_source?: string | null;
+  source_history_evidence_source?: string | null;
+  source_maintenance_records?: number | string | null;
+  source_maintenance_spend?: number | string | null;
+  source_last_record?: string | null;
   source_sheet?: string | null;
   source_row?: number | null;
   updated_at?: string | null;
@@ -78,6 +82,7 @@ const evidenceSourceLabel = (source?: string | null) => {
     deterministic_name_classifier: 'Clasificador determinístico del nombre',
     deterministic_name_brand: 'Marca explícita extraída del nombre',
     deterministic_name_plate: 'Patente extraída del nombre con formato validado',
+    'maintenance_canonical_assets_v1.source_payload': 'Histórico importado del maestro canónico',
   };
   return labels[source] || source;
 };
@@ -212,6 +217,14 @@ export function Asset360CoverageSection({
                 value={asset.source_sheet}
                 meta={asset.source_row != null ? `Fila ${asset.source_row}` : null}
               />
+              {asset.source_maintenance_records != null ? (
+                <IdentityItem
+                  icon={FileText}
+                  label="Histórico importado"
+                  value={`${number(asset.source_maintenance_records, 0)} registros`}
+                  meta={asset.source_last_record ? `${evidenceSourceLabel(asset.source_history_evidence_source)} · último ${date(asset.source_last_record)}` : evidenceSourceLabel(asset.source_history_evidence_source)}
+                />
+              ) : null}
               <IdentityItem icon={CalendarDays} label="Última actualización" value={date(asset.updated_at || asset.imported_at)} />
               <IdentityItem
                 icon={Activity}
