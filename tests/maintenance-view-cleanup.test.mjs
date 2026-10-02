@@ -5,6 +5,7 @@ import { readFile } from 'node:fs/promises';
 const mobilePage = await readFile(new URL('../app/dashboard/mantenimiento/movil/page.tsx', import.meta.url), 'utf8');
 const mobileLegacy = await readFile(new URL('../components/maintenance/maintenance-mobile-panel.tsx', import.meta.url), 'utf8');
 const personnel = await readFile(new URL('../components/maintenance/technician-performance-board.tsx', import.meta.url), 'utf8');
+const home = await readFile(new URL('../components/dashboard/maintenance-home.tsx', import.meta.url), 'utf8');
 
 test('maintenance mobile route uses assigned work instead of the legacy global mobile dashboard', () => {
   assert.match(mobilePage, /MobileTerrainPanel/);
@@ -26,4 +27,10 @@ test('personnel summary stays within the MOTIL two-to-four metric rule', () => {
   assert.match(personnel, /\['OT con cargo válido', summary\.totalWorkOrders\]/);
   assert.doesNotMatch(personnel, /\['Personal identificable', summary\.activeWorkers\]/);
   assert.doesNotMatch(personnel, /\['Completación OT'/);
+});
+
+
+test('maintenance home does not repeat static people and vehicle canonical overviews', () => {
+  assert.doesNotMatch(home, /CanonicalMaintenanceOverview/);
+  assert.doesNotMatch(home, /canonical-maintenance-overview/);
 });
