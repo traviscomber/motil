@@ -24,7 +24,7 @@ async function fetcher(url: string): Promise<TerrainResponse> {
   return payload as TerrainResponse;
 }
 
-export function MobileTerrainPanel() {
+function AssignedWorkPanel({ surface }: { surface: 'phone' | 'desktop' }) {
   const { data, error, isLoading, mutate } = useSWR<TerrainResponse>(
     '/api/maintenance/my-work',
     fetcher,
@@ -33,12 +33,17 @@ export function MobileTerrainPanel() {
   const nextAction = data?.actions?.[0] || null;
   const identityLinked = data?.identityLinked !== false;
 
+  const isPhone = surface === 'phone';
+
   return (
-    <section className="mx-auto w-full max-w-md space-y-4 py-1" aria-label="Trabajo en terreno">
+    <section
+      className={isPhone ? 'mx-auto w-full max-w-md space-y-4 py-1' : 'mx-auto w-full max-w-2xl space-y-4 py-2'}
+      aria-label={isPhone ? 'Trabajo en terreno' : 'Trabajo asignado'}
+    >
       <header className="flex items-center justify-between gap-3 px-1">
         <div>
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Mantenimiento</p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight">Trabajo de hoy</h1>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight">{isPhone ? 'Trabajo de hoy' : 'Trabajo asignado'}</h1>
         </div>
         <Button
           type="button"
@@ -74,7 +79,17 @@ export function MobileTerrainPanel() {
         </CardContent>
       </Card> : null}
 
-      <p className="px-2 text-center text-xs leading-5 text-muted-foreground">Sólo ves trabajo asignado a tu identidad operativa. El cierre requiere evidencia y validación del responsable.</p>
+      <p className="px-2 text-center text-xs leading-5 text-muted-foreground">
+        Sólo ves trabajo asignado a tu identidad operativa. El cierre requiere evidencia y validación del responsable.
+      </p>
     </section>
   );
+}
+
+export function MobileTerrainPanel() {
+  return <AssignedWorkPanel surface="phone" />;
+}
+
+export function WorkshopAssignedWorkPanel() {
+  return <AssignedWorkPanel surface="desktop" />;
 }
