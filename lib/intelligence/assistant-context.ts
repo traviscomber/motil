@@ -46,7 +46,7 @@ const CONTEXTS: Array<AssistantContext & { prefixes: string[] }> = [
       'Dame las 5 acciones de mantenimiento que requieren atención hoy.',
       '¿Qué OT están bloqueadas y qué falta para destrabarlas?',
       '¿Qué preventivos están vencidos y con qué evidencia?',
-      '¿Qué equipos tienen observaciones operacionales sin resolver?',
+      '¿Qué dato faltante tendría más valor para decidir mejor?',
     ],
   },
   {
