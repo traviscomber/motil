@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { Dictionary, Locale } from '@/lib/i18n/dictionaries';
+import { MobileTerrainPanel, WorkshopAssignedWorkPanel } from '@/components/maintenance/mobile-terrain-panel';
 
 type WorkOrderItem = {
   id: string;
@@ -26,6 +27,7 @@ type WorkOrderItem = {
 };
 
 type WorkOrdersT = Dictionary['app']['workOrders'];
+type ViewerContext = { mode?: 'leadership' | 'planning' | 'execution' | 'workshop' | 'oversight' | 'general'; canCreateWorkOrder?: boolean };
 
 function normalizeText(value: string | null | undefined) {
   return String(value || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
@@ -87,7 +89,16 @@ export function WorkOrdersQueue({ locale, dictionary }: { locale: Locale; dictio
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [scopeFilter, setScopeFilter] = useState('operational');
 
-  const { data, error, isLoading, mutate } = useSWR('/api/maintenance/work-orders', async (url: string) => {
+  const { data: viewer, isLoading: viewerLoading } = useSWR<ViewerContext>('/api/maintenance/viewer-context', async (url: string) => {
+    const response = await fetch(url, { credentials: 'include', cache: 'no-store' });
+    const payload = await response.json().catch(() => null);
+    if (!response.ok) throw new Error(payload?.error || 'request failed');
+    return payload as ViewerContext;
+  }, { revalidateOnFocus: false });
+
+  const restrictedSurface = viewer?.mode === 'execution' || viewer?.mode === 'workshop';
+
+  const { data, error, isLoading, mutate } = useSWR(!viewerLoading && !restrictedSurface ? '/api/maintenance/work-orders' : null, async (url: string) => {
     const response = await fetch(url, { credentials: 'include' });
     const payload = await response.json().catch(() => null);
     if (!response.ok) throw new Error(payload?.error || 'request failed');
@@ -107,7 +118,7 @@ export function WorkOrdersQueue({ locale, dictionary }: { locale: Locale; dictio
     return workOrders.filter((order) => {
       const matchesScope = missingAssetOnly
         ? order.record_scope !== 'historical'
-        : scopeFilter === 'all' || order.record_scope === scopeFilter;
+        : order.record_scope === scopeFilter;
       const matchesDataHealth = !missingAssetOnly || !order.asset_name;
       const matchesSearch = !query || [order.work_order_number, order.title, order.asset_name, order.assigned_to_name].some((value) => normalizeText(value).includes(query));
       const matchesStatus = statusFilter === 'all' || normalizeText(order.status) === statusFilter;
@@ -115,6 +126,12 @@ export function WorkOrdersQueue({ locale, dictionary }: { locale: Locale; dictio
       return matchesScope && matchesDataHealth && matchesSearch && matchesStatus && matchesPriority;
     });
   }, [missingAssetOnly, priorityFilter, scopeFilter, search, statusFilter, workOrders]);
+
+  if (viewerLoading) {
+    return <div className="h-40 animate-pulse rounded-lg bg-muted" />;
+  }
+  if (viewer?.mode === 'execution') return <MobileTerrainPanel />;
+  if (viewer?.mode === 'workshop') return <WorkshopAssignedWorkPanel />;
 
   return (
     <div className="space-y-6">
@@ -128,7 +145,7 @@ export function WorkOrdersQueue({ locale, dictionary }: { locale: Locale; dictio
           {missingAssetOnly
             ? <Button asChild variant="outline"><Link href="/dashboard/mantenimiento/ordenes-trabajo">{t.viewAll}</Link></Button>
             : <Button variant="outline" onClick={() => void mutate()} disabled={isLoading}><RefreshCw className="mr-2 h-4 w-4" />{t.refresh}</Button>}
-          <Button asChild><Link href="/dashboard/mantenimiento/ordenes-trabajo/create"><Plus className="mr-2 h-4 w-4" />{t.newOrder}</Link></Button>
+          {viewer?.canCreateWorkOrder ? <Button asChild><Link href="/dashboard/mantenimiento/ordenes-trabajo/create"><Plus className="mr-2 h-4 w-4" />{t.newOrder}</Link></Button> : null}
         </div>
       </section>
 
