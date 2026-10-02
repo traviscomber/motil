@@ -83,9 +83,9 @@ export default function LegalPage() {
     <div className="space-y-5">
       <header className="border-b border-border/70 pb-4">
         <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Legal</p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight">Control legal</h1>
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight">Legal</h1>
         <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-          Decisiones, plazos y evidencia conectados con la operación. Legal coordina el riesgo jurídico; cada área conserva la ejecución técnica.
+          Casos, vencimientos y evidencia que requieren seguimiento legal.
         </p>
       </header>
 
@@ -117,7 +117,7 @@ export default function LegalPage() {
       <section>
         <div className="mb-2">
           <h2 className="text-base font-semibold">Qué requiere atención</h2>
-          <p className="text-sm text-muted-foreground">Señales reales de contratos y documentos. La próxima etapa las consolida como Casos.</p>
+          <p className="text-sm text-muted-foreground">Contratos y documentos que requieren acción.</p>
         </div>
         <div className="divide-y overflow-hidden rounded-md border">
           {attention.length ? attention.map((item) => (
@@ -138,22 +138,22 @@ export default function LegalPage() {
         <Link href="/dashboard/legal/casos" className="rounded-md border p-4 transition-colors hover:bg-muted/30">
           <Scale className="h-4 w-4 text-muted-foreground" />
           <p className="mt-3 text-sm font-semibold">Casos</p>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Señales operacionales convertidas en trabajo Legal trazable.</p>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Trabajo legal trazable.</p>
         </Link>
         <Link href="/dashboard/legal/sernageomin" className="rounded-md border p-4 transition-colors hover:bg-muted/30">
           <ShieldCheck className="h-4 w-4 text-muted-foreground" />
           <p className="mt-3 text-sm font-semibold">Control regulatorio</p>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Obligaciones, autoridad, responsable, plazo y evidencia.</p>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Obligaciones, plazos y evidencia.</p>
         </Link>
         <Link href="/dashboard/documentos-gestion/contratos" className="rounded-md border p-4 transition-colors hover:bg-muted/30">
           <Scale className="h-4 w-4 text-muted-foreground" />
           <p className="mt-3 text-sm font-semibold">Contratos</p>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Vigencia, revisión, garantías, responsables y respaldo contractual.</p>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Vigencia, revisión y respaldo.</p>
         </Link>
         <Link href="/dashboard/legal/documentos" className="rounded-md border p-4 transition-colors hover:bg-muted/30">
           <FileText className="h-4 w-4 text-muted-foreground" />
           <p className="mt-3 text-sm font-semibold">Documentos</p>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Expediente, versiones y evidencia documental del trabajo Legal.</p>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Expedientes, versiones y evidencia.</p>
         </Link>
       </section>
 
