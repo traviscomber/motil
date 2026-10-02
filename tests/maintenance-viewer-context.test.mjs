@@ -14,7 +14,7 @@ test('maintenance viewer context preserves canonical cargo instead of synthetic 
 test('maintenance role routing stays explicit for every canonical maintenance cargo family', () => {
   assert.match(viewerMode, /jefe departamento de mantenimiento/);
   assert.match(viewerMode, /jefe de planificación/);
-  assert.match(viewerMode, /jefe de equipos móviles y estacionarios/);
+  assert.match(viewerMode, /jefe de equipos móviles y estacionarios'\) return 'planning'/);
   assert.match(viewerMode, /gerente operaciones/);
   assert.match(viewerMode, /jefe sostenibilidad/);
   assert.match(viewerMode, /return 'oversight'/);
