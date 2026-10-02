@@ -9,7 +9,7 @@ const myWork = await readFile(new URL('../app/api/maintenance/my-work/route.ts',
 test('execution users receive the dedicated assigned-work surface on every viewport', () => {
   assert.match(dashboard, /if \(mode === 'execution'\) \{/);
   assert.match(dashboard, /<MobileTerrainPanel \/>/);
-  assert.match(dashboard, /max-w-xl/);
+  assert.match(dashboard, /<WorkshopAssignedWorkPanel \/>/);
   assert.doesNotMatch(dashboard, /md:hidden"><MobileTerrainPanel/);
   assert.doesNotMatch(dashboard, /mode==='execution' \? 'hidden md:block' : undefined/);
 });
@@ -28,7 +28,7 @@ test('terrain surface exposes one assigned next action without global maintenanc
 });
 
 test('my-work API requires canonical person linkage and scopes work orders to that assignee and organization', () => {
-  assert.match(myWork, /resolveMaintenanceViewerMode\(cargoName\) !== 'execution'/);
+  assert.match(myWork, /\['execution', 'workshop'\]\.includes\(viewerMode\)/);
   assert.match(myWork, /\.from\('people'\)/);
   assert.match(myWork, /\.eq\('organization_id', context\.organizationId\)/);
   assert.match(myWork, /\.eq\('profile_id', access\.user\.id\)/);
@@ -36,4 +36,11 @@ test('my-work API requires canonical person linkage and scopes work orders to th
   assert.match(myWork, /\.from\('maintenance_work_orders'\)/);
   assert.match(myWork, /\.eq\('assigned_person_id', person\.id\)/);
   assert.match(myWork, /terminalStatuses/);
+});
+
+
+test('welder uses desktop workshop mode while mechanic keeps phone execution mode', () => {
+  assert.match(dashboard, /mode === 'workshop'/);
+  assert.match(terrain, /surface: 'phone' \| 'desktop'/);
+  assert.match(terrain, /WorkshopAssignedWorkPanel/);
 });

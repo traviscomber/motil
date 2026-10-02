@@ -8,9 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { PageHeader, PageHeaderActions, PageHeaderContent, PageHeaderDescription, PageHeaderEyebrow, PageHeaderTitle } from '@/components/ui/page-header';
 import { StatePanel } from '@/components/ui/state-panel';
-import { MobileTerrainPanel } from '@/components/maintenance/mobile-terrain-panel';
+import { MobileTerrainPanel, WorkshopAssignedWorkPanel } from '@/components/maintenance/mobile-terrain-panel';
 import { AutopilotDecisionStrip } from '@/components/maintenance/autopilot-decision-strip';
-import { CanonicalMaintenanceOverview } from '@/components/maintenance/canonical-maintenance-overview';
 import type { Dictionary, Locale } from '@/lib/i18n/dictionaries';
 
 type ActionItem = { id: string; kind: string; priority: number; title: string; description: string; evidence: string; href: string; assetHref?: string | null; autopilot?: { state: 'prepared'; risk: 'low' | 'medium' | 'high'; requiresHumanDecision: true; preparedAction: string; authority: string } };
@@ -18,7 +17,7 @@ type Response = {
   summary?: { openWorkOrders: number; unassignedOpenWorkOrders: number; overdueHourSchedules: number; unplannedOverdueHourSchedules: number; unplannedOverdueInterventionGroups: number; plannedOverdueHourSchedules: number; pendingOperationalReviews: number; outOfServiceOperationalReviews: number; operationallyBlocked: number; pendingPlanSteps: number; readyToClose: number; recurringReliabilityAssets: number; totalActions: number };
   actions?: ActionItem[];
 };
-type ViewerMode = 'leadership' | 'planning' | 'execution' | 'oversight' | 'general';
+type ViewerMode = 'leadership' | 'planning' | 'execution' | 'workshop' | 'oversight' | 'general';
 type ViewerContext = { mode?: ViewerMode; cargoName?: string | null; canEdit?: boolean; canCreateWorkOrder?: boolean };
 type Metric = readonly [string, string | number, string, string];
 
@@ -61,20 +60,24 @@ const planningKinds = new Set(['operational_review', 'preventive_overdue', 'assi
 const leadershipKinds = new Set(['operational_review', 'preventive_overdue', 'operational_blocker', 'ready_to_close', 'reliability']);
 const oversightKinds = new Set(['operational_review', 'operational_blocker', 'reliability']);
 
-type WorkMode = Exclude<ViewerMode, 'execution'>;
+type WorkMode = Exclude<ViewerMode, 'execution' | 'workshop'>;
 
 export function MaintenanceHome({ locale, dictionary }: { locale: Locale; dictionary: Dictionary }) {
   const t = dictionary.app.maintenance;
   const { data: viewer, isLoading: viewerLoading } = useSWR<ViewerContext>('/api/maintenance/viewer-context', (url) => fetcher<ViewerContext>(url), { revalidateOnFocus: false });
   const mode: ViewerMode = viewer?.mode || 'general';
-  const { data, error, isLoading, mutate } = useSWR<Response>(viewer && mode !== 'execution' ? '/api/maintenance/control-center' : null, (url) => fetcher<Response>(url), { revalidateOnFocus: false });
+  const { data, error, isLoading, mutate } = useSWR<Response>(viewer && mode !== 'execution' && mode !== 'workshop' ? '/api/maintenance/control-center' : null, (url) => fetcher<Response>(url), { revalidateOnFocus: false });
 
   if (viewerLoading) {
     return <StatePanel tone="loading" title={t.loading} className="min-h-64 border-0 bg-transparent" />;
   }
 
   if (mode === 'execution') {
-    return <div className="mx-auto w-full max-w-xl"><MobileTerrainPanel /></div>;
+    return <MobileTerrainPanel />;
+  }
+
+  if (mode === 'workshop') {
+    return <WorkshopAssignedWorkPanel />;
   }
 
   const summary = data?.summary;
@@ -192,8 +195,6 @@ export function MaintenanceHome({ locale, dictionary }: { locale: Locale; dictio
         <span>{t.flow.handoffProduction}</span><span>·</span><span>{t.flow.handoffWarehouse}</span><span>·</span><Link className="hover:text-foreground" href="/dashboard/compras">{t.flow.handoffProcurement}</Link><span>·</span><span>{t.flow.handoffFinance}</span>
       </div> : null}
     </section> : null}
-
-    <CanonicalMaintenanceOverview />
 
     {!isLoading && !error && summary ? <AutopilotDecisionStrip
       locale={locale}

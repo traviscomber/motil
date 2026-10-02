@@ -7,7 +7,7 @@ import useSWR from 'swr';
 import { ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-type ViewerMode = 'leadership' | 'planning' | 'execution' | 'general';
+type ViewerMode = 'leadership' | 'planning' | 'execution' | 'workshop' | 'oversight' | 'general';
 type ViewerContext = { mode?: ViewerMode };
 
 type NavItem = { href: string; label: string; step?: number };
@@ -21,7 +21,7 @@ const flowItems: NavItem[] = [
 const supportItems: NavItem[] = [
   { href: '/dashboard/mantenimiento', label: 'Resumen' },
   { href: '/dashboard/mantenimiento/ordenes-trabajo/imputacion', label: 'Imputación' },
-  { href: '/dashboard/mantenimiento/equipos', label: 'Activos' },
+  { href: '/dashboard/mantenimiento/equipos', label: 'Equipos' },
   { href: '/dashboard/mantenimiento/maestranza', label: 'Maestranza' },
   { href: '/dashboard/mantenimiento/personal', label: 'Personal' },
   { href: '/dashboard/mantenimiento/indicadores', label: 'Indicadores' },
@@ -31,15 +31,23 @@ const supportItems: NavItem[] = [
 const roleNavigation: Record<ViewerMode, { flow: string[]; support: string[] }> = {
   leadership: {
     flow: ['Planificar', 'Órdenes', 'Cierre'],
-    support: ['Resumen', 'Imputación', 'Activos', 'Maestranza', 'Personal', 'Indicadores', 'Fuentes'],
+    support: ['Resumen', 'Imputación', 'Equipos', 'Maestranza', 'Personal', 'Indicadores', 'Fuentes'],
   },
   planning: {
     flow: ['Planificar', 'Órdenes'],
-    support: ['Resumen', 'Activos', 'Fuentes'],
+    support: ['Resumen', 'Equipos', 'Fuentes'],
   },
   execution: {
-    flow: ['Órdenes', 'Cierre'],
+    flow: [],
     support: ['Resumen'],
+  },
+  workshop: {
+    flow: [],
+    support: ['Resumen'],
+  },
+  oversight: {
+    flow: ['Órdenes', 'Cierre'],
+    support: ['Resumen', 'Equipos', 'Indicadores'],
   },
   general: {
     flow: ['Planificar', 'Órdenes', 'Cierre'],

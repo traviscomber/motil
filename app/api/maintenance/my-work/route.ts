@@ -35,8 +35,9 @@ export async function GET(request: NextRequest) {
       cargoName = cargo?.name || null;
     }
 
-    if (resolveMaintenanceViewerMode(cargoName) !== 'execution') {
-      return NextResponse.json({ error: 'Esta vista está reservada para perfiles de ejecución.' }, { status: 403 });
+    const viewerMode = resolveMaintenanceViewerMode(cargoName);
+    if (!['execution', 'workshop'].includes(viewerMode)) {
+      return NextResponse.json({ error: 'Esta vista está reservada para perfiles de ejecución asignada.' }, { status: 403 });
     }
 
     const { data: person, error: personError } = await context.supabase

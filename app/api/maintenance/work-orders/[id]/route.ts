@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getOrganizationContext } from '@/lib/api/organization-context';
 import { MODULE_KEYS, requireModuleAccess } from '@/lib/api/module-access';
 import { requireOperationalMaintenanceWorkOrder } from '@/lib/maintenance/work-order-scope';
+import { resolveMaintenanceViewerMode, type MaintenanceViewerMode } from '@/lib/maintenance/viewer-mode';
 
 type WorkOrderPatchPayload = {
   status?: string;
@@ -53,6 +54,62 @@ async function loadAssignees(context: Awaited<ReturnType<typeof getOrganizationC
     .order('full_name');
   if (error) throw error;
   return data || [];
+}
+
+
+async function resolveExecutionSurface(context: Awaited<ReturnType<typeof getOrganizationContext>> & { ok: true }) {
+  const { data: profile, error: profileError } = await context.supabase
+    .from('profiles')
+    .select('cargo_id')
+    .eq('id', context.userId)
+    .eq('organization_id', context.organizationId)
+    .maybeSingle();
+  if (profileError) throw profileError;
+
+  let cargoName: string | null = null;
+  if (profile?.cargo_id) {
+    const { data: cargo, error: cargoError } = await context.supabase
+      .from('cargos')
+      .select('name')
+      .eq('id', profile.cargo_id)
+      .maybeSingle();
+    if (cargoError) throw cargoError;
+    cargoName = cargo?.name || null;
+  }
+
+  const mode = resolveMaintenanceViewerMode(cargoName);
+  const restricted = mode === 'execution' || mode === 'workshop';
+  if (!restricted) return { restricted: false, mode, personId: null as string | null };
+
+  const { data: person, error: personError } = await context.supabase
+    .from('people')
+    .select('id')
+    .eq('organization_id', context.organizationId)
+    .eq('profile_id', context.userId)
+    .eq('employment_status', 'active')
+    .maybeSingle();
+  if (personError) throw personError;
+
+  return { restricted: true, mode: mode as MaintenanceViewerMode, personId: person?.id || null };
+}
+
+function mapRestrictedWorkOrder(row: Record<string, unknown>, asset: Record<string, unknown> | null) {
+  return {
+    id: row.id,
+    work_order_number: row.work_order_number,
+    title: row.title,
+    description: row.description,
+    status: row.status,
+    priority: row.priority,
+    scheduled_date: row.scheduled_date,
+    assigned_person_id: row.assigned_person_id,
+    assigned_to_name: row.assigned_to_name,
+    canonical_asset_id: row.canonical_asset_id,
+    asset_id: row.canonical_asset_id || null,
+    asset_name: asset?.name || null,
+    asset_code: asset?.asset_code || null,
+    record_scope: row.created_by ? 'operational' : 'historical',
+  };
 }
 
 async function resolveAssignee(context: Awaited<ReturnType<typeof getOrganizationContext>> & { ok: true }, personId: string) {
@@ -121,6 +178,26 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const { data, error } = await context.supabase.from('maintenance_work_orders').select('*').eq('id', id).eq('organization_id', context.organizationId).maybeSingle();
     if (error) throw error;
     if (!data) return NextResponse.json({ error: 'No se encontró la orden de trabajo' }, { status: 404 });
+    const recordScope = data.created_by ? 'operational' : 'historical';
+    const surface = await resolveExecutionSurface(context);
+
+    if (surface.restricted) {
+      if (!surface.personId || String(data.assigned_person_id || '') !== surface.personId) {
+        return NextResponse.json({ error: 'Esta orden no está asignada a tu identidad operativa.' }, { status: 403 });
+      }
+      const asset = await loadCanonicalAsset(context, data.canonical_asset_id || null);
+      return NextResponse.json({
+        data: mapRestrictedWorkOrder(data, asset),
+        costCenters: [],
+        assignees: [],
+        closeReadiness: null,
+        canEdit: surface.mode === 'execution' && access.canWrite && recordScope === 'operational',
+        record_scope: recordScope,
+        canonical: true,
+        restrictedSurface: surface.mode,
+      });
+    }
+
     const [asset, costSummary, costCenters, assignees, closeReadiness] = await Promise.all([
       loadCanonicalAsset(context, data.canonical_asset_id || null),
       loadCostSummary(context, id),
@@ -128,7 +205,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       loadAssignees(context),
       loadCloseReadiness(context, id),
     ]);
-    const recordScope = data.created_by ? 'operational' : 'historical';
     return NextResponse.json({ data: mapWorkOrder(data, asset, costSummary), costCenters, assignees, closeReadiness, canEdit: access.canWrite && recordScope === 'operational', record_scope: recordScope, canonical: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'No se pudo cargar la orden de trabajo';
@@ -143,6 +219,23 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (!context.ok) return context.response;
   const { id } = await params;
   try {
+    const surface = await resolveExecutionSurface(context);
+    if (surface.mode === 'workshop') {
+      return NextResponse.json({ error: 'Este cargo consulta su trabajo asignado en modo de solo lectura.' }, { status: 403 });
+    }
+    if (surface.mode === 'execution') {
+      const { data: assignedOrder, error: assignedOrderError } = await context.supabase
+        .from('maintenance_work_orders')
+        .select('assigned_person_id')
+        .eq('id', id)
+        .eq('organization_id', context.organizationId)
+        .maybeSingle();
+      if (assignedOrderError) throw assignedOrderError;
+      if (!surface.personId || !assignedOrder || String(assignedOrder.assigned_person_id || '') !== surface.personId) {
+        return NextResponse.json({ error: 'Esta orden no está asignada a tu identidad operativa.' }, { status: 403 });
+      }
+    }
+
     const guard = await requireOperationalMaintenanceWorkOrder(context.supabase, context.organizationId, id);
     if (!guard.ok) return NextResponse.json({ error: guard.error, record_scope: guard.scope }, { status: guard.status });
 

@@ -16,3 +16,9 @@ test('viewer context preserves canonical cargo name for transversal and fallback
   assert.match(viewerContext, /cargoName,\n\s+canEdit: access\.canWrite/);
   assert.doesNotMatch(viewerContext, /mode === 'general' \? null : cargoName/);
 });
+
+
+test('welder no longer inherits the mechanic phone execution mode', () => {
+  assert.match(viewerMode, /cargo === 'soldador'\) return 'workshop'/);
+  assert.match(viewerMode, /cargo\.startsWith\('mecánico'\)/);
+});

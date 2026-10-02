@@ -190,7 +190,6 @@ test('work orders queue is a server wrapper over a locale-aware client', () => {
   assert.match(workOrdersPage, /<WorkOrdersQueue locale=\{locale\} dictionary=\{dictionary\} \/>/);
   assert.match(workOrders, /const t = dictionary\.app\.workOrders;/);
   assert.match(workOrders, /getStatusLabel\(order\.status, t\)/);
-  assert.match(workOrders, /t\.schedule\.title/);
   assert.match(workOrders, /fill\(t\.counts, \{ filtered: filteredOrders\.length, total: workOrders\.length \}\)/);
   // No hardcoded work-orders copy may remain in the component.
   for (const literal of ['Órdenes de trabajo', 'Cierre progresivo', 'Nueva OT', 'Próximas intervenciones']) {

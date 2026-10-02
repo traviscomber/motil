@@ -2,8 +2,61 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getOrganizationContext } from '@/lib/api/organization-context';
 import { MODULE_KEYS, requireModuleAccess } from '@/lib/api/module-access';
 import { requireOperationalMaintenanceWorkOrder } from '@/lib/maintenance/work-order-scope';
+import { resolveMaintenanceViewerMode } from '@/lib/maintenance/viewer-mode';
 
 const TIMER_ACTIONS = new Set(['play', 'pause', 'resume', 'terminate']);
+
+async function requireTimerRoleScope(
+  context: Awaited<ReturnType<typeof getOrganizationContext>> & { ok: true },
+  workOrderId: string,
+) {
+  const { data: profile, error: profileError } = await context.supabase
+    .from('profiles')
+    .select('cargo_id')
+    .eq('id', context.userId)
+    .eq('organization_id', context.organizationId)
+    .maybeSingle();
+  if (profileError) throw profileError;
+
+  let cargoName: string | null = null;
+  if (profile?.cargo_id) {
+    const { data: cargo, error: cargoError } = await context.supabase
+      .from('cargos')
+      .select('name')
+      .eq('id', profile.cargo_id)
+      .maybeSingle();
+    if (cargoError) throw cargoError;
+    cargoName = cargo?.name || null;
+  }
+
+  const mode = resolveMaintenanceViewerMode(cargoName);
+  if (mode === 'workshop') {
+    return { ok: false as const, response: NextResponse.json({ ok: false, error: 'El temporizador móvil no está asignado a este cargo.' }, { status: 403 }) };
+  }
+  if (mode !== 'execution') return { ok: true as const };
+
+  const { data: person, error: personError } = await context.supabase
+    .from('people')
+    .select('id')
+    .eq('organization_id', context.organizationId)
+    .eq('profile_id', context.userId)
+    .eq('employment_status', 'active')
+    .maybeSingle();
+  if (personError) throw personError;
+
+  const { data: order, error: orderError } = await context.supabase
+    .from('maintenance_work_orders')
+    .select('assigned_person_id')
+    .eq('organization_id', context.organizationId)
+    .eq('id', workOrderId)
+    .maybeSingle();
+  if (orderError) throw orderError;
+
+  if (!person?.id || !order || String(order.assigned_person_id || '') !== person.id) {
+    return { ok: false as const, response: NextResponse.json({ ok: false, error: 'Esta orden no está asignada a tu identidad operativa.' }, { status: 403 }) };
+  }
+  return { ok: true as const };
+}
 
 function timerErrorResponse(error: { code?: string; message?: string } | null | undefined) {
   if (error?.code === 'P0002') return NextResponse.json({ ok: false, error: 'WO not found' }, { status: 404 });
@@ -19,6 +72,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (!context.ok) return context.response;
 
   const { id: workOrderId } = await params;
+  const roleScope = await requireTimerRoleScope(context, workOrderId);
+  if (!roleScope.ok) return roleScope.response;
   const guard = await requireOperationalMaintenanceWorkOrder(context.supabase, context.organizationId, workOrderId);
   if (!guard.ok) return NextResponse.json({ ok: false, error: guard.error, record_scope: guard.scope }, { status: guard.status });
 
@@ -46,6 +101,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   if (!context.ok) return context.response;
 
   const { id: workOrderId } = await params;
+  const roleScope = await requireTimerRoleScope(context, workOrderId);
+  if (!roleScope.ok) return roleScope.response;
   const { data: workOrder, error } = await context.supabase
     .from('maintenance_work_orders')
     .select('id, timer_status, timer_start_time, total_timer_minutes, created_by')

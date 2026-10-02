@@ -73,6 +73,7 @@ export function WorkOrderDetail({ locale, dictionary }: { locale: Locale; dictio
   const canEdit = Boolean(data?.canEdit) && !isHistorical;
   const selectedCostCenter = costCenters.find((row: { id: string }) => row.id === workOrder?.cost_center_id);
   const isExecution = viewer?.mode === 'execution';
+  const isWorkshop = viewer?.mode === 'workshop';
 
   const patchOrder = async (payload: Record<string, unknown>) => {
     if (isHistorical) throw new Error('historical work order is read-only');
@@ -109,6 +110,43 @@ export function WorkOrderDetail({ locale, dictionary }: { locale: Locale; dictio
           canEdit={canEdit}
           onWorkOrderChange={mutate}
         />
+      </div>
+    );
+  }
+
+  if (isWorkshop) {
+    return (
+      <div className="mx-auto w-full max-w-3xl space-y-5 py-2">
+        <section className="border-b border-border/70 pb-5">
+          <Button asChild variant="ghost" size="sm" className="-ml-3 mb-2">
+            <Link href="/dashboard/mantenimiento"><ArrowLeft className="mr-2 h-4 w-4" />{t.back}</Link>
+          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-mono text-sm text-muted-foreground">{workOrder.work_order_number || 'OT'}</span>
+            <Badge variant="outline">{statusLabel(workOrder.status, t)}</Badge>
+          </div>
+          <h1 className="mt-2 text-2xl font-semibold tracking-tight">{workOrder.title || t.untitled}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{workOrder.asset_code || t.noCode} · {workOrder.asset_name || t.noAsset}</p>
+        </section>
+
+        <Card className="shadow-none">
+          <CardHeader className="pb-3"><CardTitle className="text-base">Trabajo asignado</CardTitle></CardHeader>
+          <CardContent className="space-y-5">
+            <div>
+              <p className="text-xs text-muted-foreground">Qué hacer</p>
+              <p className="mt-1 text-sm leading-6">{workOrder.description || t.intervention.noDescription}</p>
+            </div>
+            <div className="grid gap-4 border-t pt-4 sm:grid-cols-3">
+              <div><p className="text-xs text-muted-foreground">{t.summary.status}</p><p className="mt-1 font-medium">{statusLabel(workOrder.status, t)}</p></div>
+              <div><p className="text-xs text-muted-foreground">{t.summary.priority}</p><p className="mt-1 font-medium">{priorityLabel(workOrder.priority, t)}</p></div>
+              <div><p className="text-xs text-muted-foreground">{t.summary.scheduled}</p><p className="mt-1 font-medium">{workOrder.scheduled_date ? new Date(workOrder.scheduled_date).toLocaleDateString(dateLocale) : t.summary.noDate}</p></div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <p className="text-xs leading-5 text-muted-foreground">
+          Esta vista muestra sólo la orden asignada. Planificación y cierre permanecen a cargo de los responsables autorizados.
+        </p>
       </div>
     );
   }
