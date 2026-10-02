@@ -101,6 +101,7 @@ export function OperationalPipelineBoard({ workOrderId }: { workOrderId?: string
               const distinctSupplierCount = Math.max(0, item.distinct_supplier_count || 0);
               const exceptionLabel = quotationExceptionLabels[item.quotation_exception_type || ''] || 'Excepción aprobada';
               const reference = item.request_number || item.work_order_number || item.order_number || 'Caso de compra';
+              const actionHref = item.work_order_id && item.next_action_href === '/dashboard/compras/flujo' ? `/dashboard/compras/flujo?workOrderId=${encodeURIComponent(item.work_order_id)}` : item.next_action_href || '/dashboard/compras';
 
               return (
                 <div key={item.pipeline_id} className="grid gap-4 py-4 lg:grid-cols-[minmax(0,1fr)_260px_220px] lg:items-center">
@@ -136,7 +137,7 @@ export function OperationalPipelineBoard({ workOrderId }: { workOrderId?: string
                   </div>
 
                   <Button asChild className="w-full justify-between">
-                    <Link href={item.next_action_href || '/dashboard/compras'}>
+                    <Link href={actionHref}>
                       Abrir
                       <ArrowRight className="h-4 w-4" />
                     </Link>

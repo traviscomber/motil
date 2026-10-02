@@ -13,11 +13,14 @@ export async function GET(request: NextRequest) {
   if (!context.ok) return context.response;
 
   try {
-    const { data: pipeline, error: pipelineError } = await context.supabase
+    const workOrderId = request.nextUrl.searchParams.get('workOrderId')?.trim();
+    let pipelineQuery = context.supabase
       .from('operational_procurement_pipeline')
       .select('*')
       .eq('organization_id', context.organizationId)
       .order('required_date', { ascending: true, nullsFirst: false });
+    if (workOrderId) pipelineQuery = pipelineQuery.eq('work_order_id', workOrderId);
+    const { data: pipeline, error: pipelineError } = await pipelineQuery;
     if (pipelineError) {
       console.error('[procurement/operational-pipeline:view]', pipelineError);
       return NextResponse.json({ pipeline: [], requestLines: [], orderLines: [], invoiceMatchSummary: [], invoiceMatchLines: [], invoices: [], invoiceExceptions: [], canEdit: access.canWrite, unavailable: true });

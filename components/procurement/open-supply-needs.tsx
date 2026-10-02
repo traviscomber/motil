@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { useModuleAccess } from '@/hooks/use-module-access';
 import useSWR from 'swr';
 import { AlertTriangle, ArrowRight, CheckCircle2, PackageCheck, ReceiptText } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +18,7 @@ const fetcher = async (url: string) => {
   const response = await fetch(url, { credentials: 'include' });
   const payload = await response.json().catch(() => null);
   if (!response.ok) throw new Error(payload?.error || 'No se pudo cargar el pipeline');
+  if (payload?.unavailable) throw new Error('El seguimiento de compras no está disponible.');
   return payload;
 };
 
@@ -27,7 +30,10 @@ type Supplier = { id: string; legal_name: string; trade_name?: string | null; ta
 const statusLabel: Record<string, string> = { awaiting_quote: 'Cotizar', awaiting_award: 'Adjudicar', awaiting_receipt: 'Recibir', ready_for_issue: 'Disponible para OT', received: 'Recibida', closed: 'Cerrada' };
 
 export function OpenSupplyNeeds() {
-  const { data, error, isLoading, mutate } = useSWR('/api/procurement/operational-pipeline', fetcher);
+  const { ready, canView } = useModuleAccess();
+  const workOrderId = useSearchParams().get('workOrderId')?.trim();
+  const endpoint = workOrderId ? `/api/procurement/operational-pipeline?workOrderId=${encodeURIComponent(workOrderId)}` : '/api/procurement/operational-pipeline';
+  const { data, error, isLoading, mutate } = useSWR(endpoint, fetcher);
   const rows: PipelineRow[] = data?.pipeline || [];
   const requestLines: RequestLine[] = data?.requestLines || [];
   const orderLines: OrderLine[] = data?.orderLines || [];
@@ -45,7 +51,7 @@ export function OpenSupplyNeeds() {
   const [awardCandidate, setAwardCandidate] = useState<PipelineRow | null>(null);
 
   const activeRows = useMemo(() => rows.filter((row) => !['closed', 'cancelled'].includes(row.pipeline_status)), [rows]);
-  if (!isLoading && !error && activeRows.length === 0) return null;
+  if (!workOrderId && !isLoading && !error && activeRows.length === 0) return null;
 
   const execute = async (body: unknown) => {
     setBusy(true); setActionError(null);
@@ -99,6 +105,8 @@ export function OpenSupplyNeeds() {
     <Card className="shadow-none">
       <CardHeader className="flex-row items-center justify-between space-y-0"><div><CardTitle className="text-base">Necesidades desde mantenimiento</CardTitle><p className="mt-1 text-sm text-muted-foreground">Pipeline continuo desde el faltante de la OT hasta la recepción y entrega.</p></div><Badge variant={activeRows.length ? 'destructive' : 'secondary'}>{activeRows.length} activa(s)</Badge></CardHeader>
       <CardContent>
+        {workOrderId && ready && canView('mant_operaciones') ? <Link href={`/dashboard/mantenimiento/ordenes-trabajo/${encodeURIComponent(workOrderId)}`} className="mb-3 inline-block text-sm underline underline-offset-4">Volver a la OT de origen</Link> : null}
+        {workOrderId && !isLoading && !error && activeRows.length === 0 ? <p className="text-sm text-muted-foreground">No se encontraron necesidades abiertas para esta OT. <Link href="/dashboard/compras/flujo" className="underline underline-offset-4">Ver todas las compras</Link></p> : null}
         {isLoading ? <div className="h-20 animate-pulse rounded-lg bg-muted" /> : null}
         {error ? <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error.message}</div> : null}
         {actionError ? <div className="mb-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{actionError}</div> : null}
