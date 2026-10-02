@@ -36,3 +36,19 @@ test('Ficha 360 coverage recognizes imported maintenance history while preservin
   assert.match(overview, /Histórico importado disponible/);
   assert.match(overview, /registros históricos importados/);
 });
+
+
+test('Ficha 360 surfaces canonical validation notes and lifecycle provenance', async () => {
+  const [route, overview, lifecycle, coverage] = await Promise.all([
+    readFile(routeUrl, 'utf8'),
+    readFile(overviewUrl, 'utf8'),
+    readFile(new URL('../components/maintenance/asset-360/lifecycle-section.tsx', import.meta.url), 'utf8'),
+    readFile(coverageUrl, 'utf8'),
+  ]);
+  assert.match(route, /validation_notes/);
+  assert.match(route, /lifecycle_changed_at/);
+  assert.match(route, /lifecycle_changed_by/);
+  assert.match(overview, /lifecycleChangedAt/);
+  assert.match(lifecycle, /Estado de ciclo de vida/);
+  assert.match(coverage, /Notas de calidad canónica/);
+});
