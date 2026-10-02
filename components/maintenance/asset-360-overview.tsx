@@ -108,6 +108,12 @@ type Asset360Response = {
     acquisition_cost?: number | string | null;
     expected_lifespan_years?: number | string | null;
     baseline_mtbf_hours?: number | string | null;
+    source_year?: number | string | null;
+    source_assignment?: string | null;
+    source_last_record?: string | null;
+    source_maintenance_records?: number | string | null;
+    source_maintenance_spend?: number | string | null;
+    source_history_evidence_source?: string | null;
     source_file?: string | null;
     source_sheet?: string | null;
     source_row?: number | null;
@@ -417,6 +423,7 @@ export function Asset360Overview({
     { value: lastOperationalEvidenceAt, source: 'Operación' },
     { value: latestPlan?.updated_at || null, source: 'Planificación' },
     { value: runtimeCostIntelligence?.last_reading_at || null, source: effectiveMeterLabel },
+    { value: asset.source_last_record || null, source: 'Histórico del maestro' },
   ]
     .filter((item): item is { value: string; source: string } => Boolean(item.value))
     .map((item) => ({ ...item, time: new Date(item.value).getTime() }))
@@ -424,7 +431,10 @@ export function Asset360Overview({
     .sort((a, b) => b.time - a.time)[0] || null;
 
   const hasPurchaseEvidence = Number(purchaseHistorySummary?.purchaseLines || 0) > 0 || procurementOrders.length > 0;
-  const hasMaintenanceEvidence = auditedInterventions.length > 0 || Number(operationalState?.work_order_count || 0) > 0;
+  const hasMaintenanceEvidence =
+    auditedInterventions.length > 0 ||
+    Number(operationalState?.work_order_count || 0) > 0 ||
+    Number(asset.source_maintenance_records || 0) > 0;
   const hasMaterialEvidence = installedParts.length > 0 || pendingParts.length > 0 || supplyChain.length > 0;
   const hasProductionEvidence = drillingHistory.length > 0 || Number(operationalState?.drilling_report_count || 0) > 0;
   const hasRuntimeEvidence =
@@ -432,7 +442,9 @@ export function Asset360Overview({
     Number(runtimeCostIntelligence?.reading_count || 0) > 0 ||
     runtimeCostIntelligence?.latest_meter_hours != null ||
     defendableNextPreventiveMeter;
-  const hasEconomicEvidence = economicHistory.length > 0 || Number(operationalState?.recognized_cost_event_count || 0) > 0;
+  const hasCanonicalEconomicEvidence = economicHistory.length > 0 || Number(operationalState?.recognized_cost_event_count || 0) > 0;
+  const hasImportedEconomicHistory = asset.source_maintenance_spend != null || asset.source_maintenance_records != null;
+  const hasEconomicEvidence = hasCanonicalEconomicEvidence || hasImportedEconomicHistory;
   const hasLifecycleEvidence = Boolean(
     asset.acquisition_date ||
     asset.acquisition_cost != null ||
@@ -459,9 +471,25 @@ export function Asset360Overview({
             ? 'Disponible'
             : 'Sin lectura defendible',
     ],
-    ['Economía / costos', hasEconomicEvidence, hasEconomicEvidence ? 'Disponible' : 'Sin movimientos'],
+    [
+      'Economía / costos',
+      hasEconomicEvidence,
+      hasCanonicalEconomicEvidence
+        ? 'Disponible'
+        : hasImportedEconomicHistory
+          ? 'Histórico importado disponible'
+          : 'Sin movimientos',
+    ],
     ['Compras / proveedores', hasPurchaseEvidence, hasPurchaseEvidence ? 'Disponible' : 'Sin compras enlazadas'],
-    ['OT / mantenciones', hasMaintenanceEvidence, hasMaintenanceEvidence ? 'Disponible' : 'Sin OT enlazadas'],
+    [
+      'OT / mantenciones',
+      hasMaintenanceEvidence,
+      auditedInterventions.length > 0 || Number(operationalState?.work_order_count || 0) > 0
+        ? 'Disponible'
+        : Number(asset.source_maintenance_records || 0) > 0
+          ? `${Number(asset.source_maintenance_records).toLocaleString('es-CL')} registros históricos importados`
+          : 'Sin OT enlazadas',
+    ],
     ['Materiales / repuestos', hasMaterialEvidence, hasMaterialEvidence ? 'Disponible' : 'Sin movimientos enlazados'],
     ['Vida útil', expectedLifespan != null || asset.acquisition_date != null, expectedLifespan != null || asset.acquisition_date != null ? 'Disponible' : 'No informada'],
     ['Producción / actividad', hasProductionEvidence || recentEvents.length > 0, hasProductionEvidence || recentEvents.length > 0 ? 'Disponible' : 'Sin actividad enlazada'],
@@ -513,6 +541,9 @@ export function Asset360Overview({
         economicHistory={economicHistory}
         operationalState={operationalState}
         lastCostEventAt={operatingSpine?.last_cost_event_at}
+        sourceMaintenanceSpend={asset.source_maintenance_spend}
+        sourceMaintenanceRecords={asset.source_maintenance_records}
+        sourceLastRecord={asset.source_last_record}
       />
 
       <Asset360PurchaseSection
