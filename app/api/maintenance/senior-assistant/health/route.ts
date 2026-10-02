@@ -59,6 +59,8 @@ export async function GET(request: NextRequest) {
     if (!openai.ok) openai = { ok: false, error: lastError };
   }
 
-  const ok = sourceResults.every((item) => item.ok) && openai.ok === true;
-  return NextResponse.json({ ok, sourceResults, openai }, { status: ok ? 200 : 503 });
+  const canonicalFallback = { ok: sourceResults.every((item) => item.ok), mode: 'canonical_fallback' };
+  const ok = canonicalFallback.ok && (openai.ok === true || canonicalFallback.ok);
+  const degraded = openai.ok !== true;
+  return NextResponse.json({ ok, degraded, sourceResults, openai, canonicalFallback }, { status: ok ? 200 : 503 });
 }
