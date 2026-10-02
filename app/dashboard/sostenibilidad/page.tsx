@@ -136,9 +136,9 @@ export default function SostenibilidadDashboard() {
     <div className="space-y-6">
       <PageHeader>
         <PageHeaderContent>
-          <PageHeaderEyebrow>Sostenibilidad · HSE</PageHeaderEyebrow>
+          <PageHeaderEyebrow>HSE · Sostenibilidad</PageHeaderEyebrow>
           <PageHeaderTitle>Sostenibilidad</PageHeaderTitle>
-          <PageHeaderDescription>Estado y trabajo operativo desde fuentes específicas. Si una fuente no está disponible, MOTIL muestra “—”; no la reemplaza por cero ni reutiliza el conteo de otro módulo.</PageHeaderDescription>
+          <PageHeaderDescription>Cumplimiento, no conformidades y trabajo HSE desde sus fuentes reales. “—” significa que la fuente no respondió.</PageHeaderDescription>
         </PageHeaderContent>
         <PageHeaderActions>
           <Button asChild variant="outline"><Link href="/dashboard/sostenibilidad/prevencion-riesgos/inspecciones/importar"><Upload className="h-4 w-4"/>Importar inspecciones</Link></Button>
@@ -152,7 +152,7 @@ export default function SostenibilidadDashboard() {
       </section>
 
       <section className="space-y-3" aria-labelledby="sustainability-areas">
-        <div><h2 id="sustainability-areas" className="text-lg font-semibold tracking-tight">Áreas y evidencia disponible</h2><p className="text-sm text-muted-foreground">Cada cifra pertenece a su propia fuente. Un cero es un cero real; “—” significa que la fuente no respondió.</p></div>
+        <div><h2 id="sustainability-areas" className="text-lg font-semibold tracking-tight">Áreas</h2><p className="text-sm text-muted-foreground">Cada cifra conserva su fuente. Cero es un dato real; “—” es falta de respuesta.</p></div>
         <div className="grid gap-px overflow-hidden rounded-lg border bg-border lg:grid-cols-2">
           {areas.map((area) => {
             const Icon = area.icon;
@@ -162,7 +162,7 @@ export default function SostenibilidadDashboard() {
       </section>
 
       <section className="space-y-3 border-t pt-5">
-        <div><h2 className="text-lg font-semibold tracking-tight">Accesos operativos</h2><p className="text-sm text-muted-foreground">Carga o revisa el dominio correspondiente; las importaciones no se presentan como KPI.</p></div>
+        <div><h2 className="text-lg font-semibold tracking-tight">Accesos</h2><p className="text-sm text-muted-foreground">Abre directamente el flujo que necesitas.</p></div>
         <div className="flex flex-wrap gap-2">
           <Button asChild variant="outline"><Link href="/dashboard/sostenibilidad/prevencion-riesgos/capacitaciones">Capacitaciones</Link></Button>
           <Button asChild variant="outline"><Link href="/dashboard/sostenibilidad/prevencion-riesgos/epp">EPP</Link></Button>
