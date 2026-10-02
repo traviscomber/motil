@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Activity, Gauge, ShieldAlert, Target, UserRound, Workflow } from 'lucide-react';
+import { UserRound, Workflow } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -56,7 +56,6 @@ export default function DesempenoPage() {
 
   const rows = useMemo(() => !payload ? [] : mergeScorecards(payload.rows, payload.executive), [payload]);
   const domains = new Set(rows.map((row) => row.domain).filter(Boolean)).size;
-  const cargosVisible = new Set(rows.map((row) => row.cargo_name).filter(Boolean)).size;
   const withData = rows.filter((row) => row.measured_value !== null).length;
   const withoutTargets = rows.filter((row) => row.target_value === null || row.target_value === undefined).length;
   const person = payload?.person || null;
@@ -65,33 +64,25 @@ export default function DesempenoPage() {
 
   return <div className="space-y-6">
     <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-      <div><p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Gestión transversal</p><h1 className="mt-1 text-2xl font-semibold tracking-tight">Desempeño operacional</h1><p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">KPIs operacionales trazables por cargo y dominio. La selección de una persona ejecutiva funciona como vista de gestión, no como filtro de propiedad ni evaluación personal.</p></div>
+      <div><p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Gestión</p><h1 className="mt-1 text-2xl font-semibold tracking-tight">Desempeño operacional</h1><p className="mt-2 max-w-3xl text-sm text-muted-foreground">KPIs operacionales trazables por cargo y dominio. No es una evaluación personal.</p></div>
       <Select value={selection} onValueChange={setSelection}><SelectTrigger className="w-full md:w-[340px]"><SelectValue placeholder="Seleccionar cargo o persona" /></SelectTrigger><SelectContent><SelectItem value="TODOS">Todos los cargos medidos</SelectItem>{(payload?.profiles || []).map((profile) => <SelectItem key={profile.id} value={`PROFILE:${profile.id}`}>{profile.full_name || 'Sin nombre'} · {profile.cargo_name || profile.role || 'Sin cargo'}</SelectItem>)}<SelectItem value="GERENTE">GERENTE · ejecutivo</SelectItem><SelectItem value="SUBGERENTE OP.">SUBGERENTE OP. · ejecutivo</SelectItem><SelectItem value="PRESIDENTE">PRESIDENTE · ejecutivo</SelectItem>{(payload?.cargos || []).filter((item) => !['GERENTE','SUBGERENTE OP.','PRESIDENTE'].includes(item)).map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent></Select>
     </div>
 
     {error ? <Card><CardContent className="pt-5 text-sm text-destructive">{error}. Los KPI de la selección anterior no se conservan como si siguieran vigentes.</CardContent></Card> : null}
 
-    {person ? <Card>
-      <CardHeader className="gap-3">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div><div className="flex items-center gap-2"><UserRound className="h-5 w-5 text-muted-foreground" /><CardTitle>{person.fullName}</CardTitle></div><CardDescription className="mt-2">{person.cargoName || person.role || 'Sin cargo definido'} · Vista ejecutiva global</CardDescription></div>
-          <div className="flex flex-wrap gap-2"><Badge variant="outline">Todos los KPI</Badge><Badge variant="neutral">No evaluación personal</Badge></div>
-        </div>
-        <p className="text-sm text-muted-foreground">{person.fullName || 'La persona seleccionada'} ve los KPIs disponibles según su vista de gestión. El cargo de origen se mantiene visible en cada indicador para conservar trazabilidad.</p>
-      </CardHeader>
-      <CardContent className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-lg border p-4"><p className="text-xs uppercase tracking-wide text-muted-foreground">KPIs visibles</p><p className="mt-2 text-2xl font-semibold tabular-nums">{rows.length}</p></div>
-        <div className="rounded-lg border p-4"><p className="text-xs uppercase tracking-wide text-muted-foreground">Cargos cubiertos</p><p className="mt-2 text-2xl font-semibold tabular-nums">{cargosVisible}</p></div>
-        <div className="rounded-lg border p-4"><p className="text-xs uppercase tracking-wide text-muted-foreground">Dominios</p><p className="mt-2 text-2xl font-semibold tabular-nums">{domains}</p></div>
-        <div className="rounded-lg border p-4"><p className="text-xs uppercase tracking-wide text-muted-foreground">Iniciativas propias</p><p className="mt-2 text-2xl font-semibold tabular-nums">{initiatives.length}</p></div>
-      </CardContent>
-    </Card> : null}
+    {person ? <section className="border-y py-4">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div><div className="flex items-center gap-2"><UserRound className="h-4 w-4 text-muted-foreground" /><p className="font-medium">{person.fullName}</p></div><p className="mt-1 text-sm text-muted-foreground">{person.cargoName || person.role || 'Sin cargo definido'} · Vista ejecutiva global</p></div>
+        <div className="flex flex-wrap gap-2"><Badge variant="outline">Todos los KPI</Badge><Badge variant="neutral">No evaluación personal</Badge></div>
+      </div>
+      <p className="mt-3 text-sm text-muted-foreground">{person.fullName || 'La persona seleccionada'} ve los KPIs disponibles según su vista de gestión. El cargo de origen se mantiene visible en cada indicador para conservar trazabilidad.</p>
+    </section> : null}
 
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      <Card><CardHeader><CardDescription>Indicadores visibles</CardDescription><CardTitle className="flex items-center gap-2 text-2xl"><Gauge className="h-5 w-5 text-muted-foreground" />{loading || unavailable ? '—' : rows.length}</CardTitle></CardHeader></Card>
-      <Card><CardHeader><CardDescription>Con evidencia</CardDescription><CardTitle className="flex items-center gap-2 text-2xl"><Activity className="h-5 w-5 text-muted-foreground" />{loading || unavailable ? '—' : withData}</CardTitle></CardHeader></Card>
-      <Card><CardHeader><CardDescription>Dominios</CardDescription><CardTitle className="flex items-center gap-2 text-2xl"><ShieldAlert className="h-5 w-5 text-muted-foreground" />{loading || unavailable ? '—' : domains || '—'}</CardTitle></CardHeader></Card>
-      <Card><CardHeader><CardDescription>Sin meta aprobada</CardDescription><CardTitle className="flex items-center gap-2 text-2xl"><Target className="h-5 w-5 text-muted-foreground" />{loading || unavailable ? '—' : withoutTargets}</CardTitle></CardHeader></Card>
+    <div className="grid gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-2 xl:grid-cols-4">
+      <div className="bg-card p-4"><p className="text-xs text-muted-foreground">Indicadores</p><p className="mt-1 text-2xl font-semibold">{loading || unavailable ? '—' : rows.length}</p></div>
+      <div className="bg-card p-4"><p className="text-xs text-muted-foreground">Con evidencia</p><p className="mt-1 text-2xl font-semibold">{loading || unavailable ? '—' : withData}</p></div>
+      <div className="bg-card p-4"><p className="text-xs text-muted-foreground">Dominios</p><p className="mt-1 text-2xl font-semibold">{loading || unavailable ? '—' : domains || '—'}</p></div>
+      <div className="bg-card p-4"><p className="text-xs text-muted-foreground">Sin meta aprobada</p><p className="mt-1 text-2xl font-semibold">{loading || unavailable ? '—' : withoutTargets}</p></div>
     </div>
 
     <Card><CardHeader><div className="flex flex-wrap items-center gap-2"><CardTitle>{person ? 'KPIs globales' : 'Scorecard'}</CardTitle><Badge variant="outline">Baseline</Badge><Badge variant="neutral">No evaluación personal</Badge></div><CardDescription>{payload?.meta.note || (unavailable ? 'Fuente no disponible para la selección actual.' : 'Cargando evidencia operacional…')}</CardDescription></CardHeader><CardContent className="px-0 pb-0"><Table><TableHeader><TableRow><TableHead>Cargo / dominio</TableHead><TableHead>Indicador</TableHead><TableHead className="text-right">Valor</TableHead><TableHead>Dirección</TableHead><TableHead>Estado</TableHead></TableRow></TableHeader><TableBody>{loading ? <TableRow><TableCell colSpan={5} className="py-10 text-center text-muted-foreground">Cargando scorecard…</TableCell></TableRow> : unavailable ? <TableRow><TableCell colSpan={5} className="py-10 text-center text-muted-foreground">No hay una lectura válida para esta selección mientras la fuente esté en error.</TableCell></TableRow> : rows.length === 0 ? <TableRow><TableCell colSpan={5} className="py-10 text-center text-muted-foreground">No existen indicadores medidos para esta selección.</TableCell></TableRow> : rows.map((row,index) => <TableRow key={`${row.cargo_name}-${row.domain || 'general'}-${row.kpi_key}-${index}`}><TableCell><div className="font-medium">{row.cargo_name}</div>{row.domain ? <div className="text-xs text-muted-foreground">{domainLabel[row.domain] || row.domain}</div> : null}</TableCell><TableCell>{row.label}</TableCell><TableCell className="text-right font-medium tabular-nums">{formatValue(row.measured_value,row.unit)}</TableCell><TableCell className="text-xs text-muted-foreground">{row.direction === 'higher_is_better' ? 'Mayor es mejor' : row.direction === 'lower_is_better' ? 'Menor es mejor' : 'Informativo'}</TableCell><TableCell><Badge variant="outline">{row.evaluation_state === 'baseline' ? 'Baseline' : row.evaluation_state}</Badge></TableCell></TableRow>)}</TableBody></Table></CardContent></Card>

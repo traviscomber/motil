@@ -3,10 +3,10 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import useSWR from 'swr';
-import { AlertCircle, CheckCircle, Clock, FileText, FolderOpen, Plus, Search, XCircle } from 'lucide-react';
+import { AlertCircle, CheckCircle, Clock, FolderOpen, Plus, Search, XCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 
 const fetcher = async (url: string) => {
@@ -80,7 +80,7 @@ export default function DocumentosGestionPage() {
     return (
       <div className="space-y-4">
         <div className="h-28 animate-pulse rounded-xl bg-muted" />
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-px overflow-hidden rounded-lg border bg-border md:grid-cols-3">
           {[0, 1, 2].map((item) => <div key={item} className="h-28 animate-pulse rounded-xl bg-muted" />)}
         </div>
       </div>
@@ -106,11 +106,11 @@ export default function DocumentosGestionPage() {
       <header className="flex flex-col gap-4 border-b border-border/70 pb-6 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-            Administración y control · Documentación
+            Documentación
           </p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight">Gestión documental</h1>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight">Control documental</h1>
           <p className="mt-2 max-w-3xl text-muted-foreground">
-            Controla aprobaciones, vencimientos y categorías documentales desde una sola superficie operacional.
+            Controla aprobaciones, vencimientos y categorías documentales.
           </p>
         </div>
         <Button asChild className="gap-2">
@@ -118,69 +118,54 @@ export default function DocumentosGestionPage() {
         </Button>
       </header>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card><CardHeader className="pb-2"><CardTitle className="text-sm">Documentos totales</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold">{stats.total}</p><p className="mt-1 text-xs text-muted-foreground">Registros disponibles</p></CardContent></Card>
-        <Card><CardHeader className="pb-2"><CardTitle className="text-sm">Pendientes de aprobación</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold text-[var(--secondary)]">{stats.pending}</p><p className="mt-1 text-xs text-muted-foreground">Requieren revisión</p></CardContent></Card>
-        <Card><CardHeader className="pb-2"><CardTitle className="text-sm">Próximos a vencer</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold text-amber-600">{expiringDocuments.length}</p><p className="mt-1 text-xs text-muted-foreground">Requieren seguimiento</p></CardContent></Card>
+      <div className="grid gap-px overflow-hidden rounded-lg border bg-border md:grid-cols-3">
+        <div className="bg-card p-4"><p className="text-xs text-muted-foreground">Documentos</p><p className="mt-1 text-2xl font-semibold">{stats.total}</p></div>
+        <div className="bg-card p-4"><p className="text-xs text-muted-foreground">Pendientes</p><p className="mt-1 text-2xl font-semibold">{stats.pending}</p></div>
+        <div className="bg-card p-4"><p className="text-xs text-muted-foreground">Por vencer</p><p className="mt-1 text-2xl font-semibold">{expiringDocuments.length}</p></div>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-2">
-        <Card>
-          <CardHeader><CardTitle className="text-base">Pendientes de aprobación</CardTitle><CardDescription>Documentos que requieren decisión.</CardDescription></CardHeader>
-          <CardContent className="space-y-3">
+      <div className="grid gap-6 xl:grid-cols-2">
+        <section><div className="mb-2"><h2 className="text-base font-semibold">Pendientes de aprobación</h2><p className="text-sm text-muted-foreground">Documentos que requieren decisión.</p></div><div className="divide-y overflow-hidden rounded-lg border">
             {pendingApprovals.length === 0 ? <p className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">No hay aprobaciones pendientes.</p> : pendingApprovals.slice(0, 6).map((doc) => (
-              <div key={doc.id} className="flex items-center justify-between gap-3 rounded-lg border p-3">
+              <div key={doc.id} className="flex items-center justify-between gap-3 px-4 py-3">
                 <div className="min-w-0"><p className="truncate font-medium">{doc.nombre || 'Documento sin nombre'}</p><p className="text-xs text-muted-foreground">{doc.documentId || 'Sin ID'} · {doc.pendingBy || 'Sin responsable'}</p></div>
                 {statusBadge(doc.estado)}
               </div>
             ))}
-          </CardContent>
-        </Card>
+          </div></section>
 
-        <Card>
-          <CardHeader><CardTitle className="text-base">Vencimientos próximos</CardTitle><CardDescription>Prioridades de control documental.</CardDescription></CardHeader>
-          <CardContent className="space-y-3">
+        <section><div className="mb-2"><h2 className="text-base font-semibold">Vencimientos próximos</h2><p className="text-sm text-muted-foreground">Prioridades de control documental.</p></div><div className="divide-y overflow-hidden rounded-lg border">
             {expiringDocuments.length === 0 ? <p className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">No hay documentos próximos a vencer.</p> : expiringDocuments.slice(0, 6).map((doc) => (
-              <div key={doc.id} className="flex items-center justify-between gap-3 rounded-lg border p-3">
+              <div key={doc.id} className="flex items-center justify-between gap-3 px-4 py-3">
                 <div className="min-w-0"><p className="truncate font-medium">{doc.nombre || 'Documento sin nombre'}</p><p className="text-xs text-muted-foreground">{doc.documentId || 'Sin ID'}</p></div>
                 {statusBadge(doc.estado)}
               </div>
             ))}
-          </CardContent>
-        </Card>
+          </div></section>
       </div>
 
-      <Card>
-        <CardHeader><CardTitle className="flex items-center gap-2"><FolderOpen className="h-5 w-5" />Categorías documentales</CardTitle><CardDescription>Busca y entra a la categoría correspondiente.</CardDescription></CardHeader>
-        <CardContent className="space-y-4">
+      <section className="space-y-4 border-t pt-5"><div><h2 className="flex items-center gap-2 text-base font-semibold"><FolderOpen className="h-4 w-4" />Categorías</h2><p className="text-sm text-muted-foreground">Busca y entra a la categoría correspondiente.</p></div>
           <div className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Buscar por nombre o descripción" className="pl-10" /></div>
           {filteredCategories.length === 0 ? <p className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">No hay categorías para esta búsqueda.</p> : (
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            <div className="divide-y border-y">
               {filteredCategories.map((category) => (
-                <Link key={category.id} href={`/dashboard/documentos-gestion/${category.id}`} className="rounded-xl border p-4 transition-colors hover:bg-muted/50">
-                  <div className="flex items-start justify-between gap-3"><FileText className="mt-0.5 h-5 w-5 text-primary" /><Badge variant="outline">{category.count || 0}</Badge></div>
-                  <p className="mt-4 font-semibold">{category.name || category.id}</p>
-                  <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{category.description || 'Documentos asociados a esta categoría.'}</p>
-                  {(category.pendingApprovals || 0) > 0 && <p className="mt-3 text-xs font-medium text-[var(--secondary)]">{category.pendingApprovals} pendientes</p>}
+                <Link key={category.id} href={`/dashboard/documentos-gestion/${category.id}`} className="border-b py-3 transition-colors last:border-b-0 hover:bg-muted/30">
+                  <div className="flex items-center justify-between gap-4 px-1"><div className="min-w-0"><p className="font-medium">{category.name || category.id}</p><p className="mt-1 truncate text-sm text-muted-foreground">{category.description || 'Documentos asociados a esta categoría.'}</p></div><div className="flex shrink-0 items-center gap-2"><Badge variant="outline">{category.count || 0}</Badge>{(category.pendingApprovals || 0) > 0 && <span className="text-xs font-medium text-[var(--secondary)]">{category.pendingApprovals} pendientes</span>}</div></div>
                 </Link>
               ))}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </section>
 
       {recentDocuments.length > 0 && (
-        <Card>
-          <CardHeader><CardTitle className="text-base">Actividad reciente</CardTitle></CardHeader>
-          <CardContent className="space-y-2">
+        <section className="border-t pt-5"><h2 className="mb-2 text-base font-semibold">Actividad reciente</h2><div className="divide-y overflow-hidden rounded-lg border">
             {recentDocuments.slice(0, 6).map((doc) => (
               <div key={doc.id} className="flex items-center justify-between gap-3 rounded-lg border p-3">
                 <div className="min-w-0"><p className="truncate font-medium">{doc.nombre || 'Documento sin nombre'}</p><p className="text-xs text-muted-foreground">{doc.documentId || 'Sin ID'} · v{doc.version || '—'} · {doc.creador || 'Sin autor'}</p></div>
                 {statusBadge(doc.estado)}
               </div>
             ))}
-          </CardContent>
-        </Card>
+          </div></section>
       )}
     </div>
   );

@@ -129,10 +129,10 @@ export default function PlanificacionPage() {
     <div className="space-y-6">
       <PageHeader>
         <PageHeaderContent>
-          <PageHeaderEyebrow>Planning Intelligence · Jefe de Planificación</PageHeaderEyebrow>
-          <PageHeaderTitle>Centro de planificación</PageHeaderTitle>
+          <PageHeaderEyebrow>Planificación</PageHeaderEyebrow>
+          <PageHeaderTitle>Qué necesita atención</PageHeaderTitle>
           <PageHeaderDescription>
-            Vista operacional de Ariel: plan maestro reconciliado, atención transversal, preventivos y producción. MOTIL calcula; Ariel valida y programa.
+            Prioridades, bloqueos y plan activo. MOTIL calcula; Ariel valida y programa.
           </PageHeaderDescription>
         </PageHeaderContent>
         <PageHeaderActions>
@@ -149,10 +149,10 @@ export default function PlanificacionPage() {
 
       <section className="grid divide-y rounded-lg border border-border bg-card sm:grid-cols-4 sm:divide-x sm:divide-y-0" aria-label="Resumen de planificación">
         {[
-          ['Plan maestro reconciliado', ariel ? `${ariel.sourceCoverage.matched_percent}%` : '—', ariel ? `${ariel.sourceCoverage.matched_rows}/${ariel.sourceCoverage.total_rows} equipos enlazados` : 'Fuente Ariel'],
+          ['Cobertura Ariel', ariel ? `${ariel.sourceCoverage.matched_percent}%` : '—', ariel ? `${ariel.sourceCoverage.matched_rows}/${ariel.sourceCoverage.total_rows} equipos enlazados` : 'Fuente Ariel'],
           ['P1 vencidos', ariel?.priorityCounts['P1 - VENCIDO'] ?? '—', 'Revisión prioritaria'],
-          ['Atención transversal', summary ? summary.active_alerts : '—', 'Señales pendientes'],
-          ['Bloqueos materiales', summary ? summary.material_blockers : '—', 'Dependencias de abastecimiento'],
+          ['Señales', summary ? summary.active_alerts : '—', 'Señales pendientes'],
+          ['Bloqueos', summary ? summary.material_blockers : '—', 'Dependencias de abastecimiento'],
         ].map(([label, value, detail]) => (
           <div key={String(label)} className="px-5 py-4">
             <p className="text-xs text-muted-foreground">{label}</p>
@@ -169,9 +169,9 @@ export default function PlanificacionPage() {
         <>
           <section className="space-y-3">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">01 · Plan maestro Ariel</p>
-              <h2 className="mt-1 text-lg font-semibold">Qué debe programarse primero</h2>
-              <p className="mt-1 text-sm text-muted-foreground">Prioridad determinística P1–P5 sobre equipos ya reconciliados con el maestro canónico. Los no reconciliados permanecen fuera de esta cola.</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Plan maestro Ariel</p>
+              <h2 className="mt-1 text-lg font-semibold">Qué va primero</h2>
+              <p className="mt-1 text-sm text-muted-foreground">Equipos reconciliados, ordenados por prioridad. Los no reconciliados quedan fuera de la cola.</p>
             </div>
             {priorities.length ? (
               <div className="overflow-hidden rounded-lg border border-border bg-card">
@@ -200,9 +200,9 @@ export default function PlanificacionPage() {
           <div className="grid gap-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,.75fr)]">
             <section className="space-y-3">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">02 · Atención transversal</p>
-                <h2 className="mt-1 text-lg font-semibold">Qué requiere coordinación</h2>
-                <p className="mt-1 text-sm text-muted-foreground">Señales de mantenimiento, bodega, compras y producción. No ejecutan decisiones automáticamente.</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Coordinación</p>
+                <h2 className="mt-1 text-lg font-semibold">Qué está bloqueando</h2>
+                <p className="mt-1 text-sm text-muted-foreground">Señales de mantenimiento, bodega, compras y producción que requieren revisión.</p>
               </div>
               {attention.length === 0 ? <StatePanel tone="neutral" title="Sin señales pendientes" description="No se generan decisiones automáticas por ausencia de señales." /> : (
                 <div className="overflow-hidden rounded-lg border border-border bg-card">
@@ -226,12 +226,12 @@ export default function PlanificacionPage() {
 
             <aside className="space-y-6">
               <section className="rounded-lg border border-border bg-card p-5">
-                <div className="flex items-start justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">03 · Producción</p><h2 className="mt-1 text-base font-semibold">Plan activo</h2></div><Factory className="h-4 w-4 text-muted-foreground" /></div>
+                <div className="flex items-start justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Producción</p><h2 className="mt-1 text-base font-semibold">Plan activo</h2></div><Factory className="h-4 w-4 text-muted-foreground" /></div>
                 {plan ? <div className="mt-4 space-y-3"><p className="text-sm font-semibold">{plan.plan_code}</p><p className="text-xs text-muted-foreground">{plan.period_start} → {plan.period_end}</p><dl className="grid grid-cols-2 gap-3 text-sm"><div><dt className="text-xs text-muted-foreground">Movimiento</dt><dd className="mt-1 font-medium">{number(plan.total_movement_tons, ' t')}</dd></div><div><dt className="text-xs text-muted-foreground">Avance</dt><dd className="mt-1 font-medium">{number(plan.planned_advance_m, ' m')}</dd></div></dl><Button variant="outline" size="sm" asChild><Link href="/dashboard/produccion">Abrir Producción</Link></Button></div> : <p className="mt-4 text-sm text-muted-foreground">Sin plan de producción activo en la fuente canónica.</p>}
               </section>
 
               <section className="rounded-lg border border-border bg-card p-5">
-                <div className="flex items-start justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">04 · Preventivos</p><h2 className="mt-1 text-base font-semibold">Horómetro canónico</h2></div><CalendarClock className="h-4 w-4 text-muted-foreground" /></div>
+                <div className="flex items-start justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Preventivos</p><h2 className="mt-1 text-base font-semibold">Próximos por horómetro</h2></div><CalendarClock className="h-4 w-4 text-muted-foreground" /></div>
                 <div className="mt-4 space-y-3">{preventive.slice(0, 5).map((item) => <div key={item.schedule_id} className="border-t border-border pt-3 first:border-t-0 first:pt-0"><div className="flex items-center justify-between gap-3"><p className="text-sm font-medium">{item.asset_code || item.asset_name || 'Equipo'}</p><Badge variant={item.remaining_hours != null && item.remaining_hours <= 0 ? 'destructive' : 'outline'}>{number(item.remaining_hours, ' h')}</Badge></div>{item.meter_basis_conflict ? <p className="mt-1 text-xs text-destructive">Evidencia de contador en conflicto.</p> : null}</div>)}{preventive.length === 0 ? <p className="text-sm text-muted-foreground">Sin preventivos alertados.</p> : null}</div>
                 <Button className="mt-4" variant="outline" size="sm" asChild><Link href="/dashboard/mantenimiento/planificacion">Abrir mantenimiento</Link></Button>
               </section>

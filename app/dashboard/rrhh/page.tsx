@@ -64,19 +64,19 @@ export default function RrhhPage() {
     <div className="space-y-5">
       <PageHeader>
         <PageHeaderContent>
-          <PageHeaderEyebrow>Personas · RRHH</PageHeaderEyebrow>
-          <PageHeaderTitle>Recursos Humanos</PageHeaderTitle>
+          <PageHeaderEyebrow>RRHH</PageHeaderEyebrow>
+          <PageHeaderTitle>Personas</PageHeaderTitle>
           <PageHeaderDescription>
-            Identidad laboral canónica, evidencia operacional y trazabilidad histórica de cada persona. La cuenta de acceso al ERP es independiente de la ficha laboral.
+            Personas, rol y evidencia operacional en una sola vista. La cuenta de acceso se mantiene separada de la ficha laboral.
           </PageHeaderDescription>
         </PageHeaderContent>
       </PageHeader>
 
       <div className="grid gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-4">
         {[
-          ['Personas canónicas', people.length],
+          ['Personas', people.length],
           ['Activas', active],
-          ['Sin usuario vinculado', withoutProfile],
+          ['Sin acceso vinculado', withoutProfile],
           ['Casos abiertos', openCases],
         ].map(([label, value]) => (
           <div key={label} className="bg-card px-4 py-3">
@@ -111,7 +111,7 @@ export default function RrhhPage() {
                 {person.evidence.workOrderCount} OT · {person.evidence.activityCount} actividades · {person.evidence.caseCount} casos
               </div>
               <div className="text-right">
-                <p className="text-xs text-muted-foreground">Score vigente</p>
+                <p className="text-xs text-muted-foreground">Evaluación</p>
                 <p className="font-semibold tabular-nums">{person.evidence.latestScore ?? '—'}</p>
               </div>
             </Link>

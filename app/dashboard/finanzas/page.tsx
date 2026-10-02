@@ -41,7 +41,7 @@ export default function FinanzasPage() {
   return (
     <div className="space-y-6">
       <section className="flex flex-col gap-4 border-b pb-5 lg:flex-row lg:items-end lg:justify-between">
-        <div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Finanzas</p><h1 className="mt-1 text-3xl font-semibold tracking-tight">Resumen financiero</h1><p className="mt-2 max-w-2xl text-sm text-muted-foreground">Costo reconocido, compromisos y caja pagada se mantienen separados y trazables.</p></div>
+        <div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Finanzas</p><h1 className="mt-1 text-3xl font-semibold tracking-tight">Finanzas</h1><p className="mt-2 max-w-2xl text-sm text-muted-foreground">Costo, compromisos y caja en una sola vista, sin mezclar conceptos.</p></div>
         <Link href="/dashboard/finanzas/trazabilidad" className="inline-flex h-9 w-fit items-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground"><FileSearch className="h-4 w-4"/>Ver trazabilidad</Link>
       </section>
 
@@ -57,7 +57,7 @@ export default function FinanzasPage() {
       </section>
 
       <section className="space-y-3 border-t pt-5">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"><div><h2 className="text-lg font-semibold">Tesorería</h2><p className="text-sm text-muted-foreground">Saldo por pagar, vencimientos y conciliación. No modifica el costo reconocido.</p></div>{ready && canEdit('fin_finanzas') ? <Link href="/dashboard/finanzas/pagos" className="text-sm font-medium text-primary hover:underline">Operar pagos</Link> : null}</div>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"><div><h2 className="text-lg font-semibold">Tesorería</h2><p className="text-sm text-muted-foreground">Pagos, vencimientos y conciliación.</p></div>{ready && canEdit('fin_finanzas') ? <Link href="/dashboard/finanzas/pagos" className="text-sm font-medium text-primary hover:underline">Operar pagos</Link> : null}</div>
         {treasury.length === 0 ? <div className="rounded-lg border px-4 py-5 text-sm text-muted-foreground">No hay cuentas por pagar aprobadas.</div> : treasury.map((row) => <div key={String(row.currency)} className="grid gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-2 xl:grid-cols-5">
           {[
             [`Saldo ${String(row.currency || '')}`, currencyMoney(row.outstanding_amount, row.currency)],
@@ -71,7 +71,7 @@ export default function FinanzasPage() {
       </section>
 
       <section className="space-y-3 border-t pt-5">
-        <div><h2 className="text-lg font-semibold">Forecast de caja</h2><p className="text-sm text-muted-foreground">Calendario acumulado de obligaciones con vencimiento real. Las cuentas sin fecha se mantienen fuera del forecast y visibles como excepción.</p></div>
+        <div><h2 className="text-lg font-semibold">Forecast de caja</h2><p className="text-sm text-muted-foreground">Obligaciones por vencimiento. Las cuentas sin fecha se mantienen fuera del forecast y visibles como excepción.</p></div>
         {cashForecast.length === 0 ? <div className="rounded-lg border px-4 py-5 text-sm text-muted-foreground">No hay obligaciones aprobadas con saldo pendiente para proyectar.</div> : cashForecast.map((row) => <div key={`forecast-${String(row.currency)}`} className="space-y-2 rounded-lg border p-4">
           <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-sm font-semibold">{String(row.currency || '')}</p><p className="text-xs text-muted-foreground">{number(row.open_payables)} obligación(es) abiertas</p></div><p className="text-sm font-semibold tabular-nums">Saldo {currencyMoney(row.total_outstanding_amount, row.currency)}</p></div>
           <div className="grid gap-px overflow-hidden rounded-md border bg-border sm:grid-cols-2 xl:grid-cols-5">
@@ -89,7 +89,7 @@ export default function FinanzasPage() {
       </section>
 
       <section className="space-y-3 border-t pt-5">
-        <div><h2 className="text-lg font-semibold">Compras operativas</h2><p className="text-sm text-muted-foreground">La OC mantiene sólo el saldo pendiente como compromiso; la recepción aceptada pasa a costo realizado.</p></div>
+        <div><h2 className="text-lg font-semibold">Compras operativas</h2><p className="text-sm text-muted-foreground">Compromiso pendiente y costo ya recepcionado.</p></div>
         <div className="grid gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-2 xl:grid-cols-4">
           {[
             ['Compromiso pendiente', money(operationalProcurement.committed_clp)],
@@ -102,7 +102,7 @@ export default function FinanzasPage() {
       </section>
 
       <section className="space-y-3">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><h2 className="text-lg font-semibold">Dónde se concentra</h2><p className="text-sm text-muted-foreground">Cinco principales registros por dimensión.</p></div><div className="flex flex-wrap gap-1">{(Object.keys(concentrationConfig) as ConcentrationKey[]).map((key) => <button key={key} type="button" onClick={() => setActiveConcentration(key)} className={`rounded-md px-3 py-1.5 text-sm ${activeConcentration === key ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}>{concentrationConfig[key].label}</button>)}</div></div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><h2 className="text-lg font-semibold">Dónde se concentra</h2><p className="text-sm text-muted-foreground">Principales concentraciones por dimensión.</p></div><div className="flex flex-wrap gap-1">{(Object.keys(concentrationConfig) as ConcentrationKey[]).map((key) => <button key={key} type="button" onClick={() => setActiveConcentration(key)} className={`rounded-md px-3 py-1.5 text-sm ${activeConcentration === key ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}>{concentrationConfig[key].label}</button>)}</div></div>
         <div className="overflow-hidden rounded-lg border">{rows.length === 0 ? <p className="px-4 py-6 text-sm text-muted-foreground">Sin datos canónicos vinculados.</p> : rows.map((row, index) => <div key={`${String(row[config.labelKey])}-${index}`} className="grid gap-2 border-b px-4 py-3 last:border-b-0 md:grid-cols-[32px_1fr_180px] md:items-center"><span className="text-sm text-muted-foreground">{index + 1}</span><span className="truncate text-sm font-medium">{String(row[config.labelKey] || 'Sin identificar')}</span><span className="text-sm font-semibold tabular-nums md:text-right">{money(row[config.amountKey])}</span></div>)}</div>
       </section>
 

@@ -59,7 +59,7 @@ export function ProduccionDashboard(){
   return <div className="space-y-6">
     <PageHeader>
       <PageHeaderContent>
-        <PageHeaderEyebrow>Operaciones · fuente canónica</PageHeaderEyebrow>
+        <PageHeaderEyebrow>Producción</PageHeaderEyebrow>
         <PageHeaderTitle>Producción</PageHeaderTitle>
         <PageHeaderDescription>{p?`${period(p.periodStart)} · Planta hasta ${date(p.dataThrough)}. Transporte sólo hasta ${date(data.freshness.transportSourceThrough)}.`:'Sin período operacional disponible.'}</PageHeaderDescription>
       </PageHeaderContent>
@@ -80,7 +80,7 @@ export function ProduccionDashboard(){
 
     <section className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
       <div className="rounded-lg border bg-card">
-        <div className="border-b px-5 py-4"><div className="flex items-center justify-between gap-4"><div><h2 className="font-medium">Plan vs ejecución</h2><p className="mt-1 text-xs text-muted-foreground">Tratamiento de Planta contra el plan mensual; transporte conserva su propia ventana de fuente.</p></div>{plan?<span className="text-xs text-muted-foreground">{plan.code}</span>:null}</div></div>
+        <div className="border-b px-5 py-4"><div className="flex items-center justify-between gap-4"><div><h2 className="font-medium">Plan vs ejecución</h2><p className="mt-1 text-xs text-muted-foreground">Tratamiento contra plan mensual.</p></div>{plan?<span className="text-xs text-muted-foreground">{plan.code}</span>:null}</div></div>
         <div className="grid gap-px bg-border md:grid-cols-4">
           <Mini label="Plan mineral a planta" value={plan?tons(plan.mineralToPlantTons):'—'} detail="Mes completo"/>
           <Mini label="Tratado acumulado" value={p?tons(p.treatedTons,1):'—'} detail={plan?`${pct(plan.treatmentProgressPct)} ejecutado`:'—'}/>
@@ -91,19 +91,19 @@ export function ProduccionDashboard(){
       </div>
 
       <div className="rounded-lg border bg-card">
-        <div className="border-b px-5 py-4"><h2 className="font-medium">Qué requiere atención</h2><p className="mt-1 text-xs text-muted-foreground">Señales determinísticas sobre la operación; no son predicciones de ML.</p></div>
+        <div className="border-b px-5 py-4"><h2 className="font-medium">Qué requiere atención</h2><p className="mt-1 text-xs text-muted-foreground">Excepciones que requieren revisión.</p></div>
         <div className="divide-y">{data.intelligence.length?data.intelligence.map(signal=><div key={signal.code} className="flex gap-3 px-5 py-4"><SignalIcon level={signal.level}/><div><p className="text-sm font-medium">{signal.title}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{signal.detail}</p></div></div>):<div className="px-5 py-5 text-sm text-muted-foreground">Sin señales para el período.</div>}</div>
       </div>
     </section>
 
     <section className="rounded-lg border bg-card">
-      <div className="border-b px-5 py-4"><h2 className="font-medium">Transporte comparable</h2><p className="mt-1 text-xs text-muted-foreground">Sólo la ventana donde existe evidencia TM; una brecha no se clasifica automáticamente como pérdida.</p></div>
+      <div className="border-b px-5 py-4"><h2 className="font-medium">Transporte comparable</h2><p className="mt-1 text-xs text-muted-foreground">Misma ventana de evidencia para transporte y tratamiento.</p></div>
       <div className="grid gap-px bg-border sm:grid-cols-3"><Mini label="Transportado" value={p?tons(p.transportComparable.transportedTons,1):'—'} detail={`Hasta ${date(p?.transportComparable.sourceThrough)}`}/><Mini label="Tratado comparable" value={p?tons(p.transportComparable.treatedTons,1):'—'} detail="Misma ventana"/><Mini label="Brecha comparable" value={p?tons(p.transportComparable.deltaTons,1):'—'} detail="No equivale a pérdida"/></div>
     </section>
 
     <CoverageOverview data={data}/>
 
-    <div className="rounded-lg border bg-card px-5 py-4 text-xs leading-5 text-muted-foreground"><strong className="font-medium text-foreground">Semántica:</strong> {data.semantics.planVsActual} {data.semantics.concentrate} {data.semantics.sourceAbsence}</div>
+    <details className="border-t pt-4 text-xs text-muted-foreground"><summary className="cursor-pointer font-medium text-foreground">Cómo leer estos datos</summary><p className="mt-2 max-w-4xl leading-5">{data.semantics.planVsActual} {data.semantics.concentrate} {data.semantics.sourceAbsence}</p></details>
   </div>;
 }
 
@@ -121,10 +121,10 @@ function CoverageOverview({data}:{data:Overview}){
   return <section aria-labelledby="production-coverage-title" className="space-y-3">
     <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Control de fuente</p>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Fuentes</p>
         <h2 id="production-coverage-title" className="mt-1 text-lg font-semibold tracking-tight">Estado de fuentes</h2>
       </div>
-      <p className="max-w-xl text-xs leading-5 text-muted-foreground">Detalle secundario de cobertura. Parcial significa utilizable con límites; sin fuente nunca se representa como cero.</p>
+      <p className="max-w-xl text-xs leading-5 text-muted-foreground">Detalle secundario de cobertura. Sin fuente nunca se representa como cero.</p>
     </div>
 
     <div className="overflow-hidden rounded-lg border bg-card divide-y">
