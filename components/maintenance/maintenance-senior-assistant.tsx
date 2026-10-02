@@ -34,6 +34,7 @@ type ChatState = {
 const toolCopy: Record<string, string> = {
   search_assets: 'Activos',
   get_maintenance_attention_queue: 'Cola de atención',
+  get_maintenance_attention_context: 'Atención + contexto',
   get_asset_context: 'Contexto del activo',
   get_asset_context_batch: 'Contexto de activos',
   get_open_work_orders: 'Órdenes abiertas',
@@ -92,10 +93,10 @@ function MaintenanceAiMark() {
 }
 
 const starters = [
-  '¿Qué equipos requieren atención primero y por qué?',
-  '¿Qué señales parecen mecánicas y cuáles operacionales?',
+  'Dame las 5 acciones de mantenimiento que requieren atención hoy.',
+  '¿Qué OT están bloqueadas y qué falta para destrabarlas?',
   '¿Qué preventivos están vencidos y con qué evidencia?',
-  '¿Qué dato faltante tendría más valor para decidir mejor?',
+  '¿Qué equipos tienen observaciones operacionales sin resolver?',
 ];
 
 function uniqueToolRefs(refs: SourceRef[]) {
@@ -106,6 +107,12 @@ function uniqueToolRefs(refs: SourceRef[]) {
     if (!unique.has(key)) unique.set(key, ref);
   }
   return Array.from(unique.values());
+}
+
+function modelCopy(model?: string | null) {
+  if (!model) return null;
+  if (model === 'canonical-fallback') return 'Modo canónico resiliente';
+  return model;
 }
 
 export function MaintenanceSeniorAssistant() {
@@ -340,7 +347,7 @@ export function MaintenanceSeniorAssistant() {
                 </div> : null}
                 <p className="mt-2 text-[10px]">Las consultas son de lectura o preparación. La decisión y ejecución permanecen humanas.</p>
               </details> : null}
-              {item.role === 'assistant' && item.model ? <p className="mt-2 text-[10px] text-muted-foreground">Modelo: {item.model}</p> : null}
+              {item.role === 'assistant' && item.model ? <p className="mt-2 text-[10px] text-muted-foreground">{item.model === 'canonical-fallback' ? 'Operando con datos canónicos · IA generativa no disponible' : `Modelo: ${modelCopy(item.model)}`}</p> : null}
             </article>;
           })}
           {sending ? <div className="flex items-center gap-2 text-sm text-muted-foreground"><SearchCheck className="h-4 w-4"/><span>Consultando evidencia canónica y contrastando señales…</span></div> : null}
