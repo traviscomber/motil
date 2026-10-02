@@ -85,9 +85,9 @@ export function Asset360EconomicsSection({
             <div className="grid gap-4 sm:grid-cols-3">
               <IdentityItem
                 icon={Coins}
-                label="Histórico importado"
-                value={sourceMaintenanceSpend != null ? money(sourceMaintenanceSpend) : 'Sin monto'}
-                meta="Acumulado informado por la fuente maestra; no reconciliado como costo auditado de OT"
+                label="Monto histórico importado"
+                value={sourceMaintenanceSpend != null ? number(sourceMaintenanceSpend, 0) : 'Sin monto'}
+                meta="Acumulado informado por la fuente maestra; moneda no informada y no reconciliado como costo auditado de OT"
               />
               <IdentityItem
                 icon={CalendarDays}
