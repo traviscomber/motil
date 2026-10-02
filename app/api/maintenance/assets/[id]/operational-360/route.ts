@@ -41,7 +41,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   try {
     const { data: asset, error: assetError } = await context.supabase
       .from('maintenance_canonical_assets_v1')
-      .select('id,asset_code,name,asset_type,category,manufacturer,model,serial_number,license_plate,cost_center_code,is_active,validation_status,source_file,source_sheet,source_row,imported_at,updated_at,source_payload')
+      .select('id,asset_code,name,asset_type,category,manufacturer,model,serial_number,license_plate,cost_center_code,is_active,validation_status,validation_notes,source_file,source_sheet,source_row,imported_at,updated_at,source_payload')
       .eq('organization_id', context.organizationId)
       .eq('id', id)
       .maybeSingle();
@@ -82,6 +82,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       mobility_class: sourcePayload.mobility_class || null,
       lifecycle_state: sourcePayload.lifecycle_state || null,
       lifecycle_reason: sourcePayload.lifecycle_reason || null,
+      lifecycle_changed_at:
+        typeof sourcePayload.lifecycle_changed_at === 'string' && sourcePayload.lifecycle_changed_at.trim()
+          ? sourcePayload.lifecycle_changed_at.trim()
+          : null,
+      lifecycle_changed_by:
+        typeof sourcePayload.lifecycle_changed_by === 'string' && sourcePayload.lifecycle_changed_by.trim()
+          ? sourcePayload.lifecycle_changed_by.trim()
+          : null,
       acquisition_date: sourcePayload.acquisition_date || canonicalCurrent?.acquisition_date || null,
       acquisition_cost: sourcePayload.acquisition_cost ?? canonicalCurrent?.acquisition_cost ?? null,
       expected_lifespan_years: sourcePayload.expected_lifespan_years ?? canonicalCurrent?.expected_lifespan_years ?? null,
@@ -120,6 +128,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       updated_at: asset.updated_at,
       is_active: asset.is_active,
       validation_status: asset.validation_status,
+      validation_notes: Array.isArray(asset.validation_notes) ? asset.validation_notes : [],
     };
 
     const { ordersResult, closeResult, preventiveResult, runtimeResult, reliabilityResult, runtimeReliabilityResult, snapshotsResult, partsResult, laborResult, eventsResult, statusHistoryResult, planningResult, operationalStateResult, operatingSpineResult, supplyChainResult, procurementOrdersResult, costCenterPurchaseHistoryResult, namePurchaseHistoryResult, economicHistoryResult, drillingHistoryResult, drillEconomicsResult, drillingReviewResult, maintenancePriorityResult, financeReconciliationResult, runtimeCostResult, meterHistoryResult, drillEvidenceResult, drillEconomicsChangeResult, taskCandidatesResult, standardPlanResult, identityHistoryResult, exactCostCenterDetailResult, costCenterMatchResult, sourceErrors } = await queryAsset360Sources(context, id, asset, purchaseSelect);
