@@ -24,6 +24,7 @@ export async function GET(request: NextRequest) {
     ['maintenance_reliability_base_v1', canonicalDb.from('maintenance_reliability_base_v1').select('work_order_id,canonical_asset_id,asset_code,asset_name,root_cause,root_cause_key,work_type,actual_duration_hours,down_time_hours,total_cost,closed_at').eq('organization_id', context.organizationId).limit(1)],
     ['work_order_close_readiness_v2', canonicalDb.from('work_order_close_readiness_v2').select('work_order_id,work_order_number,canonical_asset_id,title,ready_to_close,next_action,open_procurement_orders,pending_parts,unmet_material_requirements,pending_external_services,open_labor_entries,external_cost_conflict,standard_plan_steps_pending').eq('organization_id', context.organizationId).limit(1)],
     ['maintenance_canonical_assets_v1', canonicalDb.from('maintenance_canonical_assets_v1').select('id,asset_code,name,asset_type,category,manufacturer,model,cost_center_code,is_active,validation_status').eq('organization_id', context.organizationId).limit(1)],
+    ['people', canonicalDb.from('people').select('id,full_name,email,role_title,employment_status,supervisor_person_id,profile_id').eq('organization_id', context.organizationId).eq('employment_status', 'active').limit(1)],
   ] as const;
 
   const sourceResults = await Promise.all(probes.map(async ([source, query]) => {
