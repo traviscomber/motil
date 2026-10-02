@@ -5,6 +5,7 @@ import { getOrganizationContext } from '@/lib/api/organization-context';
 import { MODULE_KEYS, requireModuleAccess } from '@/lib/api/module-access';
 import { getSupabaseAdmin } from '@/lib/db/supabase';
 import { callMaintenanceOperationalAI } from '@/lib/maintenance/senior-assistant-openai';
+import { executeMaintenanceSeniorTool } from '@/lib/maintenance/senior-assistant-tools';
 import { loadSupportAdvisoryHandoffs, supportAdvisoryHandoffPrompt } from '@/lib/intelligence/advisory-handoff-context';
 
 const OPENAI_RESPONSES_URL = 'https://api.openai.com/v1/responses';
@@ -266,6 +267,103 @@ async function buildCanonicalMaintenanceContext(
   };
 }
 
+function isRecoverableAiAvailabilityError(detail: string) {
+  return /no credits|insufficient[_ ]quota|quota|billing|rate limit|429|temporar|unavailable|timeout|timed out|overloaded/i.test(detail);
+}
+
+function isOpenWorkOrderStatus(status: unknown) {
+  return !['closed', 'cerrada', 'cerrado', 'completed', 'completada', 'completado', 'cancelled', 'cancelada', 'cancelado']
+    .includes(String(status || '').trim().toLowerCase());
+}
+
+function canonicalFallbackAnswer(message: string, context: any) {
+  const normalized = message.trim().toLowerCase();
+  const assetsById = new Map((context.assets || []).map((row: any) => [String(row?.id || ''), row]));
+  const lines: string[] = [];
+  const toolsUsed: Array<{ name: string; mode: 'read' }> = [];
+
+  if (/preventiv|vencid|hor[oó]metro|pauta/.test(normalized)) {
+    const rows = (context.preventive_hour_status || [])
+      .filter((row: any) => ['due', 'overdue', 'vencido', 'vencida'].includes(String(row?.hour_status || '').toLowerCase()))
+      .sort((a: any, b: any) => Number(a?.remaining_hours ?? 0) - Number(b?.remaining_hours ?? 0))
+      .slice(0, 6);
+
+    lines.push('DATO CANÓNICO');
+    if (!rows.length) {
+      lines.push('No hay preventivos vencidos o por vencer en la evidencia horaria cargada.');
+    } else {
+      for (const row of rows) {
+        const asset = assetsById.get(String(row?.canonical_asset_id || '')) as any;
+        const name = row?.asset_name || asset?.name || row?.asset_code || asset?.asset_code || 'Activo';
+        const remaining = Number(row?.remaining_hours);
+        const remainingText = Number.isFinite(remaining)
+          ? remaining < 0 ? Math.abs(remaining).toLocaleString('es-CL') + ' h vencidas' : remaining.toLocaleString('es-CL') + ' h restantes'
+          : 'horas restantes sin evidencia suficiente';
+        lines.push('- ' + name + ': ' + (row?.task_name || 'pauta preventiva') + ' · ' + (row?.hour_status || 'estado pendiente') + ' · ' + remainingText + '.');
+      }
+    }
+    lines.push('', 'INTERPRETACIÓN PROFESIONAL', 'La pauta y el horómetro permiten ordenar revisión, pero no confirman por sí solos condición mecánica ni autorizan una intervención.');
+    lines.push('', 'PRÓXIMA ACCIÓN', rows.length ? 'Revisar primero los vencidos y confirmar disponibilidad, responsable e insumos antes de ejecutar.' : 'Mantener la revisión sobre nuevas lecturas de horómetro y observaciones operacionales.');
+    toolsUsed.push({ name: 'get_maintenance_plan', mode: 'read' });
+  } else if (/\bot\b|orden(?:es)? de trabajo|bloquead|cerrar|cierre/.test(normalized)) {
+    const openOrders = (context.operational_work_orders || []).filter((row: any) => isOpenWorkOrderStatus(row?.status));
+    const readinessByOrder = new Map((context.closure_readiness || []).map((row: any) => [String(row?.work_order_id || ''), row]));
+    const rows = openOrders
+      .map((row: any) => ({ row, readiness: readinessByOrder.get(String(row?.id || '')) as any }))
+      .sort((a: any, b: any) => Number(Boolean(b.readiness && b.readiness.ready_to_close === false)) - Number(Boolean(a.readiness && a.readiness.ready_to_close === false)))
+      .slice(0, 6);
+
+    lines.push('DATO CANÓNICO');
+    if (!rows.length) {
+      lines.push('No hay OT operacionales abiertas en el contexto cargado.');
+    } else {
+      for (const item of rows) {
+        const row = item.row;
+        const readiness = item.readiness;
+        const asset = assetsById.get(String(row?.canonical_asset_id || '')) as any;
+        const assetName = asset?.name || asset?.asset_code || 'Activo sin nombre';
+        const closure = readiness
+          ? readiness.ready_to_close === true ? 'lista para cierre' : 'cierre pendiente: ' + (readiness.next_action || 'faltan evidencias')
+          : 'sin evaluación de cierre';
+        lines.push('- ' + (row?.work_order_number || 'OT') + ' · ' + assetName + ' · ' + (row?.title || 'sin título') + ' · ' + (row?.status || 'sin estado') + ' · ' + closure + '.');
+      }
+    }
+    lines.push('', 'INTERPRETACIÓN PROFESIONAL', 'La prioridad operativa debe considerar bloqueos de cierre, estado del activo y trabajo pendiente; esta lectura no cambia prioridad ni cierra OT.');
+    lines.push('', 'PRÓXIMA ACCIÓN', 'Abrir la OT que tenga bloqueo verificable y resolver su siguiente requisito antes de generar trabajo nuevo.');
+    toolsUsed.push({ name: 'get_closure_readiness', mode: 'read' });
+  } else {
+    const result = executeMaintenanceSeniorTool('get_maintenance_attention_context', { limit: 5 }, context) as any;
+    const rows = Array.isArray(result?.rows) ? result.rows : [];
+    lines.push('DATO CANÓNICO');
+    if (!rows.length) {
+      lines.push('No hay señales suficientes en la cola actual para destacar un activo por sobre otro.');
+    } else {
+      for (const item of rows) {
+        const a = item?.attention || {};
+        const reasons = [
+          a.pending_reviews ? a.pending_reviews + ' revisión(es) pendiente(s)' : null,
+          a.overdue_preventive ? a.overdue_preventive + ' preventivo(s) vencido(s)' : null,
+          a.out_of_service_reports ? a.out_of_service_reports + ' reporte(s) fuera de servicio' : null,
+          a.operational_with_observations_reports ? a.operational_with_observations_reports + ' reporte(s) con observaciones' : null,
+          a.open_work_orders ? a.open_work_orders + ' OT abierta(s)' : null,
+          a.closure_blockers ? a.closure_blockers + ' bloqueo(s) de cierre' : null,
+        ].filter(Boolean);
+        lines.push('- ' + (a.asset_name || a.asset_code || 'Activo') + ': ' + (reasons.join(' · ') || 'señal operacional pendiente de revisar') + '.');
+      }
+    }
+    lines.push('', 'INTERPRETACIÓN PROFESIONAL', 'La lista ordena atención por señales observables del sistema. No es una probabilidad de falla, diagnóstico mecánico ni criticidad OEM.');
+    lines.push('', 'EVIDENCIA FALTANTE / A CONFIRMAR', 'Antes de decidir intervención: validar observación de terreno, horómetro vigente, OT ya abierta, disponibilidad de insumos y responsable.');
+    lines.push('', 'PRÓXIMA ACCIÓN', rows.length ? 'Abrir el primer activo y contrastar sus observaciones, preventivos y OT antes de decidir.' : 'Actualizar evidencia operacional antes de priorizar.');
+    toolsUsed.push({ name: 'get_maintenance_attention_context', mode: 'read' });
+  }
+
+  return {
+    text: lines.join('\n'),
+    model: 'canonical-fallback',
+    responseId: null,
+    toolAudit: toolsUsed,
+  };
+}
 export async function GET(request: NextRequest) {
   const access = await requireModuleAccess(request, MODULE_KEYS.MANT_OPERACIONES);
   if (!access.authorized) return access.response;
@@ -494,12 +592,22 @@ export async function POST(request: NextRequest) {
     };
 
     const modelInput = `CONVERSACIÓN RECIENTE\n${conversationTranscript(history)}\n\n${advisoryContext}\n\nCONTEXTO CANÓNICO MOTIL\n${JSON.stringify(canonicalAvailability)}\n\nPREGUNTA ACTUAL\n${message}`;
-    const result = await callMaintenanceOperationalAI({
-      instructions,
-      input: modelInput,
-      context: canonical.context,
-    });
-    const toolsUsed = result.toolAudit.map(({ name, mode }) => ({ name, mode }));
+    let result;
+    let runtimeMode: 'ai' | 'canonical_fallback' = 'ai';
+    try {
+      result = await callMaintenanceOperationalAI({
+        instructions,
+        input: modelInput,
+        context: canonical.context,
+      });
+    } catch (aiError) {
+      const aiDetail = aiError instanceof Error ? aiError.message : String(aiError ?? 'unknown');
+      if (!isRecoverableAiAvailabilityError(aiDetail)) throw aiError;
+      console.warn('[maintenance-senior-assistant] AI unavailable; using canonical fallback', { detail: aiDetail });
+      result = canonicalFallbackAnswer(message, canonical.context);
+      runtimeMode = 'canonical_fallback';
+    }
+    const toolsUsed = result.toolAudit.map(({ name, mode }: { name: string; mode: string }) => ({ name, mode }));
     const sourceRefs = [
       ...canonical.sources.map((source) => ({ source })),
       ...toolsUsed.map((tool) => ({ tool: tool.name, mode: tool.mode })),
@@ -559,6 +667,7 @@ export async function POST(request: NextRequest) {
       conversationId: conversation?.id || null,
       message: assistantMessage,
       learned,
+      runtimeMode,
       decisionCaseRefs: advisoryHandoffs.map((row) => row.id),
       policy: 'Copiloto explicable con herramientas READ/PREPARE_ONLY: evidencia canónica → interpretación → hipótesis → acción humana. Memoria laboral separada de la verdad operacional; Decision Cases también permanecen como contexto no canónico.',
     });
