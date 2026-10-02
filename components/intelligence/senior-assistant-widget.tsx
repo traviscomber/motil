@@ -11,6 +11,7 @@ import { ControlledMemoryPopover } from '@/components/intelligence/controlled-me
 const maintenanceToolCopy: Record<string, string> = {
   search_assets: 'Activos',
   get_maintenance_attention_queue: 'Cola de atención',
+  get_maintenance_attention_context: 'Atención + contexto',
   get_asset_context: 'Contexto del activo',
   get_asset_context_batch: 'Contexto de activos',
   get_open_work_orders: 'Órdenes abiertas',
