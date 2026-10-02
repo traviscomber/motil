@@ -56,11 +56,11 @@ function getPriorityLabel(priority: string | null | undefined, t: WorkOrdersT) {
   return priority || t.priority.none;
 }
 
-function getStatusClass(status: string | null | undefined) {
+function getStatusVariant(status: string | null | undefined): 'default' | 'secondary' | 'outline' {
   const value = normalizeText(status);
-  if (['completed', 'completado'].includes(value)) return 'border-emerald-200 bg-emerald-50 text-emerald-700';
-  if (['in_progress', 'en_progreso'].includes(value)) return 'border-blue-200 bg-blue-50 text-blue-700';
-  return 'border-amber-200 bg-amber-50 text-amber-700';
+  if (['completed', 'completado'].includes(value)) return 'secondary';
+  if (['in_progress', 'en_progreso'].includes(value)) return 'default';
+  return 'outline';
 }
 
 function isOverdue(order: WorkOrderItem) {
@@ -156,7 +156,7 @@ export function WorkOrdersQueue({ locale, dictionary }: { locale: Locale; dictio
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-mono text-xs text-muted-foreground">{order.work_order_number || t.noFolio}</span>
-                <Badge variant="outline" className={getStatusClass(order.status)}>{getStatusLabel(order.status, t)}</Badge>
+                <Badge variant={getStatusVariant(order.status)}>{getStatusLabel(order.status, t)}</Badge>
                 {historical ? <Badge variant="secondary">{t.historicalBadge}</Badge> : null}
                 {!historical && isOverdue(order) ? <Badge variant="destructive">{t.overdueBadge}</Badge> : null}
                 {!historical && !order.asset_name ? <Badge variant="destructive">{t.missingAssetBadge}</Badge> : null}
