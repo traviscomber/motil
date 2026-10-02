@@ -116,26 +116,6 @@ export function WorkOrdersQueue({ locale, dictionary }: { locale: Locale; dictio
     });
   }, [missingAssetOnly, priorityFilter, scopeFilter, search, statusFilter, workOrders]);
 
-  const scheduleItems = useMemo(() => operationalWorkOrders
-    .filter((order) => order.scheduled_date && !['completed', 'completado'].includes(normalizeText(order.status)))
-    .map((order): ScheduleItem => {
-      const scheduledDate = new Date(order.scheduled_date as string);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      scheduledDate.setHours(0, 0, 0, 0);
-      const priority = normalizeText(order.priority);
-      return {
-        id: order.id,
-        assetName: order.asset_name || t.noAsset,
-        taskName: `${order.work_order_number || 'OT'} · ${order.title || t.untitled}`,
-        nextScheduledDate: order.scheduled_date || '',
-        priority: priority === 'critical' || priority === 'high' ? 'high' : priority === 'low' ? 'low' : 'medium',
-        daysUntil: Math.ceil((scheduledDate.getTime() - today.getTime()) / 86400000),
-      };
-    })
-    .sort((a, b) => a.daysUntil - b.daysUntil)
-    .slice(0, 7), [operationalWorkOrders, t]);
-
   return (
     <div className="space-y-6">
       <section className="flex flex-col gap-4 border-b border-border/70 pb-6 lg:flex-row lg:items-end lg:justify-between">
