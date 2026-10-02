@@ -42,7 +42,7 @@ const roleNavigation: Record<ViewerMode, { flow: string[]; support: string[] }> 
     support: ['Resumen'],
   },
   workshop: {
-    flow: ['Órdenes'],
+    flow: [],
     support: ['Resumen'],
   },
   oversight: {
