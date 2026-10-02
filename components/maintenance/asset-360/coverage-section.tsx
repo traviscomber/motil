@@ -43,6 +43,7 @@ export type Asset360IdentityHistoryRow = {
 export type Asset360CoverageAsset = {
   source_file?: string | null;
   validation_status?: string | null;
+  validation_notes?: string[];
   location?: string | null;
   location_evidence_source?: string | null;
   criticality_evidence_source?: string | null;
@@ -237,6 +238,16 @@ export function Asset360CoverageSection({
                   : null}
               />
             </div>
+            {Array.isArray(asset.validation_notes) && asset.validation_notes.length > 0 ? (
+              <div className="mt-4 border-t border-border pt-3">
+                <p className="text-xs text-muted-foreground">Notas de calidad canónica</p>
+                <div className="mt-2 space-y-1">
+                  {asset.validation_notes.slice(0, 5).map((note) => (
+                    <p key={note} className="text-xs text-muted-foreground">• {note}</p>
+                  ))}
+                </div>
+              </div>
+            ) : null}
             {financeReconciliation ? (
               <div className="mt-4 border-t border-border pt-3">
                 <p className="text-xs text-muted-foreground">Conciliación financiera</p>
