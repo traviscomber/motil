@@ -50,7 +50,7 @@ export default function ReportesPage() {
     <div className="space-y-6">
       <header className="flex flex-col gap-3 border-b border-border pb-6">
         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-          Reportes
+          Gestión transversal · Análisis y exportación
         </p>
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">Reportes</h1>
