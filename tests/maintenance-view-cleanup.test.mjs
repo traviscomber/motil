@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const mobilePage = await readFile(new URL('../app/dashboard/mantenimiento/movil/page.tsx', import.meta.url), 'utf8');
+const mobileRoute = await readFile(new URL('../components/maintenance/maintenance-mobile-route.tsx', import.meta.url), 'utf8');
 const mobileLegacy = await readFile(new URL('../components/maintenance/maintenance-mobile-panel.tsx', import.meta.url), 'utf8');
 const personnel = await readFile(new URL('../components/maintenance/technician-performance-board.tsx', import.meta.url), 'utf8');
 const home = await readFile(new URL('../components/dashboard/maintenance-home.tsx', import.meta.url), 'utf8');
@@ -10,10 +11,13 @@ const workOrders = await readFile(new URL('../components/maintenance/work-orders
 const workOrderDetail = await readFile(new URL('../components/maintenance/work-order-detail.tsx', import.meta.url), 'utf8');
 const workOrderDetailRoute = await readFile(new URL('../app/api/maintenance/work-orders/[id]/route.ts', import.meta.url), 'utf8');
 
-test('maintenance mobile route uses assigned work instead of the legacy global mobile dashboard', () => {
-  assert.match(mobilePage, /MobileTerrainPanel/);
+test('maintenance mobile route is gated to phone execution roles', () => {
+  assert.match(mobilePage, /MaintenanceMobileRoute/);
   assert.doesNotMatch(mobilePage, /MaintenanceMobilePanel/);
   assert.match(mobilePage, /Vista mínima de trabajo asignado para mecánicos en terreno/);
+  assert.match(mobileRoute, /data\?\.mode !== 'execution'/);
+  assert.match(mobileRoute, /Vista móvil no asignada a este cargo/);
+  assert.match(mobileRoute, /<MobileTerrainPanel \/>/);
 });
 
 test('legacy maintenance mobile dashboard is no longer routed', () => {
@@ -55,4 +59,14 @@ test('workshop work-order detail stays minimal and assigned-only', () => {
   assert.match(workOrderDetailRoute, /Esta orden no está asignada a tu identidad operativa/);
   assert.match(workOrderDetailRoute, /surface\.mode === 'workshop'/);
   assert.match(workOrderDetailRoute, /modo de solo lectura/);
+});
+
+
+test('OT creation action follows canonical creator permission and restricted roles never see the global queue', () => {
+  assert.match(workOrders, /viewer\?\.canCreateWorkOrder/);
+  assert.match(workOrders, /viewer\?\.mode === 'execution'/);
+  assert.match(workOrders, /viewer\?\.mode === 'workshop'/);
+  assert.match(workOrders, /<MobileTerrainPanel \/>/);
+  assert.match(workOrders, /<WorkshopAssignedWorkPanel \/>/);
+  assert.doesNotMatch(workOrders, /scopeFilter === 'all'/);
 });
