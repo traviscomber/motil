@@ -1,4 +1,4 @@
-﻿import { MobileTerrainPanel } from '@/components/maintenance/mobile-terrain-panel';
+﻿import { MaintenanceMobileRoute } from '@/components/maintenance/maintenance-mobile-route';
 
 export const metadata = {
   title: 'Operación en terreno de mantenimiento',
@@ -6,6 +6,6 @@ export const metadata = {
 };
 
 export default function MaintenanceMobilePage() {
-  return <MobileTerrainPanel />;
+  return <MaintenanceMobileRoute />;
 }
 
