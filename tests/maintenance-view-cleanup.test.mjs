@@ -10,6 +10,7 @@ const home = await readFile(new URL('../components/dashboard/maintenance-home.ts
 const workOrders = await readFile(new URL('../components/maintenance/work-orders-queue.tsx', import.meta.url), 'utf8');
 const workOrderDetail = await readFile(new URL('../components/maintenance/work-order-detail.tsx', import.meta.url), 'utf8');
 const workOrderDetailRoute = await readFile(new URL('../app/api/maintenance/work-orders/[id]/route.ts', import.meta.url), 'utf8');
+const equipmentPage = await readFile(new URL('../app/dashboard/mantenimiento/equipos/page.tsx', import.meta.url), 'utf8');
 
 test('maintenance mobile route is gated to phone execution roles', () => {
   assert.match(mobilePage, /MaintenanceMobileRoute/);
@@ -69,4 +70,22 @@ test('OT creation action follows canonical creator permission and restricted rol
   assert.match(workOrders, /<MobileTerrainPanel \/>/);
   assert.match(workOrders, /<WorkshopAssignedWorkPanel \/>/);
   assert.doesNotMatch(workOrders, /scopeFilter === 'all'/);
+});
+
+
+test('personnel view keeps workload and removes ranking noise', () => {
+  assert.match(personnel, /Personal de mantenimiento/);
+  assert.match(personnel, /OT activas/);
+  assert.match(personnel, /Completadas/);
+  assert.doesNotMatch(personnel, /scoreLabel/);
+  assert.doesNotMatch(personnel, /scoreColor/);
+  assert.doesNotMatch(personnel, /<Progress/);
+  assert.doesNotMatch(personnel, /<Award/);
+});
+
+test('Equipos is the single entry to Ficha 360 without parallel asset-view menu', () => {
+  assert.match(equipmentPage, /El detalle operativo, técnico y económico vive en su Ficha 360/);
+  assert.match(equipmentPage, /Importar equipos/);
+  assert.doesNotMatch(equipmentPage, /Vistas del activo/);
+  assert.doesNotMatch(equipmentPage, /const assetViews/);
 });
