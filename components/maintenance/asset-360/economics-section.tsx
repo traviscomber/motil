@@ -20,10 +20,16 @@ export function Asset360EconomicsSection({
   economicHistory,
   operationalState,
   lastCostEventAt,
+  sourceMaintenanceSpend,
+  sourceMaintenanceRecords,
+  sourceLastRecord,
 }: {
   economicHistory: Asset360EconomicHistoryRow[];
   operationalState: Asset360OperationalState | undefined;
   lastCostEventAt: string | null | undefined;
+  sourceMaintenanceSpend?: number | string | null;
+  sourceMaintenanceRecords?: number | string | null;
+  sourceLastRecord?: string | null;
 }) {
   const economicLifetime = economicHistory.reduce(
     (sum, row) => sum + Number(row.historical_total_cost || 0),
@@ -73,6 +79,31 @@ export function Asset360EconomicsSection({
             <p className="text-xs text-muted-foreground">Corte {date(economicLastCostDate)}</p>
           ) : null}
         </div>
+
+        {sourceMaintenanceSpend != null || sourceMaintenanceRecords != null || sourceLastRecord ? (
+          <div className="border-b border-border py-5">
+            <div className="grid gap-4 sm:grid-cols-3">
+              <IdentityItem
+                icon={Coins}
+                label="Histórico importado"
+                value={sourceMaintenanceSpend != null ? money(sourceMaintenanceSpend) : 'Sin monto'}
+                meta="Acumulado informado por la fuente maestra; no reconciliado como costo auditado de OT"
+              />
+              <IdentityItem
+                icon={CalendarDays}
+                label="Registros fuente"
+                value={sourceMaintenanceRecords != null ? number(sourceMaintenanceRecords, 0) : 'Sin conteo'}
+                meta="Conteo histórico importado; no equivale a cierres auditados"
+              />
+              <IdentityItem
+                icon={CalendarDays}
+                label="Último registro fuente"
+                value={date(sourceLastRecord)}
+                meta="Fecha informada por la fuente maestra"
+              />
+            </div>
+          </div>
+        ) : null}
 
         {economicLifetimeValue != null || economicHistory.length > 0 ? (
           <div>
