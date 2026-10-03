@@ -1,6 +1,6 @@
 # Actualización segura de contraseñas en MOTIL
 
-Este documento reemplaza el procedimiento histórico que incluía una contraseña real y proponía actualizar un hash directamente en una tabla de aplicación.
+Este documento reemplaza el procedimiento histórico que incluía credenciales versionadas y actualización directa de hashes de aplicación.
 
 ## Regla
 
