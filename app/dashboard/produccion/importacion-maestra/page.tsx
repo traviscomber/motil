@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import * as XLSX from 'xlsx';
 import { toast } from 'sonner';
 import { ArrowLeft, CheckCircle2, FileSpreadsheet, Loader2, ShieldCheck, Upload } from 'lucide-react';
@@ -291,6 +292,13 @@ async function sendChunks(kind: 'movement' | 'exception' | 'plant', rows: JsonRo
 }
 
 export default function MasterProductionImportPage() {
+  const searchParams = useSearchParams();
+  const dataHealthIssue = searchParams.get('dataHealth');
+  const focusedSource = dataHealthIssue === 'transport_freshness'
+    ? 'Transporte'
+    : dataHealthIssue === 'plant_freshness'
+      ? 'Planta'
+      : null;
   const [prepared, setPrepared] = useState<Prepared | null>(null);
   const [parsing, setParsing] = useState(false);
   const [parseProgress, setParseProgress] = useState(0);
@@ -341,15 +349,32 @@ export default function MasterProductionImportPage() {
       <PageHeader>
         <PageHeaderContent>
           <PageHeaderEyebrow>Producción · Importación canónica</PageHeaderEyebrow>
-          <PageHeaderTitle>Master histórico Motil</PageHeaderTitle>
+          <PageHeaderTitle>{focusedSource ? `Actualizar fuente de ${focusedSource}` : 'Master histórico Motil'}</PageHeaderTitle>
           <PageHeaderDescription>
-            Acepta únicamente el consolidado auditado de TM 2019–2026 + LEY/LEYES. El archivo se valida localmente por SHA-256 y cada fila vuelve a validarse en servidor contra la allowlist Motil.
+            {focusedSource
+              ? `La tarea de Data Health corresponde a ${focusedSource}. El mismo master canónico actualiza Transporte y Planta; MOTIL conserva la validación SHA-256, lineage y conteos antes de materializar datos.`
+              : 'Acepta únicamente el consolidado auditado de TM 2019–2026 + LEY/LEYES. El archivo se valida localmente por SHA-256 y cada fila vuelve a validarse en servidor contra la allowlist Motil.'}
           </PageHeaderDescription>
         </PageHeaderContent>
         <PageHeaderActions>
           <Button asChild variant="outline"><Link href="/dashboard/produccion"><ArrowLeft className="h-4 w-4" />Volver a Producción</Link></Button>
         </PageHeaderActions>
       </PageHeader>
+
+      {focusedSource ? (
+        <Card className="border-amber-300/70 bg-amber-50/40 shadow-none">
+          <CardContent className="flex items-start gap-3 p-4">
+            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
+            <div>
+              <p className="text-sm font-medium">Data Health · {focusedSource}</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                La deuda se cerrará sólo cuando esta importación produzca evidencia canónica más reciente.
+                Abrir la pantalla o validar el archivo sin materializarlo no cambia la frescura.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card>
         <CardHeader>
