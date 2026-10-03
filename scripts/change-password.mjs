@@ -74,12 +74,8 @@ async function changePasswords() {
     console.log('╔════════════════════════════════════════════════════════╗')
     console.log('║         ✅ Contraseñas actualizadas                     ║')
     console.log('╚════════════════════════════════════════════════════════╝\n')
-    
-    console.log('🔐 Nuevas credenciales:\n')
-    console.log('1. mastudillo@lapatagua.cl')
-    console.log('   Contraseña: lapatagua2026\n')
-    console.log('2. ariellopez@lapatagua.cl')
-    console.log('   Contraseña: lapatagua2026\n')
+    console.log('Password update completed; credential values are not printed.')
+
 
   } catch (err) {
     console.error('❌ Error:', err.message)
