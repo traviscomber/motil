@@ -8,7 +8,16 @@ const DETAIL_ISSUES = new Set([
   'zero_amount_lines',
   'missing_cost_centers',
   'source_warning_lines',
+  'unlinked_products',
 ]);
+
+const QUALITY_ALERT_CODES = [
+  'validation',
+  'zero_amount_lines',
+  'missing_cost_centers',
+  'source_warning_lines',
+  'unlinked_products',
+];
 
 async function loadValidation(context: Awaited<ReturnType<typeof getOrganizationContext>> & { ok: true }) {
   const { data: run, error: runError } = await context.supabase
@@ -46,6 +55,7 @@ export async function GET(request: NextRequest) {
       .from('canonical_finance_alerts')
       .select('alert_code,title,severity,exception_count,description')
       .eq('organization_id', context.organizationId)
+      .in('alert_code', QUALITY_ALERT_CODES)
       .gt('exception_count', 0)
       .order('severity', { ascending: true })
       .order('alert_code', { ascending: true });
