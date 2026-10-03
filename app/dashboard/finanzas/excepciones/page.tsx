@@ -215,7 +215,7 @@ export default function FinanceExceptionsPage() {
                 {validationError ? <p className="text-sm text-destructive">{validationError}</p> : null}
                 {!data.validation.run ? (
                   <StatePanel
-                    tone="empty"
+                    tone="neutral"
                     title="Sin validación registrada"
                     description="No existe un run exhaustivo para esta organización. Ejecuta la validación para obtener evidencia por check."
                   />
@@ -263,7 +263,7 @@ export default function FinanceExceptionsPage() {
               </CardHeader>
               <CardContent className="p-0">
                 {data.rows.length === 0 ? (
-                  <div className="p-4"><StatePanel tone="empty" title="Sin filas para este control" /></div>
+                  <div className="p-4"><StatePanel tone="neutral" title="Sin filas para este control" /></div>
                 ) : (
                   <div className="overflow-x-auto">
                     <Table>
