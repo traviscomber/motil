@@ -7,6 +7,7 @@ import { requireOperationalMaintenanceWorkOrder } from '@/lib/maintenance/work-o
 
 type WorkOrderPatchPayload = {
   status?: string;
+  canonical_asset_id?: string | null;
   assigned_person_id?: string | null;
   actual_duration_hours?: number | string | null;
   root_cause?: string | null;
@@ -65,6 +66,22 @@ async function resolveAssignee(context: Awaited<ReturnType<typeof getOrganizatio
     .maybeSingle();
   if (error) throw error;
   if (!data) throw new Error('El responsable seleccionado no es una persona operativa activa y vinculada.');
+  return data;
+}
+
+async function validateCanonicalAsset(
+  context: Awaited<ReturnType<typeof getOrganizationContext>> & { ok: true },
+  assetId: string,
+) {
+  const { data, error } = await context.supabase
+    .from('maintenance_canonical_assets_v1')
+    .select('id,asset_code,name,is_active')
+    .eq('organization_id', context.organizationId)
+    .eq('id', assetId)
+    .eq('is_active', true)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) throw new Error('El equipo seleccionado no existe o no está activo en esta organización.');
   return data;
 }
 
@@ -174,6 +191,32 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (body.status) updateData.status = body.status;
+    if (body.canonical_asset_id !== undefined) {
+      if (!body.canonical_asset_id) {
+        return NextResponse.json({ error: 'Selecciona un equipo canónico válido.' }, { status: 400 });
+      }
+
+      const { data: currentIdentity, error: currentIdentityError } = await context.supabase
+        .from('maintenance_work_orders')
+        .select('canonical_asset_id,status')
+        .eq('id', id)
+        .eq('organization_id', context.organizationId)
+        .maybeSingle();
+      if (currentIdentityError) throw currentIdentityError;
+      if (!currentIdentity) return NextResponse.json({ error: 'No se encontró la orden de trabajo' }, { status: 404 });
+      if (currentIdentity.status === 'completed') {
+        return NextResponse.json({ error: 'Una OT completada no puede cambiar su identidad de equipo.' }, { status: 409 });
+      }
+      if (currentIdentity.canonical_asset_id && currentIdentity.canonical_asset_id !== body.canonical_asset_id) {
+        return NextResponse.json(
+          { error: 'La OT ya tiene un equipo canónico. Usa el flujo de reconciliación para cambiarlo.' },
+          { status: 409 },
+        );
+      }
+
+      await validateCanonicalAsset(context, body.canonical_asset_id);
+      updateData.canonical_asset_id = body.canonical_asset_id;
+    }
     if (body.assigned_person_id !== undefined) {
       if (body.assigned_person_id) {
         const assignee = await resolveAssignee(context, body.assigned_person_id);
