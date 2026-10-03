@@ -81,7 +81,7 @@ Cron Jobs @ 01:00 UTC
 ### Usuario Demo
 ```
 Email:    demo@seguria.tech
-Password: seguria2026
+Password: <SET_VIA_AUTH_ADMIN>
 Org:      Seguria Spa Demo
 Role:     Admin (acceso completo)
 ```

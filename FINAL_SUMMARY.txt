@@ -206,7 +206,7 @@ TEST CREDENTIALS
 
 Executive User:
   Email:    juan@n3uralia.com
-  Password: c4rlit0s
+  Password: <SET_VIA_AUTH_ADMIN>
 
 Database:     Supabase (Chile region - Santiago timezone)
 Frontend:     http://localhost:3000 (dev) or https://[vercel-url] (prod)

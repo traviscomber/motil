@@ -101,7 +101,7 @@ export function buildAuthCookiePayload(input: {
 export async function createAuthCookieValue(payload: AuthCookiePayload) {
   const secret = getAuthCookieSecret();
   if (!secret) {
-    return JSON.stringify(payload);
+    throw new Error('Missing auth cookie signing secret');
   }
 
   const json = JSON.stringify(payload);
@@ -117,19 +117,7 @@ export async function verifyAuthCookieValue(token?: string | null) {
 
   const secret = getAuthCookieSecret();
   if (!secret) {
-    const legacyPayload = safeJsonParse<Partial<AuthCookiePayload>>(token);
-    if (!legacyPayload?.user?.id || !legacyPayload?.session_token) {
-      return null;
-    }
-
-    return {
-      user: legacyPayload.user,
-      role: legacyPayload.role,
-      session_token: legacyPayload.session_token,
-      issued_at: legacyPayload.issued_at || Date.now(),
-      expires_at: legacyPayload.expires_at || Date.now() + DEFAULT_MAX_AGE_SECONDS * 1000,
-      version: AUTH_COOKIE_VERSION,
-    };
+    return null;
   }
 
   const [encodedPayload, encodedSignature] = token.split('.');

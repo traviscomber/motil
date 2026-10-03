@@ -176,7 +176,7 @@ USUARIO
 2. Completa formulario:
    - Nombre: "María López"
    - Email: "maria@lapatagua.cl"
-   - Contraseña: "SecurePass123!"
+   - Contraseña: <SET_VIA_AUTH_ADMIN>
    - Cargo: **"JEFE SOSTENIBILIDAD"** ← Selecciona del dropdown
 3. Sistema crea usuario con `cargo_id = ID de JEFE SOSTENIBILIDAD`
 4. María automáticamente tiene acceso según la matriz:

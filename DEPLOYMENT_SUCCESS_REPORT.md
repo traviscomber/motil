@@ -74,7 +74,7 @@ The N3uralia ERP MVP has been successfully deployed to production on Vercel.
 ```
 Production URL: https://www.motil.app
 Demo Account: demo@n3uralia.com
-Demo Password: DemoPass123!
+Demo Password: <SET_VIA_AUTH_ADMIN>
 ```
 
 ### Available Modules (Live)
@@ -235,7 +235,7 @@ git push origin main
 ### Test Access
 - URL: https://www.motil.app
 - Email: demo@n3uralia.com
-- Password: DemoPass123!
+- Password: <SET_VIA_AUTH_ADMIN>
 - Expected: Dashboard loads with KPI data
 
 ### Common Issues & Solutions

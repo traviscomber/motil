@@ -131,12 +131,12 @@ const filteredMenuItems = useMemo(() => {
 
 1. **Acceder como SUPERADMIN:**
    - Email: `juan@n3uralia.com`
-   - Contraseña: `c4rlit0s`
+   - Contraseña: `<SET_VIA_AUTH_ADMIN>`
    - Resultado: Verás TODOS los módulos
 
 2. **Acceder como OPERACIONES-SUPERVISOR:**
    - Email: `demo@n3uralia.com`
-   - Contraseña: `DemoPass123!`
+   - Contraseña: `<SET_VIA_AUTH_ADMIN>`
    - Resultado: Verás solo módulos de operación
 
 ---
