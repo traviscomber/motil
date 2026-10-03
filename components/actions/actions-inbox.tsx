@@ -228,7 +228,7 @@ export function ActionsInbox({ locale, dictionary }: { locale: Locale; dictionar
     </div>
 
     {stateWriteError ? <Card className="border-destructive/30 shadow-none"><CardContent className="p-4 text-sm text-destructive">{stateWriteError}</CardContent></Card> : null}
-    {inbox.data?.degraded ? <Card className="border-amber-500/30 shadow-none"><CardContent className="p-4 text-sm text-muted-foreground"><strong className="text-foreground">Bandeja temporalmente limitada.</strong> Los indicadores disponibles siguen visibles, pero el detalle de tareas no se pudo cargar dentro del tiempo seguro. Reintenta para recuperar el detalle; MOTIL no mostrará un estado “sin pendientes” mientras la fuente esté degradada.</CardContent></Card> : null}
+    {inbox.data?.degraded ? <Card className="border-amber-500/30 shadow-none"><CardContent className="p-4 text-sm text-muted-foreground"><strong className="text-foreground">{t.degradedTitle}.</strong> {t.degradedDescription}</CardContent></Card> : null}
 
     <div className="space-y-3">
       <div className="relative max-w-2xl">
