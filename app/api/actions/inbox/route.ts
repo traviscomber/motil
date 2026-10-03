@@ -106,16 +106,16 @@ function resolveTaskRoute(task: RoleTask) {
     return `/dashboard/calidad-datos/salud?domain=${encodeURIComponent(rawId)}&issue=${encodeURIComponent(rest[0])}`;
   }
 
-  if (kind === 'finance' && rawId === 'missing_cost_centers' && rest.length === 0) {
-    return '/dashboard/centros-costos';
+  if (
+    kind === 'finance' &&
+    ['missing_cost_centers', 'zero_amount_lines', 'source_warning_lines', 'validation', 'unlinked_products'].includes(rawId) &&
+    rest.length === 0
+  ) {
+    return `/dashboard/finanzas/excepciones?issue=${encodeURIComponent(rawId)}`;
   }
 
   if (kind === 'finance' && rawId === 'treasury_missing_due_date' && rest.length === 0) {
     return '/dashboard/finanzas/pagos';
-  }
-
-  if (kind === 'finance' && (rawId === 'zero_amount_lines' || rawId === 'validation') && rest.length === 0) {
-    return `/dashboard/finanzas/importar?issue=${encodeURIComponent(rawId)}`;
   }
 
   return task.module_route;
