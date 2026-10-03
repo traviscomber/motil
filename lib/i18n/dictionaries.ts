@@ -630,6 +630,8 @@ export const dictionaries = {
         showing: 'Mostrando {visible} de {total} acciones visibles.',
         inboxError: 'No se pudo cargar la bandeja operacional.',
         loading: 'Cargando trabajo del cargo…',
+        degradedTitle: 'Bandeja temporalmente limitada',
+        degradedDescription: 'Los indicadores disponibles siguen visibles, pero el detalle de tareas no se pudo cargar dentro del tiempo seguro. Reintenta para recuperar el detalle; MOTIL no mostrará un estado sin pendientes mientras la fuente esté degradada.',
         empty: {
           title: 'Operación al día',
           description: 'No tienes tareas ni escalaciones operacionales visibles en este momento.',
@@ -1920,6 +1922,8 @@ export const dictionaries = {
         showing: 'Showing {visible} of {total} visible actions.',
         inboxError: 'Could not load the operational inbox.',
         loading: 'Loading role work…',
+        degradedTitle: 'Inbox temporarily limited',
+        degradedDescription: 'Available indicators remain visible, but task details did not load within the safe time window. Retry to recover the detail; MOTIL will not show an all-clear state while the source is degraded.',
         empty: {
           title: 'Operations up to date',
           description: 'You have no visible operational tasks or escalations at this time.',

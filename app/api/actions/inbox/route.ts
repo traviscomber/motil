@@ -168,7 +168,7 @@ export async function GET(request: NextRequest) {
     context.supabase.from('cargos').select('name').eq('id', profile.cargo_id).maybeSingle(),
     context.supabase
       .from('operational_role_inbox_coverage_v1')
-      .select('cargo_id')
+      .select('cargo_id, owned_tasks, owned_critical, support_items, escalations')
       .eq('organization_id', context.organizationId)
       .eq('cargo_id', profile.cargo_id)
       .limit(1)
@@ -204,6 +204,35 @@ export async function GET(request: NextRequest) {
 
   if (error) {
     console.error('[role-task-inbox] task lookup failed', error);
+
+    if (error.code === '57014') {
+      return NextResponse.json({
+        profile: { name: profile.full_name || null, cargoId: profile.cargo_id, cargoName },
+        tasks: [],
+        summary: {
+          total: null,
+          owners: coverage?.owned_tasks ?? null,
+          support: coverage?.support_items ?? null,
+          escalations: coverage?.escalations ?? null,
+          critical: coverage?.owned_critical ?? null,
+          overdue: null,
+          backlog: null,
+        },
+        generatedAt: new Date().toISOString(),
+        source: 'operational_role_inbox_coverage_v1',
+        degraded: true,
+        degradedReason: 'task_query_timeout',
+        rawTaskCount: null,
+        deduplicatedTaskCount: null,
+      }, {
+        status: 200,
+        headers: {
+          'Cache-Control': 'private, no-store',
+          'X-Motil-Degraded': 'task-inbox-timeout',
+        },
+      });
+    }
+
     return NextResponse.json({ error: 'No se pudo cargar tu bandeja operacional' }, { status: 500 });
   }
 
