@@ -25,3 +25,9 @@ test('maintenance review enrichment fails open to the canonical task inbox', () 
   assert.match(source, /if \(!evidence\) return task/);
   assert.match(source, /evidenceParts\.join\(' · '\) \|\| task\.evidence_summary/);
 });
+
+
+test('role inbox preserves escalation over support for the same task', () => {
+  assert.match(source, /owner: 0,[\s\S]*escalation: 1,[\s\S]*support: 2/);
+  assert.match(source, /nextRank < currentRank/);
+});
