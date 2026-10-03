@@ -28,8 +28,10 @@ type Task = {
 
 type InboxPayload = {
   profile?: { name?: string | null; cargoName?: string | null };
-  summary?: { total: number; owners: number; support: number; escalations: number; critical: number; overdue: number; backlog: number };
+  summary?: { total: number | null; owners: number | null; support: number | null; escalations: number | null; critical: number | null; overdue: number | null; backlog: number | null };
   tasks?: Task[];
+  degraded?: boolean;
+  degradedReason?: string;
 };
 
 type StateRow = { source_key: string; status: 'pending' | 'read' | 'snoozed'; snoozed_until?: string | null };
@@ -196,14 +198,15 @@ export function ActionsInbox({ locale, dictionary }: { locale: Locale; dictionar
 
   const summary = inbox.data?.summary;
   const summaryUnavailable = inbox.isLoading || Boolean(inbox.error) || !summary;
-  const summaryValue = (key: 'owners' | 'critical' | 'overdue' | 'escalations') => summaryUnavailable ? '—' : summary[key];
+  const summaryValue = (key: 'owners' | 'critical' | 'overdue' | 'escalations') =>
+    summaryUnavailable ? '—' : (summary[key] ?? '—');
   const filterCounts = {
     all: tasks.length,
     critical: tasks.filter((task) => task.severity === 'critical').length,
     overdue: tasks.filter((task) => task.urgency_state === 'overdue' || task.urgency_state === 'escalated').length,
     owner: tasks.filter((task) => task.responsibility === 'owner').length,
   };
-  const filterCount = (value: TaskFilter) => summaryUnavailable ? '—' : filterCounts[value];
+  const filterCount = (value: TaskFilter) => summaryUnavailable || inbox.data?.degraded ? '—' : filterCounts[value];
   const hasSearch = normalizeSearch(searchQuery).length > 0;
   const order = taskOrder(sortLocale);
 
@@ -225,6 +228,7 @@ export function ActionsInbox({ locale, dictionary }: { locale: Locale; dictionar
     </div>
 
     {stateWriteError ? <Card className="border-destructive/30 shadow-none"><CardContent className="p-4 text-sm text-destructive">{stateWriteError}</CardContent></Card> : null}
+    {inbox.data?.degraded ? <Card className="border-amber-500/30 shadow-none"><CardContent className="p-4 text-sm text-muted-foreground"><strong className="text-foreground">Bandeja temporalmente limitada.</strong> Los indicadores disponibles siguen visibles, pero el detalle de tareas no se pudo cargar dentro del tiempo seguro. Reintenta para recuperar el detalle; MOTIL no mostrará un estado “sin pendientes” mientras la fuente esté degradada.</CardContent></Card> : null}
 
     <div className="space-y-3">
       <div className="relative max-w-2xl">
@@ -240,12 +244,12 @@ export function ActionsInbox({ locale, dictionary }: { locale: Locale; dictionar
       </div>
 
       <div className="flex flex-wrap items-center gap-2" aria-label={t.filtersAria}>
-        {(['all', 'critical', 'overdue', 'owner'] as const).map((value) => <Button key={value} size="sm" variant={taskFilter === value ? 'default' : 'outline'} onClick={() => setTaskFilter(value)} disabled={summaryUnavailable}>{t.filters[value]}<Badge variant="secondary" className="ml-2">{filterCount(value)}</Badge></Button>)}
+        {(['all', 'critical', 'overdue', 'owner'] as const).map((value) => <Button key={value} size="sm" variant={taskFilter === value ? 'default' : 'outline'} onClick={() => setTaskFilter(value)} disabled={summaryUnavailable || Boolean(inbox.data?.degraded)}>{t.filters[value]}<Badge variant="secondary" className="ml-2">{filterCount(value)}</Badge></Button>)}
         {(taskFilter !== 'all' || hasSearch) && !summaryUnavailable ? <span className="text-xs text-muted-foreground">{fill(t.showing, { visible: visibleTasks.length, total: tasks.length })}</span> : null}
       </div>
     </div>
 
-    {inbox.error || states.error ? <Card className="shadow-none"><CardContent className="p-8 text-center text-sm text-muted-foreground">{t.inboxError}</CardContent></Card> : inbox.isLoading || states.isLoading ? <Card className="shadow-none"><CardContent className="p-8 text-sm text-muted-foreground">{t.loading}</CardContent></Card> : tasks.length === 0 ? <Card className="shadow-none"><CardContent className="p-10 text-center"><CheckCircle2 className="mx-auto h-7 w-7" /><p className="mt-3 font-medium">{t.empty.title}</p><p className="mt-1 text-sm text-muted-foreground">{t.empty.description}</p></CardContent></Card> : visibleTasks.length === 0 ? <Card className="shadow-none"><CardContent className="p-8 text-center"><p className="font-medium">{t.noResults.title}</p><p className="mt-1 text-sm text-muted-foreground">{t.noResults.description}</p><div className="mt-4 flex justify-center gap-2">{hasSearch ? <Button size="sm" variant="outline" onClick={() => setSearchQuery('')}>{t.noResults.clear}</Button> : null}{taskFilter !== 'all' ? <Button size="sm" variant="outline" onClick={() => setTaskFilter('all')}>{t.noResults.viewAll}</Button> : null}</div></CardContent></Card> : <div className="space-y-5">
+    {inbox.error || states.error ? <Card className="shadow-none"><CardContent className="p-8 text-center text-sm text-muted-foreground">{t.inboxError}</CardContent></Card> : inbox.isLoading || states.isLoading ? <Card className="shadow-none"><CardContent className="p-8 text-sm text-muted-foreground">{t.loading}</CardContent></Card> : inbox.data?.degraded ? null : tasks.length === 0 ? <Card className="shadow-none"><CardContent className="p-10 text-center"><CheckCircle2 className="mx-auto h-7 w-7" /><p className="mt-3 font-medium">{t.empty.title}</p><p className="mt-1 text-sm text-muted-foreground">{t.empty.description}</p></CardContent></Card> : visibleTasks.length === 0 ? <Card className="shadow-none"><CardContent className="p-8 text-center"><p className="font-medium">{t.noResults.title}</p><p className="mt-1 text-sm text-muted-foreground">{t.noResults.description}</p><div className="mt-4 flex justify-center gap-2">{hasSearch ? <Button size="sm" variant="outline" onClick={() => setSearchQuery('')}>{t.noResults.clear}</Button> : null}{taskFilter !== 'all' ? <Button size="sm" variant="outline" onClick={() => setTaskFilter('all')}>{t.noResults.viewAll}</Button> : null}</div></CardContent></Card> : <div className="space-y-5">
       {LANE_ORDER.map((lane) => {
         const laneTasks = visibleTasks.filter((task) => laneKey(task) === lane);
         if (!laneTasks.length) return null;
