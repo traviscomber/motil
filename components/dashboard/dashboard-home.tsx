@@ -31,6 +31,7 @@ type RoleTask = {
 type InboxSummary = { total: number; owners: number; support: number; escalations: number; critical: number; overdue: number; backlog: number };
 type InboxPayload = {
   profile?: { name?: string | null; cargoId?: string | null; cargoName?: string | null };
+  moduleAccess?: Record<string, string>;
   summary?: InboxSummary;
   tasks?: RoleTask[];
 };
@@ -89,15 +90,33 @@ function normalize(value: string | null | undefined) {
   return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 }
 
-function resolveMode(cargoName: string | null | undefined): HomeMode {
+function hasModuleAccess(moduleAccess: Record<string, string> | null | undefined, ...keys: string[]) {
+  return keys.some((key) => ['ED', 'LEC'].includes(String(moduleAccess?.[key] || '').toUpperCase()));
+}
+
+function resolveMode(
+  cargoName: string | null | undefined,
+  moduleAccess?: Record<string, string> | null,
+): HomeMode {
   const cargo = normalize(cargoName);
-  if (/todos los cargos|gerenc|director|administrador|admin|jefatura general/.test(cargo)) return 'management';
+
+  // Strong cargo identities take precedence. Module access is the canonical
+  // fallback for operational roles whose title does not describe their domain.
+  if (/todos los cargos|gerente|subgerente|presidente|director|administrador|admin|jefatura general/.test(cargo)) return 'management';
   if (/sostenibilidad|prevencion|hse|medio ambiente/.test(cargo)) return 'sustainability';
   if (/jefe adm|administracion|finanzas|financiero/.test(cargo)) return 'finance';
   if (/mantencion|mantenimiento|mecan|taller|jefe man\.? eq|jefe mant|planificador.*mant/.test(cargo)) return 'maintenance';
   if (/sondaje|perforacion|perforista/.test(cargo)) return 'drilling';
   if (/jefe.*planta|planta.*jefe|metalurg/.test(cargo)) return 'plant';
   if (/bodega|inventario|almacen/.test(cargo)) return 'inventory';
+
+  if (hasModuleAccess(moduleAccess, 'sos_tablero', 'hse_tablero')) return 'sustainability';
+  if (hasModuleAccess(moduleAccess, 'mant_gerencial', 'mant_operaciones')) return 'maintenance';
+  if (hasModuleAccess(moduleAccess, 'prod_sondaje', 'prod_sondaje_exploracion', 'prod_sondaje_produccion')) return 'drilling';
+  if (hasModuleAccess(moduleAccess, 'prod_operaciones', 'prod_quimica')) return 'plant';
+  if (hasModuleAccess(moduleAccess, 'bodega_inventario')) return 'inventory';
+  if (hasModuleAccess(moduleAccess, 'fin_finanzas', 'fin_compras')) return 'finance';
+
   return 'general';
 }
 
@@ -244,10 +263,20 @@ function configFor(
 export function DashboardHome({ locale, dictionary }: { locale: Locale; dictionary: Dictionary }) {
   const t = dictionary.app.home;
   const inbox = useSWR<InboxPayload>('/api/actions/inbox', fetcher, { refreshInterval: 60000, revalidateOnFocus: false });
-  const production = useSWR<ProductionOverview | null>('/api/produccion/canonical-overview', optionalFetcher, { revalidateOnFocus: false });
-  const maintenance = useSWR<MaintenanceOverview | null>('/api/maintenance/work-order-flow?limit=200', optionalFetcher, { revalidateOnFocus: false });
+  const mode = resolveMode(inbox.data?.profile?.cargoName, inbox.data?.moduleAccess);
+  const needsProduction = mode === 'plant' || mode === 'drilling' || mode === 'management';
+  const needsMaintenance = mode === 'maintenance' || mode === 'management';
+  const production = useSWR<ProductionOverview | null>(
+    needsProduction ? '/api/produccion/canonical-overview' : null,
+    optionalFetcher,
+    { revalidateOnFocus: false },
+  );
+  const maintenance = useSWR<MaintenanceOverview | null>(
+    needsMaintenance ? '/api/maintenance/work-order-flow?limit=200' : null,
+    optionalFetcher,
+    { revalidateOnFocus: false },
+  );
 
-  const mode = resolveMode(inbox.data?.profile?.cargoName);
   const config = configFor(mode, production.data, maintenance.data, inbox.data, t, locale);
   const tasks = (inbox.data?.tasks || []).slice(0, 5);
   const loading = inbox.isLoading;
