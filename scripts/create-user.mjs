@@ -1,126 +1,73 @@
 import { createClient } from '@supabase/supabase-js'
 import * as dotenv from 'dotenv'
-import crypto from 'crypto'
+import bcrypt from 'bcrypt'
 
 dotenv.config({ path: '.env.development.local' })
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+const initialPassword = process.env.MOTIL_INITIAL_PASSWORD
+const organizationId = process.env.MOTIL_ORGANIZATION_ID
 
-if (!supabaseUrl || !serviceRoleKey) {
-  console.error('❌ Missing Supabase environment variables')
+const email = String(process.argv[2] || '').trim().toLowerCase()
+const fullName = String(process.argv[3] || '').trim()
+const role = String(process.argv[4] || '').trim()
+
+if (!supabaseUrl || !serviceRoleKey || !initialPassword || !organizationId) {
+  console.error('Missing required environment configuration.')
+  console.error('Required: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, MOTIL_INITIAL_PASSWORD, MOTIL_ORGANIZATION_ID')
+  process.exit(1)
+}
+
+if (!email || !fullName || !role) {
+  console.error('Usage: node scripts/create-user.mjs <email> <full-name> <role>')
   process.exit(1)
 }
 
 const supabase = createClient(supabaseUrl, serviceRoleKey)
 
-async function createUser(email, fullName, role) {
-  try {
-    console.log('\n╔════════════════════════════════════════════════════════╗')
-    console.log(`║  Creando usuario: ${email.padEnd(38)} ║`)
-    console.log('╚════════════════════════════════════════════════════════╝\n')
+async function createUser() {
+  const { data: existingUsers, error: listError } = await supabase.auth.admin.listUsers()
+  if (listError) throw listError
 
-    // 1. Obtener usuario de Supabase Auth o crear si no existe
-    console.log('1. Buscando usuario en Auth...')
-    const { data: existingUsers } = await supabase.auth.admin.listUsers()
-    
-    let userId
-    const existingUser = existingUsers?.users?.find(u => u.email === email)
-    
-    if (existingUser) {
-      console.log(`   ✓ Usuario encontrado: ${existingUser.id}`)
-      userId = existingUser.id
-    } else {
-      console.log('   Creando usuario en Auth...')
-      const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
-        email: email,
-        password: 'TempPassword123!@#',
-        email_confirm: true,
-      })
+  let authUser = existingUsers?.users?.find((user) => user.email?.toLowerCase() === email)
+  const creatingIdentity = !authUser
 
-      if (authError) {
-        console.error('❌ Error creando usuario en Auth:', authError.message)
-        process.exit(1)
-      }
-
-      console.log(`   ✓ Usuario creado: ${authUser.user.id}`)
-      userId = authUser.user.id
-    }
-
-    // 2. Crear perfil en la tabla profiles
-    console.log('\n2. Creando/actualizando perfil...')
-    
-    // Obtener organization_id
-    const { data: org, error: orgError } = await supabase
-      .from('organizations')
-      .select('id')
-      .limit(1)
-      .single()
-
-    if (orgError) {
-      console.error('❌ Error obteniendo organización:', orgError.message)
-      process.exit(1)
-    }
-
-    // Hash the password for the profiles table
-    const passwordHash = crypto.createHash('sha256').update('TempPassword123!@#').digest('hex')
-
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .upsert([{
-        id: userId,
-        email: email,
-        full_name: fullName,
-        role: role,
-        organization_id: org.id,
-        status: 'active',
-        password_hash: passwordHash,
-      }], { onConflict: 'id' })
-
-    if (profileError) {
-      console.error('❌ Error creando perfil:', profileError.message)
-      process.exit(1)
-    }
-
-    console.log('   ✓ Perfil creado/actualizado')
-
-    // 3. Verificar
-    console.log('\n3. Verificando usuario...')
-    const { data: profile, error: verifyError } = await supabase
-      .from('profiles')
-      .select('id, email, full_name, role, status')
-      .eq('email', email)
-      .single()
-
-    if (verifyError) {
-      console.error('❌ Error verificando:', verifyError.message)
-      process.exit(1)
-    }
-
-    console.log(`   ✓ Usuario verificado:`)
-    console.log(`     - Email: ${profile.email}`)
-    console.log(`     - Nombre: ${profile.full_name}`)
-    console.log(`     - Rol: ${profile.role}`)
-    console.log(`     - Estado: ${profile.status}`)
-
-    console.log('\n╔════════════════════════════════════════════════════════╗')
-    console.log('║         ✅ Usuario creado exitosamente                  ║')
-    console.log('╚════════════════════════════════════════════════════════╝\n')
-    console.log('📋 Credenciales:')
-    console.log(`   📧 Email: ${email}`)
-    console.log(`   🔐 Contraseña temporal: TempPassword123!@#`)
-    console.log(`   👤 Rol: ${fullName}`)
-    console.log('\n⚠️  El usuario debe cambiar la contraseña en el primer login\n')
-
-  } catch (err) {
-    console.error('❌ Error:', err.message)
-    process.exit(1)
+  if (!authUser) {
+    const { data, error } = await supabase.auth.admin.createUser({
+      email,
+      password: initialPassword,
+      email_confirm: true,
+    })
+    if (error) throw error
+    authUser = data.user
   }
+
+  if (!authUser?.id) throw new Error('Auth identity could not be resolved')
+
+  const profilePayload = {
+    id: authUser.id,
+    email,
+    full_name: fullName,
+    role,
+    organization_id: organizationId,
+    status: 'active',
+  }
+
+  if (creatingIdentity) {
+    profilePayload.password_hash = await bcrypt.hash(initialPassword, 12)
+  }
+
+  const { error: profileError } = await supabase
+    .from('profiles')
+    .upsert([profilePayload], { onConflict: 'id' })
+
+  if (profileError) throw profileError
+
+  console.log('User provisioning completed without printing credential values.')
 }
 
-// Get email and role from command line arguments
-const email = process.argv[2] || 'ariellopez@lapatagua.cl'
-const fullName = process.argv[3] || 'Jefe de Mantención y Equipos Móviles y Estacionarios'
-const role = process.argv[4] || 'jefe_mantencion'
-
-createUser(email, fullName, role)
+createUser().catch((error) => {
+  console.error('User provisioning failed:', error instanceof Error ? error.message : error)
+  process.exit(1)
+})
