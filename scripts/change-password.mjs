@@ -24,8 +24,11 @@ async function changePasswords() {
       'mastudillo@lapatagua.cl',
       'ariellopez@lapatagua.cl'
     ]
-    const oldPassword = 'labbe2026'
-    const newPassword = 'lapatagua2026'
+    const newPassword = process.env.MOTIL_NEW_PASSWORD
+    if (!newPassword) {
+      console.error('Missing MOTIL_NEW_PASSWORD')
+      process.exit(1)
+    }
 
     // Hash password with bcrypt (12 rounds)
     const passwordHash = await bcrypt.hash(newPassword, 12)
