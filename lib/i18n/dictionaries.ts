@@ -1046,6 +1046,7 @@ export const dictionaries = {
           status: 'Estado',
           review: 'Revisión',
           pendingResolution: 'Pendiente · se resolverá al crear la OT',
+          pendingAcceptance: 'Esta revisión requiere aceptación humana. Al continuar, aceptarás la evidencia y crearás la OT en una sola operación.',
           observation: 'Observación operacional',
           openLinked: 'Abrir OT ya vinculada',
         },
@@ -1102,6 +1103,7 @@ export const dictionaries = {
         cancel: 'Cancelar',
         creating: 'Creando orden…',
         createAndResolve: 'Crear OT y resolver revisión',
+        acceptAndCreate: 'Aceptar revisión y crear OT',
         create: 'Crear orden',
       },
       workOrderDetail: {
@@ -2336,6 +2338,7 @@ export const dictionaries = {
           status: 'Status',
           review: 'Review',
           pendingResolution: 'Pending · will be resolved when the WO is created',
+          pendingAcceptance: 'This review requires human acceptance. Continuing will accept the evidence and create the WO in one operation.',
           observation: 'Operational observation',
           openLinked: 'Open already linked WO',
         },
@@ -2392,6 +2395,7 @@ export const dictionaries = {
         cancel: 'Cancel',
         creating: 'Creating order…',
         createAndResolve: 'Create WO and resolve review',
+        acceptAndCreate: 'Accept review and create WO',
         create: 'Create order',
       },
       workOrderDetail: {
