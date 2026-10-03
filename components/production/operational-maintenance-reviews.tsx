@@ -40,6 +40,7 @@ type ReviewRow = {
 
 type Payload = {
   rows: ReviewRow[];
+  canReview: boolean;
   canCreateWorkOrder: boolean;
   summary: { total: number; pending: number; linked: number; outOfService: number };
 };
@@ -76,6 +77,26 @@ export function OperationalMaintenanceReviews() {
   const { data, error, isLoading, mutate } = useSWR('/api/produccion/sondaje/mantenimiento', fetcher);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  const acceptForMaintenance = async (row: ReviewRow) => {
+    setBusyId(row.id);
+    setActionError(null);
+    try {
+      const response = await fetch('/api/produccion/sondaje/mantenimiento', {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ reviewId: row.id }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'No fue posible aceptar la revisión');
+      await mutate();
+    } catch (cause) {
+      setActionError(cause instanceof Error ? cause.message : 'No fue posible aceptar la revisión');
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   const createWorkOrder = async (row: ReviewRow) => {
     setBusyId(row.id);
@@ -144,8 +165,14 @@ export function OperationalMaintenanceReviews() {
                   </Button>
                 ) : data.canCreateWorkOrder ? (
                   <Button size="sm" onClick={() => createWorkOrder(row)} disabled={busyId === row.id}>
-                    {busyId === row.id ? 'Creando…' : isCritical ? 'Crear OT' : 'Aceptar y crear OT'}
+                    {busyId === row.id ? 'Creando…' : isCritical ? 'Crear OT' : row.status === 'accepted' ? 'Crear OT' : 'Aceptar y crear OT'}
                   </Button>
+                ) : !isCritical && row.status === 'pending' && data.canReview ? (
+                  <Button size="sm" variant="outline" onClick={() => acceptForMaintenance(row)} disabled={busyId === row.id}>
+                    {busyId === row.id ? 'Aceptando…' : 'Aceptar para Mantención'}
+                  </Button>
+                ) : row.status === 'accepted' ? (
+                  <Badge variant="secondary">Aceptada · espera Mantención</Badge>
                 ) : (
                   <Badge variant="outline">Requiere Mantención</Badge>
                 )}
