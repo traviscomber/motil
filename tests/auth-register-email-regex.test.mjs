@@ -3,18 +3,11 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 const registerRoute = fs.readFileSync('app/api/auth/register/route.ts', 'utf8');
+const registerPage = fs.readFileSync('app/auth/register/page.tsx', 'utf8');
 
-test('register email regex accepts real emails and rejects malformed ones', () => {
-  const match = registerRoute.match(/emailRegex = \/(.+)\/\s*;/);
-  assert.ok(match, 'register route must declare an emailRegex literal');
-  const regex = new RegExp(match[1]);
-
-  // A previous bug required a literal backslash in the email (escaped-dot
-  // typo) and rejected every valid address, blocking all self-registration.
-  for (const valid of ['supervisor@faena.cl', 'nombre.apellido@empresa.com', 'a@b.c']) {
-    assert.ok(regex.test(valid), `expected ${valid} to be accepted`);
-  }
-  for (const invalid of ['sin-arroba', 'doble@@empresa.com', 'espacio @faena.cl', 'falta-dominio@']) {
-    assert.ok(!regex.test(invalid), `expected ${invalid} to be rejected`);
-  }
+test('legacy public registration remains disabled instead of validating signup input', () => {
+  assert.match(registerRoute, /Registro público deshabilitado/);
+  assert.match(registerRoute, /status:\s*404/);
+  assert.doesNotMatch(registerRoute, /emailRegex|createUser|password_hash|SUPABASE_SERVICE_ROLE_KEY/);
+  assert.match(registerPage, /registration=admin_only/);
 });
