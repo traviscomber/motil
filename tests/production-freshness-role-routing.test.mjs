@@ -11,6 +11,10 @@ const slaMigration = await readFile(
   'utf8',
 );
 const inbox = await readFile(new URL('../app/api/actions/inbox/route.ts', import.meta.url), 'utf8');
+const freshnessPage = await readFile(
+  new URL('../app/dashboard/produccion/actualizar-fuentes/page.tsx', import.meta.url),
+  'utf8',
+);
 
 test('drilling freshness is owned by the drilling domain and JEFE SONDAJE', () => {
   assert.match(ownerMigration, /data_health:production:drilling_freshness/);
@@ -28,4 +32,13 @@ test('drilling freshness preserves the previous production SLA and escalation', 
 test('drilling freshness routes to the dedicated source workspace', () => {
   assert.match(inbox, /rawId === 'production' && rest\[0\] === 'drilling_freshness'/);
   assert.match(inbox, /actualizar-fuentes\?source=drilling/);
+});
+
+
+test('source freshness workspace focuses the source carried by the task route', () => {
+  assert.match(freshnessPage, /useSearchParams/);
+  assert.match(freshnessPage, /searchParams\.get\('source'\)/);
+  assert.match(freshnessPage, /\['transport', 'plant', 'drilling'\]/);
+  assert.match(freshnessPage, /sources\.filter\(\(source\) => source\.key === focusedSource\)/);
+  assert.match(freshnessPage, /visibleSources\.map/);
 });
