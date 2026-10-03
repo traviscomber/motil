@@ -482,7 +482,7 @@ if (organizationId === DEMO_ORG) {
 
 ```
 Email:    demo@seguria.tech
-Password: seguria2026
+Password: <SET_VIA_AUTH_ADMIN>
 ```
 
 ### Información del Usuario Demo
