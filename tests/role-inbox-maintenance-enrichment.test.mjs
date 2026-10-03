@@ -31,3 +31,9 @@ test('role inbox preserves escalation over support for the same task', () => {
   assert.match(source, /owner: 0,[\s\S]*escalation: 1,[\s\S]*support: 2/);
   assert.match(source, /nextRank < currentRank/);
 });
+
+
+test('role inbox routes treasury missing due dates to the actionable payables workspace', () => {
+  assert.match(source, /rawId === 'treasury_missing_due_date'/);
+  assert.match(source, /return '\/dashboard\/finanzas\/pagos'/);
+});
