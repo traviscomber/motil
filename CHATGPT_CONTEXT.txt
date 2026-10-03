@@ -141,7 +141,7 @@ COMMON ISSUES & FIXES:
 
 CREDENTIALS:
 Email: juan@n3uralia.com
-Password: c4rlit0s
+Password: <SET_VIA_AUTH_ADMIN>
 
 For ChatGPT continuation:
 1. Copy this file
