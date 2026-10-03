@@ -103,6 +103,10 @@ function resolveTaskRoute(task: RoleTask) {
     return '/dashboard/centros-costos';
   }
 
+  if (kind === 'finance' && rawId === 'treasury_missing_due_date' && rest.length === 0) {
+    return '/dashboard/finanzas/pagos';
+  }
+
   if (kind === 'finance' && (rawId === 'zero_amount_lines' || rawId === 'validation') && rest.length === 0) {
     return `/dashboard/finanzas/importar?issue=${encodeURIComponent(rawId)}`;
   }
