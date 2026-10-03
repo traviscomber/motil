@@ -127,9 +127,10 @@ function deduplicateTasks(rows: RoleTask[]) {
   });
 }
 
-function emptyRoleInbox(name: string | null, cargoId: string, cargoName: string | null) {
+function emptyRoleInbox(name: string | null, cargoId: string, cargoName: string | null, moduleAccess: Record<string, string> = {}) {
   return NextResponse.json({
     profile: { name, cargoId, cargoName },
+    moduleAccess,
     tasks: [],
     summary: { total: 0, owners: 0, support: 0, escalations: 0, critical: 0, overdue: 0, backlog: 0 },
     generatedAt: new Date().toISOString(),
@@ -158,13 +159,18 @@ export async function GET(request: NextRequest) {
   if (!profile?.cargo_id) {
     return NextResponse.json({
       profile: { name: profile?.full_name || null, cargoId: null, cargoName: null },
+      moduleAccess: {},
       tasks: [],
       summary: { total: 0, owners: 0, support: 0, escalations: 0, critical: 0, overdue: 0, backlog: 0 },
       generatedAt: new Date().toISOString(),
     });
   }
 
-  const [{ data: cargo, error: cargoError }, { data: coverage, error: coverageError }] = await Promise.all([
+  const [
+    { data: cargo, error: cargoError },
+    { data: coverage, error: coverageError },
+    { data: accessRows, error: accessError },
+  ] = await Promise.all([
     context.supabase.from('cargos').select('name').eq('id', profile.cargo_id).maybeSingle(),
     context.supabase
       .from('operational_role_inbox_coverage_v1')
@@ -173,6 +179,10 @@ export async function GET(request: NextRequest) {
       .eq('cargo_id', profile.cargo_id)
       .limit(1)
       .maybeSingle(),
+    context.supabase
+      .from('role_matrix')
+      .select('module_key,access_level')
+      .eq('cargo_id', profile.cargo_id),
   ]);
 
   if (cargoError) {
@@ -180,11 +190,18 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'No se pudo resolver tu cargo' }, { status: 500 });
   }
 
+  if (accessError) {
+    console.warn('[role-task-inbox] module access lookup failed', accessError);
+  }
+
+  const moduleAccess = Object.fromEntries(
+    (accessRows || []).map((row) => [String(row.module_key), String(row.access_level)]),
+  );
   const cargoName = cargo?.name || null;
   const hasPrivateFinanceInbox = cargoName?.toUpperCase() === 'JEFE ADM.';
 
   if (!coverageError && !coverage && !hasPrivateFinanceInbox) {
-    return emptyRoleInbox(profile.full_name || null, profile.cargo_id, cargoName);
+    return emptyRoleInbox(profile.full_name || null, profile.cargo_id, cargoName, moduleAccess);
   }
 
   if (coverageError) {
@@ -216,6 +233,7 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     profile: { name: profile.full_name || null, cargoId: profile.cargo_id, cargoName },
+    moduleAccess,
     tasks,
     summary: {
       total: tasks.length,
