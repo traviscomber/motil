@@ -12,11 +12,12 @@ test('role inbox deep-links incidents, inspections and risks to their HSE action
 });
 
 test('HSE record API authorizes through the cargo task boundary before reading legacy sources', () => {
-  assert.match(recordRoute, /\.from\('role_task_frontend_v1'\)/);
-  assert.match(recordRoute, /\.eq\('organization_id', context\.organizationId\)/);
-  assert.match(recordRoute, /\.eq\('cargo_id', profile\.cargo_id\)/);
-  assert.match(recordRoute, /\.eq\('task_key', taskKey\)/);
-  assert.match(recordRoute, /authorizationBoundary: 'role_task_frontend_v1'/);
+  assert.match(recordRoute, /getVisibleScopedRoleTask/);
+  assert.doesNotMatch(recordRoute, /role_task_frontend_v1/);
+  assert.match(recordRoute, /organizationId: context\.organizationId/);
+  assert.match(recordRoute, /cargoId: profile\.cargo_id/);
+  assert.match(recordRoute, /taskKey,/);
+  assert.match(recordRoute, /authorizationBoundary: 'scoped_role_task_sources_v1'/);
   assert.match(recordRoute, /\.from\(source\)/);
   assert.match(recordRoute, /source = 'incidents'/);
   assert.match(recordRoute, /source = 'hse_inspections'/);
