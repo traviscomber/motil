@@ -69,6 +69,7 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     rows,
+    canReview: access.canWrite,
     canCreateWorkOrder,
     summary: {
       total: rows.length,
@@ -77,6 +78,61 @@ export async function GET(request: NextRequest) {
       outOfService: rows.filter((row) => row.review_reason === 'out_of_service' && !row.linked_work_order_id).length,
     },
   });
+}
+
+export async function PATCH(request: NextRequest) {
+  const productionAccess = await requireModuleAccess(request, MODULE_KEYS.PROD_SONDAJE_PRODUCCION, true);
+  if (!productionAccess.authorized) return productionAccess.response;
+
+  const context = await getOrganizationContext(request);
+  if (!context.ok) return context.response;
+
+  const body = await request.json().catch(() => null);
+  const reviewId = String(body?.reviewId || '').trim();
+  const decisionNote = String(body?.decisionNote || '').trim();
+  if (!reviewId) return NextResponse.json({ error: 'La revisión operacional es obligatoria' }, { status: 400 });
+
+  const { data: review, error: reviewError } = await context.supabase
+    .from('operational_maintenance_reviews')
+    .select('id,review_reason,status,linked_work_order_id')
+    .eq('organization_id', context.organizationId)
+    .eq('id', reviewId)
+    .maybeSingle();
+
+  if (reviewError) return NextResponse.json({ error: reviewError.message }, { status: 500 });
+  if (!review) return NextResponse.json({ error: 'Revisión operacional no encontrada' }, { status: 404 });
+  if (review.linked_work_order_id) {
+    return NextResponse.json({ error: 'La revisión ya tiene una OT vinculada' }, { status: 409 });
+  }
+  if (review.review_reason === 'out_of_service') {
+    return NextResponse.json({ error: 'Una condición fuera de servicio debe ser atendida directamente por Mantención' }, { status: 409 });
+  }
+  if (review.status === 'accepted') {
+    return NextResponse.json({ ok: true, status: 'accepted', existing: true });
+  }
+  if (review.status !== 'pending') {
+    return NextResponse.json({ error: 'La revisión ya no está pendiente de decisión de Sondaje' }, { status: 409 });
+  }
+
+  const { data: updated, error: updateError } = await context.supabase
+    .from('operational_maintenance_reviews')
+    .update({
+      status: 'accepted',
+      decision_note: decisionNote || 'Sondaje confirma que la condición requiere evaluación de Mantención.',
+      reviewed_by: context.userId,
+      reviewed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('organization_id', context.organizationId)
+    .eq('id', reviewId)
+    .eq('status', 'pending')
+    .select('id,status,decision_note,reviewed_at')
+    .maybeSingle();
+
+  if (updateError) return NextResponse.json({ error: updateError.message }, { status: 400 });
+  if (!updated) return NextResponse.json({ error: 'La revisión cambió de estado; actualiza antes de continuar' }, { status: 409 });
+
+  return NextResponse.json({ ok: true, review: updated });
 }
 
 export async function POST(request: NextRequest) {
