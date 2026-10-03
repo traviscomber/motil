@@ -36,6 +36,8 @@ type WorkOrderPayload = {
   canonical_asset_id?: string;
   reviewId?: string | null;
   review_id?: string | null;
+  acceptReview?: boolean;
+  accept_review?: boolean;
   assignedPersonId?: string | null;
   assigned_person_id?: string | null;
   title?: string;
@@ -224,6 +226,7 @@ export async function POST(request: NextRequest) {
     const body = (await request.json()) as WorkOrderPayload;
     const canonicalAssetId = body.canonicalAssetId || body.canonical_asset_id;
     const reviewId = body.reviewId || body.review_id || null;
+    const acceptReview = Boolean(body.acceptReview ?? body.accept_review ?? false);
     const assignedPersonId = body.assignedPersonId || body.assigned_person_id || null;
     const requestedMaterials = body.requestedMaterials || body.requested_materials || null;
     const materials = body.materials || [];
@@ -292,11 +295,19 @@ export async function POST(request: NextRequest) {
       if (review.canonical_asset_id !== canonicalAssetId) {
         return NextResponse.json({ error: 'La revisión no corresponde al equipo seleccionado' }, { status: 409 });
       }
-      if (review.review_reason !== 'out_of_service' && review.review_status === 'pending') {
-        return NextResponse.json({ error: 'La revisión debe ser aceptada antes de crear la orden' }, { status: 409 });
+      const pendingReviewNeedsAcceptance =
+        review.review_reason !== 'out_of_service' && review.review_status === 'pending';
+      if (pendingReviewNeedsAcceptance && !acceptReview) {
+        return NextResponse.json(
+          { error: 'Confirma la aceptación de la revisión antes de crear la orden' },
+          { status: 409 },
+        );
       }
 
-      const { data: rpcData, error: rpcError } = await context.supabase.rpc('create_work_order_from_operational_review', {
+      const reviewRpc = pendingReviewNeedsAcceptance
+        ? 'accept_and_create_work_order_from_operational_review_v1'
+        : 'create_work_order_from_operational_review';
+      const { data: rpcData, error: rpcError } = await context.supabase.rpc(reviewRpc, {
         p_organization_id: context.organizationId,
         p_review_id: reviewId,
         p_created_by: context.authUserId,
