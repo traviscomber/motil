@@ -43,6 +43,7 @@ export type Asset360IdentityHistoryRow = {
 export type Asset360CoverageAsset = {
   source_file?: string | null;
   validation_status?: string | null;
+  validation_notes?: string[];
   location?: string | null;
   location_evidence_source?: string | null;
   criticality_evidence_source?: string | null;
@@ -54,10 +55,54 @@ export type Asset360CoverageAsset = {
   license_plate_evidence_source?: string | null;
   reference_family?: string | null;
   reference_family_evidence_source?: string | null;
+  source_history_evidence_source?: string | null;
+  source_maintenance_records?: number | string | null;
+  source_maintenance_spend?: number | string | null;
+  source_last_record?: string | null;
   source_sheet?: string | null;
   source_row?: number | null;
   updated_at?: string | null;
   imported_at?: string | null;
+};
+
+const unavailableSourceLabel = (source: string) => {
+  const labels: Record<string, string> = {
+    workOrders: 'Órdenes de trabajo',
+    closeReadiness: 'Preparación de cierre',
+    preventives: 'Mantenimiento preventivo',
+    runtime: 'Uso / horómetro',
+    reliability: 'Confiabilidad auditada',
+    runtimeReliability: 'Confiabilidad por uso',
+    closureSnapshots: 'Cierres auditados',
+    parts: 'Repuestos',
+    labor: 'Mano de obra',
+    events: 'Eventos de OT',
+    statusHistory: 'Historial de estado',
+    maintenancePlanning: 'Planificación de mantenimiento',
+    operationalState: 'Estado operacional consolidado',
+    operatingSpine: 'Trazabilidad operacional',
+    supplyChain: 'Abastecimiento',
+    procurementOrders: 'Órdenes de compra',
+    purchaseHistoryCostCenter: 'Compras por centro de costo',
+    purchaseHistoryName: 'Compras por identidad',
+    economicHistory: 'Historial económico',
+    drillingHistory: 'Producción de perforación',
+    drillEconomics: 'Economía de perforación',
+    drillEconomicsMonthly: 'Serie mensual costo + producción',
+    drillingReview: 'Revisión de señales operacionales',
+    maintenancePriority: 'Prioridad de mantenimiento',
+    financeReconciliation: 'Conciliación financiera',
+    runtimeCost: 'Costo por uso',
+    meterHistory: 'Historial de medidor',
+    drillEvidence: 'Evidencia operacional 90 días',
+    drillEconomicsChange: 'Cambio económico mensual',
+    taskCandidates: 'Tareas candidatas',
+    standardPlans: 'Planes estándar',
+    identityHistory: 'Historial de identidad',
+    exactCostCenterDetail: 'Centro de costo',
+    costCenterMatch: 'Resolución de centro de costo',
+  };
+  return labels[source] || source;
 };
 
 const evidenceSourceLabel = (source?: string | null) => {
@@ -78,6 +123,7 @@ const evidenceSourceLabel = (source?: string | null) => {
     deterministic_name_classifier: 'Clasificador determinístico del nombre',
     deterministic_name_brand: 'Marca explícita extraída del nombre',
     deterministic_name_plate: 'Patente extraída del nombre con formato validado',
+    'maintenance_canonical_assets_v1.source_payload': 'Histórico importado del maestro canónico',
   };
   return labels[source] || source;
 };
@@ -99,6 +145,7 @@ export function Asset360CoverageSection({
   evidenceDomainCount,
   financeReconciliation,
   identityHistory,
+  unavailableSources,
 }: {
   coverageItems: ReadonlyArray<readonly [string, boolean, string]>;
   coverageAvailableCount: number;
@@ -116,6 +163,7 @@ export function Asset360CoverageSection({
   evidenceDomainCount?: number | string | null;
   financeReconciliation?: Asset360FinanceReconciliation;
   identityHistory: Asset360IdentityHistoryRow[];
+  unavailableSources: string[];
 }) {
   const sourceLabel = asset.source_file?.startsWith('public.')
     ? 'Maestro de activos'
@@ -146,6 +194,20 @@ export function Asset360CoverageSection({
             {coverageAvailableCount}/{coverageItems.length} capas con evidencia. Sin brechas detectadas.
           </div>
         )}
+
+        {unavailableSources.length > 0 ? (
+          <div className="border-t border-border p-4">
+            <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+              Fuentes temporalmente no disponibles
+            </p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              La ficha conserva lo que sí está respaldado. Estas fuentes no se interpretan como datos inexistentes:
+            </p>
+            <p className="mt-2 text-sm font-medium">
+              {unavailableSources.map(unavailableSourceLabel).join(' · ')}
+            </p>
+          </div>
+        ) : null}
 
         <details className="group border-t border-border px-4 py-4">
           <summary className="cursor-pointer list-none">
@@ -212,6 +274,14 @@ export function Asset360CoverageSection({
                 value={asset.source_sheet}
                 meta={asset.source_row != null ? `Fila ${asset.source_row}` : null}
               />
+              {asset.source_maintenance_records != null ? (
+                <IdentityItem
+                  icon={FileText}
+                  label="Histórico importado"
+                  value={`${number(asset.source_maintenance_records, 0)} registros`}
+                  meta={asset.source_last_record ? `${evidenceSourceLabel(asset.source_history_evidence_source)} · último ${date(asset.source_last_record)}` : evidenceSourceLabel(asset.source_history_evidence_source)}
+                />
+              ) : null}
               <IdentityItem icon={CalendarDays} label="Última actualización" value={date(asset.updated_at || asset.imported_at)} />
               <IdentityItem
                 icon={Activity}
@@ -224,6 +294,16 @@ export function Asset360CoverageSection({
                   : null}
               />
             </div>
+            {Array.isArray(asset.validation_notes) && asset.validation_notes.length > 0 ? (
+              <div className="mt-4 border-t border-border pt-3">
+                <p className="text-xs text-muted-foreground">Notas de calidad canónica</p>
+                <div className="mt-2 space-y-1">
+                  {asset.validation_notes.slice(0, 5).map((note) => (
+                    <p key={note} className="text-xs text-muted-foreground">• {note}</p>
+                  ))}
+                </div>
+              </div>
+            ) : null}
             {financeReconciliation ? (
               <div className="mt-4 border-t border-border pt-3">
                 <p className="text-xs text-muted-foreground">Conciliación financiera</p>

@@ -59,6 +59,12 @@ export type Asset360HeaderAsset = {
   acquisition_cost?: number | string | null;
   expected_lifespan_years?: number | string | null;
   baseline_mtbf_hours?: number | string | null;
+  source_year?: number | string | null;
+  source_assignment?: string | null;
+  source_last_record?: string | null;
+  source_maintenance_records?: number | string | null;
+  source_maintenance_spend?: number | string | null;
+  source_history_evidence_source?: string | null;
   criticality?: string | null;
   operational_status?: string | null;
   operational_status_evidence_source?: string | null;
@@ -206,6 +212,18 @@ export function Asset360IdentityHeader({
       : null,
     asset.baseline_mtbf_hours != null
       ? ['MTBF base', `${number(asset.baseline_mtbf_hours, 0)} h`, Timer] as const
+      : null,
+    asset.source_year != null
+      ? ['Año informado', String(asset.source_year), CalendarDays, 'Dato del maestro canónico importado'] as const
+      : null,
+    asset.source_assignment
+      ? ['Asignación', asset.source_assignment, MapPin, 'Asignación registrada en el maestro canónico'] as const
+      : null,
+    asset.source_last_record
+      ? ['Último registro fuente', date(asset.source_last_record), FileText, 'Última fecha informada por la fuente maestra'] as const
+      : null,
+    asset.source_maintenance_records != null
+      ? ['Registros históricos', number(asset.source_maintenance_records, 0), Wrench, 'Conteo histórico importado; no equivale a OT auditadas'] as const
       : null,
   ].filter(Boolean) as Asset360DetailItem[];
 
