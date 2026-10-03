@@ -444,7 +444,7 @@ export async function GET(request: NextRequest) {
         priority: 'high',
         owner: normalizeText(row.inspector),
         location: normalizeText(row.faena),
-        href: '/dashboard/sostenibilidad/prevencion-riesgos/inspecciones',
+        href: '/dashboard/sostenibilidad/prevencion-riesgos/inspecciones-externas',
         historical,
         completed_at: normalizeDate(row.fecha_realizada),
       }, today));
