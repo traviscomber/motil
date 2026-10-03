@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getOrganizationContext } from '@/lib/api/organization-context';
+import { getUserModuleAccess, isAdminRole, MODULE_KEYS } from '@/lib/api/module-access';
 
 type CalendarSource = 'maintenance' | 'hse' | 'legal' | 'procurement' | 'finance' | 'people';
 type CalendarPriority = 'critical' | 'high' | 'medium' | 'low';
@@ -192,6 +193,20 @@ function buildItem(
 export async function GET(request: NextRequest) {
   const context = await getOrganizationContext(request);
   if (!context.ok) return context.response;
+
+  const role = String(context.role || '').trim().toLowerCase();
+  const admin = isAdminRole(role);
+  const moduleAccess = admin ? { hasCargo: true, access: {} } : await getUserModuleAccess(context.userId);
+  const canViewAny = (...moduleKeys: string[]) =>
+    admin || moduleKeys.some((moduleKey) => ['ED', 'LEC'].includes(moduleAccess.access[moduleKey]));
+
+  const allowedSources = new Set<CalendarSource>();
+  if (canViewAny(MODULE_KEYS.MANT_OPERACIONES, MODULE_KEYS.MANT_GERENCIAL)) allowedSources.add('maintenance');
+  if (canViewAny(MODULE_KEYS.HSE_TABLERO, MODULE_KEYS.HSE_RIESGOS, MODULE_KEYS.SOS_TABLERO, MODULE_KEYS.SOS_CALENDARIO)) allowedSources.add('hse');
+  if (canViewAny(MODULE_KEYS.LEGAL_MODULO, MODULE_KEYS.LEGAL_CONTRATOS, MODULE_KEYS.LEGAL_EECC)) allowedSources.add('legal');
+  if (canViewAny(MODULE_KEYS.FIN_COMPRAS, MODULE_KEYS.BODEGA_INVENTARIO)) allowedSources.add('procurement');
+  if (canViewAny(MODULE_KEYS.FIN_FINANZAS, MODULE_KEYS.FIN_REPORTES)) allowedSources.add('finance');
+  if (admin || role === 'manager') allowedSources.add('people');
 
   const searchParams = new URL(request.url).searchParams;
   const requestedDays = Number(searchParams.get('days') || 60);
@@ -635,7 +650,9 @@ export async function GET(request: NextRequest) {
       }, today));
     }
 
-    items.sort((a, b) => {
+    const visibleItems = items.filter((item) => allowedSources.has(item.source));
+
+    visibleItems.sort((a, b) => {
       const byDate = scope === 'historical'
         ? b.date.localeCompare(a.date)
         : a.date.localeCompare(b.date);
@@ -645,25 +662,25 @@ export async function GET(request: NextRequest) {
       return a.title.localeCompare(b.title, 'es');
     });
 
-    const activeItems = items.filter((item) => !item.historical);
+    const activeItems = visibleItems.filter((item) => !item.historical);
     const summary = {
       overdue: activeItems.filter((item) => item.overdue).length,
       today: activeItems.filter((item) => item.days_until === 0).length,
       next_7_days: activeItems.filter((item) => item.days_until > 0 && item.days_until <= 7).length,
-      total: items.length,
-      historical: items.filter((item) => item.historical).length,
+      total: visibleItems.length,
+      historical: visibleItems.filter((item) => item.historical).length,
       by_source: {
-        maintenance: items.filter((item) => item.source === 'maintenance').length,
-        hse: items.filter((item) => item.source === 'hse').length,
-        legal: items.filter((item) => item.source === 'legal').length,
-        procurement: items.filter((item) => item.source === 'procurement').length,
-        finance: items.filter((item) => item.source === 'finance').length,
-        people: items.filter((item) => item.source === 'people').length,
+        maintenance: visibleItems.filter((item) => item.source === 'maintenance').length,
+        hse: visibleItems.filter((item) => item.source === 'hse').length,
+        legal: visibleItems.filter((item) => item.source === 'legal').length,
+        procurement: visibleItems.filter((item) => item.source === 'procurement').length,
+        finance: visibleItems.filter((item) => item.source === 'finance').length,
+        people: visibleItems.filter((item) => item.source === 'people').length,
       },
     };
 
     return NextResponse.json({
-      data: items,
+      data: visibleItems,
       summary,
       warnings,
       range: {
