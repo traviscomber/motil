@@ -55,6 +55,13 @@ function resolveTaskRoute(task: RoleTask) {
   }
 
   if (kind === 'maintenance_review' && rawId && rest.length === 0 && UUID_PATTERN.test(rawId)) {
+    if (
+      task.responsibility === 'owner' &&
+      String(task.cargo_name || '').toUpperCase() === 'JEFE SONDAJE' &&
+      task.status === 'pending'
+    ) {
+      return `/dashboard/produccion/sondaje/produccion?reviewId=${rawId}`;
+    }
     const priority = task.severity === 'critical' ? 'critical' : 'high';
     return `/dashboard/mantenimiento/ordenes-trabajo/create?reviewId=${rawId}&workType=corrective&priority=${priority}`;
   }
