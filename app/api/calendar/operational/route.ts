@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getOrganizationContext } from '@/lib/api/organization-context';
+import { getUserModuleAccess, isAdminRole, MODULE_KEYS } from '@/lib/api/module-access';
 
 type CalendarSource = 'maintenance' | 'hse' | 'legal' | 'procurement' | 'finance' | 'people';
 type CalendarPriority = 'critical' | 'high' | 'medium' | 'low';
@@ -178,12 +179,13 @@ function complianceHref(value: unknown) {
 function buildItem(
   item: Omit<OperationalCalendarItem, 'overdue' | 'days_until' | 'priority_label'>,
   today: string,
+  overdueOverride?: boolean,
 ): OperationalCalendarItem {
   const daysUntil = differenceInDays(item.date, today);
   return {
     ...item,
     priority_label: priorityLabel(item.priority),
-    overdue: !item.historical && daysUntil < 0,
+    overdue: overdueOverride ?? (!item.historical && daysUntil < 0),
     days_until: daysUntil,
   };
 }
@@ -191,6 +193,20 @@ function buildItem(
 export async function GET(request: NextRequest) {
   const context = await getOrganizationContext(request);
   if (!context.ok) return context.response;
+
+  const role = String(context.role || '').trim().toLowerCase();
+  const admin = isAdminRole(role);
+  const moduleAccess = admin ? null : await getUserModuleAccess(context.userId);
+  const canViewAny = (...moduleKeys: string[]) =>
+    admin || moduleKeys.some((moduleKey) => ['ED', 'LEC'].includes(moduleAccess?.access[moduleKey] ?? 'SR'));
+
+  const allowedSources = new Set<CalendarSource>();
+  if (canViewAny(MODULE_KEYS.MANT_OPERACIONES, MODULE_KEYS.MANT_GERENCIAL)) allowedSources.add('maintenance');
+  if (canViewAny(MODULE_KEYS.HSE_TABLERO, MODULE_KEYS.HSE_RIESGOS, MODULE_KEYS.SOS_TABLERO, MODULE_KEYS.SOS_CALENDARIO)) allowedSources.add('hse');
+  if (canViewAny(MODULE_KEYS.LEGAL_MODULO, MODULE_KEYS.LEGAL_CONTRATOS, MODULE_KEYS.LEGAL_EECC)) allowedSources.add('legal');
+  if (canViewAny(MODULE_KEYS.FIN_COMPRAS, MODULE_KEYS.BODEGA_INVENTARIO)) allowedSources.add('procurement');
+  if (canViewAny(MODULE_KEYS.FIN_FINANZAS, MODULE_KEYS.FIN_REPORTES)) allowedSources.add('finance');
+  if (admin || role === 'manager') allowedSources.add('people');
 
   const searchParams = new URL(request.url).searchParams;
   const requestedDays = Number(searchParams.get('days') || 60);
@@ -204,7 +220,7 @@ export async function GET(request: NextRequest) {
   const endDate = scope === 'historical' ? today : addDays(today, days);
 
   try {
-    const [workOrdersResult, preventiveResult, complianceResult, requestsResult, ordersResult, internalInspectionsResult, externalInspectionsResult, payablesResult, credentialsResult, legalCasesResult] = await Promise.all([
+    const [workOrdersResult, preventiveResult, meterPreventiveResult, complianceResult, requestsResult, ordersResult, internalInspectionsResult, externalInspectionsResult, payablesResult, credentialsResult, legalCasesResult] = await Promise.all([
       context.supabase
         .from('maintenance_work_orders')
         .select('id,work_order_number,title,description,status,priority,scheduled_date,completion_date,closed_at,assigned_to_name')
@@ -221,6 +237,13 @@ export async function GET(request: NextRequest) {
         .gte('next_scheduled_date', startDate)
         .lte('next_scheduled_date', endDate)
         .or('enabled.eq.true,enabled.is.null')
+        .is('generated_work_order_id', null)
+        .limit(500),
+      context.supabase
+        .from('preventive_maintenance_hour_status_v1')
+        .select('schedule_id,canonical_asset_id,asset_code,asset_name,task_name,priority,due_meter,effective_current_meter,remaining_hours,hour_status,alert_due,generated_work_order_id,meter_evidence_source')
+        .eq('organization_id', context.organizationId)
+        .eq('alert_due', true)
         .is('generated_work_order_id', null)
         .limit(500),
       context.supabase
@@ -291,6 +314,7 @@ export async function GET(request: NextRequest) {
     const warnings: string[] = [];
     if (workOrdersResult.error) warnings.push('No se pudieron cargar las órdenes de trabajo.');
     if (preventiveResult.error) warnings.push('No se pudo cargar la planificación preventiva.');
+    if (meterPreventiveResult.error) warnings.push('No se pudieron cargar los mantenimientos preventivos por horómetro.');
     if (complianceResult.error) warnings.push('No se pudieron cargar los compromisos de cumplimiento.');
     if (requestsResult.error) warnings.push('No se pudieron cargar los requerimientos de compra.');
     if (ordersResult.error) warnings.push('No se pudieron cargar las entregas de órdenes de compra.');
@@ -349,6 +373,39 @@ export async function GET(request: NextRequest) {
           completed_at: null,
         }, today));
       }
+
+      for (const row of meterPreventiveResult.data || []) {
+        if (row.hour_status !== 'overdue' || row.alert_due !== true || row.generated_work_order_id) continue;
+        const currentMeter = Number(row.effective_current_meter);
+        const dueMeter = Number(row.due_meter);
+        const remainingHours = Number(row.remaining_hours);
+        if (!Number.isFinite(currentMeter) || !Number.isFinite(dueMeter) || !Number.isFinite(remainingHours)) continue;
+        const overrun = Math.max(0, Math.abs(remainingHours));
+        const overrunLabel = new Intl.NumberFormat('es-CL', { maximumFractionDigits: 1 }).format(overrun);
+        const assetLabel = normalizeText(row.asset_name || row.asset_code);
+        const evidenceLabel = row.meter_evidence_source === 'runtime_reading' ? 'lectura Motil' : 'snapshot fuente';
+        const href = row.canonical_asset_id
+          ? `/dashboard/mantenimiento/preventivo-horas?assetId=${encodeURIComponent(row.canonical_asset_id)}&dueMeter=${encodeURIComponent(String(row.due_meter))}`
+          : '/dashboard/mantenimiento/preventivo-horas';
+        items.push(buildItem({
+          id: `preventive-meter:${row.schedule_id}`,
+          source: 'maintenance',
+          source_label: 'Mantenimiento',
+          kind: 'Preventivo por horómetro',
+          date: today,
+          title: assetLabel ? `${row.task_name} · ${assetLabel}` : row.task_name,
+          subtitle: `Lectura efectiva ${currentMeter} h · vence ${dueMeter} h · ${evidenceLabel}`,
+          reference: normalizeText(row.asset_code),
+          status: 'due_by_meter',
+          status_label: `Vencido por horómetro (+${overrunLabel} h)`,
+          priority: normalizePriority(row.priority),
+          owner: null,
+          location: null,
+          href,
+          historical: false,
+          completed_at: null,
+        }, today, true));
+      }
     }
 
     for (const row of complianceResult.data || []) {
@@ -397,7 +454,7 @@ export async function GET(request: NextRequest) {
         priority: normalizePriority(row.priority),
         owner: normalizeText(row.legal_owner || row.operational_owner),
         location: null,
-        href: '/dashboard/legal/casos',
+        href: `/dashboard/legal/casos?caseId=${encodeURIComponent(row.id)}`,
         historical,
         completed_at: normalizeDate(row.closed_at),
       }, today));
@@ -444,7 +501,7 @@ export async function GET(request: NextRequest) {
         priority: 'high',
         owner: normalizeText(row.inspector),
         location: normalizeText(row.faena),
-        href: '/dashboard/sostenibilidad/prevencion-riesgos/inspecciones',
+        href: '/dashboard/sostenibilidad/prevencion-riesgos/inspecciones-externas',
         historical,
         completed_at: normalizeDate(row.fecha_realizada),
       }, today));
@@ -535,7 +592,7 @@ export async function GET(request: NextRequest) {
         priority,
         owner: null,
         location: null,
-        href: '/dashboard/finanzas/pagos',
+        href: `/dashboard/finanzas/pagos?invoiceId=${encodeURIComponent(row.invoice_id)}`,
         historical,
         completed_at: null,
       }, today));
@@ -593,7 +650,9 @@ export async function GET(request: NextRequest) {
       }, today));
     }
 
-    items.sort((a, b) => {
+    const visibleItems = items.filter((item) => allowedSources.has(item.source));
+
+    visibleItems.sort((a, b) => {
       const byDate = scope === 'historical'
         ? b.date.localeCompare(a.date)
         : a.date.localeCompare(b.date);
@@ -603,25 +662,25 @@ export async function GET(request: NextRequest) {
       return a.title.localeCompare(b.title, 'es');
     });
 
-    const activeItems = items.filter((item) => !item.historical);
+    const activeItems = visibleItems.filter((item) => !item.historical);
     const summary = {
-      overdue: activeItems.filter((item) => item.days_until < 0).length,
+      overdue: activeItems.filter((item) => item.overdue).length,
       today: activeItems.filter((item) => item.days_until === 0).length,
       next_7_days: activeItems.filter((item) => item.days_until > 0 && item.days_until <= 7).length,
-      total: items.length,
-      historical: items.filter((item) => item.historical).length,
+      total: visibleItems.length,
+      historical: visibleItems.filter((item) => item.historical).length,
       by_source: {
-        maintenance: items.filter((item) => item.source === 'maintenance').length,
-        hse: items.filter((item) => item.source === 'hse').length,
-        legal: items.filter((item) => item.source === 'legal').length,
-        procurement: items.filter((item) => item.source === 'procurement').length,
-        finance: items.filter((item) => item.source === 'finance').length,
-        people: items.filter((item) => item.source === 'people').length,
+        maintenance: visibleItems.filter((item) => item.source === 'maintenance').length,
+        hse: visibleItems.filter((item) => item.source === 'hse').length,
+        legal: visibleItems.filter((item) => item.source === 'legal').length,
+        procurement: visibleItems.filter((item) => item.source === 'procurement').length,
+        finance: visibleItems.filter((item) => item.source === 'finance').length,
+        people: visibleItems.filter((item) => item.source === 'people').length,
       },
     };
 
     return NextResponse.json({
-      data: items,
+      data: visibleItems,
       summary,
       warnings,
       range: {

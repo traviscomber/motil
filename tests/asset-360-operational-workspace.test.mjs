@@ -28,3 +28,10 @@ test('asset operational workspace surfaces work, history, audited costs, parts a
   assert.match(workspace, /Documentación del equipo/);
   assert.match(workspace, /api\/documents\/list\?module=mantenimiento&category=equipos&assetId=/);
 });
+
+
+test('asset 360 excludes preventives that already have a generated work order from actionable attention', () => {
+  assert.match(api, /const actionablePreventives = preventives\.filter\(\(row: any\) => !row\.generated_work_order_id\)/);
+  assert.match(api, /overduePreventives: actionablePreventives\.filter/);
+  assert.match(api, /nextPreventive: actionablePreventives\[0\] \|\| null/);
+});

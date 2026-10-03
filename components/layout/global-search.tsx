@@ -13,6 +13,9 @@ import {
   Columns3,
   FileText,
   Home,
+  CircleDollarSign,
+  Users,
+  Gem,
   Lightbulb,
   Route,
   Search,
@@ -33,6 +36,7 @@ import {
 } from '@/components/ui/command';
 import { useAuth } from '@/hooks/use-auth';
 import { useModuleAccess } from '@/hooks/use-module-access';
+import { canNavigateTo } from '@/lib/navigation-access';
 
 type Destination = {
   group: string;
@@ -40,7 +44,7 @@ type Destination = {
   keywords: string;
   href: string;
   icon: LucideIcon;
-  roles: string[];
+  roles?: string[];
   moduleKey?: string;
 };
 
@@ -51,6 +55,8 @@ const allRoles = [
   'supervisor',
   'viewer',
   'jefe_mantencion',
+  'jefe_planta',
+  'jefe_produccion',
   'Operaciones-Supervisor',
   'Finanzas-Supervisor',
   'Bodega-Supervisor',
@@ -65,6 +71,8 @@ const operationalRoles = [
   'manager',
   'supervisor',
   'jefe_mantencion',
+  'jefe_planta',
+  'jefe_produccion',
   'Operaciones-Supervisor',
   'Bodega-Supervisor',
   'Compras-Supervisor',
@@ -73,6 +81,10 @@ const operationalRoles = [
 ];
 
 const destinations: Destination[] = [
+  { group: 'Operaciones', label: 'Geología', keywords: 'campos exploración geologia', href: '/dashboard/produccion/geologia', icon: Gem, moduleKey: 'prod_geologia' },
+  { group: 'Administración', label: 'Finanzas', keywords: 'pagos facturas cuentas', href: '/dashboard/finanzas', icon: CircleDollarSign, roles: ['superadmin', 'admin', 'Finanzas-Supervisor'], moduleKey: 'fin_finanzas' },
+  { group: 'Administración', label: 'Personas', keywords: 'rrhh recursos humanos personal', href: '/dashboard/rrhh', icon: Users, roles: ['superadmin', 'admin', 'manager'] },
+  { group: 'Administración', label: 'Legal', keywords: 'contratos vencimientos propiedad minera', href: '/dashboard/legal', icon: FileText, roles: ['superadmin', 'admin', 'manager'], moduleKey: 'legal_modulo' },
   { group: 'General', label: 'Inicio', keywords: 'resumen ejecutivo', href: '/dashboard', icon: Home, roles: allRoles },
   { group: 'Control y mejora', label: 'Centro de gestión', keywords: 'control operación pendientes', href: '/dashboard/lean', icon: Route, roles: operationalRoles },
   { group: 'Control y mejora', label: 'Revisión diaria', keywords: 'reunión diaria control operación', href: '/dashboard/daily-management', icon: CalendarDays, roles: operationalRoles },
@@ -80,9 +92,9 @@ const destinations: Destination[] = [
   { group: 'Control y mejora', label: 'Flujo de trabajo', keywords: 'trabajo pendientes bloqueos antigüedad', href: '/dashboard/kanban', icon: Columns3, roles: operationalRoles },
   { group: 'Control y mejora', label: 'Mejoras y seguimiento', keywords: 'mejora comprobar aplicar estandarizar ahorro', href: '/dashboard/kaizen', icon: Lightbulb, roles: operationalRoles },
   { group: 'General', label: 'Alertas', keywords: 'riesgos prioridades avisos', href: '/dashboard/alertas', icon: Bell, roles: ['superadmin', 'admin', 'manager', 'supervisor', 'jefe_mantencion'], moduleKey: 'core_alertas' },
-  { group: 'General', label: 'Calendario operacional', keywords: 'tareas acciones compromisos fechas', href: '/dashboard/tareas', icon: ClipboardList, roles: operationalRoles },
+  { group: 'General', label: 'Calendario operacional', keywords: 'tareas acciones compromisos fechas', href: '/dashboard/tareas', icon: ClipboardList, roles: allRoles },
   { group: 'General', label: 'Centros de costos', keywords: 'costos estructura imputación', href: '/dashboard/centros-costos', icon: Building2, roles: ['superadmin', 'admin', 'manager', 'Operaciones-Supervisor', 'Finanzas-Supervisor', 'jefe_mantencion'], moduleKey: 'core_centros_costos' },
-  { group: 'Operaciones', label: 'Producción', keywords: 'rendimiento turnos', href: '/dashboard/produccion', icon: Activity, roles: ['superadmin', 'admin', 'Operaciones-Supervisor', 'jefe_mantencion'], moduleKey: 'prod_operaciones' },
+  { group: 'Operaciones', label: 'Producción', keywords: 'rendimiento turnos', href: '/dashboard/produccion', icon: Activity, roles: ['superadmin', 'admin', 'Operaciones-Supervisor', 'jefe_mantencion', 'jefe_planta', 'jefe_produccion'], moduleKey: 'prod_operaciones' },
   { group: 'Operaciones', label: 'Monitoreo de equipos', keywords: 'sensores estado equipos', href: '/dashboard/telemetria', icon: Activity, roles: ['superadmin', 'admin', 'Operaciones-Supervisor'], moduleKey: 'prod_telemetria' },
   { group: 'Mantenimiento', label: 'Mantenimiento', keywords: 'equipos activos', href: '/dashboard/mantenimiento', icon: Wrench, roles: ['superadmin', 'admin', 'Operaciones-Supervisor', 'jefe_mantencion'], moduleKey: 'mant_operaciones' },
   { group: 'Mantenimiento', label: 'Órdenes de trabajo', keywords: 'orden tareas trabajo', href: '/dashboard/mantenimiento/ordenes-trabajo', icon: ClipboardList, roles: ['superadmin', 'admin', 'Operaciones-Supervisor', 'jefe_mantencion'], moduleKey: 'mant_operaciones' },
@@ -101,13 +113,9 @@ export function GlobalSearch() {
   const { enforced, canView, ready } = useModuleAccess();
 
   const availableDestinations = useMemo(() => {
-    if (!role) return [];
-    return destinations.filter((item) => {
-      if (!item.roles.includes(role)) return false;
-      if (!item.moduleKey || !enforced) return true;
-      return canView(item.moduleKey);
-    });
-  }, [role, enforced, canView]);
+    if (!role || !ready) return [];
+    return destinations.filter((item) => canNavigateTo(item, role, enforced, canView));
+  }, [role, ready, enforced, canView]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -125,7 +133,7 @@ export function GlobalSearch() {
     router.push(href);
   };
 
-  if (!role || (ready && availableDestinations.length === 0)) return null;
+  if (!role || !ready || availableDestinations.length === 0) return null;
 
   const groups = Array.from(new Set(availableDestinations.map((item) => item.group)));
 

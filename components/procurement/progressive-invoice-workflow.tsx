@@ -1,6 +1,8 @@
 'use client';
 
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { useModuleAccess } from '@/hooks/use-module-access';
 import { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { AlertTriangle, ArrowRight, CheckCircle2, FileText, ReceiptText, ShieldCheck } from 'lucide-react';
@@ -15,6 +17,7 @@ import { Textarea } from '@/components/ui/textarea';
 const fetcher = async (url: string) => {
   const response = await fetch(url, { credentials: 'include' });
   const payload = await response.json().catch(() => null);
+  if (payload?.unavailable) throw new Error('El seguimiento de compras no está disponible.');
   if (!response.ok) throw new Error(payload?.error || 'No se pudo cargar la información');
   return payload;
 };
@@ -29,7 +32,7 @@ const money = (value: unknown, currency = 'CLP') => {
 
 const localDate = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Santiago' }).format(new Date());
 
-type PipelineRow = { order_id?: string | null; order_number?: string | null; order_status?: string | null; order_total?: number | null; currency?: string | null; supplier_name?: string | null; work_order_number?: string | null; work_order_title?: string | null; quantity_ordered?: number | null; quantity_received?: number | null };
+type PipelineRow = { work_order_id?: string | null; order_id?: string | null; order_number?: string | null; order_status?: string | null; order_total?: number | null; currency?: string | null; supplier_name?: string | null; work_order_number?: string | null; work_order_title?: string | null; quantity_ordered?: number | null; quantity_received?: number | null };
 type OrderLine = { id: string; order_id: string; product_code?: string | null; description?: string | null; unit?: string | null; quantity_ordered: number; quantity_received: number; unit_cost: number };
 type InvoiceableLine = { organization_id: string; order_id: string; order_line_id: string; canonical_product_id?: string | null; product_code?: string | null; description?: string | null; unit?: string | null; unit_cost: number; quantity_ordered: number; quantity_accepted: number; quantity_invoiced: number; quantity_invoiceable: number };
 type MatchSummary = { invoice_id: string; invoice_number: string; invoice_date: string; order_id: string; order_number: string; currency?: string | null; net_amount: number; tax_amount: number; total_amount: number; line_count: number; matched_line_count: number; pending_receipt_line_count: number; exception_line_count: number; match_status: string };
@@ -55,8 +58,11 @@ function exceptionLabel(type: string) {
 }
 
 export function ProgressiveInvoiceWorkflow() {
-  const { data, error, isLoading, mutate } = useSWR('/api/procurement/operational-pipeline', fetcher);
-  const { data: invoiceableData, error: invoiceableError, mutate: mutateInvoiceable } = useSWR('/api/procurement/invoiceable-lines', fetcher);
+  const orderId = useSearchParams().get('orderId')?.trim();
+  const { ready, canView } = useModuleAccess();
+  const scope = orderId ? `?orderId=${encodeURIComponent(orderId)}` : '';
+  const { data: pipelineData, error, isLoading, mutate } = useSWR(`/api/procurement/operational-pipeline${scope}`, fetcher);
+  const { data: invoiceableResult, error: invoiceableError, mutate: mutateInvoiceable } = useSWR(`/api/procurement/invoiceable-lines${scope}`, fetcher);
   const [selectedOrder, setSelectedOrder] = useState<PipelineRow | null>(null);
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [invoiceDate, setInvoiceDate] = useState('');
@@ -70,6 +76,8 @@ export function ProgressiveInvoiceWorkflow() {
   const [resolutionDecision, setResolutionDecision] = useState<'accepted' | 'corrected' | 'rejected'>('accepted');
   const [resolutionNotes, setResolutionNotes] = useState('');
 
+  const data = error ? undefined : pipelineData;
+  const invoiceableData = invoiceableError ? undefined : invoiceableResult;
   const pipeline: PipelineRow[] = data?.pipeline || [];
   const orderLines: OrderLine[] = data?.orderLines || [];
   const summaries: MatchSummary[] = data?.invoiceMatchSummary || [];
@@ -77,7 +85,7 @@ export function ProgressiveInvoiceWorkflow() {
   const invoices: InvoiceState[] = data?.invoices || [];
   const invoiceExceptions: MatchException[] = data?.invoiceExceptions || [];
   const invoiceableLines: InvoiceableLine[] = invoiceableData?.rows || [];
-  const canEdit = data?.canEdit !== false;
+  const canEdit = data?.canEdit === true && !error && !invoiceableError;
 
   const orders = useMemo(() => {
     const map = new Map<string, PipelineRow>();
@@ -93,6 +101,7 @@ export function ProgressiveInvoiceWorkflow() {
   const exceptionInvoice = openExceptions.length ? summaries.find((row) => row.invoice_id === openExceptions[0].invoice_id) : null;
   const pendingReceiptInvoice = summaries.find((row) => row.match_status === 'pending_receipt' && invoices.find((invoice) => invoice.id === row.invoice_id)?.status !== 'approved');
   const approvableInvoice = summaries.find((row) => row.match_status === 'matched' && invoices.find((invoice) => invoice.id === row.invoice_id)?.status !== 'approved');
+  const approvedInvoice = invoices.find((row) => row.status === 'approved');
   const approvedCount = invoices.filter((row) => row.status === 'approved').length;
 
   const counts = {
@@ -113,7 +122,8 @@ export function ProgressiveInvoiceWorkflow() {
     try {
       const response = await fetch('/api/procurement/operational-pipeline', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(body) });
       const payload = await response.json().catch(() => null);
-      if (!response.ok) throw new Error(payload?.error || fallback);
+      if (payload?.unavailable) throw new Error('El seguimiento de compras no está disponible.');
+  if (!response.ok) throw new Error(payload?.error || fallback);
       await Promise.all([mutate(), mutateInvoiceable()]);
       return true;
     } catch (err) {
@@ -167,7 +177,7 @@ export function ProgressiveInvoiceWorkflow() {
   } else if (pendingReceiptInvoice) {
     nextActionLabel = 'Completar recepción';
     nextActionDescription = `Factura ${pendingReceiptInvoice.invoice_number}: el three-way match espera recepción aceptada.`;
-    nextActionControl = <Button asChild><Link href="/dashboard/compras/flujo"><ReceiptText className="mr-2 h-4 w-4" />Ir a recepción</Link></Button>;
+    nextActionControl = <Button asChild><Link href={orders[0]?.work_order_id ? `/dashboard/compras/flujo?workOrderId=${encodeURIComponent(orders[0].work_order_id)}` : '/dashboard/compras/flujo'}><ReceiptText className="mr-2 h-4 w-4" />Ir a recepción</Link></Button>;
   } else if (approvableInvoice) {
     nextActionLabel = 'Aprobar pago';
     nextActionDescription = `Factura ${approvableInvoice.invoice_number}: OC, recepción y factura coinciden, incluida la facturación acumulada previa.`;
@@ -179,19 +189,20 @@ export function ProgressiveInvoiceWorkflow() {
   } else if (ordersAwaitingFirstReceipt.length) {
     nextActionLabel = 'Registrar recepción';
     nextActionDescription = `${ordersAwaitingFirstReceipt[0].order_number || 'OC'} todavía no tiene recepción aceptada facturable.`;
-    nextActionControl = <Button asChild><Link href="/dashboard/compras/flujo"><ReceiptText className="mr-2 h-4 w-4" />Ir a recepción</Link></Button>;
+    nextActionControl = <Button asChild><Link href={orders[0]?.work_order_id ? `/dashboard/compras/flujo?workOrderId=${encodeURIComponent(orders[0].work_order_id)}` : '/dashboard/compras/flujo'}><ReceiptText className="mr-2 h-4 w-4" />Ir a recepción</Link></Button>;
   } else if (approvedCount > 0) {
     nextActionLabel = 'Continuar a Tesorería';
     nextActionDescription = 'Las facturas aprobadas pasan a cuentas por pagar; el pago no vuelve a reconocer costo operacional.';
-    nextActionControl = <Button asChild><Link href="/dashboard/finanzas/pagos"><ArrowRight className="mr-2 h-4 w-4" />Ir a Pagos</Link></Button>;
+    nextActionControl = ready && canView('fin_finanzas') ? <Button asChild><Link href={orderId && approvedInvoice ? `/dashboard/finanzas/pagos?invoiceId=${encodeURIComponent(approvedInvoice.id)}&orderId=${encodeURIComponent(orderId)}` : '/dashboard/finanzas/pagos'}><ArrowRight className="mr-2 h-4 w-4" />Ir a Pagos</Link></Button> : null;
   }
 
   return <div className="space-y-6">
+    {orderId ? <div className="flex flex-wrap gap-4 text-sm"><Link className="underline underline-offset-4" href="/dashboard/compras/facturas">Ver todas las facturas</Link>{orders[0]?.work_order_id && ready && canView('mant_operaciones') ? <Link className="underline underline-offset-4" href={`/dashboard/mantenimiento/ordenes-trabajo/${encodeURIComponent(orders[0].work_order_id)}`}>Volver a la OT de origen</Link> : null}</div> : null}
     <section className="border-b border-border/70 pb-6"><p className="text-sm font-medium text-muted-foreground">Abastecimiento · Control de factura</p><h1 className="mt-1 text-3xl font-semibold tracking-tight">Factura → match → aprobación → pago</h1><p className="mt-2 max-w-3xl text-sm text-muted-foreground">Una sola decisión principal por vez. El three-way match controla OC, recepción aceptada, factura actual y facturación acumulada previa.</p></section>
     {actionError ? <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{actionError}</div> : null}
     {error || invoiceableError ? <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error?.message || invoiceableError?.message}</div> : null}
 
-    <Card className="shadow-none"><CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Siguiente acción</p><p className="mt-1 text-lg font-semibold">{nextActionLabel}</p><p className="mt-1 max-w-3xl text-sm text-muted-foreground">{nextActionDescription}</p></div>{nextActionControl}</CardContent></Card>
+    <Card className="shadow-none"><CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Siguiente acción</p><p className="mt-1 text-lg font-semibold">{nextActionLabel}</p><p className="mt-1 max-w-3xl text-sm text-muted-foreground">{nextActionDescription}</p></div>{!error && !invoiceableError ? nextActionControl : null}</CardContent></Card>
 
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
       {[['Facturas', counts.total], ['Coinciden', counts.matched], ['Esperan recepción', counts.pending], ['Excepciones abiertas', counts.exceptions], ['Aprobadas pago', counts.approved]].map(([label, value]) => <Card key={String(label)} className="shadow-none"><CardContent className="p-4"><p className="text-sm text-muted-foreground">{label}</p><p className="mt-1 text-xl font-semibold">{value}</p></CardContent></Card>)}

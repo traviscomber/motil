@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { AlertTriangle, ArrowRight, Boxes, Fuel, PackageCheck, Search, ShieldAlert, Upload } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { PageHeader, PageHeaderActions, PageHeaderContent, PageHeaderDescription, PageHeaderEyebrow, PageHeaderTitle } from '@/components/ui/page-header';
 import { StatePanel } from '@/components/ui/state-panel';
 import { useModuleAccess } from '@/hooks/use-module-access';
+import { formatInventoryQuantity as number, formatInventoryMoney as money, inventoryStatusHref } from '@/lib/inventory/workspace';
 
 const fetcher = async (url: string) => {
   const response = await fetch(url, { credentials: 'include' });
@@ -20,8 +21,6 @@ const fetcher = async (url: string) => {
   return payload;
 };
 
-const number = (value: unknown) => new Intl.NumberFormat('es-CL').format(Number(value || 0));
-const money = (value: unknown) => new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(Number(value || 0));
 const dateTime = (value: unknown) => value ? new Intl.DateTimeFormat('es-CL', { dateStyle: 'medium', timeZone: 'America/Santiago' }).format(new Date(String(value))) : 'Sin fecha';
 const dateOnly = (value: unknown) => value ? new Intl.DateTimeFormat('es-CL', { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(`${String(value).slice(0, 10)}T00:00:00Z`)) : 'Sin evidencia';
 const statusLabels: Record<string, string> = { healthy: 'Disponible', reorder: 'Reponer', out_of_stock: 'Sin stock', negative: 'Revisar saldo', expired: 'Vencido', expiring: 'Próximo a vencer' };
@@ -34,14 +33,17 @@ type DieselEvidence = { current: DieselCurrent | null; reference: DieselReferenc
 
 export default function BodegaPage() {
   const { canEdit, ready } = useModuleAccess();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const initialStatus = searchParams.get('status') || 'all';
   const dataHealth = searchParams.get('dataHealth');
-  const negativeStockMode = dataHealth === 'negative_stock' || initialStatus === 'negative';
+  const status = dataHealth === 'negative_stock' ? 'negative' : initialStatus;
+  const negativeStockMode = status === 'negative';
   const [query, setQuery] = useState('');
-  const [status, setStatus] = useState(initialStatus);
+  const setStatus = (value: string) => router.push(inventoryStatusHref(searchParams.toString(), value), { scroll: false });
   const endpoint = useMemo(() => { const params = new URLSearchParams(); if (query.trim()) params.set('q', query.trim()); if (status !== 'all') params.set('status', status); return `/api/inventory/intelligence?${params.toString()}`; }, [query, status]);
-  const { data, error, isLoading, mutate } = useSWR(endpoint, fetcher, { revalidateOnFocus: false, keepPreviousData: true });
+  const { data: responseData, error, isLoading, mutate } = useSWR(endpoint, fetcher, { revalidateOnFocus: false });
+  const data = error ? undefined : responseData;
   const overview = data?.overview || {};
   const positions: InventoryPosition[] = data?.positions || [];
   const diesel: DieselEvidence | null = data?.diesel || null;

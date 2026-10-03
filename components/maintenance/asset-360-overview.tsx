@@ -492,6 +492,7 @@ export function Asset360Overview({
       />
 
       <Asset360MaintenanceSection
+        assetId={assetId}
         nextPreventive={nextPreventive}
         pendingPlanSteps={summary.pendingPlanSteps}
         readyToClose={summary.readyToClose}

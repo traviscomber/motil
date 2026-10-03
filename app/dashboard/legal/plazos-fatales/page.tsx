@@ -117,7 +117,7 @@ export default function FatalDeadlinesPage() {
 
             <div className="mt-3 border-t pt-3">
               <Button asChild variant="ghost" size="sm">
-                <Link href={item.source_href}>
+                <Link href={`/dashboard/legal/casos?caseId=${encodeURIComponent(item.id)}`}>
                   Abrir caso <ArrowRight className="ml-1 h-4 w-4" />
                 </Link>
               </Button>

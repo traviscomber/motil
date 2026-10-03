@@ -19,6 +19,8 @@ import {
   UsersRound,
   type LucideIcon,
 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { useModuleAccess } from '@/hooks/use-module-access';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -66,10 +68,10 @@ type CalendarResponse = {
   };
 };
 
-const LABEL_WIDTH = 420;
-const ROW_HEIGHT = 104;
-const HEADER_HEIGHT = 94;
-const BAR_HEIGHT = 66;
+const LABEL_WIDTH = 280;
+const ROW_HEIGHT = 72;
+const HEADER_HEIGHT = 78;
+const BAR_HEIGHT = 44;
 
 const PERIOD_CONFIG: Record<CalendarPeriod, { label: string; days: number; dayWidth: number }> = {
   '7': { label: '7 días', days: 7, dayWidth: 122 },
@@ -81,32 +83,32 @@ const SOURCE_META: Record<CalendarSource, { label: string; icon: LucideIcon; bar
   maintenance: {
     label: 'Mantenimiento',
     icon: Wrench,
-    bar: 'border-orange-500/70 bg-orange-500/25 text-orange-50',
+    bar: 'border-border bg-muted text-foreground',
   },
   hse: {
     label: 'HSE',
     icon: ShieldCheck,
-    bar: 'border-cyan-500/70 bg-cyan-500/25 text-cyan-50',
+    bar: 'border-border bg-muted text-foreground',
   },
   legal: {
     label: 'Legal',
     icon: FileCheck,
-    bar: 'border-sky-500/70 bg-sky-500/25 text-sky-50',
+    bar: 'border-border bg-muted text-foreground',
   },
   procurement: {
     label: 'Abastecimiento',
     icon: ShoppingCart,
-    bar: 'border-violet-500/70 bg-violet-500/25 text-violet-50',
+    bar: 'border-border bg-muted text-foreground',
   },
   finance: {
     label: 'Finanzas',
     icon: Landmark,
-    bar: 'border-slate-500/70 bg-slate-500/25 text-slate-50',
+    bar: 'border-border bg-muted text-foreground',
   },
   people: {
     label: 'Personas',
     icon: UsersRound,
-    bar: 'border-zinc-500/70 bg-zinc-500/25 text-zinc-50',
+    bar: 'border-border bg-muted text-foreground',
   },
 };
 
@@ -153,10 +155,17 @@ function formatShortDate(value: string) {
 }
 
 export function ComfortableOperationalCalendar() {
-  const [scope, setScope] = useState<CalendarScope>('all');
+  const { ready, canView } = useModuleAccess();
+  const { data: viewer, error: viewerError } = useSWR(ready && canView('mant_operaciones') ? '/api/maintenance/viewer-context' : null, async (url: string) => {
+    const response = await fetch(url, { credentials: 'include' });
+    if (!response.ok) throw new Error('No se pudo verificar el permiso de creación');
+    return response.json() as Promise<{ canCreateWorkOrder: boolean }>;
+  }, { revalidateOnFocus: false });
+  const [scope, setScope] = useState<CalendarScope>('active');
   const [source, setSource] = useState<'all' | CalendarSource>('all');
   const [period, setPeriod] = useState<CalendarPeriod>('7');
   const [anchorDate, setAnchorDate] = useState<string | null>(null);
+  const [selected, setSelected] = useState<OperationalCalendarItem | null>(null);
   const [search, setSearch] = useState('');
   const timelineRef = useRef<HTMLDivElement>(null);
 
@@ -178,7 +187,11 @@ export function ComfortableOperationalCalendar() {
   const totalWidth = LABEL_WIDTH + dates.length * dayWidth;
   const todayIndex = dates.indexOf(today);
 
-  const items = data?.data || [];
+  const items = useMemo(() => error ? [] : data?.data || [], [data?.data, error]);
+  const firstDate = addDays(today, scope === 'active' ? -30 : -365);
+  const lastDate = scope === 'historical' ? today : addDays(today, 120);
+  const unavailable = isLoading || Boolean(error) || !data;
+  const count = (value: number) => unavailable ? '—' : value;
   const summary = data?.summary || {
     overdue: 0,
     today: 0,
@@ -209,13 +222,16 @@ export function ComfortableOperationalCalendar() {
   };
 
   const shiftPeriod = (direction: -1 | 1) => {
-    setAnchorDate(addDays(currentAnchor, direction * periodConfig.days));
+    const next = addDays(currentAnchor, direction * periodConfig.days);
+    setAnchorDate(next < firstDate ? firstDate : next > lastDate ? lastDate : next);
     timelineRef.current?.scrollTo({ left: 0, behavior: 'smooth' });
   };
 
   useEffect(() => {
     timelineRef.current?.scrollTo({ left: 0 });
   }, [period, currentAnchor]);
+
+  useEffect(() => { setAnchorDate(null); setSelected(null); }, [scope]);
 
   return (
     <div className="space-y-5">
@@ -227,13 +243,14 @@ export function ComfortableOperationalCalendar() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={() => shiftPeriod(-1)}>
+          {ready && canView('mant_operaciones') && !viewerError && viewer?.canCreateWorkOrder === true ? <Button asChild size="sm"><Link href="/dashboard/mantenimiento/ordenes-trabajo/create">Crear OT</Link></Button> : null}
+          <Button variant="outline" size="sm" onClick={() => shiftPeriod(-1)} disabled={currentAnchor <= firstDate}>
             <ChevronLeft className="mr-1 h-4 w-4" /> Anterior
           </Button>
           <Button variant="outline" size="sm" onClick={goToToday}>
             <CalendarDays className="mr-1 h-4 w-4" /> Hoy
           </Button>
-          <Button variant="outline" size="sm" onClick={() => shiftPeriod(1)}>
+          <Button variant="outline" size="sm" onClick={() => shiftPeriod(1)} disabled={rangeEnd >= lastDate}>
             Siguiente <ChevronRight className="ml-1 h-4 w-4" />
           </Button>
           <Button variant="outline" size="sm" onClick={() => void mutate()} disabled={isValidating}>
@@ -264,12 +281,12 @@ export function ComfortableOperationalCalendar() {
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todas las áreas</SelectItem>
-            <SelectItem value="maintenance">Mantenimiento ({summary.by_source.maintenance})</SelectItem>
-            <SelectItem value="hse">HSE ({summary.by_source.hse})</SelectItem>
-            <SelectItem value="legal">Legal ({summary.by_source.legal})</SelectItem>
-            <SelectItem value="procurement">Abastecimiento ({summary.by_source.procurement})</SelectItem>
-            <SelectItem value="finance">Finanzas ({summary.by_source.finance})</SelectItem>
-            <SelectItem value="people">Personas ({summary.by_source.people})</SelectItem>
+            <SelectItem value="maintenance">Mantenimiento ({count(summary.by_source.maintenance)})</SelectItem>
+            <SelectItem value="hse">HSE ({count(summary.by_source.hse)})</SelectItem>
+            <SelectItem value="legal">Legal ({count(summary.by_source.legal)})</SelectItem>
+            <SelectItem value="procurement">Abastecimiento ({count(summary.by_source.procurement)})</SelectItem>
+            <SelectItem value="finance">Finanzas ({count(summary.by_source.finance)})</SelectItem>
+            <SelectItem value="people">Personas ({count(summary.by_source.people)})</SelectItem>
           </SelectContent>
         </Select>
         <Select value={period} onValueChange={(value) => setPeriod(value as CalendarPeriod)}>
@@ -285,10 +302,11 @@ export function ComfortableOperationalCalendar() {
       <div className="flex flex-wrap items-center gap-2 text-xs">
         <Badge variant="outline">{filteredItems.length} visibles</Badge>
         <Badge variant="outline">{periodConfig.label}</Badge>
-        <Badge variant="outline" className="border-destructive/40 text-destructive">{summary.overdue} vencidos</Badge>
+        <Badge variant="outline" className="border-destructive/40 text-destructive">{count(summary.overdue)} vencidos</Badge>
         <Badge variant="outline" className="border-emerald-500/40 text-emerald-500">
-          <History className="mr-1 h-3 w-3" />{summary.historical} históricos
+          <History className="mr-1 h-3 w-3" />{count(summary.historical)} históricos
         </Badge>
+        <Input type="date" aria-label="Ir a fecha" className="h-8 w-auto" min={firstDate} max={lastDate} value={currentAnchor} onChange={(event) => { const value = event.target.value; if (value && value >= firstDate && value <= lastDate) setAnchorDate(value); }} />
         <span className="ml-auto text-sm font-medium text-foreground">
           {formatShortDate(currentAnchor)} — {formatShortDate(rangeEnd)}
         </span>
@@ -311,7 +329,7 @@ export function ComfortableOperationalCalendar() {
         <div ref={timelineRef} className="max-h-[72vh] overflow-auto bg-card">
           <div className="relative" style={{ width: totalWidth, minWidth: '100%' }}>
             <div className="sticky top-0 z-30 flex border-b bg-card/95 backdrop-blur" style={{ height: HEADER_HEIGHT }}>
-              <div className="sticky left-0 z-40 flex shrink-0 items-end border-r bg-card px-5 pb-4" style={{ width: LABEL_WIDTH }}>
+              <div className="sticky left-0 z-40 flex shrink-0 items-end border-r bg-card px-3 pb-4" style={{ width: LABEL_WIDTH }}>
                 <div>
                   <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">Actividad</p>
                   <p className="mt-1 text-base font-semibold">{filteredItems.length} registros en el período</p>
@@ -328,7 +346,7 @@ export function ComfortableOperationalCalendar() {
                   return (
                     <div
                       key={dateKey}
-                      className={`relative shrink-0 border-r px-1 pb-3 pt-2 text-center ${isWeekend ? 'bg-muted/30' : ''} ${isToday ? 'bg-orange-500/10' : ''}`}
+                      className={`relative shrink-0 border-r px-1 pb-3 pt-2 text-center ${isWeekend ? 'bg-muted/30' : ''} ${isToday ? 'bg-muted' : ''}`}
                       style={{ width: dayWidth }}
                     >
                       {monthStart ? (
@@ -339,7 +357,7 @@ export function ComfortableOperationalCalendar() {
                       <div className="mt-7 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                         {date.toLocaleDateString('es-CL', { weekday: 'short' })}
                       </div>
-                      <div className={`mt-1 text-lg font-semibold ${isToday ? 'text-orange-500' : 'text-foreground'}`}>
+                      <div className={`mt-1 text-lg font-semibold ${isToday ? 'text-foreground' : 'text-foreground'}`}>
                         {date.getDate()}
                       </div>
                     </div>
@@ -354,13 +372,13 @@ export function ComfortableOperationalCalendar() {
               </div>
             ) : null}
 
-            {!isLoading && filteredItems.length === 0 ? (
+            {!isLoading && !error && filteredItems.length === 0 ? (
               <div className="flex h-56 items-center justify-center px-6 text-center text-sm text-muted-foreground">
                 No hay registros dentro de este período. Usa Anterior, Siguiente o cambia la escala temporal.
               </div>
             ) : null}
 
-            {!isLoading ? filteredItems.map((item) => {
+            {!isLoading && !error ? filteredItems.map((item) => {
               const SourceIcon = SOURCE_META[item.source].icon;
               const rawEnd = item.historical && item.completed_at ? item.completed_at.slice(0, 10) : item.date;
               const clippedStart = item.date < currentAnchor ? currentAnchor : item.date;
@@ -384,48 +402,50 @@ export function ComfortableOperationalCalendar() {
                       return (
                         <div
                           key={dateKey}
-                          className={`h-full shrink-0 border-r ${isWeekend ? 'bg-muted/20' : ''} ${isToday ? 'bg-orange-500/5' : ''}`}
+                          className={`h-full shrink-0 border-r ${isWeekend ? 'bg-muted/20' : ''} ${isToday ? 'bg-muted/40' : ''}`}
                           style={{ width: dayWidth }}
                         />
                       );
                     })}
                   </div>
 
-                  <div className="sticky left-0 z-20 flex h-full items-center gap-4 border-r bg-card px-5" style={{ width: LABEL_WIDTH }}>
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border bg-muted/70">
+                  <div className="sticky left-0 z-20 flex h-full items-center gap-2 border-r bg-card px-3" style={{ width: LABEL_WIDTH }}>
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border bg-muted/70">
                       <SourceIcon className="h-5 w-5 text-muted-foreground" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start gap-2">
-                        <p className="line-clamp-2 text-base font-semibold leading-5 text-foreground">{item.title}</p>
+                        <p className="line-clamp-2 text-sm font-medium leading-5 text-foreground">{item.title}</p>
                         {item.historical ? <History className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" /> : null}
                       </div>
-                      <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">
-                        {item.reference || item.kind}
+                      <p className="mt-1 line-clamp-2 text-xs leading-4 text-muted-foreground">
+                        {SOURCE_META[item.source].label} · {item.reference || item.kind}
                         {item.owner ? ` · ${item.owner}` : ''}
                         {item.location ? ` · ${item.location}` : ''}
                       </p>
                     </div>
                   </div>
 
-                  <Link
-                    href={item.href}
+                  <button
+                    type="button"
+                    onClick={() => setSelected(item)}
+                    aria-label={`${item.title} · ${formatShortDate(item.date)}`}
                     title={`${item.title} · ${item.status_label}`}
-                    className={`absolute z-10 flex items-center overflow-hidden rounded-lg border px-3 shadow-sm transition hover:z-20 hover:brightness-125 ${SOURCE_META[item.source].bar} ${item.historical ? 'opacity-80 saturate-75' : ''}`}
+                    className={`absolute z-10 flex items-center overflow-hidden rounded-lg border px-3 text-left transition hover:z-20 hover:bg-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring ${SOURCE_META[item.source].bar} ${item.historical ? 'opacity-80 saturate-75' : ''}`}
                     style={{ left, width, height: BAR_HEIGHT, top: (ROW_HEIGHT - BAR_HEIGHT) / 2 }}
                   >
                     <div className="min-w-0">
                       <p className="line-clamp-2 text-sm font-semibold leading-4">{barPrimary}</p>
                       <p className="mt-1 truncate text-xs opacity-85">{barSecondary}</p>
                     </div>
-                  </Link>
+                  </button>
                 </div>
               );
             }) : null}
 
             {todayIndex >= 0 ? (
               <div
-                className="pointer-events-none absolute bottom-0 top-0 z-10 border-l-2 border-orange-500/80"
+                className="pointer-events-none absolute bottom-0 top-0 z-10 border-l-2 border-foreground/40"
                 style={{ left: LABEL_WIDTH + todayIndex * dayWidth + dayWidth / 2 }}
               />
             ) : null}
@@ -433,8 +453,13 @@ export function ComfortableOperationalCalendar() {
         </div>
       </Card>
 
+      <Dialog open={Boolean(selected)} onOpenChange={(open) => { if (!open) setSelected(null); }}>
+        <DialogContent><DialogHeader><DialogTitle>{selected?.title}</DialogTitle><DialogDescription>{selected ? SOURCE_META[selected.source].label : ''} · {selected?.reference || selected?.kind}</DialogDescription></DialogHeader>
+          {selected ? <div className="space-y-4"><dl className="grid grid-cols-2 gap-3 text-sm"><div><dt className="text-xs text-muted-foreground">Fecha</dt><dd>{formatShortDate(selected.date)}</dd></div><div><dt className="text-xs text-muted-foreground">Estado</dt><dd>{selected.status_label}</dd></div><div><dt className="text-xs text-muted-foreground">Responsable</dt><dd>{selected.owner || 'Sin asignar'}</dd></div><div><dt className="text-xs text-muted-foreground">Lugar</dt><dd>{selected.location || 'Sin registro'}</dd></div></dl><Button asChild><Link href={selected.href}>Abrir actividad en su área</Link></Button></div> : null}
+        </DialogContent>
+      </Dialog>
       <p className="text-xs leading-5 text-muted-foreground">
-        Vista continua de solo lectura. Cada barra abre el registro original; las modificaciones se realizan en el módulo responsable.
+        Vista continua de solo lectura. Pulsa una barra para revisar la actividad y abrir su registro original; las modificaciones se realizan en el módulo responsable.
       </p>
     </div>
   );

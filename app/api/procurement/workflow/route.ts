@@ -230,6 +230,49 @@ export async function POST(request: NextRequest) {
       if (!body.quotationId) {
         return NextResponse.json({ error: 'Cotización requerida.' }, { status: 400 });
       }
+
+      const { data: quotation, error: quotationError } = await context.supabase
+        .from('canonical_supplier_quotations_v1')
+        .select('id,request_id')
+        .eq('organization_id', context.organizationId)
+        .eq('id', body.quotationId)
+        .maybeSingle();
+      if (quotationError) throw quotationError;
+      if (!quotation?.request_id) {
+        return NextResponse.json({ error: 'Cotización o solicitud asociada no encontrada.' }, { status: 404 });
+      }
+
+      const { data: procurementRequest, error: requestError } = await context.supabase
+        .from('canonical_procurement_requests_v1')
+        .select('id,cost_center_code')
+        .eq('organization_id', context.organizationId)
+        .eq('id', quotation.request_id)
+        .maybeSingle();
+      if (requestError) throw requestError;
+      const costCenterCode = String(procurementRequest?.cost_center_code || '').trim();
+      if (!costCenterCode) {
+        return NextResponse.json(
+          { error: 'La solicitud necesita un centro de costo antes de adjudicar y emitir la OC.' },
+          { status: 409 },
+        );
+      }
+
+      const { data: costCenter, error: costCenterError } = await context.supabase
+        .from('canonical_cost_centers_current')
+        .select('id,cost_center_code,is_active,validation_status')
+        .eq('organization_id', context.organizationId)
+        .eq('cost_center_code', costCenterCode)
+        .eq('is_active', true)
+        .eq('validation_status', 'valid')
+        .maybeSingle();
+      if (costCenterError) throw costCenterError;
+      if (!costCenter) {
+        return NextResponse.json(
+          { error: 'El centro de costo de la solicitud no es canónico, válido y activo.' },
+          { status: 409 },
+        );
+      }
+
       result = await context.supabase.rpc('award_supplier_quotation_with_decision_v1', {
         p_quotation_id: body.quotationId,
         p_primary_reason: 'other',

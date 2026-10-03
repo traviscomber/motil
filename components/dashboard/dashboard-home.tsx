@@ -31,6 +31,7 @@ type RoleTask = {
 type InboxSummary = { total: number; owners: number; support: number; escalations: number; critical: number; overdue: number; backlog: number };
 type InboxPayload = {
   profile?: { name?: string | null; cargoId?: string | null; cargoName?: string | null };
+  moduleAccess?: Record<string, string>;
   summary?: InboxSummary;
   tasks?: RoleTask[];
 };
@@ -89,15 +90,33 @@ function normalize(value: string | null | undefined) {
   return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 }
 
-function resolveMode(cargoName: string | null | undefined): HomeMode {
+function hasModuleAccess(moduleAccess: Record<string, string> | null | undefined, ...keys: string[]) {
+  return keys.some((key) => ['ED', 'LEC'].includes(String(moduleAccess?.[key] || '').toUpperCase()));
+}
+
+function resolveMode(
+  cargoName: string | null | undefined,
+  moduleAccess?: Record<string, string> | null,
+): HomeMode {
   const cargo = normalize(cargoName);
-  if (/todos los cargos|gerenc|director|administrador|admin|jefatura general/.test(cargo)) return 'management';
+
+  // Strong cargo identities take precedence. Module access is the canonical
+  // fallback for operational roles whose title does not describe their domain.
+  if (/todos los cargos|gerente|subgerente|presidente|director|administrador|admin|jefatura general/.test(cargo)) return 'management';
   if (/sostenibilidad|prevencion|hse|medio ambiente/.test(cargo)) return 'sustainability';
   if (/jefe adm|administracion|finanzas|financiero/.test(cargo)) return 'finance';
-  if (/mantencion|mantenimiento|mecan|taller|jefe man\.? eq|jefe mant|planificador.*mant/.test(cargo)) return 'maintenance';
+  if (/mantencion|mantenimiento|mecan|taller|jefe man\.? eq|jefe man(?:\.|\s)|jefe mant|planificador.*mant/.test(cargo)) return 'maintenance';
   if (/sondaje|perforacion|perforista/.test(cargo)) return 'drilling';
   if (/jefe.*planta|planta.*jefe|metalurg/.test(cargo)) return 'plant';
   if (/bodega|inventario|almacen/.test(cargo)) return 'inventory';
+
+  if (hasModuleAccess(moduleAccess, 'sos_tablero', 'hse_tablero')) return 'sustainability';
+  if (hasModuleAccess(moduleAccess, 'mant_gerencial', 'mant_operaciones')) return 'maintenance';
+  if (hasModuleAccess(moduleAccess, 'prod_sondaje', 'prod_sondaje_exploracion', 'prod_sondaje_produccion')) return 'drilling';
+  if (hasModuleAccess(moduleAccess, 'prod_operaciones', 'prod_quimica')) return 'plant';
+  if (hasModuleAccess(moduleAccess, 'bodega_inventario')) return 'inventory';
+  if (hasModuleAccess(moduleAccess, 'fin_finanzas', 'fin_compras')) return 'finance';
+
   return 'general';
 }
 
@@ -123,6 +142,25 @@ const SHORTCUT_HREFS: Record<string, string> = {
   maintenance: '/dashboard/mantenimiento',
 };
 
+const SHORTCUT_MODULES: Record<string, string[]> = {
+  productionIntel: ['prod_operaciones'],
+  plantMetallurgy: ['prod_operaciones', 'prod_quimica'],
+  maintenanceIntel: ['mant_gerencial', 'mant_operaciones'],
+  availability: ['mant_gerencial', 'mant_operaciones'],
+  workOrders: ['mant_operaciones'],
+  drilling: ['prod_sondaje', 'prod_sondaje_exploracion', 'prod_sondaje_produccion'],
+  equipment: ['mant_operaciones', 'mant_gerencial'],
+  warehouseIntel: ['bodega_inventario'],
+  warehouse: ['bodega_inventario'],
+  sustainability: ['sos_tablero', 'hse_tablero', 'hse_incidente', 'hse_riesgos'],
+  nonConformities: ['hse_incidente', 'hse_riesgos'],
+  finance: ['fin_finanzas'],
+  costCenters: ['core_centros_costos', 'fin_finanzas'],
+  dataHealth: ['core_alertas'],
+  production: ['prod_operaciones', 'prod_sondaje', 'prod_geologia', 'prod_quimica', 'prod_topografia'],
+  maintenance: ['mant_operaciones', 'mant_gerencial'],
+};
+
 const fill = (template: string, value: string | number) => template.replace('{n}', String(value));
 
 function configFor(
@@ -130,6 +168,7 @@ function configFor(
   production: ProductionOverview | null | undefined,
   maintenance: MaintenanceOverview | null | undefined,
   inbox: InboxPayload | null | undefined,
+  moduleAccess: Record<string, string> | null | undefined,
   t: Dictionary['app']['home'],
   locale: Locale,
 ): { eyebrow: string; title: string; description: string; metrics: Metric[]; shortcuts: Shortcut[] } {
@@ -147,7 +186,13 @@ function configFor(
   const overdueDetail = (template: string) => summary ? fill(template, summary.overdue) : t.actionsSourceUnavailable;
 
   const shortcutsFor = (modeCfg: { shortcuts: readonly { key: string; label: string; detail: string }[] }) =>
-    modeCfg.shortcuts.map((item) => ({ label: item.label, href: SHORTCUT_HREFS[item.key] ?? '/dashboard', detail: item.detail }));
+    modeCfg.shortcuts
+      .filter((item) => {
+        if (item.key === 'actions' || mode === 'management' || !moduleAccess) return true;
+        const requiredModules = SHORTCUT_MODULES[item.key];
+        return !requiredModules || requiredModules.some((key) => hasModuleAccess(moduleAccess, key));
+      })
+      .map((item) => ({ label: item.label, href: SHORTCUT_HREFS[item.key] ?? '/dashboard', detail: item.detail }));
 
   if (mode === 'plant') {
     const cfg = t.modes.plant;
@@ -244,11 +289,21 @@ function configFor(
 export function DashboardHome({ locale, dictionary }: { locale: Locale; dictionary: Dictionary }) {
   const t = dictionary.app.home;
   const inbox = useSWR<InboxPayload>('/api/actions/inbox', fetcher, { refreshInterval: 60000, revalidateOnFocus: false });
-  const production = useSWR<ProductionOverview | null>('/api/produccion/canonical-overview', optionalFetcher, { revalidateOnFocus: false });
-  const maintenance = useSWR<MaintenanceOverview | null>('/api/maintenance/work-order-flow?limit=200', optionalFetcher, { revalidateOnFocus: false });
+  const mode = resolveMode(inbox.data?.profile?.cargoName, inbox.data?.moduleAccess);
+  const needsProduction = mode === 'plant' || mode === 'drilling' || mode === 'management';
+  const needsMaintenance = mode === 'maintenance' || mode === 'management';
+  const production = useSWR<ProductionOverview | null>(
+    needsProduction ? '/api/produccion/canonical-overview' : null,
+    optionalFetcher,
+    { revalidateOnFocus: false },
+  );
+  const maintenance = useSWR<MaintenanceOverview | null>(
+    needsMaintenance ? '/api/maintenance/work-order-flow?limit=200' : null,
+    optionalFetcher,
+    { revalidateOnFocus: false },
+  );
 
-  const mode = resolveMode(inbox.data?.profile?.cargoName);
-  const config = configFor(mode, production.data, maintenance.data, inbox.data, t, locale);
+  const config = configFor(mode, production.data, maintenance.data, inbox.data, inbox.data?.moduleAccess, t, locale);
   const tasks = (inbox.data?.tasks || []).slice(0, 5);
   const loading = inbox.isLoading;
   const inboxUnavailable = Boolean(inbox.error) || (!loading && !inbox.data);

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import useSWR from 'swr';
 import { AlertTriangle, CheckCircle2, ExternalLink, Wrench } from 'lucide-react';
@@ -40,6 +41,7 @@ type ReviewRow = {
 
 type Payload = {
   rows: ReviewRow[];
+  canReview: boolean;
   canCreateWorkOrder: boolean;
   summary: { total: number; pending: number; linked: number; outOfService: number };
 };
@@ -73,9 +75,31 @@ const dateLabel = (value?: string | null) => value
   : '—';
 
 export function OperationalMaintenanceReviews() {
+  const searchParams = useSearchParams();
+  const focusReviewId = searchParams.get('reviewId')?.trim() || null;
   const { data, error, isLoading, mutate } = useSWR('/api/produccion/sondaje/mantenimiento', fetcher);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  const acceptForMaintenance = async (row: ReviewRow) => {
+    setBusyId(row.id);
+    setActionError(null);
+    try {
+      const response = await fetch('/api/produccion/sondaje/mantenimiento', {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ reviewId: row.id }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'No fue posible aceptar la revisión');
+      await mutate();
+    } catch (cause) {
+      setActionError(cause instanceof Error ? cause.message : 'No fue posible aceptar la revisión');
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   const createWorkOrder = async (row: ReviewRow) => {
     setBusyId(row.id);
@@ -101,6 +125,10 @@ export function OperationalMaintenanceReviews() {
   if (error) return <Card><CardContent className="pt-5 text-sm text-destructive">{error.message}</CardContent></Card>;
   if (!data?.rows.length) return null;
 
+  const visibleRows = focusReviewId
+    ? [...data.rows].sort((a, b) => Number(b.id === focusReviewId) - Number(a.id === focusReviewId))
+    : data.rows;
+
   return (
     <Card>
       <CardHeader>
@@ -117,12 +145,12 @@ export function OperationalMaintenanceReviews() {
       </CardHeader>
       <CardContent className="space-y-3">
         {actionError ? <p className="text-sm text-destructive">{actionError}</p> : null}
-        {data.rows.slice(0, 8).map((row) => {
+        {visibleRows.slice(0, 8).map((row) => {
           const report = row.sourceReport;
           const linked = row.workOrder;
           const isCritical = row.review_reason === 'out_of_service';
           return (
-            <div key={row.id} className="flex flex-col gap-3 border-t pt-3 first:border-t-0 first:pt-0 lg:flex-row lg:items-center lg:justify-between">
+            <div key={row.id} className={`flex flex-col gap-3 border-t pt-3 first:border-t-0 first:pt-0 lg:flex-row lg:items-center lg:justify-between ${row.id === focusReviewId ? 'rounded-md border border-primary/30 bg-primary/5 p-3' : ''}`}>
               <div className="min-w-0 space-y-1">
                 <div className="flex flex-wrap items-center gap-2">
                   {isCritical ? <AlertTriangle className="h-4 w-4 text-destructive" /> : <CheckCircle2 className="h-4 w-4 text-muted-foreground" />}
@@ -144,8 +172,14 @@ export function OperationalMaintenanceReviews() {
                   </Button>
                 ) : data.canCreateWorkOrder ? (
                   <Button size="sm" onClick={() => createWorkOrder(row)} disabled={busyId === row.id}>
-                    {busyId === row.id ? 'Creando…' : isCritical ? 'Crear OT' : 'Aceptar y crear OT'}
+                    {busyId === row.id ? 'Creando…' : isCritical ? 'Crear OT' : row.status === 'accepted' ? 'Crear OT' : 'Aceptar y crear OT'}
                   </Button>
+                ) : !isCritical && row.status === 'pending' && data.canReview ? (
+                  <Button size="sm" variant="outline" onClick={() => acceptForMaintenance(row)} disabled={busyId === row.id}>
+                    {busyId === row.id ? 'Aceptando…' : 'Aceptar para Mantención'}
+                  </Button>
+                ) : row.status === 'accepted' ? (
+                  <Badge variant="secondary">Aceptada · espera Mantención</Badge>
                 ) : (
                   <Badge variant="outline">Requiere Mantención</Badge>
                 )}

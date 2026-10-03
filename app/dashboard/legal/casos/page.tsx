@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { ArrowRight, RefreshCw } from 'lucide-react';
@@ -54,22 +55,28 @@ const STATUS_LABEL: Record<LegalCase['status'], string> = {
 };
 
 export default function LegalCasesPage() {
+  const caseId = useSearchParams().get('caseId')?.trim();
+  const endpoint = caseId ? `/api/legal/cases?caseId=${encodeURIComponent(caseId)}` : '/api/legal/cases';
   const [syncing, setSyncing] = useState(false);
   const [savingCaseId, setSavingCaseId] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
-  const { data, error, isLoading, mutate } = useSWR<CasesResponse>('/api/legal/cases', fetcher, {
+  const { data, error, isLoading, mutate } = useSWR<CasesResponse>(endpoint, fetcher, {
     revalidateOnFocus: false,
   });
 
   const sync = async () => {
     setSyncing(true);
     try {
-      await fetch('/api/legal/cases/sync', {
+      const response = await fetch('/api/legal/cases/sync', {
         method: 'POST',
         credentials: 'include',
         headers: { 'content-type': 'application/json' },
       });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(payload?.error || 'No se pudieron sincronizar los casos.');
       await mutate();
+    } catch (cause) {
+      setActionMessage(cause instanceof Error ? cause.message : 'No se pudieron sincronizar los casos.');
     } finally {
       setSyncing(false);
     }
@@ -91,20 +98,22 @@ export default function LegalCasesPage() {
         return;
       }
       await mutate();
+    } catch (cause) {
+      setActionMessage(cause instanceof Error ? cause.message : 'No se pudo actualizar el caso Legal.');
     } finally {
       setSavingCaseId(null);
     }
   };
 
   useEffect(() => {
-    void sync();
+    if (!caseId) void sync();
     // sync once when the work center opens
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [caseId]);
 
   const openCases = useMemo(
-    () => (data?.data || []).filter((item) => item.status !== 'closed'),
-    [data?.data],
+    () => (data?.data || []).filter((item) => caseId || item.status !== 'closed'),
+    [data?.data, caseId],
   );
 
   if (isLoading) {
@@ -117,6 +126,7 @@ export default function LegalCasesPage() {
 
   return (
     <div className="space-y-5">
+      {caseId ? <div className="flex flex-wrap gap-4 text-sm"><Link href="/dashboard/legal/casos" className="underline underline-offset-4">Ver todos los casos</Link><Link href="/dashboard/tareas" className="underline underline-offset-4">Volver a tareas</Link><Link href="/dashboard/legal/plazos-fatales" className="underline underline-offset-4">Ver plazos fatales</Link></div> : null}
       <header className="flex flex-col gap-3 border-b border-border/70 pb-4 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Legal · Trabajo operacional</p>
@@ -202,7 +212,7 @@ export default function LegalCasesPage() {
                 </Button>
               ) : null}
 
-              {data.canWrite && !['complete', 'not_required'].includes(item.evidence_status) ? (
+              {data.canWrite && item.status !== 'closed' && !['complete', 'not_required'].includes(item.evidence_status) ? (
                 <>
                   <Button size="sm" variant="ghost" disabled={savingCaseId === item.id} onClick={() => void updateCase(item.id, { evidence_status: 'complete' })}>
                     Evidencia completa
@@ -213,7 +223,7 @@ export default function LegalCasesPage() {
                 </>
               ) : null}
 
-              {data.canWrite && item.status !== 'new' && ['complete', 'not_required'].includes(item.evidence_status) ? (
+              {data.canWrite && !['new', 'closed'].includes(item.status) && ['complete', 'not_required'].includes(item.evidence_status) ? (
                 <Button size="sm" disabled={savingCaseId === item.id} onClick={() => void updateCase(item.id, { status: 'closed' })}>
                   Cerrar caso
                 </Button>
@@ -221,7 +231,7 @@ export default function LegalCasesPage() {
             </div>
           </article>
         )) : (
-          <p className="p-4 text-sm text-muted-foreground">No hay casos legales abiertos en las fuentes disponibles.</p>
+          <p className="p-4 text-sm text-muted-foreground">{caseId ? 'No se encontró este caso Legal en la organización.' : 'No hay casos legales abiertos en las fuentes disponibles.'}</p>
         )}
       </section>
     </div>

@@ -12,13 +12,16 @@ export async function GET(request: NextRequest) {
   if (!context.ok) return context.response;
 
   try {
-    const { data, error } = await context.supabase
+    const orderId = request.nextUrl.searchParams.get('orderId')?.trim();
+    let query = context.supabase
       .from('procurement_invoiceable_order_lines_v1')
       .select('organization_id, order_id, order_line_id, canonical_product_id, product_code, description, unit, unit_cost, quantity_ordered, quantity_accepted, quantity_invoiced, quantity_invoiceable')
       .eq('organization_id', context.organizationId)
       .gt('quantity_invoiceable', 0)
       .order('order_id');
 
+    if (orderId) query = query.eq('order_id', orderId);
+    const { data, error } = await query;
     if (error) throw error;
     return NextResponse.json({ rows: data || [] });
   } catch (error) {

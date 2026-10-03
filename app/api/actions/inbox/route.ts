@@ -30,10 +30,20 @@ type RoleTask = {
   responsibility_label: string;
 };
 
+type MaintenanceReviewEvidence = {
+  review_id: string;
+  asset_code: string | null;
+  asset_name: string | null;
+  operation_date: string | null;
+  review_reason: string | null;
+  equipment_status_raw: string | null;
+  machine_observations: string | null;
+};
+
 const responsibilityRank: Record<RoleTask['responsibility'], number> = {
   owner: 0,
-  support: 1,
-  escalation: 2,
+  escalation: 1,
+  support: 2,
 };
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -45,6 +55,13 @@ function resolveTaskRoute(task: RoleTask) {
   }
 
   if (kind === 'maintenance_review' && rawId && rest.length === 0 && UUID_PATTERN.test(rawId)) {
+    if (
+      task.responsibility === 'owner' &&
+      String(task.cargo_name || '').toUpperCase() === 'JEFE SONDAJE' &&
+      task.status === 'pending'
+    ) {
+      return `/dashboard/produccion/sondaje/produccion?reviewId=${rawId}`;
+    }
     const priority = task.severity === 'critical' ? 'critical' : 'high';
     return `/dashboard/mantenimiento/ordenes-trabajo/create?reviewId=${rawId}&workType=corrective&priority=${priority}`;
   }
@@ -89,12 +106,16 @@ function resolveTaskRoute(task: RoleTask) {
     return `/dashboard/calidad-datos/salud?domain=${encodeURIComponent(rawId)}&issue=${encodeURIComponent(rest[0])}`;
   }
 
-  if (kind === 'finance' && rawId === 'missing_cost_centers' && rest.length === 0) {
-    return '/dashboard/centros-costos';
+  if (
+    kind === 'finance' &&
+    ['missing_cost_centers', 'zero_amount_lines', 'source_warning_lines', 'validation', 'unlinked_products'].includes(rawId) &&
+    rest.length === 0
+  ) {
+    return `/dashboard/finanzas/excepciones?issue=${encodeURIComponent(rawId)}`;
   }
 
-  if (kind === 'finance' && (rawId === 'zero_amount_lines' || rawId === 'validation') && rest.length === 0) {
-    return `/dashboard/finanzas/importar?issue=${encodeURIComponent(rawId)}`;
+  if (kind === 'finance' && rawId === 'treasury_missing_due_date' && rest.length === 0) {
+    return '/dashboard/finanzas/pagos';
   }
 
   return task.module_route;
@@ -127,9 +148,51 @@ function deduplicateTasks(rows: RoleTask[]) {
   });
 }
 
-function emptyRoleInbox(name: string | null, cargoId: string, cargoName: string | null) {
+function maintenanceReviewLabel(reason: string | null | undefined) {
+  switch (String(reason || '').trim().toLowerCase()) {
+    case 'out_of_service':
+      return 'Revisar equipo fuera de servicio';
+    case 'machine_observation':
+      return 'Revisar observación mecánica';
+    case 'operational_with_observations':
+      return 'Revisar equipo operativo con observaciones';
+    default:
+      return 'Revisar condición de mantenimiento';
+  }
+}
+
+function sourceDateLabel(value: string | null | undefined) {
+  const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return match ? `${match[3]}-${match[2]}-${match[1]}` : null;
+}
+
+function enrichMaintenanceReviewTask(
+  task: RoleTask,
+  evidence: MaintenanceReviewEvidence | undefined,
+): RoleTask {
+  if (!evidence) return task;
+
+  const code = String(evidence.asset_code || '').trim();
+  const name = String(evidence.asset_name || '').trim();
+  const assetLabel = code && name && code !== name ? `${code} · ${name}` : code || name || 'Equipo de sondaje';
+  const evidenceParts = [
+    assetLabel,
+    sourceDateLabel(evidence.operation_date) ? `Reporte ${sourceDateLabel(evidence.operation_date)}` : null,
+    String(evidence.equipment_status_raw || '').trim() || null,
+    String(evidence.machine_observations || '').trim() || null,
+  ].filter((value): value is string => Boolean(value));
+
+  return {
+    ...task,
+    title: `${maintenanceReviewLabel(evidence.review_reason)} · ${assetLabel}`,
+    evidence_summary: evidenceParts.join(' · ') || task.evidence_summary,
+  };
+}
+
+function emptyRoleInbox(name: string | null, cargoId: string, cargoName: string | null, moduleAccess: Record<string, string> = {}) {
   return NextResponse.json({
     profile: { name, cargoId, cargoName },
+    moduleAccess,
     tasks: [],
     summary: { total: 0, owners: 0, support: 0, escalations: 0, critical: 0, overdue: 0, backlog: 0 },
     generatedAt: new Date().toISOString(),
@@ -158,13 +221,18 @@ export async function GET(request: NextRequest) {
   if (!profile?.cargo_id) {
     return NextResponse.json({
       profile: { name: profile?.full_name || null, cargoId: null, cargoName: null },
+      moduleAccess: {},
       tasks: [],
       summary: { total: 0, owners: 0, support: 0, escalations: 0, critical: 0, overdue: 0, backlog: 0 },
       generatedAt: new Date().toISOString(),
     });
   }
 
-  const [{ data: cargo, error: cargoError }, { data: coverage, error: coverageError }] = await Promise.all([
+  const [
+    { data: cargo, error: cargoError },
+    { data: coverage, error: coverageError },
+    { data: accessRows, error: accessError },
+  ] = await Promise.all([
     context.supabase.from('cargos').select('name').eq('id', profile.cargo_id).maybeSingle(),
     context.supabase
       .from('operational_role_inbox_coverage_v1')
@@ -173,6 +241,10 @@ export async function GET(request: NextRequest) {
       .eq('cargo_id', profile.cargo_id)
       .limit(1)
       .maybeSingle(),
+    context.supabase
+      .from('role_matrix')
+      .select('module_key,access_level')
+      .eq('cargo_id', profile.cargo_id),
   ]);
 
   if (cargoError) {
@@ -180,11 +252,18 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'No se pudo resolver tu cargo' }, { status: 500 });
   }
 
+  if (accessError) {
+    console.warn('[role-task-inbox] module access lookup failed', accessError);
+  }
+
+  const moduleAccess = Object.fromEntries(
+    (accessRows || []).map((row) => [String(row.module_key), String(row.access_level)]),
+  );
   const cargoName = cargo?.name || null;
   const hasPrivateFinanceInbox = cargoName?.toUpperCase() === 'JEFE ADM.';
 
   if (!coverageError && !coverage && !hasPrivateFinanceInbox) {
-    return emptyRoleInbox(profile.full_name || null, profile.cargo_id, cargoName);
+    return emptyRoleInbox(profile.full_name || null, profile.cargo_id, cargoName, moduleAccess);
   }
 
   if (coverageError) {
@@ -208,7 +287,42 @@ export async function GET(request: NextRequest) {
   }
 
   const rawTasks = (data || []) as RoleTask[];
-  const tasks = deduplicateTasks(rawTasks).map((task) => ({ ...task, module_route: resolveTaskRoute(task) }));
+  const deduplicatedTasks = deduplicateTasks(rawTasks);
+  const maintenanceReviewIds = deduplicatedTasks
+    .map((task) => {
+      const [kind, rawId, ...rest] = task.task_key.split(':');
+      return kind === 'maintenance_review' && rawId && rest.length === 0 && UUID_PATTERN.test(rawId)
+        ? rawId
+        : null;
+    })
+    .filter((value): value is string => Boolean(value));
+
+  const maintenanceReviewById = new Map<string, MaintenanceReviewEvidence>();
+  if (maintenanceReviewIds.length > 0) {
+    const { data: reviewRows, error: reviewError } = await context.supabase
+      .from('drilling_maintenance_review_queue_v1')
+      .select('review_id,asset_code,asset_name,operation_date,review_reason,equipment_status_raw,machine_observations')
+      .eq('organization_id', context.organizationId)
+      .in('review_id', maintenanceReviewIds);
+
+    if (reviewError) {
+      // Enrichment is presentational only. Preserve the canonical task inbox if
+      // drilling review context is temporarily unavailable.
+      console.warn('[role-task-inbox] maintenance review enrichment failed', reviewError);
+    } else {
+      for (const row of reviewRows || []) {
+        if (row.review_id) maintenanceReviewById.set(String(row.review_id), row as MaintenanceReviewEvidence);
+      }
+    }
+  }
+
+  const tasks = deduplicatedTasks.map((task) => {
+    const [kind, rawId] = task.task_key.split(':');
+    const enriched = kind === 'maintenance_review' && rawId
+      ? enrichMaintenanceReviewTask(task, maintenanceReviewById.get(rawId))
+      : task;
+    return { ...enriched, module_route: resolveTaskRoute(enriched) };
+  });
   const now = Date.now();
   const backlogCutoff = now - 30 * 24 * 60 * 60 * 1000;
   const isOverdue = (task: RoleTask) => Boolean(task.due_at && new Date(task.due_at).getTime() < now);
@@ -216,6 +330,7 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     profile: { name: profile.full_name || null, cargoId: profile.cargo_id, cargoName },
+    moduleAccess,
     tasks,
     summary: {
       total: tasks.length,

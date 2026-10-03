@@ -104,6 +104,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       const br = b.remaining_hours == null ? Number.POSITIVE_INFINITY : Number(b.remaining_hours);
       return ar - br;
     });
+    const actionablePreventives = preventives.filter((row: any) => !row.generated_work_order_id);
 
     const snapshotRows = snapshotsResult.data || [];
     const latestSnapshots = Array.from(snapshotRows.reduce((map: Map<string, any>, row: any) => {
@@ -468,7 +469,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       operationalBlockers: closeRows.filter((row: any) => Number(row.open_procurement_orders || 0) > 0 || Number(row.pending_parts || 0) > 0 || Number(row.unmet_material_requirements || 0) > 0 || Number(row.pending_external_services || 0) > 0 || Number(row.open_labor_entries || 0) > 0).length,
       readyToClose: closeRows.filter((row: any) => Boolean(row.ready_to_close)).length,
       pendingPlanSteps: closeRows.reduce((sum: number, row: any) => sum + Number(row.standard_plan_steps_pending || 0), 0),
-      overduePreventives: preventives.filter((row: any) => Boolean(row.alert_due)).length,
+      overduePreventives: actionablePreventives.filter((row: any) => Boolean(row.alert_due)).length,
       installedPartLines: installedParts.length,
       pendingPartLines: pendingParts.length,
       auditedInterventions: auditedInterventions.length,
@@ -481,7 +482,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       workOrders: ordersResult.data || [],
       closeReadiness: closeRows,
       preventives,
-      nextPreventive: preventives[0] || null,
+      nextPreventive: actionablePreventives[0] || null,
       runtime: runtimeResult.data || null,
       reliability: reliabilityResult.data || null,
       runtimeReliability: runtimeReliabilityResult.data || null,

@@ -19,6 +19,7 @@ import { StatePanel } from '@/components/ui/state-panel';
 import { FilterToolbar, FilterToolbarActions, FilterToolbarGroup } from '@/components/ui/filter-toolbar';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Dictionary, Locale } from '@/lib/i18n/dictionaries';
+import { useModuleAccess } from '@/hooks/use-module-access';
 
 type TaskSource = 'maintenance' | 'hse' | 'legal' | 'procurement' | 'finance';
 type TaskItem = {
@@ -52,6 +53,12 @@ const fetcher = async (url: string): Promise<TasksResponse> => {
   return payload;
 };
 
+const viewerFetcher = async (url: string): Promise<{ canCreateWorkOrder: boolean }> => {
+  const response = await fetch(url, { credentials: 'include', cache: 'no-store' });
+  if (!response.ok) throw new Error('Maintenance context unavailable');
+  return response.json();
+};
+
 function fill(template: string, vars: Record<string, string | number>) {
   return template.replace(/\{(\w+)\}/g, (_, key: string) => String(vars[key] ?? ''));
 }
@@ -82,6 +89,12 @@ export function OperationalCalendar({ locale, dictionary }: { locale: Locale; di
   const dateLocale = locale === 'en' ? 'en-US' : 'es-CL';
   const [view, setView] = useState<'all' | 'overdue' | 'today' | 'week'>('all');
   const [query, setQuery] = useState('');
+  const { ready, canView } = useModuleAccess();
+  const { data: viewer, error: viewerError } = useSWR(
+    ready && canView('mant_operaciones') ? '/api/maintenance/viewer-context' : null,
+    viewerFetcher,
+  );
+  const canCreateWorkOrder = ready && canView('mant_operaciones') && !viewerError && viewer?.canCreateWorkOrder === true;
   const { data, error, isLoading, mutate, isValidating } = useSWR<TasksResponse>(
     '/api/calendar/operational?days=90&scope=open',
     fetcher,
@@ -116,7 +129,7 @@ export function OperationalCalendar({ locale, dictionary }: { locale: Locale; di
             <RefreshCw className={`h-4 w-4 ${isValidating ? 'animate-spin' : ''}`} />
             {t.refresh}
           </Button>
-          <Button asChild><Link href="/dashboard/mantenimiento/ordenes-trabajo/create">{t.createWorkOrder}</Link></Button>
+          {canCreateWorkOrder ? <Button asChild><Link href="/dashboard/mantenimiento/ordenes-trabajo/create">{t.createWorkOrder}</Link></Button> : null}
         </PageHeaderActions>
       </PageHeader>
 

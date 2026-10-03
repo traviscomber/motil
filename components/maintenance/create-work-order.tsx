@@ -136,6 +136,11 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
     ).slice(0, 10);
   }, [assetQuery, assets]);
   const review = (reviewData?.review || null) as DrillingReview | null;
+  const reviewNeedsAcceptance = Boolean(
+    review &&
+    review.review_status === 'pending' &&
+    review.review_reason !== 'out_of_service',
+  );
 
   useEffect(() => {
     if (!selectedAsset || assetQuery) return;
@@ -207,6 +212,7 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
           assignedPersonId,
           canonicalAssetId,
           reviewId: reviewId || null,
+          acceptReview: reviewNeedsAcceptance,
           title: title.trim(),
           description: description.trim() || null,
           materials: plannedMaterials.map((item) => ({
@@ -266,6 +272,11 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
               <div><p className="text-xs text-muted-foreground">{t.reviewCard.reportedAsset}</p><p className="font-medium">{review.asset_name || review.asset_code || t.noName}</p></div>
               <div><p className="text-xs text-muted-foreground">{t.reviewCard.reportDate}</p><p className="font-medium">{review.operation_date || t.noDate}</p></div>
               {review.machine_observations ? <div className="sm:col-span-2"><p className="text-xs text-muted-foreground">{t.reviewCard.observation}</p><p className="font-medium">{review.machine_observations}</p></div> : null}
+              {reviewNeedsAcceptance ? (
+                <div className="sm:col-span-2 rounded-md border border-border bg-muted/20 p-3">
+                  <p className="text-sm font-medium">{t.reviewCard.pendingAcceptance}</p>
+                </div>
+              ) : null}
             </CardContent>
           ) : null}
         </Card>
@@ -473,7 +484,7 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
           <Button asChild variant="outline"><Link href="/dashboard/mantenimiento/ordenes-trabajo">{t.cancel}</Link></Button>
           <Button onClick={submit} disabled={submitting || isLoading || assigneesLoading || Boolean(error) || Boolean(assigneeError) || reviewLoading || Boolean(reviewError) || Boolean(review?.linked_work_order_id)}>
             {submitting ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-            {submitting ? t.creating : reviewId ? t.createAndResolve : t.create}
+            {submitting ? t.creating : reviewNeedsAcceptance ? t.acceptAndCreate : reviewId ? t.createAndResolve : t.create}
           </Button>
         </div>
       </div>
