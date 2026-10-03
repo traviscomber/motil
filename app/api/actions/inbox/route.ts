@@ -42,8 +42,8 @@ type MaintenanceReviewEvidence = {
 
 const responsibilityRank: Record<RoleTask['responsibility'], number> = {
   owner: 0,
-  support: 1,
-  escalation: 2,
+  escalation: 1,
+  support: 2,
 };
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
