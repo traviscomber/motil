@@ -215,7 +215,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       }
 
       await validateCanonicalAsset(context, body.canonical_asset_id);
-      updateData.canonical_asset_id = body.canonical_asset_id;
+      const { error: identityError } = await context.supabase.rpc('resolve_missing_work_order_asset_identity_v1', {
+        p_organization_id: context.organizationId,
+        p_work_order_id: id,
+        p_canonical_asset_id: body.canonical_asset_id,
+        p_actor_id: context.userId,
+      });
+      if (identityError) throw identityError;
     }
     if (body.assigned_person_id !== undefined) {
       if (body.assigned_person_id) {
