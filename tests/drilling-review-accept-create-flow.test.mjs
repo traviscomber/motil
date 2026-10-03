@@ -10,6 +10,7 @@ const drillingRoute = await readFile(new URL('../app/api/produccion/sondaje/mant
 const drillingReviews = await readFile(new URL('../components/production/operational-maintenance-reviews.tsx', import.meta.url), 'utf8');
 const inbox = await readFile(new URL('../app/api/actions/inbox/route.ts', import.meta.url), 'utf8');
 const handoffMigration = await readFile(new URL('../supabase/migrations/20261002231500_split_drilling_review_handoff.sql', import.meta.url), 'utf8');
+const handoffSlaMigration = await readFile(new URL('../supabase/migrations/20261002232500_fix_review_handoff_sla_semantics.sql', import.meta.url), 'utf8');
 
 test('non-critical pending drilling reviews require explicit human acceptance', () => {
   assert.match(route, /pendingReviewNeedsAcceptance/);
@@ -57,4 +58,11 @@ test('pending drilling owner task opens the exact review in the drilling workspa
   assert.match(drillingReviews, /useSearchParams/);
   assert.match(drillingReviews, /searchParams\.get\('reviewId'\)/);
   assert.match(drillingReviews, /row\.id === focusReviewId/);
+});
+
+
+test('accepted review SLA starts at human acceptance and never escalates to self', () => {
+  assert.match(handoffSlaMigration, /m\.status = ''accepted''::text/);
+  assert.match(handoffSlaMigration, /COALESCE\(m\.reviewed_at, m\.updated_at, m\.created_at\)/);
+  assert.match(handoffSlaMigration, /c\.name <> t\.cargo_name/);
 });
