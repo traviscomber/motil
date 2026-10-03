@@ -51,6 +51,7 @@ export type Asset360RuntimeReliability = {
 } | null;
 
 export function Asset360MaintenanceSection({
+  assetId,
   nextPreventive,
   pendingPlanSteps,
   readyToClose,
@@ -62,6 +63,7 @@ export function Asset360MaintenanceSection({
   reliability,
   runtimeReliability,
 }: {
+  assetId: string;
   nextPreventive: Asset360NextPreventive | undefined;
   pendingPlanSteps: number;
   readyToClose: number;
@@ -98,6 +100,9 @@ export function Asset360MaintenanceSection({
     operationalBlockers > 0 ||
     actionableWorkOrder
   );
+  const preventiveHref = nextPreventive?.due_meter != null
+    ? `/dashboard/mantenimiento/preventivo-horas?assetId=${encodeURIComponent(assetId)}&dueMeter=${encodeURIComponent(String(nextPreventive.due_meter))}`
+    : `/dashboard/mantenimiento/preventivo-horas?assetId=${encodeURIComponent(assetId)}`;
 
   return (
     <details className="group rounded-lg border border-border bg-card" open={maintenanceNeedsAttention}>
@@ -137,7 +142,7 @@ export function Asset360MaintenanceSection({
                     : `${number(nextPreventive.due_meter, 1)} h`}
                 </p>
                 <Button asChild variant="ghost" size="sm" className="mt-4 px-0">
-                  <Link href="/dashboard/mantenimiento/preventivo-horas">
+                  <Link href={preventiveHref}>
                     Abrir pauta
                     <ArrowRight className="ml-1 h-4 w-4" />
                   </Link>
