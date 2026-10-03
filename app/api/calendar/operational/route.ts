@@ -178,12 +178,13 @@ function complianceHref(value: unknown) {
 function buildItem(
   item: Omit<OperationalCalendarItem, 'overdue' | 'days_until' | 'priority_label'>,
   today: string,
+  overdueOverride?: boolean,
 ): OperationalCalendarItem {
   const daysUntil = differenceInDays(item.date, today);
   return {
     ...item,
     priority_label: priorityLabel(item.priority),
-    overdue: !item.historical && daysUntil < 0,
+    overdue: overdueOverride ?? (!item.historical && daysUntil < 0),
     days_until: daysUntil,
   };
 }
@@ -204,7 +205,7 @@ export async function GET(request: NextRequest) {
   const endDate = scope === 'historical' ? today : addDays(today, days);
 
   try {
-    const [workOrdersResult, preventiveResult, complianceResult, requestsResult, ordersResult, internalInspectionsResult, externalInspectionsResult, payablesResult, credentialsResult, legalCasesResult] = await Promise.all([
+    const [workOrdersResult, preventiveResult, meterPreventiveResult, complianceResult, requestsResult, ordersResult, internalInspectionsResult, externalInspectionsResult, payablesResult, credentialsResult, legalCasesResult] = await Promise.all([
       context.supabase
         .from('maintenance_work_orders')
         .select('id,work_order_number,title,description,status,priority,scheduled_date,completion_date,closed_at,assigned_to_name')
@@ -222,6 +223,15 @@ export async function GET(request: NextRequest) {
         .lte('next_scheduled_date', endDate)
         .or('enabled.eq.true,enabled.is.null')
         .is('generated_work_order_id', null)
+        .limit(500),
+      context.supabase
+        .from('preventive_maintenance_schedules')
+        .select('id,task_name,priority,current_meter_snapshot,next_due_meter,meter_unit,canonical_asset_id')
+        .eq('organization_id', context.organizationId)
+        .or('enabled.eq.true,enabled.is.null')
+        .is('generated_work_order_id', null)
+        .not('current_meter_snapshot', 'is', null)
+        .not('next_due_meter', 'is', null)
         .limit(500),
       context.supabase
         .from('compliance_events')
@@ -291,6 +301,7 @@ export async function GET(request: NextRequest) {
     const warnings: string[] = [];
     if (workOrdersResult.error) warnings.push('No se pudieron cargar las órdenes de trabajo.');
     if (preventiveResult.error) warnings.push('No se pudo cargar la planificación preventiva.');
+    if (meterPreventiveResult.error) warnings.push('No se pudieron cargar los mantenimientos preventivos por horómetro.');
     if (complianceResult.error) warnings.push('No se pudieron cargar los compromisos de cumplimiento.');
     if (requestsResult.error) warnings.push('No se pudieron cargar los requerimientos de compra.');
     if (ordersResult.error) warnings.push('No se pudieron cargar las entregas de órdenes de compra.');
@@ -348,6 +359,49 @@ export async function GET(request: NextRequest) {
           historical: false,
           completed_at: null,
         }, today));
+      }
+
+      const overdueMeterRows = (meterPreventiveResult.data || []).filter((row) => {
+        const currentMeter = Number(row.current_meter_snapshot);
+        const nextDueMeter = Number(row.next_due_meter);
+        return Number.isFinite(currentMeter) && Number.isFinite(nextDueMeter) && currentMeter >= nextDueMeter;
+      });
+      const overdueAssetIds = Array.from(new Set(overdueMeterRows.map((row) => row.canonical_asset_id).filter(Boolean)));
+      const { data: overdueAssets, error: overdueAssetsError } = overdueAssetIds.length
+        ? await context.supabase
+            .from('maintenance_canonical_assets_v1')
+            .select('id,asset_code,name')
+            .eq('organization_id', context.organizationId)
+            .in('id', overdueAssetIds)
+        : { data: [], error: null };
+      if (overdueAssetsError) warnings.push('No se pudieron resolver los equipos de mantenimientos vencidos por horómetro.');
+      const overdueAssetById = new Map((overdueAssets || []).map((row) => [row.id, row]));
+
+      for (const row of overdueMeterRows) {
+        const currentMeter = Number(row.current_meter_snapshot);
+        const nextDueMeter = Number(row.next_due_meter);
+        const overrun = Math.max(0, currentMeter - nextDueMeter);
+        const overrunLabel = new Intl.NumberFormat('es-CL', { maximumFractionDigits: 1 }).format(overrun);
+        const asset = row.canonical_asset_id ? overdueAssetById.get(row.canonical_asset_id) : null;
+        const assetLabel = normalizeText(asset?.name || asset?.asset_code);
+        items.push(buildItem({
+          id: `preventive-meter:${row.id}`,
+          source: 'maintenance',
+          source_label: 'Mantenimiento',
+          kind: 'Preventivo por horómetro',
+          date: today,
+          title: assetLabel ? `${row.task_name} · ${assetLabel}` : row.task_name,
+          subtitle: `Lectura actual ${currentMeter} · umbral ${nextDueMeter} ${normalizeText(row.meter_unit) || 'h'}`,
+          reference: normalizeText(asset?.asset_code),
+          status: 'due_by_meter',
+          status_label: `Vencido por horómetro (+${overrunLabel} h)`,
+          priority: normalizePriority(row.priority),
+          owner: null,
+          location: null,
+          href: '/dashboard/mantenimiento/planificacion',
+          historical: false,
+          completed_at: null,
+        }, today, true));
       }
     }
 
@@ -605,7 +659,7 @@ export async function GET(request: NextRequest) {
 
     const activeItems = items.filter((item) => !item.historical);
     const summary = {
-      overdue: activeItems.filter((item) => item.days_until < 0).length,
+      overdue: activeItems.filter((item) => item.overdue).length,
       today: activeItems.filter((item) => item.days_until === 0).length,
       next_7_days: activeItems.filter((item) => item.days_until > 0 && item.days_until <= 7).length,
       total: items.length,
