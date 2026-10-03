@@ -299,17 +299,21 @@ export async function GET(request: NextRequest) {
     console.warn('[role-task-inbox] coverage lookup failed; continuing with scoped task queries', coverageError);
   }
 
+  const escalationLookup = !coverageError && coverage && Number(coverage.escalations || 0) === 0
+    ? Promise.resolve({ data: [], error: null })
+    : context.supabase
+        .from('role_task_escalations_v1')
+        .select(TASK_COLUMNS)
+        .eq('organization_id', context.organizationId)
+        .eq('cargo_id', profile.cargo_id);
+
   const [actionableResult, escalationResult] = await Promise.all([
     context.supabase
       .from('role_tasks_actionable_v1')
       .select(TASK_COLUMNS)
       .eq('organization_id', context.organizationId)
       .eq('cargo_id', profile.cargo_id),
-    context.supabase
-      .from('role_task_escalations_v1')
-      .select(TASK_COLUMNS)
-      .eq('organization_id', context.organizationId)
-      .eq('cargo_id', profile.cargo_id),
+    escalationLookup,
   ]);
 
   const taskError = actionableResult.error || escalationResult.error;
