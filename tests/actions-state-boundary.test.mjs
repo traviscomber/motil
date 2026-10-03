@@ -30,7 +30,7 @@ test('actions dashboard distinguishes unavailable summary and failed state write
   const page = await readFile(pageUrl, 'utf8');
 
   assert.match(page, /summaryUnavailable = inbox\.isLoading \|\| Boolean\(inbox\.error\) \|\| !summary/);
-  assert.match(page, /summaryUnavailable \? '—' : summary\[key\]/);
+  assert.match(page, /summaryUnavailable \? '—' : \(summary\[key\] \?\? '—'\)/);
   assert.match(page, /if \(!response\.ok\)/);
   assert.match(page, /setStateWriteError/);
   assert.doesNotMatch(page, /summary\?\.owners \?\? 0/);
