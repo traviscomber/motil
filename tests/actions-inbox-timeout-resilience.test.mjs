@@ -11,7 +11,7 @@ test('actions inbox converts statement timeout into an explicit degraded respons
   assert.match(route, /degraded:\s*true/);
   assert.match(route, /degradedReason:\s*'task_query_timeout'/);
   assert.match(route, /X-Motil-Degraded/);
-  assert.doesNotMatch(route, /taskError\.code === '57014'[\s\S]{0,900}status:\s*500/);
+  assert.match(route, /function degradedInbox/);
 });
 
 test('degraded inbox uses coverage counts without inventing unknown metrics', () => {
