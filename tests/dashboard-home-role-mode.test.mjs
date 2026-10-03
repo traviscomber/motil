@@ -24,3 +24,11 @@ test('role inbox returns canonical role-matrix access with the profile', () => {
   assert.match(inbox, /\.select\('module_key,access_level'\)/);
   assert.match(inbox, /moduleAccess,/);
 });
+
+
+test('home filters role shortcuts against canonical module access', () => {
+  assert.match(home, /const SHORTCUT_MODULES: Record<string, string\[\]>/);
+  assert.match(home, /if \(item\.key === 'actions' \|\| mode === 'management' \|\| !moduleAccess\) return true/);
+  assert.match(home, /requiredModules\.some\(\(key\) => hasModuleAccess\(moduleAccess, key\)\)/);
+  assert.match(home, /production: \['prod_operaciones', 'prod_sondaje', 'prod_geologia', 'prod_quimica', 'prod_topografia'\]/);
+});
