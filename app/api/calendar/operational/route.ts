@@ -196,9 +196,9 @@ export async function GET(request: NextRequest) {
 
   const role = String(context.role || '').trim().toLowerCase();
   const admin = isAdminRole(role);
-  const moduleAccess = admin ? { hasCargo: true, access: {} } : await getUserModuleAccess(context.userId);
+  const moduleAccess = admin ? null : await getUserModuleAccess(context.userId);
   const canViewAny = (...moduleKeys: string[]) =>
-    admin || moduleKeys.some((moduleKey) => ['ED', 'LEC'].includes(moduleAccess.access[moduleKey]));
+    admin || moduleKeys.some((moduleKey) => ['ED', 'LEC'].includes(moduleAccess?.access[moduleKey] ?? 'SR'));
 
   const allowedSources = new Set<CalendarSource>();
   if (canViewAny(MODULE_KEYS.MANT_OPERACIONES, MODULE_KEYS.MANT_GERENCIAL)) allowedSources.add('maintenance');
