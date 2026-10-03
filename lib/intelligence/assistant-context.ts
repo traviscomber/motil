@@ -43,7 +43,8 @@ const CONTEXTS: Array<AssistantContext & { prefixes: string[] }> = [
     scopeHint: 'Parte desde activos, OT y pautas; cruza inventario o compras sólo cuando aporta evidencia causal.',
     capabilities: ['maintenance'],
     suggestedPrompts: [
-      '¿Qué equipos requieren atención primero y por qué?',
+      'Dame las 5 acciones de mantenimiento que requieren atención hoy.',
+      '¿Qué OT están bloqueadas y qué falta para destrabarlas?',
       '¿Qué preventivos están vencidos y con qué evidencia?',
       '¿Qué dato faltante tendría más valor para decidir mejor?',
     ],

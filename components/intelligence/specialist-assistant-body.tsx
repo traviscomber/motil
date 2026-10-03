@@ -78,6 +78,9 @@ export function SpecialistAssistantBody({
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [handoffByMessage, setHandoffByMessage] = useState<Record<string, HandoffState>>({});
+  const runtimeMode = [...messages].reverse().find((item) => item.role === 'assistant')?.model === 'canonical-fallback'
+    ? 'canonical_fallback'
+    : 'ai';
   const bottomRef = useRef<HTMLDivElement>(null);
   const suppressAutoScrollRef = useRef(false);
 
@@ -259,6 +262,7 @@ export function SpecialistAssistantBody({
           <span className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1"><Database className="size-3" />Canónico</span>
           {cargo ? <span className="max-w-48 truncate rounded-full border border-border px-2 py-1" title={cargo}>{cargo}</span> : null}
           <span className="rounded-full border border-border px-2 py-1">Memoria {memoryCount}</span>
+          <span className="rounded-full border border-border px-2 py-1">{runtimeMode === 'canonical_fallback' ? 'Modo canónico' : 'IA + canónico'}</span>
         </div>
         <Button type="button" size="icon-sm" variant="ghost" onClick={() => void startNewConversation()} disabled={sending} aria-label="Nueva conversación" title="Archivar conversación y comenzar una nueva">
           <RotateCcw className="size-4" />
@@ -306,6 +310,9 @@ export function SpecialistAssistantBody({
                       return <span key={`${ref.tool || ref.source}:${ref.mode || 'read'}`} className="rounded-full border border-border px-2 py-1">{label}{ref.mode === 'prepare_only' ? ' · preparar' : ''}</span>;
                     })}
                   </div>
+                ) : null}
+                {item.role === 'assistant' && item.model === 'canonical-fallback' ? (
+                  <p className="mt-2 text-[10px] leading-4 text-muted-foreground">Respuesta operativa generada directamente desde datos canónicos porque la IA generativa no está disponible. No se pierde el acceso a la evidencia.</p>
                 ) : null}
                 {canCreateExecutiveHandoff ? (
                   <div className="mt-2 border-t border-border pt-2">

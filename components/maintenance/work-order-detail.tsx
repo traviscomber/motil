@@ -203,6 +203,8 @@ export function WorkOrderDetail({ locale, dictionary }: { locale: Locale; dictio
         </CardContent>
       </Card>
 
+      <EntityTimeline entity="work_order" id={id} limit={20} />
+
       <details className="group rounded-lg border bg-card">
         <summary className="flex cursor-pointer list-none items-center justify-between px-5 py-4 text-sm font-medium">
           Ver detalle técnico y abastecimiento
@@ -215,7 +217,6 @@ export function WorkOrderDetail({ locale, dictionary }: { locale: Locale; dictio
           <WorkOrderPartsPanel workOrderId={id} />
           <WorkOrderPurchasingFlow workOrderId={id} />
           <WorkOrderExecutionPanel workOrderId={id} />
-          <EntityTimeline entity="work_order" id={id} limit={50} />
         </div>
       </details>
     </div>;

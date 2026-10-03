@@ -10,7 +10,6 @@ import { PageHeader, PageHeaderActions, PageHeaderContent, PageHeaderDescription
 import { StatePanel } from '@/components/ui/state-panel';
 import { MobileTerrainPanel } from '@/components/maintenance/mobile-terrain-panel';
 import { AutopilotDecisionStrip } from '@/components/maintenance/autopilot-decision-strip';
-import { CanonicalMaintenanceOverview } from '@/components/maintenance/canonical-maintenance-overview';
 import type { Dictionary, Locale } from '@/lib/i18n/dictionaries';
 
 type ActionItem = { id: string; kind: string; priority: number; title: string; description: string; evidence: string; href: string; assetHref?: string | null; autopilot?: { state: 'prepared'; risk: 'low' | 'medium' | 'high'; requiresHumanDecision: true; preparedAction: string; authority: string } };
@@ -192,8 +191,6 @@ export function MaintenanceHome({ locale, dictionary }: { locale: Locale; dictio
         <span>{t.flow.handoffProduction}</span><span>·</span><span>{t.flow.handoffWarehouse}</span><span>·</span><Link className="hover:text-foreground" href="/dashboard/compras">{t.flow.handoffProcurement}</Link><span>·</span><span>{t.flow.handoffFinance}</span>
       </div> : null}
     </section> : null}
-
-    <CanonicalMaintenanceOverview />
 
     {!isLoading && !error && summary ? <AutopilotDecisionStrip
       locale={locale}
