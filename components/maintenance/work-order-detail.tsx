@@ -2,11 +2,13 @@
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { useState } from 'react';
 import useSWR from 'swr';
-import { ArrowLeft, CheckCircle2, History, MoreHorizontal, PlayCircle, RotateCcw } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, History, MoreHorizontal, PlayCircle, RotateCcw, Search } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Label } from '@/components/ui/label';
 import { WorkOrderExecutionPanel } from '@/components/maintenance/work-order-execution-panel';
@@ -21,6 +23,14 @@ import { EntityTimeline } from '@/components/shared/entity-timeline';
 import type { Dictionary, Locale } from '@/lib/i18n/dictionaries';
 
 type WorkOrderDetailT = Dictionary['app']['workOrderDetail'];
+
+type CanonicalAssetOption = {
+  id: string;
+  code: string;
+  name: string;
+  type: string;
+  model?: string | null;
+};
 
 const fetcher = async (url: string) => {
   const response = await fetch(url, { credentials: 'include' });
@@ -64,6 +74,9 @@ export function WorkOrderDetail({ locale, dictionary }: { locale: Locale; dictio
   const dateLocale = locale === 'en' ? 'en-US' : 'es-CL';
   const params = useParams<{ id: string }>();
   const id = params.id;
+  const [assetQuery, setAssetQuery] = useState('');
+  const [assigningAssetId, setAssigningAssetId] = useState<string | null>(null);
+  const [assetIdentityError, setAssetIdentityError] = useState<string | null>(null);
   const { data, error, isLoading, mutate } = useSWR(id ? `/api/maintenance/work-orders/${id}` : null, fetcher);
   const { data: viewer, isLoading: viewerLoading } = useSWR('/api/maintenance/viewer-context', fetcher);
   const workOrder = data?.data;
@@ -71,6 +84,45 @@ export function WorkOrderDetail({ locale, dictionary }: { locale: Locale; dictio
   const assignees = data?.assignees || [];
   const isHistorical = workOrder?.record_scope === 'historical' || data?.record_scope === 'historical';
   const canEdit = Boolean(data?.canEdit) && !isHistorical;
+  const needsAssetResolution = Boolean(workOrder && !workOrder.canonical_asset_id && viewer?.mode === 'planning' && !isHistorical);
+  const { data: equipmentData, error: equipmentError, isLoading: equipmentLoading } = useSWR(
+    needsAssetResolution && canEdit ? '/api/maintenance/equipment' : null,
+    fetcher,
+    { revalidateOnFocus: false },
+  );
+  const canonicalAssets = Array.isArray(equipmentData?.equipment)
+    ? (equipmentData.equipment as CanonicalAssetOption[])
+    : [];
+  const normalizedAssetQuery = assetQuery.trim().toLowerCase();
+  const assetOptions = canonicalAssets
+    .filter((asset) => !normalizedAssetQuery || [asset.code, asset.name, asset.type, asset.model]
+      .map((value) => String(value || '').toLowerCase())
+      .join(' ')
+      .includes(normalizedAssetQuery))
+    .slice(0, 8);
+  const assetResolutionCopy = locale === 'en'
+    ? {
+        title: 'Resolve equipment identity',
+        description: 'This work order has no canonical equipment. Link the correct asset before planning or execution.',
+        search: 'Search by code, equipment or model',
+        assign: 'Link equipment',
+        assigning: 'Linking…',
+        empty: 'No equipment matches this search.',
+        loadError: 'Could not load the canonical equipment catalog.',
+        readonly: 'A user with Maintenance edit access must resolve the equipment identity.',
+        nextAction: 'Link canonical equipment',
+      }
+    : {
+        title: 'Resolver identidad del equipo',
+        description: 'Esta OT no tiene equipo canónico. Vincula el activo correcto antes de planificar o ejecutar.',
+        search: 'Buscar por código, equipo o modelo',
+        assign: 'Vincular equipo',
+        assigning: 'Vinculando…',
+        empty: 'No hay equipos con ese criterio.',
+        loadError: 'No se pudo cargar el catálogo canónico de equipos.',
+        readonly: 'Un usuario con permiso de edición en Mantención debe resolver la identidad del equipo.',
+        nextAction: 'Vincular equipo canónico',
+      };
   const selectedCostCenter = costCenters.find((row: { id: string }) => row.id === workOrder?.cost_center_id);
   const isExecution = viewer?.mode === 'execution';
 
@@ -85,6 +137,19 @@ export function WorkOrderDetail({ locale, dictionary }: { locale: Locale; dictio
     const result = await response.json().catch(() => null);
     if (!response.ok) throw new Error(result?.error || 'request failed');
     await mutate();
+  };
+
+  const assignCanonicalAsset = async (assetId: string) => {
+    setAssigningAssetId(assetId);
+    setAssetIdentityError(null);
+    try {
+      await patchOrder({ canonical_asset_id: assetId });
+      setAssetQuery('');
+    } catch (cause) {
+      setAssetIdentityError(cause instanceof Error ? cause.message : assetResolutionCopy.loadError);
+    } finally {
+      setAssigningAssetId(null);
+    }
   };
 
   if (isLoading || viewerLoading) {
@@ -114,10 +179,12 @@ export function WorkOrderDetail({ locale, dictionary }: { locale: Locale; dictio
   }
 
   if (viewer?.mode === 'planning' && !isHistorical) {
-    const preparationReady = Boolean(workOrder.assigned_person_id && workOrder.cost_center_id);
+    const preparationReady = Boolean(workOrder.canonical_asset_id && workOrder.assigned_person_id && workOrder.cost_center_id);
     const isStarted = workOrder.status === 'in_progress' || workOrder.status === 'completed';
     const isCompleted = workOrder.status === 'completed';
-    const nextAction = !workOrder.assigned_person_id
+    const nextAction = !workOrder.canonical_asset_id
+      ? assetResolutionCopy.nextAction
+      : !workOrder.assigned_person_id
       ? t.assigneeCard.pending
       : !workOrder.cost_center_id
         ? t.financial.pending
@@ -138,8 +205,62 @@ export function WorkOrderDetail({ locale, dictionary }: { locale: Locale; dictio
           <h1 className="mt-2 text-2xl font-semibold tracking-tight">{workOrder.title || t.untitled}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{workOrder.asset_code || t.noCode} · {workOrder.asset_name || t.noAsset}</p>
         </div>
-        <Button asChild variant="outline"><Link href={`/dashboard/mantenimiento/equipos/${workOrder.canonical_asset_id || workOrder.asset_id}`}>Ficha 360</Link></Button>
+        {workOrder.canonical_asset_id ? (
+          <Button asChild variant="outline"><Link href={`/dashboard/mantenimiento/equipos/${workOrder.canonical_asset_id}`}>Ficha 360</Link></Button>
+        ) : null}
       </section>
+
+      {!workOrder.canonical_asset_id ? (
+        <Card className="border-destructive/30 bg-destructive/5 shadow-none">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">{assetResolutionCopy.title}</CardTitle>
+            <p className="text-sm text-muted-foreground">{assetResolutionCopy.description}</p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {!canEdit ? (
+              <p className="text-sm text-muted-foreground">{assetResolutionCopy.readonly}</p>
+            ) : (
+              <>
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={assetQuery}
+                    onChange={(event) => setAssetQuery(event.target.value)}
+                    placeholder={assetResolutionCopy.search}
+                    className="pl-9"
+                    disabled={equipmentLoading}
+                  />
+                </div>
+                {equipmentError ? <p className="text-sm text-destructive">{assetResolutionCopy.loadError}</p> : null}
+                {assetIdentityError ? <p className="text-sm text-destructive">{assetIdentityError}</p> : null}
+                {!equipmentLoading && !equipmentError ? (
+                  <div className="divide-y rounded-md border bg-background">
+                    {assetOptions.length === 0 ? (
+                      <p className="p-3 text-sm text-muted-foreground">{assetResolutionCopy.empty}</p>
+                    ) : assetOptions.map((asset) => (
+                      <div key={asset.id} className="flex items-center justify-between gap-3 p-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">{asset.code} · {asset.name}</p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">{asset.type}{asset.model ? ` · ${asset.model}` : ''}</p>
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={Boolean(assigningAssetId)}
+                          onClick={() => void assignCanonicalAsset(asset.id)}
+                        >
+                          {assigningAssetId === asset.id ? assetResolutionCopy.assigning : assetResolutionCopy.assign}
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card className="shadow-none">
         <CardHeader className="pb-3">
