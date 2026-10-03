@@ -6,6 +6,10 @@ const migration = await readFile(
   new URL('../supabase/migrations/20261002235000_refine_finance_alerts_and_exception_details.sql', import.meta.url),
   'utf8',
 );
+const completeWorklistMigration = await readFile(
+  new URL('../supabase/migrations/20261003002000_complete_finance_exception_worklist.sql', import.meta.url),
+  'utf8',
+);
 const api = await readFile(new URL('../app/api/finanzas/excepciones/route.ts', import.meta.url), 'utf8');
 const page = await readFile(new URL('../app/dashboard/finanzas/excepciones/page.tsx', import.meta.url), 'utf8');
 const layout = await readFile(new URL('../app/dashboard/finanzas/layout.tsx', import.meta.url), 'utf8');
@@ -53,4 +57,13 @@ test('finance navigation and role-task routes land on actionable control surface
   assert.match(inbox, /source_warning_lines/);
   assert.match(inbox, /\/dashboard\/finanzas\/excepciones\?issue=/);
   assert.match(inbox, /treasury_missing_due_date[\s\S]*\/dashboard\/finanzas\/pagos/);
+});
+
+
+test('finance exception center stays quality-scoped and includes future unlinked-product rows', () => {
+  assert.match(api, /QUALITY_ALERT_CODES/);
+  assert.match(api, /\.in\('alert_code', QUALITY_ALERT_CODES\)/);
+  assert.match(api, /unlinked_products/);
+  assert.match(completeWorklistMigration, /'unlinked_products'::text as exception_kind/);
+  assert.match(completeWorklistMigration, /canonical\.products/);
 });
