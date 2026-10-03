@@ -7,6 +7,7 @@ const inbox = await readFile(new URL('../app/api/actions/inbox/route.ts', import
 
 test('home resolves executive cargos and uses canonical module access as fallback', () => {
   assert.match(home, /gerente\|subgerente\|presidente/);
+  assert.match(home, /jefe man\(\?:\\\.\|\\s\)/);
   assert.match(home, /hasModuleAccess\(moduleAccess, 'mant_gerencial', 'mant_operaciones'\)/);
   assert.match(home, /hasModuleAccess\(moduleAccess, 'prod_sondaje'/);
   assert.match(home, /hasModuleAccess\(moduleAccess, 'bodega_inventario'\)/);
