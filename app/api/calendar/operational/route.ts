@@ -225,13 +225,11 @@ export async function GET(request: NextRequest) {
         .is('generated_work_order_id', null)
         .limit(500),
       context.supabase
-        .from('preventive_maintenance_schedules')
-        .select('id,task_name,priority,current_meter_snapshot,next_due_meter,meter_unit,canonical_asset_id')
+        .from('preventive_maintenance_hour_status_v1')
+        .select('schedule_id,canonical_asset_id,asset_code,asset_name,task_name,priority,due_meter,effective_current_meter,remaining_hours,hour_status,alert_due,generated_work_order_id,meter_evidence_source')
         .eq('organization_id', context.organizationId)
-        .or('enabled.eq.true,enabled.is.null')
+        .eq('alert_due', true)
         .is('generated_work_order_id', null)
-        .not('current_meter_snapshot', 'is', null)
-        .not('next_due_meter', 'is', null)
         .limit(500),
       context.supabase
         .from('compliance_events')
@@ -361,44 +359,34 @@ export async function GET(request: NextRequest) {
         }, today));
       }
 
-      const overdueMeterRows = (meterPreventiveResult.data || []).filter((row) => {
-        const currentMeter = Number(row.current_meter_snapshot);
-        const nextDueMeter = Number(row.next_due_meter);
-        return Number.isFinite(currentMeter) && Number.isFinite(nextDueMeter) && currentMeter >= nextDueMeter;
-      });
-      const overdueAssetIds = Array.from(new Set(overdueMeterRows.map((row) => row.canonical_asset_id).filter(Boolean)));
-      const { data: overdueAssets, error: overdueAssetsError } = overdueAssetIds.length
-        ? await context.supabase
-            .from('maintenance_canonical_assets_v1')
-            .select('id,asset_code,name')
-            .eq('organization_id', context.organizationId)
-            .in('id', overdueAssetIds)
-        : { data: [], error: null };
-      if (overdueAssetsError) warnings.push('No se pudieron resolver los equipos de mantenimientos vencidos por horómetro.');
-      const overdueAssetById = new Map((overdueAssets || []).map((row) => [row.id, row]));
-
-      for (const row of overdueMeterRows) {
-        const currentMeter = Number(row.current_meter_snapshot);
-        const nextDueMeter = Number(row.next_due_meter);
-        const overrun = Math.max(0, currentMeter - nextDueMeter);
+      for (const row of meterPreventiveResult.data || []) {
+        if (row.hour_status !== 'overdue' || row.alert_due !== true || row.generated_work_order_id) continue;
+        const currentMeter = Number(row.effective_current_meter);
+        const dueMeter = Number(row.due_meter);
+        const remainingHours = Number(row.remaining_hours);
+        if (!Number.isFinite(currentMeter) || !Number.isFinite(dueMeter) || !Number.isFinite(remainingHours)) continue;
+        const overrun = Math.max(0, Math.abs(remainingHours));
         const overrunLabel = new Intl.NumberFormat('es-CL', { maximumFractionDigits: 1 }).format(overrun);
-        const asset = row.canonical_asset_id ? overdueAssetById.get(row.canonical_asset_id) : null;
-        const assetLabel = normalizeText(asset?.name || asset?.asset_code);
+        const assetLabel = normalizeText(row.asset_name || row.asset_code);
+        const evidenceLabel = row.meter_evidence_source === 'runtime_reading' ? 'lectura Motil' : 'snapshot fuente';
+        const href = row.canonical_asset_id
+          ? `/dashboard/mantenimiento/preventivo-horas?assetId=${encodeURIComponent(row.canonical_asset_id)}&dueMeter=${encodeURIComponent(String(row.due_meter))}`
+          : '/dashboard/mantenimiento/preventivo-horas';
         items.push(buildItem({
-          id: `preventive-meter:${row.id}`,
+          id: `preventive-meter:${row.schedule_id}`,
           source: 'maintenance',
           source_label: 'Mantenimiento',
           kind: 'Preventivo por horómetro',
           date: today,
           title: assetLabel ? `${row.task_name} · ${assetLabel}` : row.task_name,
-          subtitle: `Lectura actual ${currentMeter} · umbral ${nextDueMeter} ${normalizeText(row.meter_unit) || 'h'}`,
-          reference: normalizeText(asset?.asset_code),
+          subtitle: `Lectura efectiva ${currentMeter} h · vence ${dueMeter} h · ${evidenceLabel}`,
+          reference: normalizeText(row.asset_code),
           status: 'due_by_meter',
           status_label: `Vencido por horómetro (+${overrunLabel} h)`,
           priority: normalizePriority(row.priority),
           owner: null,
           location: null,
-          href: '/dashboard/mantenimiento/planificacion',
+          href,
           historical: false,
           completed_at: null,
         }, today, true));
