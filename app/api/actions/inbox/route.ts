@@ -321,7 +321,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'No se pudo cargar tu bandeja operacional' }, { status: 500 });
   }
 
-  const baseRows = [...(actionableResult.data || []), ...(escalationResult.data || [])] as Array<
+  const baseRows = [...(actionableResult.data || []), ...(escalationResult.data || [])] as unknown as Array<
     Omit<RoleTask, 'personal_status' | 'snoozed_until' | 'visible_now' | 'actions' | 'module_route' | 'urgency_label' | 'responsibility_label'>
   >;
 
