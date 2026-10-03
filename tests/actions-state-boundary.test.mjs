@@ -11,7 +11,9 @@ test('role action state is validated against the current cargo worklist before p
   assert.match(source, /\.from\('profiles'\)/);
   assert.match(source, /\.eq\('id', context\.userId\)/);
   assert.match(source, /\.eq\('organization_id', context\.organizationId\)/);
-  assert.match(source, /\.from\('role_task_worklist_v1'\)/);
+  assert.doesNotMatch(source, /\.from\('role_task_worklist_v1'\)/);
+  assert.match(source, /\.from\('role_tasks_actionable_v1'\)/);
+  assert.match(source, /\.from\('role_task_escalations_v1'\)/);
   assert.match(source, /\.eq\('cargo_id', profile\.cargo_id\)/);
   assert.match(source, /\.eq\('task_key', sourceKey\)/);
   assert.match(source, /La acción ya no está disponible para tu cargo/);

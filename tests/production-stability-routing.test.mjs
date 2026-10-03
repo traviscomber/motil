@@ -24,20 +24,22 @@ test('unscheduled product-media routes remain protected', () => {
   assert.match(mediaGenerationRoute, /Unauthorized/);
 });
 
-test('role inbox short-circuits cargos outside canonical operational coverage before the heavy frontend view', () => {
+test('role inbox short-circuits cargos outside canonical operational coverage before scoped task queries', () => {
   assert.match(inboxRoute, /operational_role_inbox_coverage_v1/);
   assert.match(inboxRoute, /hasPrivateFinanceInbox/);
   assert.match(inboxRoute, /JEFE ADM\./);
   assert.match(inboxRoute, /!coverageError && !coverage && !hasPrivateFinanceInbox/);
 
   const coverageGuard = inboxRoute.indexOf('!coverageError && !coverage && !hasPrivateFinanceInbox');
-  const heavyTaskLookup = inboxRoute.indexOf(".from('role_task_frontend_v1')");
-  assert.ok(coverageGuard >= 0 && heavyTaskLookup > coverageGuard);
+  const scopedTaskLookup = inboxRoute.indexOf(".from('role_tasks_actionable_v1')");
+  assert.ok(coverageGuard >= 0 && scopedTaskLookup > coverageGuard);
 });
 
-test('role inbox falls back to the canonical task view if the optimization surface fails', () => {
-  assert.match(inboxRoute, /coverage lookup failed; falling back to task view/);
-  assert.match(inboxRoute, /role_task_frontend_v1/);
+test('role inbox continues with scoped canonical task sources if coverage optimization fails', () => {
+  assert.match(inboxRoute, /coverage lookup failed; continuing with scoped task queries/);
+  assert.match(inboxRoute, /role_tasks_actionable_v1/);
+  assert.match(inboxRoute, /role_task_escalations_v1/);
+  assert.doesNotMatch(inboxRoute, /\.from\('role_task_frontend_v1'\)/);
 });
 
 test('administration root has a stable destination instead of returning 404', () => {
