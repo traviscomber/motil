@@ -42,7 +42,7 @@ LEER EN ESTE ORDEN:
 ```
 1. Navegar a http://localhost:3000/auth/login
 2. Email: juan@n3uralia.com
-3. Password: c4rlit0s
+3. Password: <SET_VIA_AUTH_ADMIN>
 4. Verificar que llega a dashboard
 ```
 
