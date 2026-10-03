@@ -10,6 +10,10 @@ const completeWorklistMigration = await readFile(
   new URL('../supabase/migrations/20261003002000_complete_finance_exception_worklist.sql', import.meta.url),
   'utf8',
 );
+const sourceShapeMigration = await readFile(
+  new URL('../supabase/migrations/20261003003000_separate_finance_zero_from_source_shape.sql', import.meta.url),
+  'utf8',
+);
 const api = await readFile(new URL('../app/api/finanzas/excepciones/route.ts', import.meta.url), 'utf8');
 const page = await readFile(new URL('../app/dashboard/finanzas/excepciones/page.tsx', import.meta.url), 'utf8');
 const layout = await readFile(new URL('../app/dashboard/finanzas/layout.tsx', import.meta.url), 'utf8');
@@ -66,4 +70,12 @@ test('finance exception center stays quality-scoped and includes future unlinked
   assert.match(api, /unlinked_products/);
   assert.match(completeWorklistMigration, /'unlinked_products'::text as exception_kind/);
   assert.match(completeWorklistMigration, /canonical\.products/);
+});
+
+
+test('finance quality keeps explicit zero amounts separate from malformed source shape', () => {
+  assert.match(sourceShapeMigration, /validation_status = 'valid'[\s\S]*net_amount = 0::numeric/);
+  assert.match(sourceShapeMigration, /validation_status = 'valid' and net_amount is null/);
+  assert.match(sourceShapeMigration, /source_warning_lines/);
+  assert.match(sourceShapeMigration, /missing_centers[\s\S]*net_amount is not null/);
 });
