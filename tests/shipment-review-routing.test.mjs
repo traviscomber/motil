@@ -12,13 +12,14 @@ test('role inbox deep-links shipment reviews to the canonical production workspa
 });
 
 test('shipment review API authorizes by tenant, cargo and visible task before loading shipment', () => {
-  assert.match(reviewRoute, /\.from\('role_task_frontend_v1'\)/);
-  assert.match(reviewRoute, /\.eq\('organization_id', context\.organizationId\)/);
-  assert.match(reviewRoute, /\.eq\('cargo_id', profile\.cargo_id\)/);
-  assert.match(reviewRoute, /\.eq\('task_key', taskKey\)/);
+  assert.match(reviewRoute, /getVisibleScopedRoleTask/);
+  assert.doesNotMatch(reviewRoute, /role_task_frontend_v1/);
+  assert.match(reviewRoute, /organizationId: context\.organizationId/);
+  assert.match(reviewRoute, /cargoId: profile\.cargo_id/);
+  assert.match(reviewRoute, /taskKey,/);
   assert.match(reviewRoute, /\.from\('production_concentrate_shipments'\)/);
   assert.match(reviewRoute, /\.eq\('organization_id', context\.organizationId\)/);
-  assert.match(reviewRoute, /authorizationBoundary: 'role_task_frontend_v1'/);
+  assert.match(reviewRoute, /authorizationBoundary: 'scoped_role_task_sources_v1'/);
 });
 
 test('shipment review workspace preserves source fidelity and remains read-only', () => {
