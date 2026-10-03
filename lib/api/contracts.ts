@@ -307,18 +307,37 @@ export async function getContractsReport(organizationId: string, periodo: string
   };
 }
 
-export async function getLegalComplianceOverview(organizationId: string) {
+async function listLegalDocumentsForOrganization(organizationId: string) {
   const supabase = getSupabaseServerClient();
-  const { contracts } = await listContractsForOrganization(organizationId);
-  const { data: documents, error } = await supabase
-    .from('documents')
-    .select('id, title, status, expiry_date, category')
-    .eq('organization_id', organizationId)
-    .in('category', ['compliance', 'regulatory']);
+  const [membersResult, assetsResult] = await Promise.all([
+    supabase.from('user_roles').select('user_id').eq('organization_id', organizationId),
+    supabase.from('maintenance_assets').select('id').eq('organization_id', organizationId),
+  ]);
 
-  if (error) {
-    throw error;
-  }
+  if (membersResult.error) throw membersResult.error;
+  if (assetsResult.error) throw assetsResult.error;
+
+  const memberIds = (membersResult.data || []).map((row: any) => String(row.user_id)).filter(Boolean);
+  const assetIds = (assetsResult.data || []).map((row: any) => String(row.id)).filter(Boolean);
+  const ownershipFilters: string[] = [];
+  if (memberIds.length) ownershipFilters.push(`uploaded_by.in.(${memberIds.join(',')})`);
+  if (assetIds.length) ownershipFilters.push(`asset_id.in.(${assetIds.join(',')})`);
+  if (!ownershipFilters.length) return [];
+
+  const { data, error } = await supabase
+    .from('module_documents')
+    .select('id,document_name,document_type,category,status,l1_status,l2_status,valid_until,expires_at,file_path,file_url,uploaded_by,asset_id')
+    .eq('module', 'legal')
+    .is('deleted_at', null)
+    .or(ownershipFilters.join(','));
+
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getLegalComplianceOverview(organizationId: string) {
+  const { contracts } = await listContractsForOrganization(organizationId);
+  const documentRows = await listLegalDocumentsForOrganization(organizationId);
 
   const expiringContracts = contracts.filter((contract) => {
     const days = contract.days_until_expiry;
@@ -331,11 +350,25 @@ export async function getLegalComplianceOverview(organizationId: string) {
       contract.status === 'En Revisión' || contract.compliance_status === 'Pendiente'
   );
 
-  const documentRows = documents || [];
-  const expiringDocuments = documentRows.filter((document) => {
-    if (!document.expiry_date) return false;
-    const days = daysUntil(document.expiry_date);
+  const expiringDocuments = documentRows.filter((document: any) => {
+    const expiryDate = document.expires_at || document.valid_until;
+    if (!expiryDate) return false;
+    const days = daysUntil(expiryDate);
     return typeof days === 'number' && days >= 0 && days <= 30;
+  });
+
+  const expiredDocuments = documentRows.filter((document: any) => {
+    const expiryDate = document.expires_at || document.valid_until;
+    if (!expiryDate) return false;
+    const days = daysUntil(expiryDate);
+    return typeof days === 'number' && days < 0;
+  });
+
+  const approvedDocuments = documentRows.filter((document: any) => {
+    const state = String(document.status || '').toLowerCase();
+    const l2 = String(document.l2_status || '').toLowerCase();
+    const l1 = String(document.l1_status || '').toLowerCase();
+    return ['active', 'approved', 'aprobado', 'vigente'].includes(state) || l2 === 'cumple' || (l2 === '' && l1 === 'cumple');
   });
 
   return {
@@ -348,12 +381,22 @@ export async function getLegalComplianceOverview(organizationId: string) {
       expired_contracts: contracts.filter((contract) => contract.status === 'Vencido').length,
       legal_documents: documentRows.length,
       expiring_documents: expiringDocuments.length,
-      approved_documents: documentRows.filter((document) => document.status === 'approved').length,
+      approved_documents: approvedDocuments.length,
+      expired_documents: expiredDocuments.length,
     },
     contracts_pending_review: contractsPendingReview.slice(0, 10),
     contracts_missing_file: contractsMissingFile.slice(0, 10),
     expiring_contracts: expiringContracts.slice(0, 10),
-    expiring_documents: expiringDocuments.slice(0, 10),
+    expiring_documents: expiringDocuments.slice(0, 10).map((document: any) => ({
+      id: document.id,
+      title: document.document_name,
+      expiry_date: document.expires_at || document.valid_until,
+    })),
+    expired_documents: expiredDocuments.slice(0, 10).map((document: any) => ({
+      id: document.id,
+      title: document.document_name,
+      expiry_date: document.expires_at || document.valid_until,
+    })),
   };
 }
 
