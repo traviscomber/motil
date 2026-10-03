@@ -142,6 +142,25 @@ const SHORTCUT_HREFS: Record<string, string> = {
   maintenance: '/dashboard/mantenimiento',
 };
 
+const SHORTCUT_MODULES: Record<string, string[]> = {
+  productionIntel: ['prod_operaciones'],
+  plantMetallurgy: ['prod_operaciones', 'prod_quimica'],
+  maintenanceIntel: ['mant_gerencial', 'mant_operaciones'],
+  availability: ['mant_gerencial', 'mant_operaciones'],
+  workOrders: ['mant_operaciones'],
+  drilling: ['prod_sondaje', 'prod_sondaje_exploracion', 'prod_sondaje_produccion'],
+  equipment: ['mant_operaciones', 'mant_gerencial'],
+  warehouseIntel: ['bodega_inventario'],
+  warehouse: ['bodega_inventario'],
+  sustainability: ['sos_tablero', 'hse_tablero', 'hse_incidente', 'hse_riesgos'],
+  nonConformities: ['hse_incidente', 'hse_riesgos'],
+  finance: ['fin_finanzas'],
+  costCenters: ['core_centros_costos', 'fin_finanzas'],
+  dataHealth: ['core_alertas'],
+  production: ['prod_operaciones', 'prod_sondaje', 'prod_geologia', 'prod_quimica', 'prod_topografia'],
+  maintenance: ['mant_operaciones', 'mant_gerencial'],
+};
+
 const fill = (template: string, value: string | number) => template.replace('{n}', String(value));
 
 function configFor(
@@ -149,6 +168,7 @@ function configFor(
   production: ProductionOverview | null | undefined,
   maintenance: MaintenanceOverview | null | undefined,
   inbox: InboxPayload | null | undefined,
+  moduleAccess: Record<string, string> | null | undefined,
   t: Dictionary['app']['home'],
   locale: Locale,
 ): { eyebrow: string; title: string; description: string; metrics: Metric[]; shortcuts: Shortcut[] } {
@@ -166,7 +186,13 @@ function configFor(
   const overdueDetail = (template: string) => summary ? fill(template, summary.overdue) : t.actionsSourceUnavailable;
 
   const shortcutsFor = (modeCfg: { shortcuts: readonly { key: string; label: string; detail: string }[] }) =>
-    modeCfg.shortcuts.map((item) => ({ label: item.label, href: SHORTCUT_HREFS[item.key] ?? '/dashboard', detail: item.detail }));
+    modeCfg.shortcuts
+      .filter((item) => {
+        if (item.key === 'actions' || mode === 'management' || !moduleAccess) return true;
+        const requiredModules = SHORTCUT_MODULES[item.key];
+        return !requiredModules || requiredModules.some((key) => hasModuleAccess(moduleAccess, key));
+      })
+      .map((item) => ({ label: item.label, href: SHORTCUT_HREFS[item.key] ?? '/dashboard', detail: item.detail }));
 
   if (mode === 'plant') {
     const cfg = t.modes.plant;
@@ -277,7 +303,7 @@ export function DashboardHome({ locale, dictionary }: { locale: Locale; dictiona
     { revalidateOnFocus: false },
   );
 
-  const config = configFor(mode, production.data, maintenance.data, inbox.data, t, locale);
+  const config = configFor(mode, production.data, maintenance.data, inbox.data, inbox.data?.moduleAccess, t, locale);
   const tasks = (inbox.data?.tasks || []).slice(0, 5);
   const loading = inbox.isLoading;
   const inboxUnavailable = Boolean(inbox.error) || (!loading && !inbox.data);
