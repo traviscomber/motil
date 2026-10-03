@@ -1,0 +1,31 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { readFile } from 'node:fs/promises';
+
+const ownerMigration = await readFile(
+  new URL('../supabase/migrations/20261002225500_fix_drilling_freshness_owner.sql', import.meta.url),
+  'utf8',
+);
+const slaMigration = await readFile(
+  new URL('../supabase/migrations/20261002230000_preserve_drilling_freshness_sla.sql', import.meta.url),
+  'utf8',
+);
+const inbox = await readFile(new URL('../app/api/actions/inbox/route.ts', import.meta.url), 'utf8');
+
+test('drilling freshness is owned by the drilling domain and JEFE SONDAJE', () => {
+  assert.match(ownerMigration, /data_health:production:drilling_freshness/);
+  assert.match(ownerMigration, /'drilling'::text AS domain/);
+  assert.match(ownerMigration, /'JEFE SONDAJE'::text/);
+});
+
+test('drilling freshness preserves the previous production SLA and escalation', () => {
+  assert.match(slaMigration, /where domain = 'plant'/);
+  assert.match(slaMigration, /'drilling'/);
+  assert.match(slaMigration, /severity in \('critical', 'warning'\)/);
+  assert.match(slaMigration, /on conflict \(domain, severity, responsibility\)/);
+});
+
+test('drilling freshness routes to the dedicated source workspace', () => {
+  assert.match(inbox, /rawId === 'production' && rest\[0\] === 'drilling_freshness'/);
+  assert.match(inbox, /actualizar-fuentes\?source=drilling/);
+});
