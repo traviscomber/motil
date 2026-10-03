@@ -105,7 +105,7 @@ function resolveMode(
   if (/todos los cargos|gerente|subgerente|presidente|director|administrador|admin|jefatura general/.test(cargo)) return 'management';
   if (/sostenibilidad|prevencion|hse|medio ambiente/.test(cargo)) return 'sustainability';
   if (/jefe adm|administracion|finanzas|financiero/.test(cargo)) return 'finance';
-  if (/mantencion|mantenimiento|mecan|taller|jefe man(?:\.|\s)|jefe mant|planificador.*mant/.test(cargo)) return 'maintenance';
+  if (/mantencion|mantenimiento|mecan|taller|jefe man\.? eq|jefe man(?:\.|\s)|jefe mant|planificador.*mant/.test(cargo)) return 'maintenance';
   if (/sondaje|perforacion|perforista/.test(cargo)) return 'drilling';
   if (/jefe.*planta|planta.*jefe|metalurg/.test(cargo)) return 'plant';
   if (/bodega|inventario|almacen/.test(cargo)) return 'inventory';
