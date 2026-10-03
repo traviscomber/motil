@@ -14,7 +14,7 @@ const tokenRules = [
 ];
 
 const quotedCredential = /\b(?:password|passwd|pwd|contrase(?:n|ñ)a|secret|service_role_key|api_key|apikey|access_token|auth_token)\b\s*[:=]\s*(['"])([^'"]{6,})\1/gi;
-const documentationCredential = /^\s*(?:[-*]\s*)?(?:demo\s+)?(?:password|contrase(?:n|ñ)a)\s*:\s*`?([^\s`]+)`?\s*$/i;
+const documentationCredential = /^\s*(?:[-*]\s*)?(?:\*\*|__)?(?:demo\s+)?(?:password|contrase(?:n|ñ)a)(?:\*\*|__)?\s*:\s*`?([^\s`]+)`?\s*$/i;
 const findings = [];
 
 for (const file of tracked) {

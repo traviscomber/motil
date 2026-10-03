@@ -53,8 +53,9 @@ test('inactive profiles cannot receive a new session or retain an existing one',
   assert.match(loginRoute, /cargo_id, status/);
   assert.match(loginRoute, /!profile \|\| profile\.status !== 'active'/);
   assert.match(authSession, /full_name, first_name, last_name, status/);
-  assert.match(authSession, /if \(profile && profile\.status !== 'active'\)/);
-  assert.match(authSession, /if \(identity\.active === false\) return null;/);
+  assert.match(authSession, /if \(!profile\) \{\s*return \{ authUserId, active: false \};\s*\}/);
+  assert.match(authSession, /if \(profile\.status !== 'active'\)/);
+  assert.match(authSession, /identity\.active !== true \|\| !identity\.applicationUserId/);
   assert.match(proxy, /isActiveCustomSessionProfile/);
   assert.match(proxy, /customSession && !\(await isActiveCustomSessionProfile\(customSession\.user\.id\)\)/);
 });

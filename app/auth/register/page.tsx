@@ -1,7 +1,8 @@
-import { getDictionaryForRequest } from '@/lib/i18n/server';
-import { RegisterPage } from '@/components/auth/register-page';
+import { redirect } from 'next/navigation';
 
-export default async function AuthRegisterPage() {
-  const { dictionary } = await getDictionaryForRequest();
-  return <RegisterPage dictionary={dictionary} />;
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+export default function AuthRegisterPage() {
+  redirect('/auth/login?registration=admin_only');
 }

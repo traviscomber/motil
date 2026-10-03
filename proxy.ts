@@ -20,7 +20,6 @@ const CONTENT_SECURITY_POLICY = [
 const PUBLIC_API_ROUTES = new Set([
   '/api/health',
   '/api/auth/login',
-  '/api/auth/register',
   '/api/auth/logout',
 ]);
 

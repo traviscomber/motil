@@ -119,11 +119,14 @@ async function enrichIdentity(
       }
     }
 
-    const applicationUserId = profile?.id || userId;
-    // A disabled profile must invalidate both a fresh Supabase session and the
-    // compatibility cookie issued by MOTIL. Do not rely on UI visibility here:
-    // every API guard resolves through this function.
-    if (profile && profile.status !== 'active') {
+    if (!profile) {
+      return { authUserId, active: false };
+    }
+
+    const applicationUserId = profile.id;
+    // MOTIL requires a canonical active application profile for every session.
+    // A raw Supabase Auth identity is never sufficient by itself.
+    if (profile.status !== 'active') {
       return { applicationUserId, authUserId, active: false };
     }
 
@@ -186,8 +189,8 @@ async function resolveSupabaseAuth(request: NextRequest): Promise<AuthContext | 
     user.email,
     Boolean(user.email_confirmed_at)
   );
-  if (identity.active === false) return null;
-  const applicationUserId = identity.applicationUserId || user.id;
+  if (identity.active !== true || !identity.applicationUserId) return null;
+  const applicationUserId = identity.applicationUserId;
 
   return {
     user: {
@@ -212,8 +215,8 @@ export async function resolveAuthContext(request: NextRequest): Promise<AuthCont
       customSession.user.email,
       true
     );
-    if (identity.active === false) return null;
-    const applicationUserId = identity.applicationUserId || customSession.user.id;
+    if (identity.active !== true || !identity.applicationUserId) return null;
+    const applicationUserId = identity.applicationUserId;
     const organizationId = identity.organizationId || customSession.user.organization_id || undefined;
     const role = identity.role || customSession.role || undefined;
 
