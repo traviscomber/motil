@@ -22,8 +22,8 @@ const masterImportPage = await readFile(
 
 test('drilling freshness is owned by the drilling domain and JEFE SONDAJE', () => {
   assert.match(ownerMigration, /data_health:production:drilling_freshness/);
-  assert.match(ownerMigration, /'drilling'::text AS domain/);
-  assert.match(ownerMigration, /'JEFE SONDAJE'::text/);
+  assert.match(ownerMigration, /replace\(v_tail, '''plant''::text AS domain', '''drilling''::text AS domain'\)/);
+  assert.match(ownerMigration, /replace\(v_tail, '''JEFE PLANTA''::text', '''JEFE SONDAJE''::text'\)/);
 });
 
 test('drilling freshness preserves the previous production SLA and escalation', () => {
