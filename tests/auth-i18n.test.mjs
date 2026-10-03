@@ -39,11 +39,12 @@ test('auth client components receive the dictionary as a prop and hardcode no ch
   assert.doesNotMatch(registerPage, /¿Ya tienes cuenta/);
 });
 
-test('auth routes resolve the request locale server-side and pass the dictionary down', () => {
-  for (const route of [loginRoute, registerRoute]) {
-    assert.match(route, /getDictionaryForRequest\(\)/);
-    assert.match(route, /<LoginPage dictionary=\{dictionary\} \/>|<RegisterPage dictionary=\{dictionary\} \/>/);
-  }
+test('login resolves request locale while legacy registration redirects safely', () => {
+  assert.match(loginRoute, /getDictionaryForRequest\(\)/);
+  assert.match(loginRoute, /<LoginPage dictionary=\{dictionary\} \/>/);
   assert.match(loginRoute, /export const dynamic = 'force-dynamic'/);
   assert.match(loginRoute, /export const revalidate = 0/);
+
+  assert.match(registerRoute, /redirect\('\/auth\/login\?registration=admin_only'\)/);
+  assert.doesNotMatch(registerRoute, /<RegisterPage/);
 });
