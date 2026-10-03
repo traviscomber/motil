@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getOrganizationContext } from '@/lib/api/organization-context';
+import { getVisibleScopedRoleTask } from '@/lib/actions/scoped-role-task';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const HSE_KINDS = new Set(['incident', 'inspection', 'risk']);
@@ -32,19 +33,16 @@ export async function GET(
   if (!profile?.cargo_id) return NextResponse.json({ error: 'Cargo no disponible' }, { status: 403 });
 
   const taskKey = `${kind}:${id}`;
-  const { data: task, error: taskError } = await context.supabase
-    .from('role_task_frontend_v1')
-    .select('task_key,title,evidence_summary,status,severity,responsibility,role_action,due_at,urgency_label,responsibility_label,visible_now')
-    .eq('organization_id', context.organizationId)
-    .eq('cargo_id', profile.cargo_id)
-    .eq('task_key', taskKey)
-    .eq('visible_now', true)
-    .order('priority_score', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const { task, error: taskError } = await getVisibleScopedRoleTask({
+    supabase: context.supabase,
+    organizationId: context.organizationId,
+    cargoId: profile.cargo_id,
+    userId: context.userId,
+    taskKey,
+  });
 
   if (taskError) {
-    console.error('[actions/hse-record] task authorization failed', taskError);
+    console.error('[actions/hse-record] scoped task authorization failed', taskError);
     return NextResponse.json({ error: 'No se pudo autorizar la acción HSE' }, { status: 500 });
   }
   if (!task) return NextResponse.json({ error: 'Esta acción HSE no está disponible para tu cargo' }, { status: 404 });
@@ -87,6 +85,6 @@ export async function GET(
     task,
     record,
     source,
-    authorizationBoundary: 'role_task_frontend_v1',
+    authorizationBoundary: 'scoped_role_task_sources_v1',
   });
 }
