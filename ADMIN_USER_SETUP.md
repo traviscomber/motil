@@ -1,40 +1,24 @@
-# Usuario Admin Agregado - Gonzalo Canales
+# Administración de usuarios privilegiados
 
-## Detalles
+Este documento reemplaza una nota histórica que contenía credenciales y datos específicos de una cuenta administrativa.
 
-- **Email**: gonzalocanales@lapatagua.cl
-- **Contraseña**: lapatagua2026
-- **Rol**: admin (completo)
-- **Usuario ID**: 9004474f-2122-4d58-8e67-e8f1efc463c3
-- **Organización**: 2bd7fe06-8e4f-4a3a-b261-e3f5d8aa3dee
-- **Estado**: active
+## Regla vigente
 
-## Permisos
+- Los usuarios administrativos se crean y gestionan desde Administración > Usuarios.
+- Las credenciales reales no se almacenan en Git, documentación, issues, PRs ni logs.
+- La asignación de rol debe quedar limitada a la organización correspondiente.
+- El estado del perfil debe ser `active` para permitir acceso.
+- Los permisos de módulos deben resolverse desde la matriz canónica de roles/cargos.
+- Las identidades Supabase Auth deben estar vinculadas a un perfil MOTIL canónico.
 
-El usuario tiene acceso completo como admin:
-- ✅ Puede crear capacitaciones en sostenibilidad
-- ✅ Puede ver todos los documentos HSE
-- ✅ Puede gestionar inspecciones
-- ✅ Puede crear corrective actions
-- ✅ Todas las funciones de admin
+## Verificación
 
-## Ubicación en BD
+Para validar un usuario privilegiado:
 
-Tablas actualizadas:
-- `profiles`: Nuevo registro con role='admin'
-- `user_roles`: Enlace admin a la organización
+1. Confirmar perfil canónico y organización.
+2. Confirmar vínculo de identidad Auth cuando corresponda.
+3. Confirmar rol/cargo vigente.
+4. Probar sólo las operaciones autorizadas para ese rol.
+5. Revisar RLS y guards de API del módulo afectado.
 
-## Cómo se logró
-
-1. Usuario insertado directamente en `profiles` con password_hash hasheada
-2. Rol admin asignado en `profiles` y en `user_roles`
-3. El usuario puede hacer login con email/contraseña normalmente
-4. Los APIs de capacitaciones reconocerán el rol admin y permitirán crear capacitaciones
-5. La lógica de `getSustainabilityContext()` extrae el rol del usuario y permite operaciones de admin
-
-## Próximos pasos si falta algo
-
-Si el usuario aún no puede crear capacitaciones, revisar:
-1. La lógica en `getSustainabilityContext()` que valida el rol
-2. Las RLS policies en `sostenibilidad_capacitaciones` tabla
-3. El middleware de autenticación en `/api/sostenibilidad/capacitaciones`
+No insertar hashes ni credenciales manualmente como procedimiento operativo.
