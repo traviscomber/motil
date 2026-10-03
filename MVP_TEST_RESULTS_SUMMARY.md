@@ -248,7 +248,7 @@ The N3uralia ERP MVP is verified, tested, and ready for production deployment.
 ### For Live Testing
 1. URL: `http://localhost:3000` (Dev) or deployed Vercel URL (Production)
 2. Login: `demo@n3uralia.com`
-3. Password: `DemoPass123!`
+3. Password: `<SET_VIA_AUTH_ADMIN>`
 4. Expected Result: Redirects to dashboard with KPI cards
 
 ### Deployment
