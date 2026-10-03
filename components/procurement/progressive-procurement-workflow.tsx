@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { ProductPhoto } from '@/components/inventory/product-photo';
+import { useCostCenters } from '@/hooks/use-cost-centers';
 
 const fetcher = async (url: string) => {
   const response = await fetch(url, { credentials: 'include' });
@@ -28,7 +29,7 @@ type Product = { id: string; product_code: string; name: string; unit?: string |
 type Supplier = { id: string; tax_id: string; legal_name: string; trade_name?: string | null; payment_terms?: string | null };
 type SupplierRecommendation = Supplier & { supplier_name?: string | null; order_count?: number; covered_products?: number; coverage_ratio?: number; last_order_date?: string | null; last_order_number?: string | null; last_unit_cost?: number | null; currency?: string | null; order_date?: string | null; order_number?: string | null; unit_cost?: number | null; product_code?: string | null };
 type RequestLine = { id: string; request_id: string; canonical_product_id?: string | null; product_code?: string | null; description?: string | null; quantity: number; unit?: string | null; estimated_unit_cost?: number | null; historical_unit_cost?: number | null; historical_currency?: string | null; historical_price_date?: string | null; historical_supplier_name?: string | null; historical_order_number?: string | null };
-type RequestRow = { id: string; request_number: string; status: string; priority: string; required_date?: string | null; justification?: string | null; created_at: string };
+type RequestRow = { id: string; request_number: string; status: string; priority: string; required_date?: string | null; justification?: string | null; cost_center_code?: string | null; created_at: string };
 type QuoteRow = { id: string; request_id: string; quotation_number: string; supplier_id: string; total_amount: number; currency: string; lead_time_days?: number | null; status: string };
 type PurchaseOrderLine = { id: number; purchase_order_id: string; product_code?: string | null; description?: string | null; quantity: number; quantity_received: number; unit?: string | null; unit_cost?: number | null };
 type PurchaseOrder = { id: string; order_number: string; supplier_name?: string | null; total_amount?: number | null; operational_status?: string | null; status?: string | null; expected_delivery_date?: string | null; procurement_request_id?: string | null };
@@ -54,9 +55,11 @@ export function ProgressiveProcurementWorkflow() {
   const { data: productData } = useSWR(requestOpen && productQuery.length >= 2 ? `/api/procurement/workflow?resource=products&q=${encodeURIComponent(productQuery)}` : null, fetcher);
   const { data: supplierData } = useSWR(quoteRequest && supplierQuery.length >= 2 ? `/api/procurement/workflow?resource=suppliers&q=${encodeURIComponent(supplierQuery)}` : null, fetcher);
   const { data: supplierRecommendationData, isLoading: supplierRecommendationsLoading } = useSWR(quoteRequest ? `/api/procurement/workflow?resource=supplier_recommendations&requestId=${encodeURIComponent(quoteRequest.id)}` : null, fetcher);
+  const { costCenters, loading: costCentersLoading, error: costCentersError } = useCostCenters();
 
   const [priority, setPriority] = useState('medium');
   const [requiredDate, setRequiredDate] = useState('');
+  const [costCenterCode, setCostCenterCode] = useState('');
   const [justification, setJustification] = useState('');
   const [draftLines, setDraftLines] = useState<Array<{ product: Product; quantity: number }>>([]);
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
@@ -130,9 +133,10 @@ export function ProgressiveProcurementWorkflow() {
   };
 
   const createRequest = async () => {
+    if (!costCenterCode) return setActionError('Selecciona un centro de costo.');
     if (!draftLines.length) return setActionError('Agrega al menos un producto.');
-    const ok = await execute({ action: 'create_request', payload: { priority, required_date: requiredDate || null, justification, lines: draftLines.map(({ product, quantity }) => ({ canonical_product_id: product.id, quantity, unit: product.unit, estimated_unit_cost: product.standard_cost })) } });
-    if (ok) { setRequestOpen(false); setDraftLines([]); setProductQuery(''); setJustification(''); setRequiredDate(''); setPriority('medium'); }
+    const ok = await execute({ action: 'create_request', payload: { priority, required_date: requiredDate || null, cost_center_code: costCenterCode, justification, lines: draftLines.map(({ product, quantity }) => ({ canonical_product_id: product.id, quantity, unit: product.unit, estimated_unit_cost: product.standard_cost })) } });
+    if (ok) { setRequestOpen(false); setDraftLines([]); setProductQuery(''); setJustification(''); setRequiredDate(''); setCostCenterCode(''); setPriority('medium'); }
   };
 
   const createQuotation = async () => {
@@ -209,7 +213,7 @@ export function ProgressiveProcurementWorkflow() {
               const waiting = quotes.some((quote) => quote.status === 'requested');
               return <div key={request.id} className="rounded-lg border p-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div><div className="flex items-center gap-2"><p className="font-medium">{request.request_number}</p><Badge variant="outline">{request.status}</Badge></div><p className="mt-1 text-sm text-muted-foreground">{lines.length} producto(s) · prioridad {request.priority}</p><p className="mt-2 text-sm">{request.justification || 'Sin justificación adicional'}</p></div>
+                  <div><div className="flex items-center gap-2"><p className="font-medium">{request.request_number}</p><Badge variant="outline">{request.status}</Badge></div><p className="mt-1 text-sm text-muted-foreground">{lines.length} producto(s) · prioridad {request.priority}</p><p className="mt-1 text-xs text-muted-foreground">Centro de costo: {request.cost_center_code || 'Pendiente de imputación'}</p><p className="mt-2 text-sm">{request.justification || 'Sin justificación adicional'}</p></div>
                   {awardable ? <Button size="sm" onClick={openAwardDecision}>Revisar adjudicación</Button> : waiting ? <Badge variant="secondary">Esperando respuesta</Badge> : ['draft', 'submitted', 'quoted'].includes(request.status) ? <Button size="sm" variant="outline" onClick={() => openQuote(request)}>Solicitar cotización</Button> : <Badge variant="outline">Sin acción pendiente</Badge>}
                 </div>
                 {quotes.length ? <div className="mt-4 space-y-2 border-t pt-3">{quotes.map((quote) => <div key={quote.id} className="flex items-center justify-between gap-3 text-sm"><div><span className="font-medium">{quote.quotation_number}</span><span className="ml-2 text-muted-foreground">{quote.status === 'requested' ? `Solicitud enviada · ${quote.lead_time_days || 0} días` : `${money(quote.total_amount)} · ${quote.lead_time_days || 0} días`}</span></div><Badge variant="secondary">{quote.status}</Badge></div>)}</div> : null}
@@ -234,12 +238,20 @@ export function ProgressiveProcurementWorkflow() {
       <Card className="shadow-none"><CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-medium">Continuidad financiera</p><p className="mt-1 text-sm text-muted-foreground">Después de recepción, Facturas aplica three-way match y sólo las facturas aprobadas pasan a Tesorería.</p></div><div className="flex gap-2"><Button asChild variant="outline"><Link href="/dashboard/compras/facturas"><ReceiptText className="mr-2 h-4 w-4" />Facturas</Link></Button><Button asChild variant="outline"><Link href="/dashboard/finanzas/pagos"><WalletCards className="mr-2 h-4 w-4" />Pagos</Link></Button></div></CardContent></Card>
 
       <Dialog open={requestOpen} onOpenChange={setRequestOpen}>
-        <DialogContent className="max-w-2xl"><DialogHeader><DialogTitle>Nueva solicitud de compra</DialogTitle><DialogDescription>Selecciona productos canónicos. La solicitud podrá vincularse después a cotizaciones y OC.</DialogDescription></DialogHeader>
+        <DialogContent className="max-w-2xl"><DialogHeader><DialogTitle>Nueva solicitud de compra</DialogTitle><DialogDescription>Selecciona productos canónicos y una imputación financiera válida antes de iniciar el flujo.</DialogDescription></DialogHeader>
           <div className="grid gap-4 sm:grid-cols-2"><div><Label>Prioridad</Label><Select value={priority} onValueChange={setPriority}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="low">Baja</SelectItem><SelectItem value="medium">Media</SelectItem><SelectItem value="high">Alta</SelectItem><SelectItem value="critical">Crítica</SelectItem></SelectContent></Select></div><div><Label>Fecha requerida</Label><Input type="date" value={requiredDate} onChange={(e) => setRequiredDate(e.target.value)} /></div></div>
+          <div>
+            <Label>Centro de costo</Label>
+            <Select value={costCenterCode} onValueChange={setCostCenterCode} disabled={costCentersLoading}>
+              <SelectTrigger><SelectValue placeholder={costCentersLoading ? 'Cargando centros...' : 'Seleccionar centro de costo'} /></SelectTrigger>
+              <SelectContent>{costCenters.map((center) => <SelectItem key={center.id} value={center.code}>{center.code} · {center.name}</SelectItem>)}</SelectContent>
+            </Select>
+            {costCentersError ? <p className="mt-1 text-xs text-destructive">{costCentersError}</p> : <p className="mt-1 text-xs text-muted-foreground">La OC heredará esta imputación. No se puede adjudicar sin un centro canónico activo.</p>}
+          </div>
           <div><Label>Justificación</Label><Textarea value={justification} onChange={(e) => setJustification(e.target.value)} placeholder="Necesidad operacional, OT o reposición" /></div>
           <div><Label>Buscar producto</Label><div className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input className="pl-9" value={productQuery} onChange={(e) => setProductQuery(e.target.value)} placeholder="Código o nombre" /></div>{productData?.products?.length ? <div className="mt-2 max-h-52 overflow-auto rounded-md border">{productData.products.map((product: Product) => <button key={product.id} type="button" className="flex w-full items-center gap-3 border-b px-3 py-2 text-left text-sm last:border-0 hover:bg-muted" onClick={() => { if (!draftLines.some((line) => line.product.id === product.id)) setDraftLines([...draftLines, { product, quantity: 1 }]); setProductQuery(''); }}><ProductPhoto media={product.media} name={product.name} size="sm"/><span className="min-w-0 flex-1"><strong>{product.product_code}</strong> · {product.name}<span className="block text-xs text-muted-foreground">{product.media?.status === 'approved' ? 'Foto IA validada' : 'Foto pendiente'}</span></span><Plus className="h-4 w-4 shrink-0" /></button>)}</div> : null}</div>
           <div className="space-y-2">{draftLines.map((line, index) => <div key={line.product.id} className="grid grid-cols-[auto_1fr_100px_auto] items-center gap-2 rounded-md border p-3"><ProductPhoto media={line.product.media} name={line.product.name} size="sm"/><div><p className="text-sm font-medium">{line.product.product_code} · {line.product.name}</p><p className="text-xs text-muted-foreground">{line.product.unit || 'unidad'} · {line.product.media?.status === 'approved' ? 'Foto validada' : 'Foto pendiente'}</p></div><Input type="number" min="1" value={line.quantity} onChange={(e) => setDraftLines(draftLines.map((item, itemIndex) => itemIndex === index ? { ...item, quantity: Number(e.target.value) } : item))} /><Button variant="ghost" size="sm" onClick={() => setDraftLines(draftLines.filter((_, itemIndex) => itemIndex !== index))}>Quitar</Button></div>)}</div>
-          <DialogFooter><Button variant="outline" onClick={() => setRequestOpen(false)}>Cancelar</Button><Button onClick={createRequest} disabled={busy}>{busy ? 'Guardando...' : 'Crear solicitud'}</Button></DialogFooter>
+          <DialogFooter><Button variant="outline" onClick={() => setRequestOpen(false)}>Cancelar</Button><Button onClick={createRequest} disabled={busy || costCentersLoading || !costCenterCode}>{busy ? 'Guardando...' : 'Crear solicitud'}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
