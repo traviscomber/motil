@@ -15,6 +15,10 @@ const freshnessPage = await readFile(
   new URL('../app/dashboard/produccion/actualizar-fuentes/page.tsx', import.meta.url),
   'utf8',
 );
+const masterImportPage = await readFile(
+  new URL('../app/dashboard/produccion/importacion-maestra/page.tsx', import.meta.url),
+  'utf8',
+);
 
 test('drilling freshness is owned by the drilling domain and JEFE SONDAJE', () => {
   assert.match(ownerMigration, /data_health:production:drilling_freshness/);
@@ -41,4 +45,15 @@ test('source freshness workspace focuses the source carried by the task route', 
   assert.match(freshnessPage, /\['transport', 'plant', 'drilling'\]/);
   assert.match(freshnessPage, /sources\.filter\(\(source\) => source\.key === focusedSource\)/);
   assert.match(freshnessPage, /visibleSources\.map/);
+});
+
+
+test('master production import contextualizes transport and plant freshness tasks without weakening validation', () => {
+  assert.match(masterImportPage, /useSearchParams/);
+  assert.match(masterImportPage, /searchParams\.get\('dataHealth'\)/);
+  assert.match(masterImportPage, /transport_freshness/);
+  assert.match(masterImportPage, /plant_freshness/);
+  assert.match(masterImportPage, /MASTER_SHA256/);
+  assert.match(masterImportPage, /El mismo master canónico actualiza Transporte y Planta/);
+  assert.match(masterImportPage, /no cambia la frescura/);
 });
