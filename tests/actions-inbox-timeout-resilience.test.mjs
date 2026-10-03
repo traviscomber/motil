@@ -7,11 +7,11 @@ const ui = await readFile(new URL('../components/actions/actions-inbox.tsx', imp
 const dictionaries = await readFile(new URL('../lib/i18n/dictionaries.ts', import.meta.url), 'utf8');
 
 test('actions inbox converts statement timeout into an explicit degraded response', () => {
-  assert.match(route, /error\.code === '57014'/);
+  assert.match(route, /taskError\.code === '57014'/);
   assert.match(route, /degraded:\s*true/);
   assert.match(route, /degradedReason:\s*'task_query_timeout'/);
   assert.match(route, /X-Motil-Degraded/);
-  assert.doesNotMatch(route, /error\.code === '57014'[\s\S]{0,900}status:\s*500/);
+  assert.doesNotMatch(route, /taskError\.code === '57014'[\s\S]{0,900}status:\s*500/);
 });
 
 test('degraded inbox uses coverage counts without inventing unknown metrics', () => {
