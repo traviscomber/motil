@@ -48,8 +48,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Tu perfil no tiene un cargo operacional activo' }, { status: 403 });
     }
 
-    const { data: task, error: taskError } = await context.supabase
-      .from('role_task_worklist_v1')
+    const actionableResult = await context.supabase
+      .from('role_tasks_actionable_v1')
       .select('task_key, severity')
       .eq('organization_id', context.organizationId)
       .eq('cargo_id', profile.cargo_id)
@@ -57,9 +57,27 @@ export async function POST(request: NextRequest) {
       .limit(1)
       .maybeSingle();
 
-    if (taskError) {
+    if (actionableResult.error) {
       return NextResponse.json({ error: 'No se pudo validar la acción contra tu bandeja actual' }, { status: 500 });
     }
+
+    let task = actionableResult.data;
+    if (!task) {
+      const escalationResult = await context.supabase
+        .from('role_task_escalations_v1')
+        .select('task_key, severity')
+        .eq('organization_id', context.organizationId)
+        .eq('cargo_id', profile.cargo_id)
+        .eq('task_key', sourceKey)
+        .limit(1)
+        .maybeSingle();
+
+      if (escalationResult.error) {
+        return NextResponse.json({ error: 'No se pudo validar la acción contra tu bandeja actual' }, { status: 500 });
+      }
+      task = escalationResult.data;
+    }
+
     if (!task) {
       return NextResponse.json({ error: 'La acción ya no está disponible para tu cargo' }, { status: 409 });
     }
