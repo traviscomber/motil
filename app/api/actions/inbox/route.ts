@@ -30,6 +30,16 @@ type RoleTask = {
   responsibility_label: string;
 };
 
+type MaintenanceReviewEvidence = {
+  review_id: string;
+  asset_code: string | null;
+  asset_name: string | null;
+  operation_date: string | null;
+  review_reason: string | null;
+  equipment_status_raw: string | null;
+  machine_observations: string | null;
+};
+
 const responsibilityRank: Record<RoleTask['responsibility'], number> = {
   owner: 0,
   support: 1,
@@ -125,6 +135,47 @@ function deduplicateTasks(rows: RoleTask[]) {
     const bDue = b.due_at ? new Date(b.due_at).getTime() : Number.POSITIVE_INFINITY;
     return aDue - bDue;
   });
+}
+
+function maintenanceReviewLabel(reason: string | null | undefined) {
+  switch (String(reason || '').trim().toLowerCase()) {
+    case 'out_of_service':
+      return 'Revisar equipo fuera de servicio';
+    case 'machine_observation':
+      return 'Revisar observación mecánica';
+    case 'operational_with_observations':
+      return 'Revisar equipo operativo con observaciones';
+    default:
+      return 'Revisar condición de mantenimiento';
+  }
+}
+
+function sourceDateLabel(value: string | null | undefined) {
+  const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return match ? `${match[3]}-${match[2]}-${match[1]}` : null;
+}
+
+function enrichMaintenanceReviewTask(
+  task: RoleTask,
+  evidence: MaintenanceReviewEvidence | undefined,
+): RoleTask {
+  if (!evidence) return task;
+
+  const code = String(evidence.asset_code || '').trim();
+  const name = String(evidence.asset_name || '').trim();
+  const assetLabel = code && name && code !== name ? `${code} · ${name}` : code || name || 'Equipo de sondaje';
+  const evidenceParts = [
+    assetLabel,
+    sourceDateLabel(evidence.operation_date) ? `Reporte ${sourceDateLabel(evidence.operation_date)}` : null,
+    String(evidence.equipment_status_raw || '').trim() || null,
+    String(evidence.machine_observations || '').trim() || null,
+  ].filter((value): value is string => Boolean(value));
+
+  return {
+    ...task,
+    title: `${maintenanceReviewLabel(evidence.review_reason)} · ${assetLabel}`,
+    evidence_summary: evidenceParts.join(' · ') || task.evidence_summary,
+  };
 }
 
 function emptyRoleInbox(name: string | null, cargoId: string, cargoName: string | null, moduleAccess: Record<string, string> = {}) {
@@ -225,7 +276,42 @@ export async function GET(request: NextRequest) {
   }
 
   const rawTasks = (data || []) as RoleTask[];
-  const tasks = deduplicateTasks(rawTasks).map((task) => ({ ...task, module_route: resolveTaskRoute(task) }));
+  const deduplicatedTasks = deduplicateTasks(rawTasks);
+  const maintenanceReviewIds = deduplicatedTasks
+    .map((task) => {
+      const [kind, rawId, ...rest] = task.task_key.split(':');
+      return kind === 'maintenance_review' && rawId && rest.length === 0 && UUID_PATTERN.test(rawId)
+        ? rawId
+        : null;
+    })
+    .filter((value): value is string => Boolean(value));
+
+  const maintenanceReviewById = new Map<string, MaintenanceReviewEvidence>();
+  if (maintenanceReviewIds.length > 0) {
+    const { data: reviewRows, error: reviewError } = await context.supabase
+      .from('drilling_maintenance_review_queue_v1')
+      .select('review_id,asset_code,asset_name,operation_date,review_reason,equipment_status_raw,machine_observations')
+      .eq('organization_id', context.organizationId)
+      .in('review_id', maintenanceReviewIds);
+
+    if (reviewError) {
+      // Enrichment is presentational only. Preserve the canonical task inbox if
+      // drilling review context is temporarily unavailable.
+      console.warn('[role-task-inbox] maintenance review enrichment failed', reviewError);
+    } else {
+      for (const row of reviewRows || []) {
+        if (row.review_id) maintenanceReviewById.set(String(row.review_id), row as MaintenanceReviewEvidence);
+      }
+    }
+  }
+
+  const tasks = deduplicatedTasks.map((task) => {
+    const [kind, rawId] = task.task_key.split(':');
+    const enriched = kind === 'maintenance_review' && rawId
+      ? enrichMaintenanceReviewTask(task, maintenanceReviewById.get(rawId))
+      : task;
+    return { ...enriched, module_route: resolveTaskRoute(enriched) };
+  });
   const now = Date.now();
   const backlogCutoff = now - 30 * 24 * 60 * 60 * 1000;
   const isOverdue = (task: RoleTask) => Boolean(task.due_at && new Date(task.due_at).getTime() < now);
