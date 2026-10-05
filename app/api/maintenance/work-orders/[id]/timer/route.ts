@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOrganizationContext } from '@/lib/api/organization-context';
-import { MODULE_KEYS, requireModuleAccess } from '@/lib/api/module-access';
+import { getModuleAccessLevel, MODULE_KEYS } from '@/lib/api/module-access';
 import { requireOperationalMaintenanceWorkOrder } from '@/lib/maintenance/work-order-scope';
 import { requireAssignedMaintenanceExecution } from '@/lib/maintenance/work-order-execution-access';
 
@@ -14,8 +14,6 @@ function timerErrorResponse(error: { code?: string; message?: string } | null | 
 }
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const access = await requireModuleAccess(request, MODULE_KEYS.MANT_OPERACIONES, true);
-  if (!access.authorized) return access.response;
   const context = await getOrganizationContext(request);
   if (!context.ok) return context.response;
 
@@ -23,8 +21,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const guard = await requireOperationalMaintenanceWorkOrder(context.supabase, context.organizationId, workOrderId);
   if (!guard.ok) return NextResponse.json({ ok: false, error: guard.error, record_scope: guard.scope }, { status: guard.status });
 
+  const accessLevel = await getModuleAccessLevel(context.userId, context.role, MODULE_KEYS.MANT_OPERACIONES);
   const executionAccess = await requireAssignedMaintenanceExecution(context, workOrderId);
-  if (!executionAccess.ok) return executionAccess.response;
+  if (accessLevel !== 'ED' && !executionAccess.ok) return executionAccess.response;
 
   const body = (await request.json().catch(() => null)) as { action?: string; notes?: string | null } | null;
   const action = String(body?.action || '');
@@ -44,12 +43,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 }
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const access = await requireModuleAccess(request, MODULE_KEYS.MANT_OPERACIONES);
-  if (!access.authorized) return access.response;
   const context = await getOrganizationContext(request);
   if (!context.ok) return context.response;
 
   const { id: workOrderId } = await params;
+  const accessLevel = await getModuleAccessLevel(context.userId, context.role, MODULE_KEYS.MANT_OPERACIONES);
+  const assignedExecution = await requireAssignedMaintenanceExecution(context, workOrderId);
+  if (accessLevel === 'SR' && !assignedExecution.ok) return assignedExecution.response;
   const { data: workOrder, error } = await context.supabase
     .from('maintenance_work_orders')
     .select('id, timer_status, timer_start_time, total_timer_seconds, total_timer_minutes, created_by')
