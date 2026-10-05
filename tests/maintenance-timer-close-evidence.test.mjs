@@ -19,9 +19,9 @@ test('OT timer keeps second precision in database and APIs', () => {
 
 test('mobile and desktop timers visibly tick every second', () => {
   assert.match(mobile, /setInterval\(\(\) => setNowMs\(Date\.now\(\)\), 1000\)/);
-  assert.match(mobile, /remainingSeconds/);
+  assert.match(mobile, /runningSeconds/);
   assert.match(mobile, /duration\(displaySeconds\)/);
-  assert.match(desktop, /elapsedSeconds/);
+  assert.match(desktop, /liveSeconds/);
   assert.match(desktop, /String\(seconds\)\.padStart\(2, '0'\)/);
 });
 
@@ -41,7 +41,7 @@ test('server stores private photo evidence and blocks closure without it', () =>
   assert.match(evidenceRoute, /ALLOWED_TYPES/);
   assert.match(evidenceRoute, /12 \* 1024 \* 1024/);
   assert.match(closeRoute, /work_order_evidence_files/);
-  assert.match(closeRoute, /Adjunta al menos una foto o evidencia visual/);
+  assert.match(closeRoute, /Agrega al menos una foto como evidencia/);
 });
 
 test('dedicated closure terminates a running or paused timer before final close', () => {
