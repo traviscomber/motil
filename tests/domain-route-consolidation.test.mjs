@@ -63,13 +63,14 @@ test('resource planning lives inside the canonical Maintenance planning flow', a
   assert.match(canonical, /Mantenimiento · Planificar/);
 });
 
-test('RRHH separates canonical people identity from operational capacity without inventing a workflow', async () => {
+test('RRHH separates canonical people identity from evidence-based faena readiness', async () => {
   const layout = await readFile(rrhhLayout, 'utf8');
   const operational = await readFile(rrhhOperational, 'utf8');
 
   assert.match(layout, /label: 'Personas'/);
-  assert.match(layout, /label: 'Capacidad operacional'/);
+  assert.match(layout, /label: 'Habilitación'/);
+  assert.match(layout, /label: 'Contratistas'/);
   assert.doesNotMatch(layout, /step:/);
-  assert.match(operational, /Evidencia que conecta personas con OT, activos, competencias, credenciales y EPP/);
-  assert.match(operational, /no reemplaza la identidad laboral canónica de RRHH/i);
+  assert.match(operational, /Habilitación para faena/);
+  assert.match(operational, /no declara una persona apta sin requisitos explícitos/i);
 });
