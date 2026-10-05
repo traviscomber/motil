@@ -6,8 +6,10 @@ const route = await readFile(new URL('../app/api/maintenance/work-orders/[id]/ro
 const page = await readFile(new URL('../components/maintenance/work-order-detail.tsx', import.meta.url), 'utf8');
 const dictionaries = await readFile(new URL('../lib/i18n/dictionaries.ts', import.meta.url), 'utf8');
 
-test('work order mutations require maintenance edit access', () => {
-  assert.match(route, /requireModuleAccess\(request, MODULE_KEYS\.MANT_OPERACIONES, true\)/);
+test('general work-order edits remain maintenance-edit gated while assigned execution is narrow', () => {
+  assert.match(route, /const hasModuleWrite = accessLevel === 'ED'/);
+  assert.match(route, /if \(!hasModuleWrite\)/);
+  assert.match(route, /El ejecutor asignado sólo puede iniciar su OT/);
 });
 
 test('cost center assignment is tenant scoped and validates active center', () => {
