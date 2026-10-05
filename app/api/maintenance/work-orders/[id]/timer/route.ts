@@ -53,7 +53,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   const { data: workOrder, error } = await context.supabase
     .from('maintenance_work_orders')
-    .select('id, timer_status, timer_start_time, total_timer_minutes, created_by')
+    .select('id, timer_status, timer_start_time, total_timer_seconds, total_timer_minutes, created_by')
     .eq('id', workOrderId)
     .eq('organization_id', context.organizationId)
     .maybeSingle();
@@ -72,7 +72,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   if (timelineError) return NextResponse.json({ ok: false, error: timelineError.message || 'No se pudo cargar el historial del temporizador' }, { status: 500 });
 
-  const totalMinutes = Number(workOrder.total_timer_minutes || 0);
+  const totalSeconds = Math.max(Number(workOrder.total_timer_seconds || 0), Number(workOrder.total_timer_minutes || 0) * 60);
+  const totalMinutes = Math.floor(totalSeconds / 60);
   return NextResponse.json({
     ok: true,
     canEdit: Boolean(workOrder.created_by) && (accessLevel === 'ED' || assignedExecution.ok),
@@ -80,8 +81,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     current: {
       timer_status: workOrder.timer_status || 'idle',
       timer_start_time: workOrder.timer_start_time || null,
+      total_seconds: totalSeconds,
       total_minutes: totalMinutes,
-      total_hours: Math.round((totalMinutes / 60) * 10) / 10,
+      total_hours: Math.round((totalSeconds / 3600) * 1000) / 1000,
     },
     timeline: timeline || [],
   });
