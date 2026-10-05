@@ -75,7 +75,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const totalMinutes = Math.floor(totalSeconds / 60);
   return NextResponse.json({
     ok: true,
-    canEdit: access.canWrite && Boolean(workOrder.created_by),
+    canEdit: Boolean(workOrder.created_by) && (accessLevel === 'ED' || assignedExecution.ok),
     record_scope: workOrder.created_by ? 'operational' : 'historical',
     current: {
       timer_status: workOrder.timer_status || 'idle',
