@@ -3,11 +3,14 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getOrganizationContext } from '@/lib/api/organization-context';
 import {
+  assessReadinessPolicy,
   evaluateFaenaReadiness,
   getSantiagoDate,
   selectCurrentAssignment,
+  selectReadinessPolicy,
   summarizeReadinessEvidence,
 } from '@/lib/rrhh-readiness';
+import { loadActiveReadinessPolicies } from '@/lib/rrhh-readiness-policy-store';
 
 const allowedRoles = new Set(['superadmin', 'admin', 'manager']);
 const BATCH_SIZE = 50;
@@ -45,6 +48,7 @@ export async function GET(request: NextRequest) {
     const { data: people, error: peopleError } = await peopleQuery;
     if (peopleError) throw peopleError;
 
+    const policyState = await loadActiveReadinessPolicies(context.supabase, context.organizationId);
     const ids = (people || []).map((row) => row.id);
     const assignments: any[] = [];
     const credentials: any[] = [];
@@ -61,17 +65,17 @@ export async function GET(request: NextRequest) {
           .order('start_date', { ascending: false }),
         context.supabase
           .from('person_credentials')
-          .select('person_id,status,expires_at')
+          .select('person_id,credential_name,credential_number,status,expires_at')
           .eq('organization_id', context.organizationId)
           .in('person_id', batch),
         context.supabase
           .from('person_competencies')
-          .select('person_id,status,expires_at')
+          .select('person_id,competency_name,status,expires_at')
           .eq('organization_id', context.organizationId)
           .in('person_id', batch),
         context.supabase
           .from('person_epp_assignments')
-          .select('person_id,status,renewal_due_at,ended_at')
+          .select('person_id,epp_name,status,renewal_due_at,ended_at')
           .eq('organization_id', context.organizationId)
           .in('person_id', batch),
       ]);
@@ -92,28 +96,53 @@ export async function GET(request: NextRequest) {
         epp: epp.filter((row) => row.person_id === person.id),
         today,
       });
+      const personCredentials = credentials.filter((row) => row.person_id === person.id);
+      const personCompetencies = competencies.filter((row) => row.person_id === person.id);
+      const personEpp = epp.filter((row) => row.person_id === person.id);
+      const policy = policyState.available ? selectReadinessPolicy(policyState.policies, assignment, today) : null;
+      const assessment = assessReadinessPolicy({
+        policy,
+        credentials: personCredentials,
+        competencies: personCompetencies,
+        epp: personEpp,
+        today,
+      });
       const readiness = evaluateFaenaReadiness({
         employmentStatus: person.employment_status,
         assignment,
         evidence,
-        policyConfigured: false,
+        policyConfigured: policyState.available && assessment.configured,
+        requirementsSatisfied: assessment.satisfied,
+        requirementGaps: assessment.gaps,
       });
-      return { ...person, person_id: person.id, assignment, evidence, readiness };
+      return {
+        ...person,
+        person_id: person.id,
+        assignment,
+        evidence,
+        readiness,
+        readiness_policy: policy ? { id: policy.id, name: policy.name, site_name: policy.site_name, role_title: policy.role_title, requirement_count: assessment.requirement_count } : null,
+      };
     });
 
     return NextResponse.json({
       people: rows,
       summary: {
         total: rows.length,
-        ready: null,
+        ready: rows.filter((row) => row.readiness.status === 'ready').length,
         conditional: rows.filter((row) => row.readiness.status === 'conditional').length,
         blocked: rows.filter((row) => row.readiness.status === 'blocked').length,
         without_assignment: rows.filter((row) => !row.assignment).length,
         evidence_incomplete: rows.filter((row) => !row.readiness.evidence_complete).length,
       },
       policy: {
-        configured: false,
-        statement: 'MOTIL no declara APTO sin una política explícita de requisitos de faena.',
+        source_available: policyState.available,
+        source_error: policyState.error,
+        active_policies: policyState.policies.length,
+        configured: policyState.available && policyState.policies.some((policy) => (policy.requirements || []).length > 0),
+        statement: policyState.error
+          ? 'La fuente de políticas no está disponible. MOTIL mantiene la habilitación en modo conservador.'
+          : 'MOTIL sólo declara APTO cuando existe una política explícita aplicable y toda su evidencia requerida está vigente.',
       },
       source: 'public.people + people_employment_assignments + person_credentials + person_competencies + person_epp_assignments',
       generated_at: new Date().toISOString(),
