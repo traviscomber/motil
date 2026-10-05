@@ -9,6 +9,7 @@ const views = [
   { href: '/dashboard/rrhh', label: 'Personas' },
   { href: '/dashboard/rrhh/operacion', label: 'Habilitación' },
   { href: '/dashboard/rrhh/contratistas', label: 'Contratistas' },
+  { href: '/dashboard/rrhh/requisitos', label: 'Requisitos' },
   { href: '/dashboard/rrhh/fuentes', label: 'Fuentes' },
   { href: '/dashboard/tareas', label: 'Calendario' },
 ];
