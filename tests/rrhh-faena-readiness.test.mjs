@@ -17,6 +17,7 @@ test('faena readiness refuses to infer APTO without an explicit site policy', as
   assert.match(source, /requisitos explícitos de habilitación/i);
   assert.match(source, /input\.requirementsSatisfied === true/);
   assert.match(source, /status: 'ready'/);
+  assert.match(source, /warnings,/);
 });
 
 test('readiness API is tenant scoped and batches person evidence lookups', async () => {
@@ -27,7 +28,9 @@ test('readiness API is tenant scoped and batches person evidence lookups', async
   assert.match(source, /person_credentials/);
   assert.match(source, /person_competencies/);
   assert.match(source, /person_epp_assignments/);
-  assert.match(source, /policyConfigured: false/);
+  assert.match(source, /loadActiveReadinessPolicies/);
+  assert.match(source, /selectReadinessPolicy/);
+  assert.match(source, /assessReadinessPolicy/);
 });
 
 test('contractor 360 starts from tenant-owned EECC before joining legacy startup folders', async () => {
@@ -53,5 +56,6 @@ test('RRHH UI exposes habilitation and contractor 360 without duplicating the op
   assert.match(person, /Habilitación para faena/);
   assert.match(navigation, /Habilitación/);
   assert.match(navigation, /Contratistas/);
+  assert.match(navigation, /Requisitos/);
   assert.match(navigation, /\/dashboard\/tareas/);
 });
