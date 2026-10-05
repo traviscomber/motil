@@ -11,7 +11,8 @@ const close = await readFile(new URL('../app/api/maintenance/work-orders/[id]/cl
 test('assigned work-order execution bypass is narrow and excludes deletes', () => {
   assert.match(org, /method === 'PATCH'/);
   assert.match(org, /method === 'POST'/);
-  assert.match(org, /\(timer\|close\)/);
+  assert.match(org, /\(timer\|close\|evidence\|standard-plan\)/);
+  assert.match(org, /work-order-runtime-evidence/);
   assert.doesNotMatch(org, /method === 'DELETE'.*work-orders/s);
 });
 
@@ -25,8 +26,11 @@ test('assigned executor does not require general maintenance edit access to read
   assert.match(workOrder, /getModuleAccessLevel/);
   assert.match(workOrder, /canExecuteAssigned/);
   assert.match(workOrder, /if \(!hasModuleWrite\)/);
-  assert.match(workOrder, /mutationKeys\.length !== 1/);
-  assert.match(workOrder, /body\.status !== 'in_progress'/);
+  assert.match(workOrder, /isStartOnly/);
+  assert.match(workOrder, /isExecutionEvidenceOnly/);
+  assert.match(workOrder, /root_cause/);
+  assert.match(workOrder, /preventive_actions/);
+  assert.match(workOrder, /actual_duration_hours/);
 });
 
 test('timer and close accept canonical assignee as a scoped execution capability', () => {

@@ -175,14 +175,26 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       const mutationKeys = Object.entries(body)
         .filter(([, value]) => value !== undefined)
         .map(([key]) => key);
-      if (mutationKeys.length !== 1 || mutationKeys[0] !== 'status' || body.status !== 'in_progress') {
+      const executionFields = new Set(['root_cause', 'preventive_actions', 'actual_duration_hours', 'meter_reading', 'meter_unit']);
+      const isStartOnly = mutationKeys.length === 1 && mutationKeys[0] === 'status' && body.status === 'in_progress';
+      const isExecutionEvidenceOnly = mutationKeys.length > 0 && mutationKeys.every((key) => executionFields.has(key));
+      if (!isStartOnly && !isExecutionEvidenceOnly) {
         return NextResponse.json(
-          { error: 'El ejecutor asignado sólo puede iniciar su OT desde este endpoint.' },
+          { error: 'El ejecutor asignado sólo puede iniciar su OT y registrar evidencia de su propia ejecución.' },
           { status: 403 },
         );
       }
     }
     if (body.status === 'completed') {
+      const { count: evidenceCount, error: evidenceError } = await context.supabase
+        .from('work_order_evidence_files')
+        .select('id', { head: true, count: 'exact' })
+        .eq('organization_id', context.organizationId)
+        .eq('work_order_id', id)
+        .eq('evidence_type', 'photo');
+      if (evidenceError) throw evidenceError;
+      if ((evidenceCount || 0) < 1) return NextResponse.json({ error: 'Agrega al menos una foto como evidencia antes de cerrar la OT.' }, { status: 409 });
+
       const rootCause = String(body.root_cause || '').trim();
       const preventiveActions = String(body.preventive_actions || '').trim();
       const actualHours = Number(body.actual_duration_hours);
