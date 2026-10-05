@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getOrganizationContext } from '@/lib/api/organization-context';
+import { evaluateFaenaReadiness, getSantiagoDate, selectCurrentAssignment, summarizeReadinessEvidence } from '@/lib/rrhh-readiness';
 
 const allowedRoles = new Set(['superadmin', 'admin', 'manager']);
 
@@ -42,8 +43,22 @@ export async function GET(request: NextRequest) {
       const failed = queries.find((result) => result.error);
       if (failed?.error) throw failed.error;
 
+      const today = getSantiagoDate();
+      const readiness = evaluateFaenaReadiness({
+        employmentStatus: person.employment_status,
+        assignment: selectCurrentAssignment(assignments.data || [], today),
+        evidence: summarizeReadinessEvidence({
+          credentials: credentials.data || [],
+          competencies: competencies.data || [],
+          epp: epp.data || [],
+          today,
+        }),
+        policyConfigured: false,
+      });
+
       return NextResponse.json({
         person,
+        readiness,
         assignments: assignments.data || [],
         cases: cases.data || [],
         competencies: competencies.data || [],
