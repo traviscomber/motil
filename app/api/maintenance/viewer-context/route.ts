@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getOrganizationContext } from '@/lib/api/organization-context';
 import { getModuleAccessLevel, MODULE_KEYS } from '@/lib/api/module-access';
+import { getMaintenanceWorkOrderCreationCapability } from '@/lib/maintenance/work-order-create-access';
 import { resolveMaintenanceViewerMode } from '@/lib/maintenance/viewer-mode';
 
 export async function GET(request: NextRequest) {
@@ -40,7 +41,8 @@ export async function GET(request: NextRequest) {
       .maybeSingle();
     if (creatorPersonError) throw creatorPersonError;
 
-    const canCreateWorkOrder = ['Ariel López', 'Mauricio Astudillo'].includes(String(creatorPerson?.full_name || ''));
+    const creationCapability = await getMaintenanceWorkOrderCreationCapability(context);
+    const canCreateWorkOrder = creationCapability.canCreate;
 
     const accessLevel = await getModuleAccessLevel(context.userId, context.role, MODULE_KEYS.MANT_OPERACIONES);
     let hasAssignedOperationalWork = false;
