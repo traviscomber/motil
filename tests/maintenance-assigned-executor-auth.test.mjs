@@ -21,13 +21,21 @@ test('non-elevated maintenance users are restricted to their assigned person ide
   assert.match(access, /Sólo la persona asignada puede ejecutar esta orden de trabajo/);
 });
 
-test('assigned executor may only start status through generic work-order PATCH', () => {
-  assert.match(workOrder, /requireAssignedMaintenanceExecution/);
+test('assigned executor does not require general maintenance edit access to read or start own OT', () => {
+  assert.match(workOrder, /getModuleAccessLevel/);
+  assert.match(workOrder, /canExecuteAssigned/);
+  assert.match(workOrder, /if \(!hasModuleWrite\)/);
   assert.match(workOrder, /mutationKeys\.length !== 1/);
   assert.match(workOrder, /body\.status !== 'in_progress'/);
 });
 
-test('timer and close enforce assigned executor identity', () => {
-  assert.match(timer, /requireAssignedMaintenanceExecution/);
-  assert.match(close, /requireAssignedMaintenanceExecution/);
+test('timer and close accept canonical assignee as a scoped execution capability', () => {
+  assert.match(timer, /accessLevel !== 'ED' && !executionAccess\.ok/);
+  assert.match(close, /accessLevel !== 'ED' && !executionAccess\.ok/);
+});
+
+test('assigned executor capability is identity based, not hard-coded by cargo or person name', () => {
+  assert.doesNotMatch(access, /Joaquín|Ariel|Jefe de Taller|tecnico/);
+  assert.match(access, /profile_id', context\.userId/);
+  assert.match(access, /employment_status', 'active'/);
 });
