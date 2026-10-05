@@ -32,7 +32,8 @@ test('closure readiness v2 adds standard plan execution without weakening blocke
 
 test('closure queue API is tenant scoped and supports assigned executor access', () => {
   assert.match(api, /getModuleAccessLevel/);
-  assert.match(api, /requireAssignedMaintenanceExecution/);
+  assert.match(api, /profile_id', context\.userId/);
+  assert.match(api, /assigned_person_id', person\.id/);
   assert.match(api, /eq\('organization_id', context\.organizationId\)/);
   assert.match(api, /work_order_close_readiness_v2/);
 });
