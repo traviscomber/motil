@@ -23,6 +23,17 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const executionAccess = await requireAssignedMaintenanceExecution(context, id);
     if (!executionAccess.ok) return executionAccess.response;
 
+    const { count: evidenceCount, error: evidenceError } = await context.supabase
+      .from('work_order_evidence_files')
+      .select('id', { head: true, count: 'exact' })
+      .eq('organization_id', context.organizationId)
+      .eq('work_order_id', id)
+      .eq('evidence_type', 'photo');
+    if (evidenceError) throw evidenceError;
+    if ((evidenceCount || 0) < 1) {
+      return NextResponse.json({ error: 'Agrega al menos una foto como evidencia antes de cerrar la OT.' }, { status: 409 });
+    }
+
     const body = (await request.json()) as CloseWorkOrderPayload;
     const { actual_duration_hours, root_cause, preventive_actions } = body;
     const { data: workOrder, error: woError } = await context.supabase.from('maintenance_work_orders').select('*').eq('id', id).eq('organization_id', context.organizationId).single();
