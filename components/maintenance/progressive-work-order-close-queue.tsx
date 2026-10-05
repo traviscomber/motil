@@ -227,7 +227,7 @@ export function ProgressiveWorkOrderCloseQueue({ locale, dictionary }: { locale:
             <Camera className="mt-0.5 h-5 w-5 text-muted-foreground" />
             <div>
               <p className="font-medium">Evidencia fotográfica obligatoria</p>
-              <p className="mt-1 text-sm text-muted-foreground">Antes de cerrar, toma una foto con el celular o sube una imagen existente.</p>
+              <p className="text-sm text-muted-foreground">{evidenceCount > 0 ? `${evidenceCount} foto${evidenceCount === 1 ? '' : 's'} registrada${evidenceCount === 1 ? '' : 's'}.` : 'Toma una foto con el celular o selecciona una imagen antes de cerrar.'}</p>
             </div>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -235,7 +235,7 @@ export function ProgressiveWorkOrderCloseQueue({ locale, dictionary }: { locale:
               <Camera className="mb-2 h-5 w-5" />
               <span className="font-medium">Tomar foto</span>
               <span className="text-xs text-muted-foreground">Abrir cámara trasera</span>
-              <input className="sr-only" type="file" accept="image/*" capture="environment" disabled={uploadingEvidence} onChange={(event)=>void uploadEvidence(event.target.files?.[0] || null)} />
+              <input className="sr-only" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" capture="environment" disabled={uploadingEvidence} onChange={(event)=>void uploadEvidence(event.target.files?.[0] || null)} />
             </label>
             <label className="flex min-h-24 cursor-pointer flex-col items-center justify-center rounded-md border border-dashed p-4 text-center text-sm">
               <ImagePlus className="mb-2 h-5 w-5" />
@@ -244,7 +244,7 @@ export function ProgressiveWorkOrderCloseQueue({ locale, dictionary }: { locale:
               <input className="sr-only" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" disabled={uploadingEvidence} onChange={(event)=>void uploadEvidence(event.target.files?.[0] || null)} />
             </label>
           </div>
-          <p className="text-xs text-muted-foreground">{uploadingEvidence ? 'Subiendo evidencia...' : evidenceCount > 0 ? `${evidenceCount} evidencia${evidenceCount === 1 ? '' : 's'} cargada${evidenceCount === 1 ? '' : 's'}.` : 'Aún no hay evidencia cargada.'}</p>
+          <p className="text-xs text-muted-foreground">{uploadingEvidence ? 'Subiendo evidencia...' : evidenceCount > 0 ? 'Evidencia lista para cierre.' : 'Aún no hay evidencia cargada.'}</p>
         </div> : null}
         {actionError ? <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"><AlertCircle className="mr-2 inline h-4 w-4"/>{actionError}</div> : null}
         <div className="flex flex-wrap gap-2">{inline && data?.canEdit ? <Button onClick={()=>void performNextAction()} disabled={saving}>{saving?t.actions.saving:current.next_action==='close_work_order'?t.actions.closeFreeze:current.next_action==='complete_standard_plan_step'?t.actions.markStepDone:t.actions.saveContinue}<ArrowRight className="ml-2 h-4 w-4"/></Button> : null}{!inline ? <Button asChild><Link href={`/dashboard/mantenimiento/ordenes-trabajo/${current.work_order_id}`}>{t.actions.resolveInSheet}<ArrowRight className="ml-2 h-4 w-4"/></Link></Button> : null}<Button asChild variant="outline"><Link href={`/dashboard/mantenimiento/ordenes-trabajo/${current.work_order_id}`}>{t.actions.viewOrder}</Link></Button></div>
