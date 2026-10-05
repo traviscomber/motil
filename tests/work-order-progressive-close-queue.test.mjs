@@ -30,8 +30,9 @@ test('closure readiness v2 adds standard plan execution without weakening blocke
   assert.match(migrationV2, /security_invoker=true/i);
 });
 
-test('closure queue API is maintenance authorized tenant scoped and reads v2', () => {
-  assert.match(api, /requireModuleAccess\(request, MODULE_KEYS\.MANT_OPERACIONES\)/);
+test('closure queue API is tenant scoped and supports assigned executor access', () => {
+  assert.match(api, /getModuleAccessLevel/);
+  assert.match(api, /requireAssignedMaintenanceExecution/);
   assert.match(api, /eq\('organization_id', context\.organizationId\)/);
   assert.match(api, /work_order_close_readiness_v2/);
 });
@@ -39,7 +40,8 @@ test('closure queue API is maintenance authorized tenant scoped and reads v2', (
 test('progressive closure exposes one next action and requires an explicit close click', () => {
   assert.match(component, /performNextAction/);
   assert.match(component, /current\.next_action === 'close_work_order'/);
-  assert.match(component, /status:\s*'completed'/);
+  assert.match(component, /\/close/);
+  assert.doesNotMatch(component, /patchCurrent\(\{ status:'completed'/);
   assert.match(component, /complete_standard_plan_step/);
   assert.match(component, /setStepObservation\(''\)/);
   assert.match(component, /searchParams\.get\('workOrderId'\)/);
