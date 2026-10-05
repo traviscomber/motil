@@ -52,6 +52,18 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const typedWorkOrder = workOrder as MaintenanceWorkOrderRow | null;
     if (woError || !typedWorkOrder) return NextResponse.json({ error: 'No se encontró la orden de trabajo' }, { status: 404 });
 
+    if (['running', 'paused'].includes(String((workOrder as { timer_status?: string | null }).timer_status || ''))) {
+      const { error: timerError } = await context.supabase.rpc('update_work_order_timer', {
+        p_organization_id: context.organizationId,
+        p_work_order_id: id,
+        p_action: 'terminate',
+        p_actor_id: context.userId,
+        p_actor_name: context.userName || context.userEmail || null,
+        p_notes: 'Cierre de OT',
+      });
+      if (timerError) return NextResponse.json({ error: timerError.message || 'No se pudo detener el cronómetro antes del cierre.' }, { status: 409 });
+    }
+
     let downtime = 0;
     if (typedWorkOrder.start_date) {
       const startTime = new Date(typedWorkOrder.start_date);
