@@ -14,7 +14,7 @@ test('9.7 certification requires all quality gates to pass', () => {
 
 test('quality cockpit measures canonical operation integration audit and freshness', () => {
   for (const token of ["'canonical'", "'operation'", "'integration'", "'audit'"]) assert.match(api, new RegExp(token));
-  assert.match(api, /freshnessGate\(freshness\)/);
+  assert.match(api, /freshnessGate\(freshness,/);
   assert.match(api, /No se compensa una falla operacional con UI o volumen de código/);
 });
 
