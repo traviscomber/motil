@@ -5,9 +5,11 @@ import fs from 'node:fs/promises';
 const route = await fs.readFile('app/api/maintenance/viewer-context/route.ts', 'utf8');
 const viewerMode = await fs.readFile('lib/maintenance/viewer-mode.ts', 'utf8');
 
-test('maintenance viewer context preserves canonical cargo instead of synthetic role copy', () => {
-  assert.match(route, /const mode = resolveMaintenanceViewerMode\(cargoName\)/);
-  assert.match(route, /\n\s+cargoName,\n\s+canEdit: access\.canWrite/);
+test('maintenance viewer context preserves canonical cargo and promotes assigned work to execution mode', () => {
+  assert.match(route, /const baseMode = resolveMaintenanceViewerMode\(cargoName\)/);
+  assert.match(route, /hasAssignedOperationalWork/);
+  assert.match(route, /hasAssignedOperationalWork \? 'execution' : baseMode/);
+  assert.match(route, /canEdit: accessLevel === 'ED' \|\| hasAssignedOperationalWork/);
   assert.doesNotMatch(route, /cargoName: mode === 'general' \? null : cargoName/);
 });
 

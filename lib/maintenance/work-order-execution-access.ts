@@ -1,25 +1,10 @@
 import { NextResponse } from 'next/server';
 import type { OrganizationSuccessContext } from '@/lib/api/organization-context';
 
-const ELEVATED_MAINTENANCE_ROLES = new Set([
-  'superadmin',
-  'admin',
-  'operaciones-supervisor',
-  'jefe_mantencion',
-]);
-
-function normalizeRole(role?: string | null) {
-  return String(role || '').trim().toLowerCase();
-}
-
 export async function requireAssignedMaintenanceExecution(
   context: OrganizationSuccessContext,
   workOrderId: string,
 ) {
-  if (ELEVATED_MAINTENANCE_ROLES.has(normalizeRole(context.role))) {
-    return { ok: true as const, elevated: true as const, personId: null };
-  }
-
   const { data: person, error: personError } = await context.supabase
     .from('people')
     .select('id')
@@ -70,5 +55,5 @@ export async function requireAssignedMaintenanceExecution(
     };
   }
 
-  return { ok: true as const, elevated: false as const, personId: person.id };
+  return { ok: true as const, personId: person.id };
 }
