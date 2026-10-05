@@ -17,9 +17,10 @@ test('work order assignment stores canonical person identity and derives the dis
   assert.doesNotMatch(route, /if \(body\.assigned_to_name !== undefined\)/);
 });
 
-test('work order detail exposes only linked active people as assignee choices', () => {
-  assert.match(route, /const \[asset, costSummary, costCenters, assignees, closeReadiness\]/);
-  assert.match(route, /costCenters, assignees, closeReadiness/);
+test('work order detail exposes linked active people only to module readers while assigned executors get no global assignee list', () => {
+  assert.match(route, /const \[asset, costSummary, closeReadiness\]/);
+  assert.match(route, /const \[costCenters, assignees\] = canReadModule/);
+  assert.match(route, /: \[\[\], \[\]\]/);
   assert.match(page, /const assignees = data\?\.assignees \|\| \[\]/);
   assert.match(page, /id="assignee"/);
   assert.match(page, /patchOrder\(\{\s*assigned_person_id:\s*event\.target\.value \|\| null\s*\}\)/);
