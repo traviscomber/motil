@@ -2,13 +2,10 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getOrganizationContext } from '@/lib/api/organization-context';
-import { MODULE_KEYS, requireModuleAccess } from '@/lib/api/module-access';
+import { getModuleAccessLevel, MODULE_KEYS } from '@/lib/api/module-access';
+import { requireAssignedMaintenanceExecution } from '@/lib/maintenance/work-order-execution-access';
 
 export async function POST(request: NextRequest) {
-  const access = await requireModuleAccess(request, MODULE_KEYS.MANT_OPERACIONES);
-  if (!access.authorized) return access.response;
-  if (!access.canWrite) return NextResponse.json({ error: 'Sin permiso de edición' }, { status: 403 });
-
   const context = await getOrganizationContext(request);
   if (!context.ok) return context.response;
 
@@ -20,6 +17,12 @@ export async function POST(request: NextRequest) {
 
     if (!workOrderId || !['meter_reading', 'not_available'].includes(mode)) {
       return NextResponse.json({ error: 'Evidencia de horómetro inválida' }, { status: 400 });
+    }
+
+    const accessLevel = await getModuleAccessLevel(context.userId, context.role, MODULE_KEYS.MANT_OPERACIONES);
+    if (accessLevel !== 'ED') {
+      const executionAccess = await requireAssignedMaintenanceExecution(context, workOrderId);
+      if (!executionAccess.ok) return executionAccess.response;
     }
 
     let meterHours: number | null = null;
