@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getOrganizationContext } from '@/lib/api/organization-context';
-import { MODULE_KEYS, requireModuleAccess } from '@/lib/api/module-access';
+import { getModuleAccessLevel, MODULE_KEYS } from '@/lib/api/module-access';
 import { requireOperationalMaintenanceWorkOrder } from '@/lib/maintenance/work-order-scope';
 import { requireAssignedMaintenanceExecution } from '@/lib/maintenance/work-order-execution-access';
 
@@ -10,8 +10,6 @@ type MaintenanceWorkOrderRow = { id: string; asset_id: string | null; start_date
 type CloseWorkOrderPayload = { actual_duration_hours?: number | string | null; root_cause?: string | null; preventive_actions?: string | null };
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const access = await requireModuleAccess(request, MODULE_KEYS.MANT_OPERACIONES, true);
-  if (!access.authorized) return access.response;
   const context = await getOrganizationContext(request);
   if (!context.ok) return context.response;
   const { id } = await params;
@@ -20,8 +18,22 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const guard = await requireOperationalMaintenanceWorkOrder(context.supabase, context.organizationId, id);
     if (!guard.ok) return NextResponse.json({ error: guard.error, record_scope: guard.scope }, { status: guard.status });
 
+    const accessLevel = await getModuleAccessLevel(context.userId, context.role, MODULE_KEYS.MANT_OPERACIONES);
     const executionAccess = await requireAssignedMaintenanceExecution(context, id);
-    if (!executionAccess.ok) return executionAccess.response;
+    if (accessLevel !== 'ED' && !executionAccess.ok) return executionAccess.response;
+
+    const { count: evidenceCount, error: evidenceError } = await context.supabase
+      .from('work_order_evidence_files')
+      .select('id', { head: true, count: 'exact' })
+      .eq('organization_id', context.organizationId)
+      .eq('work_order_id', id);
+    if (evidenceError) throw evidenceError;
+    if ((evidenceCount || 0) < 1) {
+      return NextResponse.json(
+        { error: 'Adjunta al menos una foto o evidencia antes de cerrar la OT.' },
+        { status: 409 },
+      );
+    }
 
     const { count: evidenceCount, error: evidenceError } = await context.supabase
       .from('work_order_evidence_files')
