@@ -16,7 +16,21 @@ type TimerResponse = {
     total_seconds?: number;
     total_minutes?: number;
   };
+  timeline?: Array<{
+    event_type?: string;
+    payload?: { notes?: string | null } | null;
+  }>;
 };
+
+const PAUSE_REASONS = [
+  'Entró una OT más crítica',
+  'Falta de repuesto o material',
+  'Espera de autorización o coordinación',
+  'Equipo o área no disponible',
+  'Condición de seguridad',
+  'Cambio de prioridad operacional',
+  'Otro',
+] as const;
 
 const fetcher = async (url: string): Promise<TimerResponse> => {
   const response = await fetch(url, { credentials: 'include' });
@@ -63,9 +77,15 @@ export function MobileWorkOrderFlow({
   );
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [showPauseForm, setShowPauseForm] = useState(false);
+  const [pauseReason, setPauseReason] = useState('');
+  const [pauseDetail, setPauseDetail] = useState('');
   const timerStatus = data?.current?.timer_status || 'idle';
   const baseSeconds = Number(data?.current?.total_seconds ?? (Number(data?.current?.total_minutes || 0) * 60));
   const timerStartTime = data?.current?.timer_start_time || null;
+  const lastPauseReason = timerStatus === 'paused'
+    ? data?.timeline?.find((event) => event.event_type === 'timer_pause')?.payload?.notes || null
+    : null;
   const [nowMs, setNowMs] = useState(() => Date.now());
 
   useEffect(() => {
@@ -111,21 +131,39 @@ export function MobileWorkOrderFlow({
     }
   }
 
-  async function timerAction(action: 'pause' | 'resume') {
+  async function timerAction(action: 'pause' | 'resume', notes?: string) {
     setBusy(true);
     setMessage(null);
     try {
       await request(`/api/maintenance/work-orders/${workOrderId}/timer`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action }),
+        body: JSON.stringify({ action, notes: notes || null }),
       });
       await mutate();
+      if (action === 'pause') {
+        setShowPauseForm(false);
+        setPauseReason('');
+        setPauseDetail('');
+      }
     } catch (cause) {
       setMessage(cause instanceof Error ? cause.message : 'No se pudo actualizar el tiempo.');
     } finally {
       setBusy(false);
     }
+  }
+
+  async function pauseWork() {
+    if (!pauseReason) {
+      setMessage('Selecciona el motivo de la pausa.');
+      return;
+    }
+    if (pauseReason === 'Otro' && !pauseDetail.trim()) {
+      setMessage('Describe el motivo de la pausa.');
+      return;
+    }
+    const notes = pauseDetail.trim() ? `${pauseReason} — ${pauseDetail.trim()}` : pauseReason;
+    await timerAction('pause', notes);
   }
 
   async function finishWork() {
@@ -193,16 +231,60 @@ export function MobileWorkOrderFlow({
               <CirclePlay className="mr-2 h-5 w-5" />
               {busy ? 'Iniciando...' : 'Iniciar trabajo'}
             </Button>
-          ) : timerStatus === 'running' ? (
-            <Button size="lg" className="h-14 w-full text-base" disabled={busy} onClick={() => void timerAction('pause')}>
+          ) : timerStatus === 'running' && !showPauseForm ? (
+            <Button size="lg" className="h-14 w-full text-base" disabled={busy} onClick={() => { setMessage(null); setShowPauseForm(true); }}>
               <CirclePause className="mr-2 h-5 w-5" />
-              {busy ? 'Guardando...' : 'Pausar trabajo'}
+              Pausar trabajo
             </Button>
+          ) : timerStatus === 'running' && showPauseForm ? (
+            <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
+              <div>
+                <label htmlFor="pause-reason" className="text-sm font-medium">¿Por qué pausas esta OT?</label>
+                <select
+                  id="pause-reason"
+                  value={pauseReason}
+                  onChange={(event) => setPauseReason(event.target.value)}
+                  className="mt-2 flex h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="">Selecciona un motivo</option>
+                  {PAUSE_REASONS.map((reason) => <option key={reason} value={reason}>{reason}</option>)}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="pause-detail" className="text-sm font-medium">Detalle {pauseReason === 'Otro' ? '(obligatorio)' : '(opcional)'}</label>
+                <textarea
+                  id="pause-detail"
+                  value={pauseDetail}
+                  onChange={(event) => setPauseDetail(event.target.value)}
+                  rows={3}
+                  maxLength={500}
+                  placeholder="Ej.: se asignó una OT crítica por detención de equipo."
+                  className="mt-2 flex min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Button variant="outline" className="h-12" disabled={busy} onClick={() => { setShowPauseForm(false); setMessage(null); }}>
+                  Cancelar
+                </Button>
+                <Button className="h-12" disabled={busy || !pauseReason} onClick={() => void pauseWork()}>
+                  <CirclePause className="mr-2 h-4 w-4" />
+                  {busy ? 'Pausando...' : 'Confirmar pausa'}
+                </Button>
+              </div>
+            </div>
           ) : (
-            <Button size="lg" className="h-14 w-full text-base" disabled={busy} onClick={() => void timerAction('resume')}>
-              <CirclePlay className="mr-2 h-5 w-5" />
-              {busy ? 'Guardando...' : 'Reanudar trabajo'}
-            </Button>
+            <div className="space-y-3">
+              {lastPauseReason ? (
+                <div className="rounded-lg border bg-muted/20 p-3">
+                  <p className="text-xs text-muted-foreground">Motivo de la pausa</p>
+                  <p className="mt-1 text-sm font-medium">{lastPauseReason}</p>
+                </div>
+              ) : null}
+              <Button size="lg" className="h-14 w-full text-base" disabled={busy} onClick={() => void timerAction('resume')}>
+                <CirclePlay className="mr-2 h-5 w-5" />
+                {busy ? 'Guardando...' : 'Reanudar trabajo'}
+              </Button>
+            </div>
           )}
 
           {status === 'in_progress' ? (
