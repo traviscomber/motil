@@ -28,7 +28,8 @@ test('mobile and desktop timers visibly tick every second', () => {
 test('closure UI requires a camera or image evidence and uses dedicated close endpoint', () => {
   assert.match(closeQueue, /capture="environment"/);
   assert.match(closeQueue, /accept="image\/jpeg,image\/png,image\/webp,image\/heic,image\/heif"/);
-  assert.match(closeQueue, /evidenceFile/);
+  assert.match(closeQueue, /uploadEvidence/);
+  assert.match(closeQueue, /ImagePlus/);
   assert.match(closeQueue, /\/evidence/);
   assert.match(closeQueue, /\/close/);
   assert.doesNotMatch(closeQueue, /patchCurrent\(\{ status:'completed'/);
