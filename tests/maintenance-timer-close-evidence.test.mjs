@@ -37,7 +37,7 @@ test('closure UI requires a camera or image evidence and uses dedicated close en
 test('server stores private photo evidence and blocks closure without it', () => {
   assert.match(migration, /work_order_evidence_files/);
   assert.match(migration, /maintenance-work-order-evidence/);
-  assert.match(migration, /public, authenticated/);
+  assert.match(migration, /revoke all on table public\.work_order_evidence_files from anon, authenticated/);
   assert.match(evidenceRoute, /ALLOWED_TYPES/);
   assert.match(evidenceRoute, /12 \* 1024 \* 1024/);
   assert.match(closeRoute, /work_order_evidence_files/);
