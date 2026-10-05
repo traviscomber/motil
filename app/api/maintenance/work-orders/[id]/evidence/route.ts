@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getOrganizationContext } from '@/lib/api/organization-context';
 import { MODULE_KEYS, getModuleAccessLevel } from '@/lib/api/module-access';
 import { requireAssignedMaintenanceExecution } from '@/lib/maintenance/work-order-execution-access';
+import { requireOperationalMaintenanceWorkOrder } from '@/lib/maintenance/work-order-scope';
 
 const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']);
 const MAX_BYTES = 12 * 1024 * 1024;
@@ -40,6 +41,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (!context.ok) return context.response;
 
   try {
+    const guard = await requireOperationalMaintenanceWorkOrder(context.supabase, context.organizationId, id);
+    if (!guard.ok) return NextResponse.json({ error: guard.error, record_scope: guard.scope }, { status: guard.status });
+
     const form = await request.formData();
     const file = form.get('file');
     const notes = String(form.get('notes') || '').trim() || null;
