@@ -25,7 +25,7 @@ test('work timer refuses play or resume without canonical assignee', async () =>
   assert.match(sql, /p_action in \('play', 'resume'\)[\s\S]*\('completed', 'closed', 'cancelled', 'canceled'\)/i);
 });
 
-test('timer mutation requires maintenance write access while GET remains read access', async () => {
+test('timer mutation accepts module writers or the canonical assigned executor', async () => {
   const route = await readFile(timerRouteUrl, 'utf8');
 
   const postStart = route.indexOf('export async function POST');
@@ -33,14 +33,18 @@ test('timer mutation requires maintenance write access while GET remains read ac
   const postSection = route.slice(postStart, getStart);
   const getSection = route.slice(getStart);
 
-  assert.match(postSection, /requireModuleAccess\(request, MODULE_KEYS\.MANT_OPERACIONES, true\)/);
-  assert.match(getSection, /requireModuleAccess\(request, MODULE_KEYS\.MANT_OPERACIONES\)/);
+  assert.match(postSection, /getModuleAccessLevel/);
+  assert.match(postSection, /requireAssignedMaintenanceExecution/);
+  assert.match(postSection, /accessLevel !== 'ED' && !executionAccess\.ok/);
+  assert.match(getSection, /requireAssignedMaintenanceExecution/);
 });
 
 test('legacy close endpoint delegates terminal transition to canonical RPC', async () => {
   const route = await readFile(closeRouteUrl, 'utf8');
 
-  assert.match(route, /requireModuleAccess\(request, MODULE_KEYS\.MANT_OPERACIONES, true\)/);
+  assert.match(route, /getModuleAccessLevel/);
+  assert.match(route, /requireAssignedMaintenanceExecution/);
+  assert.match(route, /accessLevel !== 'ED' && !executionAccess\.ok/);
   assert.match(route, /rpc\('close_work_order_safely'/);
   assert.doesNotMatch(route, /status:\s*['"]closed['"]/);
 });
