@@ -5,6 +5,7 @@ import { getOrganizationContext } from '@/lib/api/organization-context';
 import { MODULE_KEYS, requireModuleAccess } from '@/lib/api/module-access';
 import { getSupabaseAdmin } from '@/lib/db/supabase';
 import { callMaintenanceOperationalAI } from '@/lib/maintenance/senior-assistant-openai';
+import { executeMaintenanceSeniorTool } from '@/lib/maintenance/senior-assistant-tools';
 import { loadSupportAdvisoryHandoffs, supportAdvisoryHandoffPrompt } from '@/lib/intelligence/advisory-handoff-context';
 
 const OPENAI_RESPONSES_URL = 'https://api.openai.com/v1/responses';
@@ -266,6 +267,103 @@ async function buildCanonicalMaintenanceContext(
   };
 }
 
+function isRecoverableAiAvailabilityError(detail: string) {
+  return /no credits|insufficient[_ ]quota|quota|billing|rate limit|429|temporar|unavailable|timeout|timed out|overloaded/i.test(detail);
+}
+
+function isOpenWorkOrderStatus(status: unknown) {
+  return !['closed', 'cerrada', 'cerrado', 'completed', 'completada', 'completado', 'cancelled', 'cancelada', 'cancelado']
+    .includes(String(status || '').trim().toLowerCase());
+}
+
+function evidenceCoverageForAsset(asset: any, context: any) {
+  const assetId = String(asset?.id || '');
+  const identity = [asset?.asset_code, asset?.name, asset?.asset_type, asset?.manufacturer, asset?.model, asset?.cost_center_code].filter(Boolean).length;
+  const openOrders = (context.operational_work_orders || []).filter((row: any) => String(row?.canonical_asset_id || '') === assetId && isOpenWorkOrderStatus(row?.status)).length;
+  const preventive = (context.preventive_hour_status || []).filter((row: any) => String(row?.canonical_asset_id || '') === assetId).length;
+  const observed = (context.observed_conditions_90d || []).find((row: any) => String(row?.canonical_asset_id || '') === assetId);
+  const observedCount = observed ? Number(observed?.drilling_reports || 0) + Number(observed?.out_of_service_reports || 0) + Number(observed?.operational_with_observations_reports || 0) : 0;
+  const reviews = (context.pending_operational_reviews || []).filter((row: any) => String(row?.canonical_asset_id || '') === assetId).length;
+  const reliability = (context.audited_non_synthetic_reliability || []).filter((row: any) => String(row?.canonical_asset_id || '') === assetId).length;
+  const closure = (context.closure_readiness || []).filter((row: any) => String(row?.canonical_asset_id || '') === assetId).length;
+  const domains = [identity >= 4, openOrders > 0, preventive > 0, observedCount > 0 || reviews > 0, reliability > 0, closure > 0].filter(Boolean).length;
+  const score = domains * 100 + Math.min(99, identity + openOrders * 3 + preventive * 3 + Math.min(observedCount, 30) + reviews * 2 + reliability * 4 + closure * 2);
+  return { asset, identity, openOrders, preventive, observedCount, reviews, reliability, closure, domains, score };
+}
+
+function canonicalFallbackAnswer(message: string, context: any) {
+  const normalized = message.trim().toLowerCase();
+  const toolsUsed: Array<{ name: string; mode: 'read' }> = [];
+  const lines: string[] = [];
+
+  if (/ficha\s*360|m[aá]s data|m[aá]s informaci[oó]n|m[aá]s completa|mejor ficha/.test(normalized)) {
+    const rows = (context.assets || [])
+      .filter((asset: any) => asset?.is_active !== false)
+      .map((asset: any) => evidenceCoverageForAsset(asset, context))
+      .sort((a: any, b: any) => b.score - a.score)
+      .slice(0, 5);
+    lines.push('DATO CANÓNICO');
+    if (!rows.length) {
+      lines.push('No hay activos con evidencia suficiente cargada para comparar cobertura de Ficha 360.');
+    } else {
+      lines.push('Los activos con mayor cobertura de datos para una Ficha 360 son:');
+      for (const row of rows) {
+        const a = row.asset;
+        const evidence = [
+          row.openOrders ? row.openOrders + ' OT abierta(s)' : null,
+          row.preventive ? row.preventive + ' pauta(s) preventiva(s)' : null,
+          row.observedCount ? row.observedCount + ' registro(s) operacionales' : null,
+          row.reviews ? row.reviews + ' revisión(es) pendiente(s)' : null,
+          row.reliability ? row.reliability + ' cierre(s) auditado(s)' : null,
+        ].filter(Boolean);
+        lines.push('- ' + (a?.name || a?.asset_code || 'Activo') + (a?.asset_code ? ' · ' + a.asset_code : '') + ' · cobertura ' + row.domains + '/6' + (evidence.length ? ' · ' + evidence.join(' · ') : ''));
+      }
+    }
+    lines.push('', 'INTERPRETACIÓN PROFESIONAL', 'La cobertura mide cuántos dominios canónicos tienen evidencia útil para mostrar. No es un score de confiabilidad, criticidad ni condición mecánica.');
+    lines.push('', 'PRÓXIMA ACCIÓN', rows.length ? 'Abrir la Ficha 360 del primer activo y validar qué secciones tienen evidencia real antes de usarla como referencia de diseño.' : 'Completar evidencia canónica de activos antes de comparar fichas.');
+    toolsUsed.push({ name: 'get_asset_context_batch', mode: 'read' });
+    return { text: lines.join('\n'), model: 'canonical-fallback', responseId: null, toolAudit: toolsUsed };
+  }
+
+  if (/preventiv|vencid|hor[oó]metro|pauta/.test(normalized)) {
+    const rows = (context.preventive_hour_status || []).filter((row: any) => ['due', 'overdue', 'vencido', 'vencida'].includes(String(row?.hour_status || '').toLowerCase())).slice(0, 6);
+    lines.push('DATO CANÓNICO');
+    if (!rows.length) lines.push('No hay preventivos vencidos o por vencer en la evidencia cargada.');
+    for (const row of rows) lines.push('- ' + (row?.asset_name || row?.asset_code || 'Activo') + ' · ' + (row?.task_name || 'pauta preventiva') + ' · ' + (row?.hour_status || 'pendiente') + '.');
+    lines.push('', 'PRÓXIMA ACCIÓN', rows.length ? 'Revisar los vencidos primero y confirmar ventana, responsable e insumos.' : 'Mantener actualizadas las lecturas de horómetro.');
+    toolsUsed.push({ name: 'get_maintenance_plan', mode: 'read' });
+    return { text: lines.join('\n'), model: 'canonical-fallback', responseId: null, toolAudit: toolsUsed };
+  }
+
+  if (/\bot\b|orden(?:es)? de trabajo|bloquead|cerrar|cierre/.test(normalized)) {
+    const rows = (context.operational_work_orders || []).filter((row: any) => isOpenWorkOrderStatus(row?.status)).slice(0, 6);
+    lines.push('DATO CANÓNICO');
+    if (!rows.length) lines.push('No hay OT operacionales abiertas en el contexto cargado.');
+    for (const row of rows) lines.push('- ' + (row?.work_order_number || 'OT') + ' · ' + (row?.title || 'sin título') + ' · ' + (row?.status || 'sin estado') + '.');
+    lines.push('', 'PRÓXIMA ACCIÓN', rows.length ? 'Abrir la OT relevante y revisar su bloqueo o siguiente requisito antes de generar trabajo nuevo.' : 'No hay OT abiertas que priorizar con esta evidencia.');
+    toolsUsed.push({ name: 'get_closure_readiness', mode: 'read' });
+    return { text: lines.join('\n'), model: 'canonical-fallback', responseId: null, toolAudit: toolsUsed };
+  }
+
+  const result = executeMaintenanceSeniorTool('get_maintenance_attention_context', { limit: 5 }, context) as any;
+  const rows = Array.isArray(result?.rows) ? result.rows : [];
+  lines.push('DATO CANÓNICO');
+  if (!rows.length) lines.push('No hay señales suficientes en la cola actual para destacar un activo por sobre otro.');
+  for (const item of rows) {
+    const a = item?.attention || {};
+    const reasons = [
+      a.pending_reviews ? a.pending_reviews + ' revisión(es) pendiente(s)' : null,
+      a.overdue_preventive ? a.overdue_preventive + ' preventivo(s) vencido(s)' : null,
+      a.open_work_orders ? a.open_work_orders + ' OT abierta(s)' : null,
+      a.closure_blockers ? a.closure_blockers + ' bloqueo(s) de cierre' : null,
+    ].filter(Boolean);
+    lines.push('- ' + (a.asset_name || a.asset_code || 'Activo') + ': ' + (reasons.join(' · ') || 'señal operacional pendiente de revisar') + '.');
+  }
+  lines.push('', 'INTERPRETACIÓN PROFESIONAL', 'La lista ordena atención por señales observables. No es probabilidad de falla, diagnóstico ni criticidad OEM.');
+  lines.push('', 'PRÓXIMA ACCIÓN', rows.length ? 'Abrir el primer activo y contrastar observaciones, preventivos y OT antes de decidir.' : 'Actualizar evidencia operacional antes de priorizar.');
+  toolsUsed.push({ name: 'get_maintenance_attention_context', mode: 'read' });
+  return { text: lines.join('\n'), model: 'canonical-fallback', responseId: null, toolAudit: toolsUsed };
+}
 export async function GET(request: NextRequest) {
   const access = await requireModuleAccess(request, MODULE_KEYS.MANT_OPERACIONES);
   if (!access.authorized) return access.response;
@@ -494,11 +592,19 @@ export async function POST(request: NextRequest) {
     };
 
     const modelInput = `CONVERSACIÓN RECIENTE\n${conversationTranscript(history)}\n\n${advisoryContext}\n\nCONTEXTO CANÓNICO MOTIL\n${JSON.stringify(canonicalAvailability)}\n\nPREGUNTA ACTUAL\n${message}`;
-    const result = await callMaintenanceOperationalAI({
-      instructions,
-      input: modelInput,
-      context: canonical.context,
-    });
+    let result;
+    try {
+      result = await callMaintenanceOperationalAI({
+        instructions,
+        input: modelInput,
+        context: canonical.context,
+      });
+    } catch (aiError) {
+      const aiDetail = aiError instanceof Error ? aiError.message : String(aiError ?? 'unknown');
+      if (!isRecoverableAiAvailabilityError(aiDetail)) throw aiError;
+      console.warn('[maintenance-senior-assistant] AI unavailable; using canonical fallback', { detail: aiDetail });
+      result = canonicalFallbackAnswer(message, canonical.context);
+    }
     const toolsUsed = result.toolAudit.map(({ name, mode }) => ({ name, mode }));
     const sourceRefs = [
       ...canonical.sources.map((source) => ({ source })),
