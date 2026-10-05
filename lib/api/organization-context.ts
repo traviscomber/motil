@@ -76,6 +76,21 @@ function isMaintenanceSelfServiceMutation(request: NextRequest) {
   );
 }
 
+function isAssignedWorkOrderExecutionMutation(request: NextRequest) {
+  const method = request.method.toUpperCase();
+  const path = request.nextUrl.pathname;
+
+  if (method === 'PATCH' && /^\/api\/maintenance\/work-orders\/[^/]+$/.test(path)) {
+    return true;
+  }
+
+  if (method === 'POST' && /^\/api\/maintenance\/work-orders\/[^/]+\/(timer|close)$/.test(path)) {
+    return true;
+  }
+
+  return false;
+}
+
 export async function getOrganizationContext(
   request: NextRequest
 ): Promise<OrganizationContext> {
@@ -93,6 +108,7 @@ export async function getOrganizationContext(
   if (
     isMutation(request, '/api/maintenance/') &&
     !isMaintenanceSelfServiceMutation(request) &&
+    !isAssignedWorkOrderExecutionMutation(request) &&
     !maintenanceWriteRoles.has(role)
   ) {
     return {

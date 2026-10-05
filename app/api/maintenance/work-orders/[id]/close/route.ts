@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getOrganizationContext } from '@/lib/api/organization-context';
 import { MODULE_KEYS, requireModuleAccess } from '@/lib/api/module-access';
 import { requireOperationalMaintenanceWorkOrder } from '@/lib/maintenance/work-order-scope';
+import { requireAssignedMaintenanceExecution } from '@/lib/maintenance/work-order-execution-access';
 
 type MaintenanceWorkOrderRow = { id: string; asset_id: string | null; start_date: string | null };
 type CloseWorkOrderPayload = { actual_duration_hours?: number | string | null; root_cause?: string | null; preventive_actions?: string | null };
@@ -18,6 +19,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   try {
     const guard = await requireOperationalMaintenanceWorkOrder(context.supabase, context.organizationId, id);
     if (!guard.ok) return NextResponse.json({ error: guard.error, record_scope: guard.scope }, { status: guard.status });
+
+    const executionAccess = await requireAssignedMaintenanceExecution(context, id);
+    if (!executionAccess.ok) return executionAccess.response;
 
     const body = (await request.json()) as CloseWorkOrderPayload;
     const { actual_duration_hours, root_cause, preventive_actions } = body;

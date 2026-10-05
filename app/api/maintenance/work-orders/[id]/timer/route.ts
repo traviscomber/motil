@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getOrganizationContext } from '@/lib/api/organization-context';
 import { MODULE_KEYS, requireModuleAccess } from '@/lib/api/module-access';
 import { requireOperationalMaintenanceWorkOrder } from '@/lib/maintenance/work-order-scope';
+import { requireAssignedMaintenanceExecution } from '@/lib/maintenance/work-order-execution-access';
 
 const TIMER_ACTIONS = new Set(['play', 'pause', 'resume', 'terminate']);
 
@@ -21,6 +22,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const { id: workOrderId } = await params;
   const guard = await requireOperationalMaintenanceWorkOrder(context.supabase, context.organizationId, workOrderId);
   if (!guard.ok) return NextResponse.json({ ok: false, error: guard.error, record_scope: guard.scope }, { status: guard.status });
+
+  const executionAccess = await requireAssignedMaintenanceExecution(context, workOrderId);
+  if (!executionAccess.ok) return executionAccess.response;
 
   const body = (await request.json().catch(() => null)) as { action?: string; notes?: string | null } | null;
   const action = String(body?.action || '');
