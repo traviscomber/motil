@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
       cargoName = cargo?.name || null;
     }
 
-    const mode = resolveMaintenanceViewerMode(cargoName);
+    const baseMode = resolveMaintenanceViewerMode(cargoName);
 
     const { data: creatorPerson, error: creatorPersonError } = await context.supabase
       .from('people')
@@ -43,12 +43,26 @@ export async function GET(request: NextRequest) {
     const canCreateWorkOrder = ['Ariel López', 'Mauricio Astudillo'].includes(String(creatorPerson?.full_name || ''));
 
     const accessLevel = await getModuleAccessLevel(context.userId, context.role, MODULE_KEYS.MANT_OPERACIONES);
+    let hasAssignedOperationalWork = false;
+    if (creatorPerson?.id) {
+      const { count, error: assignedError } = await context.supabase
+        .from('maintenance_work_orders')
+        .select('id', { head: true, count: 'exact' })
+        .eq('organization_id', context.organizationId)
+        .eq('assigned_person_id', creatorPerson.id)
+        .not('status', 'in', '("completed","closed","cancelled","canceled")');
+      if (assignedError) throw assignedError;
+      hasAssignedOperationalWork = (count || 0) > 0;
+    }
+
+    const mode = accessLevel === 'ED' ? baseMode : hasAssignedOperationalWork ? 'execution' : baseMode;
 
     return NextResponse.json({
       mode,
       cargoName,
-      canEdit: accessLevel === 'ED',
+      canEdit: accessLevel === 'ED' || hasAssignedOperationalWork,
       canCreateWorkOrder,
+      hasAssignedOperationalWork,
     });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'No se pudo resolver el contexto de mantenimiento' }, { status: 500 });
