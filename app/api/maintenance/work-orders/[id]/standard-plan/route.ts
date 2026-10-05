@@ -14,10 +14,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   try {
     const accessLevel = await getModuleAccessLevel(context.userId, context.role, MODULE_KEYS.MANT_OPERACIONES);
     let assignedExecutor = false;
-    if (accessLevel === 'SR') {
+    if (accessLevel !== 'ED') {
       const executionAccess = await requireAssignedMaintenanceExecution(context, id);
-      if (!executionAccess.ok) return executionAccess.response;
-      assignedExecutor = true;
+      assignedExecutor = executionAccess.ok;
+      if (accessLevel === 'SR' && !executionAccess.ok) return executionAccess.response;
     }
     const scope = await getMaintenanceWorkOrderScope(context.supabase, context.organizationId, id);
     if (scope === 'missing') return NextResponse.json({ error: 'No se encontró la orden de trabajo' }, { status: 404 });
