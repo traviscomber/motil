@@ -26,13 +26,29 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   const { data, error } = await context.supabase
     .from('work_order_evidence_files')
-    .select('id,evidence_type,file_name,mime_type,size_bytes,notes,captured_at,created_at')
+    .select('id,evidence_type,file_name,mime_type,size_bytes,notes,captured_at,created_at,storage_bucket,storage_path')
     .eq('organization_id', context.organizationId)
     .eq('work_order_id', id)
     .order('created_at', { ascending: false });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ evidence: data || [] });
+  const evidence = await Promise.all((data || []).map(async (row) => {
+    const { data: signed } = await context.supabase.storage
+      .from(row.storage_bucket)
+      .createSignedUrl(row.storage_path, 900);
+    return {
+      id: row.id,
+      evidence_type: row.evidence_type,
+      file_name: row.file_name,
+      mime_type: row.mime_type,
+      size_bytes: row.size_bytes,
+      notes: row.notes,
+      captured_at: row.captured_at,
+      created_at: row.created_at,
+      signed_url: signed?.signedUrl || null,
+    };
+  }));
+  return NextResponse.json({ evidence });
 }
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
