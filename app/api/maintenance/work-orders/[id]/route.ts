@@ -180,6 +180,17 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       }
     }
     if (body.status === 'completed') {
+      const { count: evidenceCount, error: evidenceError } = await context.supabase
+        .from('work_order_evidence_files')
+        .select('id', { head: true, count: 'exact' })
+        .eq('organization_id', context.organizationId)
+        .eq('work_order_id', id)
+        .eq('evidence_type', 'photo');
+      if (evidenceError) throw evidenceError;
+      if ((evidenceCount || 0) < 1) {
+        return NextResponse.json({ error: 'Agrega al menos una foto como evidencia antes de cerrar la OT.' }, { status: 409 });
+      }
+
       const rootCause = String(body.root_cause || '').trim();
       const preventiveActions = String(body.preventive_actions || '').trim();
       const actualHours = Number(body.actual_duration_hours);
