@@ -20,6 +20,10 @@ export async function POST(request: NextRequest) {
     }
 
     const accessLevel = await getModuleAccessLevel(context.userId, context.role, MODULE_KEYS.MANT_OPERACIONES);
+    const executionAccess = await requireAssignedMaintenanceExecution(context, workOrderId);
+    if (accessLevel !== 'ED' && !executionAccess.ok) return executionAccess.response;
+
+    const accessLevel = await getModuleAccessLevel(context.userId, context.role, MODULE_KEYS.MANT_OPERACIONES);
     if (accessLevel !== 'ED') {
       const executionAccess = await requireAssignedMaintenanceExecution(context, workOrderId);
       if (!executionAccess.ok) return executionAccess.response;
