@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import useSWR from 'swr';
-import { AlertCircle, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { AlertCircle, ArrowRight, Camera, CheckCircle2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -44,6 +44,10 @@ type QueueResponse = {
   canEdit?: boolean;
 };
 
+type EvidenceResponse = {
+  evidence?: Array<{ id: string; file_name: string; created_at: string }>;
+};
+
 type CloseQueueT = Dictionary['app']['workOrderCloseQueue'];
 
 const ACTION_KEYS: Record<string, keyof CloseQueueT['actionTitles']> = {
@@ -73,6 +77,13 @@ const fetcher = async (url: string): Promise<QueueResponse> => {
   return payload;
 };
 
+const evidenceFetcher = async (url: string): Promise<EvidenceResponse> => {
+  const response = await fetch(url, { credentials: 'include' });
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(payload?.error || 'No se pudo cargar la evidencia.');
+  return payload;
+};
+
 function localDateTimeValue() { const now = new Date(); const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000); return local.toISOString().slice(0, 16); }
 
 export function ProgressiveWorkOrderCloseQueue({ locale, dictionary }: { locale: Locale; dictionary: Dictionary }) {
@@ -85,6 +96,12 @@ export function ProgressiveWorkOrderCloseQueue({ locale, dictionary }: { locale:
   const queue = useMemo(() => selectedWorkOrderId ? [...rawQueue].sort((a,b) => a.work_order_id===selectedWorkOrderId ? -1 : b.work_order_id===selectedWorkOrderId ? 1 : 0) : rawQueue, [rawQueue, selectedWorkOrderId]);
   const current = queue[0] || null;
   const summary = data?.summary;
+  const { data: evidenceData, mutate: mutateEvidence } = useSWR<EvidenceResponse>(
+    current ? `/api/maintenance/work-orders/${current.work_order_id}/evidence` : null,
+    evidenceFetcher,
+    { revalidateOnFocus: false },
+  );
+  const evidenceCount = evidenceData?.evidence?.length || 0;
   const [textValue, setTextValue] = useState('');
   const [hoursValue, setHoursValue] = useState('');
   const [stepObservation, setStepObservation] = useState('');
@@ -93,9 +110,21 @@ export function ProgressiveWorkOrderCloseQueue({ locale, dictionary }: { locale:
   const [meterRecordedAt, setMeterRecordedAt] = useState(localDateTimeValue());
   const [meterReason, setMeterReason] = useState('');
   const [saving, setSaving] = useState(false);
+  const [evidenceCount, setEvidenceCount] = useState(0);
+  const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
-  useEffect(() => { setActionError(null); setTextValue(''); setHoursValue(''); setStepObservation(''); setMeterMode('meter_reading'); setMeterValue(''); setMeterRecordedAt(localDateTimeValue()); setMeterReason(''); }, [current?.work_order_id, current?.next_action, current?.next_plan_step_id]);
+  useEffect(() => {
+    setActionError(null); setTextValue(''); setHoursValue(''); setStepObservation('');
+    setMeterMode('meter_reading'); setMeterValue(''); setMeterRecordedAt(localDateTimeValue()); setMeterReason('');
+    setEvidenceFile(null); setEvidenceCount(0);
+    if (!current?.work_order_id) return;
+    void fetch(`/api/maintenance/work-orders/${current.work_order_id}/evidence`, { credentials: 'include' })
+      .then(async (response) => {
+        const payload = await response.json().catch(() => null);
+        if (response.ok) setEvidenceCount(Array.isArray(payload?.evidence) ? payload.evidence.length : 0);
+      });
+  }, [current?.work_order_id, current?.next_action, current?.next_plan_step_id]);
 
   async function request(url: string, body: Record<string, unknown>) {
     setSaving(true); setActionError(null);
@@ -120,6 +149,97 @@ export function ProgressiveWorkOrderCloseQueue({ locale, dictionary }: { locale:
     finally { setSaving(false); }
   }
 
+  async function uploadEvidence() {
+    if (!current || !evidenceFile) return;
+    setSaving(true); setActionError(null);
+    try {
+      const form = new FormData();
+      form.append('file', evidenceFile);
+      const response = await fetch(`/api/maintenance/work-orders/${current.work_order_id}/evidence`, {
+        method: 'POST', credentials: 'include', body: form,
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(payload?.error || 'No se pudo guardar la foto.');
+      setEvidenceCount((count) => count + 1);
+      setEvidenceFile(null);
+    } catch (cause) {
+      setActionError(cause instanceof Error ? cause.message : 'No se pudo guardar la foto.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function uploadEvidence(file: File | null) {
+    if (!current || !file) return;
+    setUploadingEvidence(true);
+    setActionError(null);
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const response = await fetch(`/api/maintenance/work-orders/${current.work_order_id}/evidence`, {
+        method: 'POST',
+        credentials: 'include',
+        body: form,
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(payload?.error || 'No se pudo guardar la evidencia.');
+      await mutateEvidence();
+    } catch (cause) {
+      setActionError(cause instanceof Error ? cause.message : 'No se pudo guardar la evidencia.');
+    } finally {
+      setUploadingEvidence(false);
+    }
+  }
+
+  async function uploadEvidenceIfNeeded() {
+    if (!current) return false;
+    if (evidenceCount > 0) return true;
+    if (!evidenceFile) {
+      setActionError('Toma una foto o selecciona una imagen antes de cerrar la OT.');
+      return false;
+    }
+
+    const form = new FormData();
+    form.append('file', evidenceFile);
+    const response = await fetch(`/api/maintenance/work-orders/${current.work_order_id}/evidence`, {
+      method: 'POST',
+      credentials: 'include',
+      body: form,
+    });
+    const payload = await response.json().catch(() => null);
+    if (!response.ok) throw new Error(payload?.error || 'No se pudo subir la evidencia.');
+    setEvidenceCount((value) => value + 1);
+    setEvidenceFile(null);
+    return true;
+  }
+
+  async function closeCurrent() {
+    if (!current) return;
+    setSaving(true);
+    setActionError(null);
+    try {
+      const ready = await uploadEvidenceIfNeeded();
+      if (!ready) return;
+      const response = await fetch(`/api/maintenance/work-orders/${current.work_order_id}/close`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          root_cause: current.root_cause,
+          preventive_actions: current.preventive_actions,
+          actual_duration_hours: Number(current.actual_duration_hours || 0),
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(payload?.error || 'No se pudo cerrar la OT.');
+      await mutate();
+    } catch (cause) {
+      setActionError(cause instanceof Error ? cause.message : 'No se pudo cerrar la OT.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function performNextAction() {
     if (!current) return;
     if (current.next_action === 'complete_standard_plan_step') {
@@ -135,7 +255,14 @@ export function ProgressiveWorkOrderCloseQueue({ locale, dictionary }: { locale:
       else { const reason=meterReason.trim(); if(!reason) return setActionError(t.errors.meterReasonRequired); body.unavailableReason=reason; }
       return request('/api/maintenance/work-order-runtime-evidence', body);
     }
-    if (current.next_action === 'close_work_order') return patchCurrent({ status:'completed', root_cause:current.root_cause, preventive_actions:current.preventive_actions, actual_duration_hours:Number(current.actual_duration_hours||0) });
+    if (current.next_action === 'close_work_order') {
+      if (evidenceCount < 1) return setActionError('Agrega al menos una foto como evidencia antes de cerrar.');
+      return request(`/api/maintenance/work-orders/${current.work_order_id}/close`, {
+        actual_duration_hours:Number(current.actual_duration_hours||0),
+        root_cause:current.root_cause,
+        preventive_actions:current.preventive_actions,
+      });
+    }
   }
 
   function money(value: unknown) { return value == null ? '—' : `$${Number(value).toLocaleString(numberLocale)}`; }
@@ -166,6 +293,65 @@ export function ProgressiveWorkOrderCloseQueue({ locale, dictionary }: { locale:
         {(current.next_action==='record_root_cause'||current.next_action==='record_preventive_actions') ? <textarea className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" rows={4} value={textValue} onChange={(e)=>setTextValue(e.target.value)} placeholder={current.next_action==='record_root_cause'?t.placeholders.rootCause:t.placeholders.preventiveActions}/> : null}
         {current.next_action==='record_actual_hours' ? <Input type="number" min="0.01" step="0.25" value={hoursValue} onChange={(e)=>setHoursValue(e.target.value)} placeholder={t.placeholders.actualHours}/> : null}
         {current.next_action==='record_runtime_evidence' ? <div className="space-y-4 rounded-lg border p-4"><div className="flex gap-2"><Button size="sm" variant={meterMode==='meter_reading'?'default':'outline'} onClick={()=>setMeterMode('meter_reading')}>{t.meter.registerReading}</Button><Button size="sm" variant={meterMode==='not_available'?'default':'outline'} onClick={()=>setMeterMode('not_available')}>{t.meter.notAvailable}</Button></div>{meterMode==='meter_reading'?<div className="grid gap-3 md:grid-cols-2"><Input type="number" min="0" step="0.1" value={meterValue} onChange={(e)=>setMeterValue(e.target.value)} placeholder={t.meter.readingPlaceholder}/><Input type="datetime-local" value={meterRecordedAt} onChange={(e)=>setMeterRecordedAt(e.target.value)}/></div>:<textarea className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" rows={3} value={meterReason} onChange={(e)=>setMeterReason(e.target.value)} placeholder={t.meter.reasonPlaceholder}/>}</div> : null}
+        {current.next_action==='close_work_order' ? <div className="space-y-3 rounded-lg border p-4">
+          <div className="flex items-start gap-3">
+            <Camera className="mt-0.5 h-5 w-5 text-muted-foreground" />
+            <div>
+              <p className="font-medium">Evidencia fotográfica obligatoria</p>
+              <p className="text-sm text-muted-foreground">{evidenceCount > 0 ? `${evidenceCount} foto${evidenceCount === 1 ? '' : 's'} registrada${evidenceCount === 1 ? '' : 's'}.` : 'Toma una foto con el celular o selecciona una imagen antes de cerrar.'}</p>
+            </div>
+          </div>
+          {evidenceCount < 1 ? <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+            capture="environment"
+            onChange={(event) => setEvidenceFile(event.target.files?.[0] || null)}
+            className="block w-full text-sm file:mr-3 file:rounded-md file:border file:bg-background file:px-3 file:py-2 file:text-sm file:font-medium"
+          /> : null}
+          {evidenceFile ? <p className="text-xs text-muted-foreground">Lista para subir: {evidenceFile.name}</p> : null}
+        </div> : null}
+        <div className="space-y-3 rounded-lg border p-4">
+          <div>
+            <p className="font-medium">Evidencia de cierre</p>
+            <p className="mt-1 text-sm text-muted-foreground">Obligatoria antes de cerrar. Puedes tomar una foto con el celular o subir una imagen existente.</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="flex min-h-24 cursor-pointer flex-col items-center justify-center rounded-md border border-dashed p-4 text-center text-sm">
+              <Camera className="mb-2 h-5 w-5" />
+              <span className="font-medium">Tomar foto</span>
+              <span className="text-xs text-muted-foreground">Abrir cámara trasera</span>
+              <input className="sr-only" type="file" accept="image/*" capture="environment" disabled={uploadingEvidence} onChange={(event)=>void uploadEvidence(event.target.files?.[0] || null)} />
+            </label>
+            <label className="flex min-h-24 cursor-pointer flex-col items-center justify-center rounded-md border border-dashed p-4 text-center text-sm">
+              <ImagePlus className="mb-2 h-5 w-5" />
+              <span className="font-medium">Subir foto</span>
+              <span className="text-xs text-muted-foreground">Galería o archivo</span>
+              <input className="sr-only" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" disabled={uploadingEvidence} onChange={(event)=>void uploadEvidence(event.target.files?.[0] || null)} />
+            </label>
+          </div>
+          <p className="text-xs text-muted-foreground">{uploadingEvidence ? 'Subiendo evidencia...' : evidenceCount > 0 ? `${evidenceCount} evidencia${evidenceCount === 1 ? '' : 's'} cargada${evidenceCount === 1 ? '' : 's'}.` : 'Aún no hay evidencia cargada.'}</p>
+        </div>
+        <div className="space-y-3 rounded-lg border p-4">
+          <div className="flex items-start gap-3">
+            <Camera className="mt-0.5 h-5 w-5 text-muted-foreground" />
+            <div>
+              <p className="font-medium">Evidencia fotográfica</p>
+              <p className="text-sm text-muted-foreground">Toma una foto con el celular o selecciona una imagen. Se exige al menos una para cerrar.</p>
+            </div>
+          </div>
+          <Input
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+            capture="environment"
+            onChange={(event) => setEvidenceFile(event.target.files?.[0] || null)}
+          />
+          <div className="flex items-center gap-3">
+            <Button type="button" variant="outline" disabled={!evidenceFile || saving} onClick={() => void uploadEvidence()}>
+              <Camera className="mr-2 h-4 w-4" />Subir evidencia
+            </Button>
+            <span className="text-xs text-muted-foreground">{evidenceCount} foto{evidenceCount === 1 ? '' : 's'} registrada{evidenceCount === 1 ? '' : 's'}</span>
+          </div>
+        </div>
         {actionError ? <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"><AlertCircle className="mr-2 inline h-4 w-4"/>{actionError}</div> : null}
         <div className="flex flex-wrap gap-2">{inline && data?.canEdit ? <Button onClick={()=>void performNextAction()} disabled={saving}>{saving?t.actions.saving:current.next_action==='close_work_order'?t.actions.closeFreeze:current.next_action==='complete_standard_plan_step'?t.actions.markStepDone:t.actions.saveContinue}<ArrowRight className="ml-2 h-4 w-4"/></Button> : null}{!inline ? <Button asChild><Link href={`/dashboard/mantenimiento/ordenes-trabajo/${current.work_order_id}`}>{t.actions.resolveInSheet}<ArrowRight className="ml-2 h-4 w-4"/></Link></Button> : null}<Button asChild variant="outline"><Link href={`/dashboard/mantenimiento/ordenes-trabajo/${current.work_order_id}`}>{t.actions.viewOrder}</Link></Button></div>
       </CardContent>
