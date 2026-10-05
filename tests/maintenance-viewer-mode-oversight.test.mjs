@@ -12,7 +12,9 @@ test('cross-functional maintenance viewers resolve to oversight without inventin
   assert.match(viewerMode, /cargo\.startsWith\('mecánico'\)/);
 });
 
-test('viewer context preserves canonical cargo name for transversal and fallback views', () => {
-  assert.match(viewerContext, /cargoName,\n\s+canEdit: access\.canWrite/);
+test('viewer context preserves canonical cargo name and assigned execution capability', () => {
+  assert.match(viewerContext, /cargoName,/);
+  assert.match(viewerContext, /hasAssignedOperationalWork/);
+  assert.match(viewerContext, /canEdit: accessLevel === 'ED' \|\| hasAssignedOperationalWork/);
   assert.doesNotMatch(viewerContext, /mode === 'general' \? null : cargoName/);
 });
