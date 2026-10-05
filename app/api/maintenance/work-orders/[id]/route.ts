@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getOrganizationContext } from '@/lib/api/organization-context';
-import { MODULE_KEYS, requireModuleAccess } from '@/lib/api/module-access';
+import { getModuleAccessLevel, MODULE_KEYS, requireModuleAccess } from '@/lib/api/module-access';
 import { requireOperationalMaintenanceWorkOrder } from '@/lib/maintenance/work-order-scope';
 import { requireAssignedMaintenanceExecution } from '@/lib/maintenance/work-order-execution-access';
 
@@ -113,8 +113,6 @@ function mapWorkOrder(row: Record<string, unknown>, asset: Record<string, unknow
 }
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const access = await requireModuleAccess(request, MODULE_KEYS.MANT_OPERACIONES);
-  if (!access.authorized) return access.response;
   const context = await getOrganizationContext(request);
   if (!context.ok) return context.response;
   const { id } = await params;
@@ -122,15 +120,37 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const { data, error } = await context.supabase.from('maintenance_work_orders').select('*').eq('id', id).eq('organization_id', context.organizationId).maybeSingle();
     if (error) throw error;
     if (!data) return NextResponse.json({ error: 'No se encontró la orden de trabajo' }, { status: 404 });
-    const [asset, costSummary, costCenters, assignees, closeReadiness] = await Promise.all([
+
+    const accessLevel = await getModuleAccessLevel(context.userId, context.role, MODULE_KEYS.MANT_OPERACIONES);
+    const canReadModule = accessLevel === 'ED' || accessLevel === 'LEC';
+    const assignedExecution = await requireAssignedMaintenanceExecution(context, id);
+    const canExecuteAssigned = assignedExecution.ok && Boolean(data.created_by);
+
+    if (!canReadModule && !canExecuteAssigned) {
+      return assignedExecution.ok
+        ? NextResponse.json({ error: 'No tienes acceso a esta orden de trabajo' }, { status: 403 })
+        : assignedExecution.response;
+    }
+
+    const [asset, costSummary, closeReadiness] = await Promise.all([
       loadCanonicalAsset(context, data.canonical_asset_id || null),
       loadCostSummary(context, id),
-      loadCostCenters(context),
-      loadAssignees(context),
       loadCloseReadiness(context, id),
     ]);
+    const [costCenters, assignees] = canReadModule
+      ? await Promise.all([loadCostCenters(context), loadAssignees(context)])
+      : [[], []];
     const recordScope = data.created_by ? 'operational' : 'historical';
-    return NextResponse.json({ data: mapWorkOrder(data, asset, costSummary), costCenters, assignees, closeReadiness, canEdit: access.canWrite && recordScope === 'operational', record_scope: recordScope, canonical: true });
+    return NextResponse.json({
+      data: mapWorkOrder(data, asset, costSummary),
+      costCenters,
+      assignees,
+      closeReadiness,
+      canEdit: recordScope === 'operational' && (accessLevel === 'ED' || canExecuteAssigned),
+      assignedExecution: canExecuteAssigned,
+      record_scope: recordScope,
+      canonical: true,
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'No se pudo cargar la orden de trabajo';
     return NextResponse.json({ error: message }, { status: 500 });
@@ -138,20 +158,20 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const access = await requireModuleAccess(request, MODULE_KEYS.MANT_OPERACIONES, true);
-  if (!access.authorized) return access.response;
   const context = await getOrganizationContext(request);
   if (!context.ok) return context.response;
   const { id } = await params;
   try {
+    const accessLevel = await getModuleAccessLevel(context.userId, context.role, MODULE_KEYS.MANT_OPERACIONES);
+    const hasModuleWrite = accessLevel === 'ED';
     const guard = await requireOperationalMaintenanceWorkOrder(context.supabase, context.organizationId, id);
     if (!guard.ok) return NextResponse.json({ error: guard.error, record_scope: guard.scope }, { status: guard.status });
 
     const executionAccess = await requireAssignedMaintenanceExecution(context, id);
-    if (!executionAccess.ok) return executionAccess.response;
+    if (!hasModuleWrite && !executionAccess.ok) return executionAccess.response;
 
     const body = (await request.json()) as WorkOrderPatchPayload;
-    if (!executionAccess.elevated) {
+    if (!hasModuleWrite) {
       const mutationKeys = Object.entries(body)
         .filter(([, value]) => value !== undefined)
         .map(([key]) => key);
