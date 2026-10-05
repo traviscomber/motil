@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import useSWR from 'swr';
-import { AlertCircle, ArrowRight, Camera, CheckCircle2 } from 'lucide-react';
+import { AlertCircle, ArrowRight, Camera, CheckCircle2, ImagePlus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -110,20 +110,18 @@ export function ProgressiveWorkOrderCloseQueue({ locale, dictionary }: { locale:
   const [meterRecordedAt, setMeterRecordedAt] = useState(localDateTimeValue());
   const [meterReason, setMeterReason] = useState('');
   const [saving, setSaving] = useState(false);
-  const [evidenceCount, setEvidenceCount] = useState(0);
-  const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
+  const [uploadingEvidence, setUploadingEvidence] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
-    setActionError(null); setTextValue(''); setHoursValue(''); setStepObservation('');
-    setMeterMode('meter_reading'); setMeterValue(''); setMeterRecordedAt(localDateTimeValue()); setMeterReason('');
-    setEvidenceFile(null); setEvidenceCount(0);
-    if (!current?.work_order_id) return;
-    void fetch(`/api/maintenance/work-orders/${current.work_order_id}/evidence`, { credentials: 'include' })
-      .then(async (response) => {
-        const payload = await response.json().catch(() => null);
-        if (response.ok) setEvidenceCount(Array.isArray(payload?.evidence) ? payload.evidence.length : 0);
-      });
+    setActionError(null);
+    setTextValue('');
+    setHoursValue('');
+    setStepObservation('');
+    setMeterMode('meter_reading');
+    setMeterValue('');
+    setMeterRecordedAt(localDateTimeValue());
+    setMeterReason('');
   }, [current?.work_order_id, current?.next_action, current?.next_plan_step_id]);
 
   async function request(url: string, body: Record<string, unknown>) {
@@ -149,26 +147,6 @@ export function ProgressiveWorkOrderCloseQueue({ locale, dictionary }: { locale:
     finally { setSaving(false); }
   }
 
-  async function uploadEvidence() {
-    if (!current || !evidenceFile) return;
-    setSaving(true); setActionError(null);
-    try {
-      const form = new FormData();
-      form.append('file', evidenceFile);
-      const response = await fetch(`/api/maintenance/work-orders/${current.work_order_id}/evidence`, {
-        method: 'POST', credentials: 'include', body: form,
-      });
-      const payload = await response.json().catch(() => null);
-      if (!response.ok) throw new Error(payload?.error || 'No se pudo guardar la foto.');
-      setEvidenceCount((count) => count + 1);
-      setEvidenceFile(null);
-    } catch (cause) {
-      setActionError(cause instanceof Error ? cause.message : 'No se pudo guardar la foto.');
-    } finally {
-      setSaving(false);
-    }
-  }
-
   async function uploadEvidence(file: File | null) {
     if (!current || !file) return;
     setUploadingEvidence(true);
@@ -188,55 +166,6 @@ export function ProgressiveWorkOrderCloseQueue({ locale, dictionary }: { locale:
       setActionError(cause instanceof Error ? cause.message : 'No se pudo guardar la evidencia.');
     } finally {
       setUploadingEvidence(false);
-    }
-  }
-
-  async function uploadEvidenceIfNeeded() {
-    if (!current) return false;
-    if (evidenceCount > 0) return true;
-    if (!evidenceFile) {
-      setActionError('Toma una foto o selecciona una imagen antes de cerrar la OT.');
-      return false;
-    }
-
-    const form = new FormData();
-    form.append('file', evidenceFile);
-    const response = await fetch(`/api/maintenance/work-orders/${current.work_order_id}/evidence`, {
-      method: 'POST',
-      credentials: 'include',
-      body: form,
-    });
-    const payload = await response.json().catch(() => null);
-    if (!response.ok) throw new Error(payload?.error || 'No se pudo subir la evidencia.');
-    setEvidenceCount((value) => value + 1);
-    setEvidenceFile(null);
-    return true;
-  }
-
-  async function closeCurrent() {
-    if (!current) return;
-    setSaving(true);
-    setActionError(null);
-    try {
-      const ready = await uploadEvidenceIfNeeded();
-      if (!ready) return;
-      const response = await fetch(`/api/maintenance/work-orders/${current.work_order_id}/close`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          root_cause: current.root_cause,
-          preventive_actions: current.preventive_actions,
-          actual_duration_hours: Number(current.actual_duration_hours || 0),
-        }),
-      });
-      const payload = await response.json().catch(() => null);
-      if (!response.ok) throw new Error(payload?.error || 'No se pudo cerrar la OT.');
-      await mutate();
-    } catch (cause) {
-      setActionError(cause instanceof Error ? cause.message : 'No se pudo cerrar la OT.');
-    } finally {
-      setSaving(false);
     }
   }
 
@@ -298,22 +227,8 @@ export function ProgressiveWorkOrderCloseQueue({ locale, dictionary }: { locale:
             <Camera className="mt-0.5 h-5 w-5 text-muted-foreground" />
             <div>
               <p className="font-medium">Evidencia fotográfica obligatoria</p>
-              <p className="text-sm text-muted-foreground">{evidenceCount > 0 ? `${evidenceCount} foto${evidenceCount === 1 ? '' : 's'} registrada${evidenceCount === 1 ? '' : 's'}.` : 'Toma una foto con el celular o selecciona una imagen antes de cerrar.'}</p>
+              <p className="mt-1 text-sm text-muted-foreground">Antes de cerrar, toma una foto con el celular o sube una imagen existente.</p>
             </div>
-          </div>
-          {evidenceCount < 1 ? <input
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
-            capture="environment"
-            onChange={(event) => setEvidenceFile(event.target.files?.[0] || null)}
-            className="block w-full text-sm file:mr-3 file:rounded-md file:border file:bg-background file:px-3 file:py-2 file:text-sm file:font-medium"
-          /> : null}
-          {evidenceFile ? <p className="text-xs text-muted-foreground">Lista para subir: {evidenceFile.name}</p> : null}
-        </div> : null}
-        <div className="space-y-3 rounded-lg border p-4">
-          <div>
-            <p className="font-medium">Evidencia de cierre</p>
-            <p className="mt-1 text-sm text-muted-foreground">Obligatoria antes de cerrar. Puedes tomar una foto con el celular o subir una imagen existente.</p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="flex min-h-24 cursor-pointer flex-col items-center justify-center rounded-md border border-dashed p-4 text-center text-sm">
@@ -330,28 +245,7 @@ export function ProgressiveWorkOrderCloseQueue({ locale, dictionary }: { locale:
             </label>
           </div>
           <p className="text-xs text-muted-foreground">{uploadingEvidence ? 'Subiendo evidencia...' : evidenceCount > 0 ? `${evidenceCount} evidencia${evidenceCount === 1 ? '' : 's'} cargada${evidenceCount === 1 ? '' : 's'}.` : 'Aún no hay evidencia cargada.'}</p>
-        </div>
-        <div className="space-y-3 rounded-lg border p-4">
-          <div className="flex items-start gap-3">
-            <Camera className="mt-0.5 h-5 w-5 text-muted-foreground" />
-            <div>
-              <p className="font-medium">Evidencia fotográfica</p>
-              <p className="text-sm text-muted-foreground">Toma una foto con el celular o selecciona una imagen. Se exige al menos una para cerrar.</p>
-            </div>
-          </div>
-          <Input
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
-            capture="environment"
-            onChange={(event) => setEvidenceFile(event.target.files?.[0] || null)}
-          />
-          <div className="flex items-center gap-3">
-            <Button type="button" variant="outline" disabled={!evidenceFile || saving} onClick={() => void uploadEvidence()}>
-              <Camera className="mr-2 h-4 w-4" />Subir evidencia
-            </Button>
-            <span className="text-xs text-muted-foreground">{evidenceCount} foto{evidenceCount === 1 ? '' : 's'} registrada{evidenceCount === 1 ? '' : 's'}</span>
-          </div>
-        </div>
+        </div> : null}
         {actionError ? <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"><AlertCircle className="mr-2 inline h-4 w-4"/>{actionError}</div> : null}
         <div className="flex flex-wrap gap-2">{inline && data?.canEdit ? <Button onClick={()=>void performNextAction()} disabled={saving}>{saving?t.actions.saving:current.next_action==='close_work_order'?t.actions.closeFreeze:current.next_action==='complete_standard_plan_step'?t.actions.markStepDone:t.actions.saveContinue}<ArrowRight className="ml-2 h-4 w-4"/></Button> : null}{!inline ? <Button asChild><Link href={`/dashboard/mantenimiento/ordenes-trabajo/${current.work_order_id}`}>{t.actions.resolveInSheet}<ArrowRight className="ml-2 h-4 w-4"/></Link></Button> : null}<Button asChild variant="outline"><Link href={`/dashboard/mantenimiento/ordenes-trabajo/${current.work_order_id}`}>{t.actions.viewOrder}</Link></Button></div>
       </CardContent>
