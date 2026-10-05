@@ -50,7 +50,7 @@ export default function MotilQualityPage() {
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <p className="font-medium">{module.label}</p>
-                    <p className="mt-1 text-sm text-muted-foreground">{module.blockers.length ? 'Bloquea: ' + module.blockers.join(', ') : 'Sin bloqueos duros.'}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">{module.blockers.length ? 'Bloquea: ' + module.blockers.join(', ') : module.certified ? 'Certificado contra evidencia actual.' : 'Sin bloqueos duros; aún falta cerrar todos los gates.'}</p>
                   </div>
                   <Badge variant={module.certified ? 'secondary' : module.score >= 8.5 ? 'outline' : 'destructive'}>
                     {module.score.toFixed(1)} / 10
