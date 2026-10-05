@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getOrganizationContext } from '@/lib/api/organization-context';
+import { getMaintenanceWorkOrderCreationCapability } from '@/lib/maintenance/work-order-create-access';
 import { resolveMaintenanceViewerMode } from '@/lib/maintenance/viewer-mode';
 
 type WorkOrderRow = {
@@ -236,19 +237,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data: creatorPerson, error: creatorPersonError } = await context.supabase
-      .from('people')
-      .select('id,full_name')
-      .eq('organization_id', context.organizationId)
-      .eq('profile_id', context.userId)
-      .eq('employment_status', 'active')
-      .maybeSingle();
-    if (creatorPersonError) throw creatorPersonError;
-
-    const canCreateWorkOrder = ['Ariel López', 'Mauricio Astudillo'].includes(String(creatorPerson?.full_name || ''));
-    if (!canCreateWorkOrder) {
+    const creationCapability = await getMaintenanceWorkOrderCreationCapability(context);
+    if (!creationCapability.canCreate) {
       return NextResponse.json(
-        { error: 'Solo Ariel López y Mauricio Astudillo pueden crear órdenes de trabajo' },
+        { error: 'Tu cargo no tiene autorización para crear órdenes de trabajo de mantenimiento.' },
         { status: 403 }
       );
     }
