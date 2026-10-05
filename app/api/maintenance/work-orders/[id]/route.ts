@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getOrganizationContext } from '@/lib/api/organization-context';
 import { MODULE_KEYS, requireModuleAccess } from '@/lib/api/module-access';
 import { requireOperationalMaintenanceWorkOrder } from '@/lib/maintenance/work-order-scope';
+import { requireAssignedMaintenanceExecution } from '@/lib/maintenance/work-order-execution-access';
 
 type WorkOrderPatchPayload = {
   status?: string;
@@ -146,7 +147,21 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const guard = await requireOperationalMaintenanceWorkOrder(context.supabase, context.organizationId, id);
     if (!guard.ok) return NextResponse.json({ error: guard.error, record_scope: guard.scope }, { status: guard.status });
 
+    const executionAccess = await requireAssignedMaintenanceExecution(context, id);
+    if (!executionAccess.ok) return executionAccess.response;
+
     const body = (await request.json()) as WorkOrderPatchPayload;
+    if (!executionAccess.elevated) {
+      const mutationKeys = Object.entries(body)
+        .filter(([, value]) => value !== undefined)
+        .map(([key]) => key);
+      if (mutationKeys.length !== 1 || mutationKeys[0] !== 'status' || body.status !== 'in_progress') {
+        return NextResponse.json(
+          { error: 'El ejecutor asignado sólo puede iniciar su OT desde este endpoint.' },
+          { status: 403 },
+        );
+      }
+    }
     if (body.status === 'completed') {
       const rootCause = String(body.root_cause || '').trim();
       const preventiveActions = String(body.preventive_actions || '').trim();
