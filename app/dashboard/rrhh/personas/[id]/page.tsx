@@ -26,6 +26,7 @@ type Payload = {
   evaluations: any[];
   operatorActivity: any[];
   workOrders: any[];
+  readiness: { status: 'ready' | 'conditional' | 'blocked'; label: 'APTO' | 'CONDICIONAL' | 'BLOQUEADO'; reasons: string[]; warnings: string[]; policy_configured: boolean; evidence_complete: boolean };
 };
 
 export default function PersonLaborRecordPage() {
@@ -69,13 +70,35 @@ export default function PersonLaborRecordPage() {
 
       <div className="grid gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-5">
         {[
-          ['Estado', person.employment_status],
+          ['Habilitación', data.readiness?.label || '—'],
           ['Score formal', latestEvaluation?.overall_score ?? '—'],
           ['OT', data.workOrders.length],
           ['Actividades', data.operatorActivity.length],
           ['Evidencias', evidenceCount],
         ].map(([label, value]) => <div key={label} className="bg-card px-4 py-3"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-lg font-semibold">{value}</p></div>)}
       </div>
+
+      <section className="border-b pb-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold">Habilitación para faena</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Estado derivado desde evidencia disponible; no reemplaza la validación formal de requisitos de faena.</p>
+          </div>
+          <Badge variant={data.readiness?.status === 'blocked' ? 'destructive' : data.readiness?.status === 'ready' ? 'secondary' : 'outline'}>
+            {data.readiness?.label || 'SIN EVALUAR'}
+          </Badge>
+        </div>
+        {data.readiness?.reasons?.length ? (
+          <div className="mt-3 space-y-1 text-sm text-muted-foreground">
+            {data.readiness.reasons.map((reason) => <p key={reason}>• {reason}</p>)}
+          </div>
+        ) : <p className="mt-3 text-sm text-muted-foreground">Sin brechas registradas en la evaluación actual.</p>}
+        {data.readiness?.warnings?.length ? (
+          <div className="mt-3 space-y-1 text-sm">
+            {data.readiness.warnings.map((warning) => <p key={warning}>• {warning}</p>)}
+          </div>
+        ) : null}
+      </section>
 
       <section className="border-b pb-5">
         <h2 className="text-base font-semibold">Identidad laboral</h2>
