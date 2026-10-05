@@ -244,7 +244,13 @@ export function ProgressiveWorkOrderCloseQueue({ locale, dictionary }: { locale:
               <input className="sr-only" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" disabled={uploadingEvidence} onChange={(event)=>void uploadEvidence(event.target.files?.[0] || null)} />
             </label>
           </div>
-          <p className="text-xs text-muted-foreground">{uploadingEvidence ? 'Subiendo evidencia...' : evidenceCount > 0 ? 'Evidencia lista para cierre.' : 'Aún no hay evidencia cargada.'}</p>
+          {evidenceCount > 0 ? <div className="rounded-md border bg-muted/30 p-3 text-xs">
+            <p className="font-medium">Fotos cargadas</p>
+            <div className="mt-1 space-y-1 text-muted-foreground">
+              {(evidenceData?.evidence || []).slice(0, 3).map((item) => <p key={item.id} className="truncate">✓ {item.file_name}</p>)}
+            </div>
+          </div> : null}
+          <p className="text-xs text-muted-foreground">{uploadingEvidence ? 'Subiendo evidencia...' : evidenceCount > 0 ? `${evidenceCount} foto${evidenceCount === 1 ? '' : 's'} lista${evidenceCount === 1 ? '' : 's'} para cierre.` : 'Aún no hay evidencia cargada.'}</p>
         </div> : null}
         {actionError ? <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"><AlertCircle className="mr-2 inline h-4 w-4"/>{actionError}</div> : null}
         <div className="flex flex-wrap gap-2">{inline && data?.canEdit ? <Button onClick={()=>void performNextAction()} disabled={saving}>{saving?t.actions.saving:current.next_action==='close_work_order'?t.actions.closeFreeze:current.next_action==='complete_standard_plan_step'?t.actions.markStepDone:t.actions.saveContinue}<ArrowRight className="ml-2 h-4 w-4"/></Button> : null}{!inline ? <Button asChild><Link href={`/dashboard/mantenimiento/ordenes-trabajo/${current.work_order_id}`}>{t.actions.resolveInSheet}<ArrowRight className="ml-2 h-4 w-4"/></Link></Button> : null}<Button asChild variant="outline"><Link href={`/dashboard/mantenimiento/ordenes-trabajo/${current.work_order_id}`}>{t.actions.viewOrder}</Link></Button></div>
