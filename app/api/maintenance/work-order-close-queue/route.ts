@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getOrganizationContext } from '@/lib/api/organization-context';
-import { getModuleAccessLevel, MODULE_KEYS } from '@/lib/api/module-access';
+import { MODULE_KEYS, requireModuleAccess } from '@/lib/api/module-access';
 
 type CloseQueueRow = {
   organization_id: string;
@@ -58,43 +58,16 @@ const actionRank: Record<string, number> = {
 };
 
 export async function GET(request: NextRequest) {
+  const access = await requireModuleAccess(request, MODULE_KEYS.MANT_OPERACIONES);
+  if (!access.authorized) return access.response;
   const context = await getOrganizationContext(request);
   if (!context.ok) return context.response;
 
   try {
-    const accessLevel = await getModuleAccessLevel(context.userId, context.role, MODULE_KEYS.MANT_OPERACIONES);
-    const { data: person, error: personError } = await context.supabase
-      .from('people')
-      .select('id')
-      .eq('organization_id', context.organizationId)
-      .eq('profile_id', context.userId)
-      .eq('employment_status', 'active')
-      .maybeSingle();
-    if (personError) throw personError;
-
-    let assignedIds: string[] = [];
-    if (person?.id && accessLevel !== 'ED') {
-      const { data: assignedOrders, error: assignedError } = await context.supabase
-        .from('maintenance_work_orders')
-        .select('id')
-        .eq('organization_id', context.organizationId)
-        .eq('assigned_person_id', person.id)
-        .not('status', 'in', '("completed","closed","cancelled","canceled")');
-      if (assignedError) throw assignedError;
-      assignedIds = (assignedOrders || []).map((row) => row.id);
-    }
-
-    if (accessLevel === 'SR' && assignedIds.length === 0) {
-      return NextResponse.json({ error: 'No tienes órdenes de trabajo asignadas para cerrar.' }, { status: 403 });
-    }
-
-    let readinessQuery = context.supabase
+    const { data, error } = await context.supabase
       .from('work_order_close_readiness_v2')
       .select('*')
       .eq('organization_id', context.organizationId);
-    if (accessLevel !== 'ED' && assignedIds.length > 0) readinessQuery = readinessQuery.in('work_order_id', assignedIds);
-
-    const { data, error } = await readinessQuery;
     if (error) throw error;
 
     const rows = (data || []) as CloseQueueRow[];
@@ -130,12 +103,7 @@ export async function GET(request: NextRequest) {
       missingRuntimeEvidence: queue.filter((row) => row.missing_runtime_evidence).length,
     };
 
-    return NextResponse.json({
-      queue,
-      summary,
-      canEdit: accessLevel === 'ED' || assignedIds.length > 0,
-      source: 'work_order_close_readiness_v2',
-    });
+    return NextResponse.json({ queue, summary, canEdit: access.canWrite, source: 'work_order_close_readiness_v2' });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'No se pudo cargar la cola de cierre de OT';
     return NextResponse.json({ queue: [], error: message }, { status: 500 });
