@@ -2,6 +2,8 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getOrganizationContext } from '@/lib/api/organization-context';
+import { assessReadinessPolicy, evaluateFaenaReadiness, getSantiagoDate, selectCurrentAssignment, selectReadinessPolicy, summarizeReadinessEvidence } from '@/lib/rrhh-readiness';
+import { loadActiveReadinessPolicies } from '@/lib/rrhh-readiness-policy-store';
 
 const allowedRoles = new Set(['superadmin', 'admin', 'manager']);
 
@@ -42,8 +44,36 @@ export async function GET(request: NextRequest) {
       const failed = queries.find((result) => result.error);
       if (failed?.error) throw failed.error;
 
+      const today = getSantiagoDate();
+      const assignment = selectCurrentAssignment(assignments.data || [], today);
+      const policyState = await loadActiveReadinessPolicies(context.supabase, context.organizationId);
+      const policy = policyState.available ? selectReadinessPolicy(policyState.policies, assignment, today) : null;
+      const assessment = assessReadinessPolicy({
+        policy,
+        credentials: credentials.data || [],
+        competencies: competencies.data || [],
+        epp: epp.data || [],
+        today,
+      });
+      const readiness = evaluateFaenaReadiness({
+        employmentStatus: person.employment_status,
+        assignment,
+        evidence: summarizeReadinessEvidence({
+          credentials: credentials.data || [],
+          competencies: competencies.data || [],
+          epp: epp.data || [],
+          today,
+        }),
+        policyConfigured: policyState.available && assessment.configured,
+        requirementsSatisfied: assessment.satisfied,
+        requirementGaps: assessment.gaps,
+      });
+
       return NextResponse.json({
         person,
+        readiness,
+        readinessPolicy: policy ? { ...policy, requirement_count: assessment.requirement_count } : null,
+        readinessPolicySource: { available: policyState.available, error: policyState.error },
         assignments: assignments.data || [],
         cases: cases.data || [],
         competencies: competencies.data || [],
