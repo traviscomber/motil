@@ -84,10 +84,13 @@ function isAssignedWorkOrderExecutionMutation(request: NextRequest) {
     return true;
   }
 
-  if (method === 'POST' && /^\/api\/maintenance\/work-orders\/[^/]+\/(timer|close|evidence)$/.test(path)) {
+  if (method === 'POST' && /^\/api\/maintenance\/work-orders\/[^/]+\/(timer|close|evidence|standard-plan)$/.test(path)) {
     return true;
   }
 
+  if (method === 'POST' && path === '/api/maintenance/work-order-runtime-evidence') {
+    return true;
+  }
 
   return false;
 }
