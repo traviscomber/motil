@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { CirclePause, CirclePlay, Clock3, ShieldCheck, SquareStop, Wrench } from 'lucide-react';
@@ -10,7 +10,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import { StatePanel } from '@/components/ui/state-panel';
 
 type TimerResponse = {
-  current?: { timer_status?: 'idle' | 'running' | 'paused'; total_minutes?: number };
+  current?: {
+    timer_status?: 'idle' | 'running' | 'paused';
+    timer_start_time?: string | null;
+    total_seconds?: number;
+    total_minutes?: number;
+  };
 };
 
 const fetcher = async (url: string): Promise<TimerResponse> => {
@@ -20,9 +25,12 @@ const fetcher = async (url: string): Promise<TimerResponse> => {
   return payload as TimerResponse;
 };
 
-function duration(minutes: number) {
-  const hours = Math.floor(minutes / 60);
-  return `${String(hours).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
+function duration(totalSeconds: number) {
+  const safe = Math.max(0, Math.floor(totalSeconds));
+  const hours = Math.floor(safe / 3600);
+  const minutes = Math.floor((safe % 3600) / 60);
+  const seconds = safe % 60;
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
 export function MobileWorkOrderFlow({
@@ -56,7 +64,21 @@ export function MobileWorkOrderFlow({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const timerStatus = data?.current?.timer_status || 'idle';
-  const totalMinutes = Number(data?.current?.total_minutes || 0);
+  const baseSeconds = Number(data?.current?.total_seconds ?? (Number(data?.current?.total_minutes || 0) * 60));
+  const timerStartTime = data?.current?.timer_start_time || null;
+  const [nowMs, setNowMs] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (timerStatus !== 'running' || !timerStartTime) return;
+    setNowMs(Date.now());
+    const id = window.setInterval(() => setNowMs(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [timerStatus, timerStartTime]);
+
+  const runningSeconds = timerStatus === 'running' && timerStartTime
+    ? Math.max(0, Math.floor((nowMs - new Date(timerStartTime).getTime()) / 1000))
+    : 0;
+  const displaySeconds = baseSeconds + runningSeconds;
 
   async function request(url: string, options: RequestInit) {
     const response = await fetch(url, { credentials: 'include', ...options });
@@ -162,7 +184,7 @@ export function MobileWorkOrderFlow({
             <Clock3 className="h-5 w-5 text-muted-foreground" />
             <div>
               <p className="text-xs text-muted-foreground">Tiempo registrado</p>
-              <p className="font-mono text-3xl font-semibold tabular-nums">{duration(totalMinutes)}</p>
+              <p className="font-mono text-3xl font-semibold tabular-nums">{duration(displaySeconds)}</p>
             </div>
           </div>
 
