@@ -26,19 +26,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       .from('work_order_evidence_files')
       .select('id', { head: true, count: 'exact' })
       .eq('organization_id', context.organizationId)
-      .eq('work_order_id', id);
-    if (evidenceError) throw evidenceError;
-    if ((evidenceCount || 0) < 1) {
-      return NextResponse.json(
-        { error: 'Adjunta al menos una foto o evidencia antes de cerrar la OT.' },
-        { status: 409 },
-      );
-    }
-
-    const { count: evidenceCount, error: evidenceError } = await context.supabase
-      .from('work_order_evidence_files')
-      .select('id', { head: true, count: 'exact' })
-      .eq('organization_id', context.organizationId)
       .eq('work_order_id', id)
       .eq('evidence_type', 'photo');
     if (evidenceError) throw evidenceError;
@@ -49,8 +36,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const body = (await request.json()) as CloseWorkOrderPayload;
     const { actual_duration_hours, root_cause, preventive_actions } = body;
     const { data: workOrder, error: woError } = await context.supabase.from('maintenance_work_orders').select('*').eq('id', id).eq('organization_id', context.organizationId).single();
-    const typedWorkOrder = workOrder as MaintenanceWorkOrderRow | null;
-    if (woError || !typedWorkOrder) return NextResponse.json({ error: 'No se encontró la orden de trabajo' }, { status: 404 });
+    if (woError || !workOrder) return NextResponse.json({ error: 'No se encontró la orden de trabajo' }, { status: 404 });
 
     if (['running', 'paused'].includes(String((workOrder as { timer_status?: string | null }).timer_status || ''))) {
       const { error: timerError } = await context.supabase.rpc('update_work_order_timer', {
@@ -64,6 +50,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       if (timerError) return NextResponse.json({ error: timerError.message || 'No se pudo detener el cronómetro antes del cierre.' }, { status: 409 });
     }
 
+    const { data: refreshedWorkOrder, error: refreshError } = await context.supabase
+      .from('maintenance_work_orders')
+      .select('*')
+      .eq('id', id)
+      .eq('organization_id', context.organizationId)
+      .single();
+    if (refreshError || !refreshedWorkOrder) throw refreshError || new Error('No se pudo refrescar la OT antes del cierre');
+    const typedWorkOrder = refreshedWorkOrder as MaintenanceWorkOrderRow & { actual_duration_hours?: number | string | null };
+
     let downtime = 0;
     if (typedWorkOrder.start_date) {
       const startTime = new Date(typedWorkOrder.start_date);
@@ -71,7 +66,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     const normalizedHours = Number(actual_duration_hours);
-    const effectiveHours = Number.isFinite(normalizedHours) && normalizedHours > 0 ? normalizedHours : downtime;
+    const timerHours = Number(typedWorkOrder.actual_duration_hours || 0);
+    const effectiveHours = Number.isFinite(normalizedHours) && normalizedHours > 0
+      ? normalizedHours
+      : Number.isFinite(timerHours) && timerHours > 0
+        ? timerHours
+        : downtime;
     const closureData: Record<string, unknown> = { actual_duration_hours: effectiveHours, down_time_hours: downtime, updated_at: new Date().toISOString() };
     if (root_cause !== undefined) closureData.root_cause = root_cause;
     if (preventive_actions !== undefined) closureData.preventive_actions = preventive_actions;
