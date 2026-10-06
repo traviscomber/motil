@@ -34,20 +34,20 @@ export async function POST(request: NextRequest) {
 
     const formData = await request.formData();
     const file = formData.get('file') as File;
-    const module = formData.get('module') as string;
-    const category = formData.get('category') as string;
+    const module = String(formData.get('module') || '').trim();
+    const category = String(formData.get('category') || '').trim();
     const title = String(formData.get('title') || '').trim();
-    const documentType = formData.get('documentType') as string;
-    const description = formData.get('description') as string;
-    const validFrom = formData.get('validFrom') as string;
-    const validUntil = formData.get('validUntil') as string;
+    const documentType = String(formData.get('documentType') || '').trim();
+    const description = String(formData.get('description') || '').trim();
+    const validFrom = String(formData.get('validFrom') || '').trim();
+    const validUntil = String(formData.get('validUntil') || '').trim();
     const assetId = String(formData.get('assetId') || '').trim();
     const canonicalSection = String(formData.get('canonicalSection') || '').trim();
     const extractedDataRaw = String(formData.get('extractedData') || '').trim();
     const bypassDuplicate = formData.get('bypassDuplicate') === 'true';
 
     if (!file || !module || !category) {
-      return NextResponse.json({ error: 'Faltan parÃ¡metros requeridos' }, { status: 400 });
+      return NextResponse.json({ error: 'Faltan parámetros requeridos' }, { status: 400 });
     }
 
     if (!allowedTypes.includes(file.type)) {
@@ -63,22 +63,22 @@ export async function POST(request: NextRequest) {
     if (!bypassDuplicate) {
       const { data: existingDocs, error: searchError } = await supabase
         .from('module_documents')
-        .select('id, document_name, status')
+        .select('id, document_name, status, provenance_status')
         .eq('organization_id', auth.organizationId)
         .eq('module', module)
         .eq('category', category)
-        .eq('document_name', file.name)
-        .eq('status', 'draft')
+        .eq('document_name', title || file.name)
+        .is('deleted_at', null)
         .limit(1);
 
       if (searchError) {
-        console.error('[v0] Duplicate check error:', searchError);
+        console.error('[documents/upload] duplicate check error:', searchError);
       }
 
       if (existingDocs && existingDocs.length > 0) {
         return NextResponse.json(
           {
-            error: `El documento "${file.name}" ya ha sido subido en esta categorÃ­a. Por favor, revisa si el archivo es duplicado.`,
+            error: `El documento "${title || file.name}" ya existe en esta categoría.`,
             isDuplicate: true,
             existingDocument: existingDocs[0],
           },
@@ -110,49 +110,53 @@ export async function POST(request: NextRequest) {
       });
 
     if (uploadError) {
-      console.error('[v0] Storage error:', uploadError);
+      console.error('[documents/upload] storage error:', uploadError);
       return NextResponse.json({ error: `Error al subir archivo: ${uploadError.message}` }, { status: 500 });
     }
 
+    const now = new Date().toISOString();
     const { data: document, error: dbError } = await supabase
       .from('module_documents')
-      .insert([
-        {
-          organization_id: auth.organizationId,
-          module,
-          category,
-          document_name: title || file.name,
-          document_type: file.type.split('/').pop() || 'bin',
-          document_type_category: documentType || null,
-          asset_id: assetId || null,
-          canonical_section: canonicalSection || null,
-          extracted_data: safeParseJson(extractedDataRaw),
-          file_path: uploadData.path,
-          file_size_bytes: file.size,
-          description: description || null,
-          valid_from: validFrom || null,
-          valid_until: validUntil || null,
-          status: 'draft',
-          provenance_status: 'operational',
-          uploaded_by: auth.user.id,
-        },
-      ])
+      .insert({
+        organization_id: auth.organizationId,
+        module,
+        category,
+        document_name: title || file.name,
+        document_type: file.name.split('.').pop()?.toLowerCase() || file.type.split('/').pop() || 'bin',
+        document_type_category: documentType || null,
+        asset_id: assetId || null,
+        canonical_section: canonicalSection || null,
+        extracted_data: safeParseJson(extractedDataRaw),
+        file_path: uploadData.path,
+        file_size_bytes: file.size,
+        description: description || null,
+        valid_from: validFrom || null,
+        valid_until: validUntil || null,
+        status: 'active',
+        is_active: true,
+        provenance_status: 'canonical',
+        canonical_role: 'canonical',
+        canonicalized_at: now,
+        uploaded_by: auth.user.id,
+      })
       .select()
       .single();
 
     if (dbError) {
       await supabase.storage.from(BUCKET).remove([uploadData.path]);
-      console.error('[v0] Database error:', dbError);
+      console.error('[documents/upload] database error:', dbError);
       return NextResponse.json({ error: `Error al crear registro: ${dbError.message}` }, { status: 500 });
     }
 
     return NextResponse.json({
       documentId: document.id,
       fileName: file.name,
-      message: 'Documento cargado exitosamente',
+      status: document.status,
+      provenanceStatus: document.provenance_status,
+      message: 'Documento canónico cargado exitosamente',
     });
   } catch (error) {
-    console.error('[v0] Upload error:', error);
+    console.error('[documents/upload] error:', error);
     return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
   }
 }
