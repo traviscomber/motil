@@ -23,3 +23,22 @@ test('legal overview preserves source uncertainty and never fabricates operation
   assert.match(tracker, /Fecha de término no informada/);
   assert.match(tracker, /if \(leftDays === null\) return 1/);
 });
+
+
+test('legal compliance uses the same canonical legal document source and tenant scope', async () => {
+  const contracts = await readFile(new URL('../lib/api/contracts.ts', import.meta.url), 'utf8');
+  const documentsApi = await readFile(new URL('../app/api/legal/documentos/route.ts', import.meta.url), 'utf8');
+
+  assert.match(contracts, /from\('module_documents'\)/);
+  assert.match(contracts, /eq\('module', 'legal'\)/);
+  assert.match(contracts, /user_roles/);
+  assert.match(contracts, /maintenance_assets/);
+  assert.match(contracts, /expires_at \|\| document\.valid_until/);
+  assert.doesNotMatch(contracts, /from\('documents'\)[\s\S]*category.*compliance/);
+
+  assert.match(documentsApi, /auth\.organizationId/);
+  assert.match(documentsApi, /ownershipFilters/);
+  assert.match(documentsApi, /valid_until/);
+  assert.match(documentsApi, /expires_at/);
+  assert.match(documentsApi, /expiryDate: doc\.expires_at \|\| doc\.valid_until/);
+});
