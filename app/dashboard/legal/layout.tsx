@@ -14,6 +14,7 @@ const controlItems = [
   { href: '/dashboard/legal/sernageomin', label: 'Obligaciones' },
   { href: '/dashboard/legal/plazos-fatales', label: 'Plazos fatales' },
   { href: '/dashboard/legal/propiedad-minera', label: 'Propiedad minera' },
+  { href: '/dashboard/legal/liquidaciones', label: 'Liquidaciones' },
   { href: '/dashboard/legal/permisos-licencias', label: 'Permisos y licencias' },
   { href: '/dashboard/legal/documentos', label: 'Documentos' },
 ];
