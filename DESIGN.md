@@ -1,4 +1,120 @@
+---
+version: alpha
+name: MOTIL Mining Operating System
+description: Canon visual ejecutable para la interfaz operacional de MOTIL. Los tokens reflejan el sistema real de app/globals.css y app/motil-system.css; la landing mantiene un scope visual propio en app/landing.css.
+colors:
+  background: "oklch(1 0 0)"
+  foreground: "oklch(0.145 0 0)"
+  primary: "oklch(0.52 0.11 33)"
+  on-primary: "oklch(1 0 0)"
+  secondary: "oklch(0.48 0.14 142)"
+  on-secondary: "oklch(1 0 0)"
+  destructive: "oklch(0.45 0.18 25)"
+  on-destructive: "oklch(1 0 0)"
+  muted: "oklch(0.97 0 0)"
+  muted-foreground: "oklch(0.45 0 0)"
+  border: "oklch(0.9 0 0)"
+  dark-background: "oklch(0.145 0 0)"
+  dark-foreground: "oklch(0.985 0 0)"
+  dark-card: "oklch(0.18 0 0)"
+  dark-muted: "oklch(0.24 0 0)"
+  dark-border: "oklch(0.28 0 0)"
+typography:
+  page-title:
+    fontFamily: Montserrat
+    fontSize: 2.05rem
+    fontWeight: 600
+    lineHeight: 1.15
+    letterSpacing: -0.032em
+  section-title:
+    fontFamily: Montserrat
+    fontSize: 1.6rem
+    fontWeight: 600
+    lineHeight: 1.22
+    letterSpacing: -0.024em
+  body:
+    fontFamily: Geist Sans
+    fontSize: 1rem
+    fontWeight: 400
+    lineHeight: 1.5
+  table-label:
+    fontFamily: Geist Sans
+    fontSize: 0.7rem
+    fontWeight: 600
+    lineHeight: 1.4
+    letterSpacing: 0.035em
+rounded:
+  sm: 0.05rem
+  md: 0.175rem
+  lg: 0.3rem
+  xl: 0.55rem
+spacing:
+  xs: 0.625rem
+  sm: 0.75rem
+  md: 1rem
+  lg: 1.25rem
+  section: 1.75rem
+  gutter: 2rem
+components:
+  app-surface:
+    backgroundColor: "{colors.background}"
+    textColor: "{colors.foreground}"
+    rounded: "{rounded.lg}"
+  primary-action:
+    backgroundColor: "{colors.primary}"
+    textColor: "{colors.on-primary}"
+    rounded: "{rounded.md}"
+    padding: 0.75rem
+  secondary-action:
+    backgroundColor: "{colors.secondary}"
+    textColor: "{colors.on-secondary}"
+    rounded: "{rounded.md}"
+    padding: 0.75rem
+  destructive-action:
+    backgroundColor: "{colors.destructive}"
+    textColor: "{colors.on-destructive}"
+    rounded: "{rounded.md}"
+    padding: 0.75rem
+---
+
 # MOTIL Design System
+
+## Overview
+
+MOTIL es software operacional industrial. La interfaz debe ser sobria, precisa y orientada a decisiones: primero estado, excepción, evidencia y acción. Este archivo es la fuente canónica para agentes y humanos antes de cualquier trabajo UI.
+
+La aplicación interna usa los tokens semánticos definidos en `app/globals.css` y los primitives de `app/motil-system.css`. La landing pública tiene un lenguaje editorial/mineral propio, acotado a `.motil-landing` en `app/landing.css`; no trasladar esos tokens al dashboard por defecto.
+
+## Colors
+
+Usar tokens semánticos, nunca colores arbitrarios. `primary` es el acento óxido MOTIL; `secondary` representa estados positivos/operacionales; `destructive` se reserva para riesgo o acciones irreversibles. La app soporta modo claro y oscuro y no debe comunicar estado únicamente por color.
+
+## Typography
+
+Montserrat gobierna títulos de la aplicación; Geist Sans gobierna cuerpo y controles. Mantener una escala limitada, legible y de densidad operacional. Manrope pertenece a la landing pública y no reemplaza la tipografía interna salvo decisión explícita del sistema de diseño.
+
+## Layout
+
+Contenido máximo de 1600px. Gutter responsivo de 1rem a 2rem y separación de sección de 1.25rem a 1.75rem. Una pantalla, una intención principal; una acción primaria visible y como máximo una secundaria. Reducir complejidad en móvil en vez de comprimir el desktop.
+
+## Elevation & Depth
+
+La jerarquía se construye con fondo, borde, espacio y tipografía. Evitar sombras pesadas, glassmorphism y card-in-card. Las superficies operacionales deben sentirse planas y arquitectónicas.
+
+## Shapes
+
+Radios contenidos y consistentes; evitar pills salvo controles cuyo significado los justifique. Botones y superficies deben conservar la geometría sobria del sistema y áreas táctiles mínimas de 40px.
+
+## Components
+
+Reutilizar primitives y componentes existentes antes de crear variantes. Tablas son superficies de decisión, no decoración. Estados loading, empty, partial-data, permission, recoverable-error y blocking-error son componentes de primera clase. Acciones extra van a menús contextuales.
+
+## Do's and Don'ts
+
+**Do:** derivar desde fuentes canónicas, usar tokens semánticos, mostrar provenance/estado cuando importa, mantener foco/contraste/reduced-motion y validar visualmente desktop + móvil + claro + oscuro.
+
+**Don't:** inventar métricas o datos, introducir colores/spacing ad hoc, duplicar navegación o KPIs, usar IDs técnicos visibles, crear nuevas cards por defecto, copiar el lenguaje visual de la landing dentro del producto operacional.
+
 
 Este documento es la fuente canónica para la interfaz del ERP MOTIL. Aplica al dashboard, módulos principales, rutas secundarias, formularios, tablas, modales y estados del sistema.
 
