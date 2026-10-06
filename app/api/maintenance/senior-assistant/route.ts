@@ -5,6 +5,7 @@ import { getOrganizationContext } from '@/lib/api/organization-context';
 import { MODULE_KEYS, requireModuleAccess } from '@/lib/api/module-access';
 import { getSupabaseAdmin } from '@/lib/db/supabase';
 import { callMaintenanceOperationalAI } from '@/lib/maintenance/senior-assistant-openai';
+import { executeMaintenanceSeniorTool } from '@/lib/maintenance/senior-assistant-tools';
 import { loadSupportAdvisoryHandoffs, supportAdvisoryHandoffPrompt } from '@/lib/intelligence/advisory-handoff-context';
 
 const OPENAI_RESPONSES_URL = 'https://api.openai.com/v1/responses';
@@ -118,6 +119,21 @@ async function resolveCargo(db: ReturnType<typeof getSupabaseAdmin>, userId: str
   return cargo?.name || null;
 }
 
+async function resolvePersonIdentity(
+  db: ReturnType<typeof getSupabaseAdmin>,
+  organizationId: string,
+  userId: string,
+) {
+  const { data } = await db
+    .from('people')
+    .select('id,full_name,email,role_title,employment_status,supervisor_person_id,profile_id')
+    .eq('organization_id', organizationId)
+    .eq('profile_id', userId)
+    .eq('employment_status', 'active')
+    .maybeSingle();
+  return data || null;
+}
+
 async function extractDurableMemory(args: { message: string; existingMemory: string[] }) {
   const instructions = `Extrae memoria durable útil para personalizar futuras conversaciones del Asistente Senior de Mantenimiento de MOTIL. Usa SOLAMENTE afirmaciones explícitas del usuario. Nunca guardes contraseñas, secretos, tokens, datos médicos ni inferencias sensibles. Nunca conviertas una afirmación del usuario sobre una máquina, falla, causa, repuesto, prioridad o intervención en evidencia canónica de mantenimiento. Guarda sólo preferencias de trabajo, responsabilidades declaradas, terminología interna, contexto laboral estable, reglas de decisión declaradas u observaciones de contexto que deban seguir tratándose como aportes del usuario. Devuelve JSON puro, sin markdown, como un arreglo de objetos {"type":"preference|responsibility|terminology|working_context|decision_rule|observation","text":"...","confidence":0.0}. Máximo 3 objetos. Si no hay memoria durable, devuelve [].`;
   const input = `MEMORIA YA CONOCIDA:\n${args.existingMemory.join('\n') || 'Ninguna'}\n\nMENSAJE NUEVO DEL USUARIO:\n${args.message}`;
@@ -150,7 +166,7 @@ async function buildCanonicalMaintenanceContext(
   organizationId: string,
 ) {
   const windowStart = new Date(Date.now() - 89 * DAY_MS).toISOString().slice(0, 10);
-  const [reviews, operationalReports, preventive, workOrders, reliability, closeReadiness, assets] = await Promise.all([
+  const [reviews, operationalReports, preventive, workOrders, reliability, closeReadiness, assets, people] = await Promise.all([
     db.from('drilling_maintenance_review_queue_v1')
       .select('review_id,canonical_asset_id,asset_code,asset_name,operation_date,review_reason,equipment_status_raw,machine_observations,review_status,has_linked_work_order')
       .eq('organization_id', organizationId).eq('review_status', 'pending').eq('has_linked_work_order', false).limit(50),
@@ -164,7 +180,7 @@ async function buildCanonicalMaintenanceContext(
       .select('schedule_id,canonical_asset_id,asset_code,asset_name,task_name,frequency_hours,effective_current_meter,due_meter,meter_evidence_source,meter_basis_conflict,hour_status,remaining_hours,generated_work_order_id')
       .eq('organization_id', organizationId).limit(100),
     db.from('maintenance_work_orders')
-      .select('id,work_order_number,canonical_asset_id,title,description,work_type,status,priority,scheduled_date,completion_date,actual_duration_hours,down_time_hours,root_cause,preventive_actions,external_cost,created_by')
+      .select('id,work_order_number,canonical_asset_id,assigned_person_id,assigned_to_name,title,description,work_type,status,priority,scheduled_date,completion_date,actual_duration_hours,down_time_hours,root_cause,preventive_actions,external_cost,created_by')
       .eq('organization_id', organizationId).not('created_by', 'is', null).limit(100),
     db.from('maintenance_reliability_base_v1')
       .select('work_order_id,canonical_asset_id,asset_code,asset_name,root_cause,root_cause_key,work_type,actual_duration_hours,down_time_hours,total_cost,closed_at')
@@ -175,6 +191,12 @@ async function buildCanonicalMaintenanceContext(
     db.from('maintenance_canonical_assets_v1')
       .select('id,asset_code,name,asset_type,category,manufacturer,model,cost_center_code,is_active,validation_status')
       .eq('organization_id', organizationId).limit(200),
+    db.from('people')
+      .select('id,full_name,normalized_name,email,employment_status,role_title,supervisor_person_id,profile_id')
+      .eq('organization_id', organizationId)
+      .eq('employment_status', 'active')
+      .order('full_name', { ascending: true })
+      .limit(200),
   ]);
 
   const queryErrors = [
@@ -185,6 +207,7 @@ async function buildCanonicalMaintenanceContext(
     ['maintenance_reliability_base_v1', reliability.error],
     ['work_order_close_readiness_v2', closeReadiness.error],
     ['maintenance_canonical_assets_v1', assets.error],
+    ['people', people.error],
   ] as const;
   const failedQuery = queryErrors.find(([, error]) => Boolean(error));
   if (failedQuery) {
@@ -256,6 +279,7 @@ async function buildCanonicalMaintenanceContext(
         authority: 'El mantenedor/supervisor valida diagnóstico, prioridad e intervención. El asistente no crea ni cierra OT.',
       },
       assets: assets.data || [],
+      people: people.data || [],
       pending_operational_reviews: reviews.data || [],
       observed_conditions_90d: observedConditions90d,
       preventive_hour_status: preventive.data || [],
@@ -266,6 +290,136 @@ async function buildCanonicalMaintenanceContext(
   };
 }
 
+function isRecoverableAiAvailabilityError(detail: string) {
+  return /no credits|insufficient[_ ]quota|quota|billing|rate limit|429|temporar|unavailable|timeout|timed out|overloaded/i.test(detail);
+}
+
+function isOpenWorkOrderStatus(status: unknown) {
+  return !['closed', 'cerrada', 'cerrado', 'completed', 'completada', 'completado', 'cancelled', 'cancelada', 'cancelado']
+    .includes(String(status || '').trim().toLowerCase());
+}
+
+function canonicalFallbackAnswer(message: string, context: any) {
+  const normalized = message.trim().toLowerCase();
+  const assetsById = new Map((context.assets || []).map((row: any) => [String(row?.id || ''), row]));
+  const lines: string[] = [];
+  const toolsUsed: Array<{ name: string; mode: 'read' }> = [];
+  const peopleSearch = executeMaintenanceSeniorTool('search_people', { query: message }, context) as any;
+  const personRows = Array.isArray(peopleSearch?.rows) ? peopleSearch.rows : [];
+  const isPeopleQuestion = /\b(quien|quién|persona|responsable|asignad[oa]|equipo de|reporta a|depende de|jefe|supervisor|ot de|ots de|ot tiene|ots tiene|tiene .*ot)\b/i.test(message);
+
+  if (isPeopleQuestion && personRows.length) {
+    if (personRows.length > 1) {
+      lines.push('DATO CANÓNICO');
+      lines.push('Encontré más de una persona que podría coincidir:');
+      for (const person of personRows.slice(0, 5)) {
+        lines.push('- ' + (person.full_name || 'Sin nombre') + ' · ' + (person.role_title || 'cargo no informado'));
+      }
+      lines.push('', 'PRÓXIMA ACCIÓN', 'Indica el nombre o apellido de la persona que quieres revisar para no atribuir OT o responsabilidades a quien no corresponde.');
+      toolsUsed.push({ name: 'search_people', mode: 'read' });
+    } else {
+      const person = personRows[0];
+      const work = executeMaintenanceSeniorTool('get_person_work_context', { person_id: person.person_id }, context) as any;
+      lines.push('DATO CANÓNICO');
+      lines.push((person.full_name || 'Persona') + ' · ' + (person.role_title || 'cargo no informado') + '.');
+      if (person.supervisor_name) lines.push('Jefatura: ' + person.supervisor_name + '.');
+      const directReports = Array.isArray(work?.direct_reports) ? work.direct_reports : [];
+      if (directReports.length) lines.push('Equipo directo: ' + directReports.map((row: any) => row.full_name + (row.role_title ? ' (' + row.role_title + ')' : '')).join(' · ') + '.');
+      const assigned = Array.isArray(work?.assigned_open_work_orders) ? work.assigned_open_work_orders : [];
+      if (assigned.length) {
+        lines.push('OT abiertas asignadas:');
+        for (const row of assigned.slice(0, 8)) {
+          lines.push('- ' + (row.work_order_number || 'OT') + ' · ' + (row.title || 'sin título') + ' · ' + (row.status || 'sin estado') + '.');
+        }
+      } else {
+        lines.push('No tiene OT abiertas asignadas en el contexto operacional cargado.');
+      }
+      lines.push('', 'INTERPRETACIÓN PROFESIONAL', 'La asignación de una OT indica responsabilidad de ejecución o seguimiento; no prueba autoría de una falla ni de una decisión técnica.');
+      lines.push('', 'PRÓXIMA ACCIÓN', 'Si necesitas detalle, revisa una OT específica o el equipo directo de esta persona.');
+      toolsUsed.push({ name: 'search_people', mode: 'read' }, { name: 'get_person_work_context', mode: 'read' });
+    }
+  } else if (/preventiv|vencid|hor[oó]metro|pauta/.test(normalized)) {
+    const rows = (context.preventive_hour_status || [])
+      .filter((row: any) => ['due', 'overdue', 'vencido', 'vencida'].includes(String(row?.hour_status || '').toLowerCase()))
+      .sort((a: any, b: any) => Number(a?.remaining_hours ?? 0) - Number(b?.remaining_hours ?? 0))
+      .slice(0, 6);
+
+    lines.push('DATO CANÓNICO');
+    if (!rows.length) {
+      lines.push('No hay preventivos vencidos o por vencer en la evidencia horaria cargada.');
+    } else {
+      for (const row of rows) {
+        const asset = assetsById.get(String(row?.canonical_asset_id || '')) as any;
+        const name = row?.asset_name || asset?.name || row?.asset_code || asset?.asset_code || 'Activo';
+        const remaining = Number(row?.remaining_hours);
+        const remainingText = Number.isFinite(remaining)
+          ? remaining < 0 ? Math.abs(remaining).toLocaleString('es-CL') + ' h vencidas' : remaining.toLocaleString('es-CL') + ' h restantes'
+          : 'horas restantes sin evidencia suficiente';
+        lines.push('- ' + name + ': ' + (row?.task_name || 'pauta preventiva') + ' · ' + (row?.hour_status || 'estado pendiente') + ' · ' + remainingText + '.');
+      }
+    }
+    lines.push('', 'INTERPRETACIÓN PROFESIONAL', 'La pauta y el horómetro permiten ordenar revisión, pero no confirman por sí solos condición mecánica ni autorizan una intervención.');
+    lines.push('', 'PRÓXIMA ACCIÓN', rows.length ? 'Revisar primero los vencidos y confirmar disponibilidad, responsable e insumos antes de ejecutar.' : 'Mantener la revisión sobre nuevas lecturas de horómetro y observaciones operacionales.');
+    toolsUsed.push({ name: 'get_maintenance_plan', mode: 'read' });
+  } else if (/\bot\b|orden(?:es)? de trabajo|bloquead|cerrar|cierre/.test(normalized)) {
+    const openOrders = (context.operational_work_orders || []).filter((row: any) => isOpenWorkOrderStatus(row?.status));
+    const readinessByOrder = new Map((context.closure_readiness || []).map((row: any) => [String(row?.work_order_id || ''), row]));
+    const rows = openOrders
+      .map((row: any) => ({ row, readiness: readinessByOrder.get(String(row?.id || '')) as any }))
+      .sort((a: any, b: any) => Number(Boolean(b.readiness && b.readiness.ready_to_close === false)) - Number(Boolean(a.readiness && a.readiness.ready_to_close === false)))
+      .slice(0, 6);
+
+    lines.push('DATO CANÓNICO');
+    if (!rows.length) {
+      lines.push('No hay OT operacionales abiertas en el contexto cargado.');
+    } else {
+      for (const item of rows) {
+        const row = item.row;
+        const readiness = item.readiness;
+        const asset = assetsById.get(String(row?.canonical_asset_id || '')) as any;
+        const assetName = asset?.name || asset?.asset_code || 'Activo sin nombre';
+        const closure = readiness
+          ? readiness.ready_to_close === true ? 'lista para cierre' : 'cierre pendiente: ' + (readiness.next_action || 'faltan evidencias')
+          : 'sin evaluación de cierre';
+        lines.push('- ' + (row?.work_order_number || 'OT') + ' · ' + assetName + ' · ' + (row?.title || 'sin título') + ' · ' + (row?.status || 'sin estado') + ' · ' + closure + '.');
+      }
+    }
+    lines.push('', 'INTERPRETACIÓN PROFESIONAL', 'La prioridad operativa debe considerar bloqueos de cierre, estado del activo y trabajo pendiente; esta lectura no cambia prioridad ni cierra OT.');
+    lines.push('', 'PRÓXIMA ACCIÓN', 'Abrir la OT que tenga bloqueo verificable y resolver su siguiente requisito antes de generar trabajo nuevo.');
+    toolsUsed.push({ name: 'get_closure_readiness', mode: 'read' });
+  } else {
+    const result = executeMaintenanceSeniorTool('get_maintenance_attention_context', { limit: 5 }, context) as any;
+    const rows = Array.isArray(result?.rows) ? result.rows : [];
+    lines.push('DATO CANÓNICO');
+    if (!rows.length) {
+      lines.push('No hay señales suficientes en la cola actual para destacar un activo por sobre otro.');
+    } else {
+      for (const item of rows) {
+        const a = item?.attention || {};
+        const reasons = [
+          a.pending_reviews ? a.pending_reviews + ' revisión(es) pendiente(s)' : null,
+          a.overdue_preventive ? a.overdue_preventive + ' preventivo(s) vencido(s)' : null,
+          a.out_of_service_reports ? a.out_of_service_reports + ' reporte(s) fuera de servicio' : null,
+          a.operational_with_observations_reports ? a.operational_with_observations_reports + ' reporte(s) con observaciones' : null,
+          a.open_work_orders ? a.open_work_orders + ' OT abierta(s)' : null,
+          a.closure_blockers ? a.closure_blockers + ' bloqueo(s) de cierre' : null,
+        ].filter(Boolean);
+        lines.push('- ' + (a.asset_name || a.asset_code || 'Activo') + ': ' + (reasons.join(' · ') || 'señal operacional pendiente de revisar') + '.');
+      }
+    }
+    lines.push('', 'INTERPRETACIÓN PROFESIONAL', 'La lista ordena atención por señales observables del sistema. No es una probabilidad de falla, diagnóstico mecánico ni criticidad OEM.');
+    lines.push('', 'EVIDENCIA FALTANTE / A CONFIRMAR', 'Antes de decidir intervención: validar observación de terreno, horómetro vigente, OT ya abierta, disponibilidad de insumos y responsable.');
+    lines.push('', 'PRÓXIMA ACCIÓN', rows.length ? 'Abrir el primer activo y contrastar sus observaciones, preventivos y OT antes de decidir.' : 'Actualizar evidencia operacional antes de priorizar.');
+    toolsUsed.push({ name: 'get_maintenance_attention_context', mode: 'read' });
+  }
+
+  return {
+    text: lines.join('\n'),
+    model: 'canonical-fallback',
+    responseId: null,
+    toolAudit: toolsUsed,
+  };
+}
 export async function GET(request: NextRequest) {
   const access = await requireModuleAccess(request, MODULE_KEYS.MANT_OPERACIONES);
   if (!access.authorized) return access.response;
@@ -449,7 +603,7 @@ export async function POST(request: NextRequest) {
           .limit(HISTORY_LIMIT)
       : Promise.resolve({ data: [], error: null });
 
-    const [historyResult, memoryResult, cargo, canonical, advisoryHandoffs] = await Promise.all([
+    const [historyResult, memoryResult, cargo, personIdentity, canonical, advisoryHandoffs] = await Promise.all([
       historyQuery,
       db.from('maintenance_ai_user_memory')
         .select('memory_type,memory_text,confidence')
@@ -459,6 +613,7 @@ export async function POST(request: NextRequest) {
         .order('updated_at', { ascending: false })
         .limit(20),
       resolveCargo(db, context.userId),
+      resolvePersonIdentity(db, context.organizationId, context.userId),
       buildCanonicalMaintenanceContext(db, context.organizationId),
       loadSupportAdvisoryHandoffs(context, 'maintenance', message),
     ]);
@@ -476,7 +631,7 @@ export async function POST(request: NextRequest) {
       'En Mantención, revalida activos, observaciones, OT, preventivos, materiales, cierre y confiabilidad con las herramientas READ/PREPARE_ONLY. Un caso previo no confirma diagnóstico, causa raíz, criticidad, probabilidad de falla ni prioridad de intervención.',
     );
 
-    const instructions = `Eres el Asistente Senior de Mantenimiento de MOTIL para una operación minera chilena. Respondes como copiloto técnico de un jefe de mantenimiento, planificador o supervisor.\n\nCONTEXTO DEL USUARIO:\n- Usuario: ${userIdentity}\n- Cargo: ${cargo || 'no informado'}\n- Nivel de acceso: ${accessLevel}\n- Memoria de trabajo declarada por el usuario: ${memory.length ? memory.join(' | ') : 'sin memoria durable registrada'}\nLa memoria de usuario sirve para personalizar forma de trabajo y continuidad, pero NUNCA reemplaza evidencia canónica sobre activos, fallas, causas, repuestos, prioridades o intervenciones.\n\nREGLAS DE AUTORIDAD Y SEGURIDAD:\n1. Usa únicamente el CONTEXTO CANÓNICO y las herramientas READ/PREPARE_ONLY entregadas para afirmaciones operacionales. Si falta evidencia, dilo explícitamente.\n2. Distingue siempre DATO CANÓNICO, INTERPRETACIÓN PROFESIONAL, HIPÓTESIS A REVISAR y RECOMENDACIÓN/PRÓXIMA ACCIÓN cuando corresponda.\n3. Un porcentaje de reportes fuera de servicio u observados describe frecuencia histórica observada; jamás lo llames probabilidad de falla.\n4. Separa causas mecánicas de restricciones externas como falta de agua, corte de energía o falta de dotación.\n5. No uses UAT, simulaciones o pruebas como evidencia de confiabilidad real.\n6. No declares causa raíz si no está validada. No declares MTBF/MTTR predictivo si no existe evidencia suficiente.\n7. No inventes repuestos, costos, horas, manuales, tolerancias ni procedimientos OEM.\n8. No crees, cierres, priorices de forma irreversible ni autorices una OT. Puedes recomendar qué revisar y por qué; la decisión final es humana.\n9. Si existe evidencia contradictoria, muéstrala. Si una máquina tuvo reportes degradados y también muchos reportes operativos normales, incluye ambos.\n10. Prioriza respuestas operacionales y concretas: qué sabemos, qué nos preocupa, qué falta confirmar y cuál es el siguiente dato/acción de mayor valor.\n11. La conversación reciente aporta continuidad, pero una afirmación previa del usuario no se transforma por repetición en dato canónico.\n12. Cuando una pregunta requiera activos, señales, preventivos, OT o preparación de cierre específicos, usa las herramientas READ en vez de inferir desde memoria o conversación.\n13. PREPARE_ONLY puede estructurar un borrador de Decision Case para revisión humana, pero no lo persiste como verdad operacional, no lo aprueba, no autoriza y no ejecuta ninguna acción.\n14. No muestres al usuario call_id, argumentos JSON crudos, resultados JSON crudos ni detalles internos de herramientas. Resume la evidencia operacional relevante.\n15. Un score de atención sólo ordena revisión humana de forma determinística; no es probabilidad de falla, criticidad OEM, diagnóstico ni autorización de prioridad.\n16. HANDOFF ADVISORY es contexto NO CANÓNICO y sólo define qué revalidar. Nunca conserva diagnóstico, causa, prioridad, severidad ni vigencia sin respaldo del contexto canónico y de las herramientas actuales.\n\nCuando el usuario pregunte qué equipo requiere atención, usa la cola de atención y luego profundiza con herramientas del activo cuando sea necesario. Compara señales observadas, estado fuera de servicio, preventivos, OT abiertas y evidencia de cierre. No conviertas un ranking operacional en riesgo probabilístico.`;
+    const instructions = `Eres el Asistente Senior de Mantenimiento de MOTIL para una operación minera chilena. Respondes como copiloto técnico de un jefe de mantenimiento, planificador o supervisor.\n\nCONTEXTO DEL USUARIO:\n- Usuario: ${personIdentity?.full_name || userIdentity}\n- Persona canónica: ${personIdentity?.id || 'no vinculada'}\n- Cargo: ${personIdentity?.role_title || cargo || 'no informado'}\n- Nivel de acceso: ${accessLevel}\n- Memoria de trabajo declarada por el usuario: ${memory.length ? memory.join(' | ') : 'sin memoria durable registrada'}\nLa memoria de usuario sirve para personalizar forma de trabajo y continuidad, pero NUNCA reemplaza evidencia canónica sobre activos, fallas, causas, repuestos, prioridades o intervenciones.\n\nREGLAS DE AUTORIDAD Y SEGURIDAD:\n1. Usa únicamente el CONTEXTO CANÓNICO y las herramientas READ/PREPARE_ONLY entregadas para afirmaciones operacionales. Si falta evidencia, dilo explícitamente.\n2. Distingue siempre DATO CANÓNICO, INTERPRETACIÓN PROFESIONAL, HIPÓTESIS A REVISAR y RECOMENDACIÓN/PRÓXIMA ACCIÓN cuando corresponda.\n3. Un porcentaje de reportes fuera de servicio u observados describe frecuencia histórica observada; jamás lo llames probabilidad de falla.\n4. Separa causas mecánicas de restricciones externas como falta de agua, corte de energía o falta de dotación.\n5. No uses UAT, simulaciones o pruebas como evidencia de confiabilidad real.\n6. No declares causa raíz si no está validada. No declares MTBF/MTTR predictivo si no existe evidencia suficiente.\n7. No inventes repuestos, costos, horas, manuales, tolerancias ni procedimientos OEM.\n8. No crees, cierres, priorices de forma irreversible ni autorices una OT. Puedes recomendar qué revisar y por qué; la decisión final es humana.\n9. Si existe evidencia contradictoria, muéstrala. Si una máquina tuvo reportes degradados y también muchos reportes operativos normales, incluye ambos.\n10. Prioriza respuestas operacionales y concretas: qué sabemos, qué nos preocupa, qué falta confirmar y cuál es el siguiente dato/acción de mayor valor.\n11. La conversación reciente aporta continuidad, pero una afirmación previa del usuario no se transforma por repetición en dato canónico.\n12. Cuando una pregunta requiera activos, señales, preventivos, OT o preparación de cierre específicos, usa las herramientas READ en vez de inferir desde memoria o conversación.\n13. PREPARE_ONLY puede estructurar un borrador de Decision Case para revisión humana, pero no lo persiste como verdad operacional, no lo aprueba, no autoriza y no ejecuta ninguna acción.\n14. No muestres al usuario call_id, argumentos JSON crudos, resultados JSON crudos ni detalles internos de herramientas. Resume la evidencia operacional relevante.\n15. Un score de atención sólo ordena revisión humana de forma determinística; no es probabilidad de falla, criticidad OEM, diagnóstico ni autorización de prioridad.\n16. HANDOFF ADVISORY es contexto NO CANÓNICO y sólo define qué revalidar. Nunca conserva diagnóstico, causa, prioridad, severidad ni vigencia sin respaldo del contexto canónico y de las herramientas actuales.\n17. Cuando el usuario mencione una persona por nombre, apellido, correo, cargo o una variante de escritura, usa search_people antes de asumir identidad. Para preguntas sobre sus OT, equipo o dependencia, usa get_person_work_context.\n18. Distingue siempre identidad de persona, cargo y responsabilidad operacional. No atribuyas una falla, intervención o decisión a alguien sólo porque una OT esté asignada o creada por esa persona.\n19. Si una búsqueda de persona devuelve más de una coincidencia plausible, muestra las opciones y pide confirmación; no elijas silenciosamente.\n\nCuando el usuario pregunte qué equipo requiere atención, usa la cola de atención y luego profundiza con herramientas del activo cuando sea necesario. Compara señales observadas, estado fuera de servicio, preventivos, OT abiertas y evidencia de cierre. No conviertas un ranking operacional en riesgo probabilístico.`;
 
     const canonicalAvailability = {
       generated_at: canonical.context.generated_at,
@@ -484,6 +639,7 @@ export async function POST(request: NextRequest) {
       available_sources: canonical.sources,
       available_evidence_counts: {
         assets: canonical.context.assets.length,
+        people: canonical.context.people.length,
         pending_operational_reviews: canonical.context.pending_operational_reviews.length,
         observed_conditions_90d: canonical.context.observed_conditions_90d.length,
         preventive_hour_status: canonical.context.preventive_hour_status.length,
@@ -494,11 +650,21 @@ export async function POST(request: NextRequest) {
     };
 
     const modelInput = `CONVERSACIÓN RECIENTE\n${conversationTranscript(history)}\n\n${advisoryContext}\n\nCONTEXTO CANÓNICO MOTIL\n${JSON.stringify(canonicalAvailability)}\n\nPREGUNTA ACTUAL\n${message}`;
-    const result = await callMaintenanceOperationalAI({
-      instructions,
-      input: modelInput,
-      context: canonical.context,
-    });
+    let result;
+    let runtimeMode: 'ai' | 'canonical_fallback' = 'ai';
+    try {
+      result = await callMaintenanceOperationalAI({
+        instructions,
+        input: modelInput,
+        context: canonical.context,
+      });
+    } catch (aiError) {
+      const aiDetail = aiError instanceof Error ? aiError.message : String(aiError ?? 'unknown');
+      if (!isRecoverableAiAvailabilityError(aiDetail)) throw aiError;
+      console.warn('[maintenance-senior-assistant] AI unavailable; using canonical fallback', { detail: aiDetail });
+      result = canonicalFallbackAnswer(message, canonical.context);
+      runtimeMode = 'canonical_fallback';
+    }
     const toolsUsed = result.toolAudit.map(({ name, mode }) => ({ name, mode }));
     const sourceRefs = [
       ...canonical.sources.map((source) => ({ source })),
@@ -559,6 +725,7 @@ export async function POST(request: NextRequest) {
       conversationId: conversation?.id || null,
       message: assistantMessage,
       learned,
+      runtimeMode,
       decisionCaseRefs: advisoryHandoffs.map((row) => row.id),
       policy: 'Copiloto explicable con herramientas READ/PREPARE_ONLY: evidencia canónica → interpretación → hipótesis → acción humana. Memoria laboral separada de la verdad operacional; Decision Cases también permanecen como contexto no canónico.',
     });
