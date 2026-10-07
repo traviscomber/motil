@@ -11,9 +11,8 @@ test('completed OT shows a durable evidence list', () => {
   assert.match(component, /\/evidence/);
   assert.match(component, /photo\.signed_url/);
   assert.match(component, /photo\.file_name/);
-  assert.match(component, /Trabajo terminado/);
-  assert.match(component, /Antes \/ daño/);
-  assert.match(component, /Durante trabajo/);
+  assert.doesNotMatch(component, /tagLabel/);
+  assert.doesNotMatch(component, /evidence_tag/);
 });
 
 test('approval is explicitly limited to Ariel or Mauricio', () => {
