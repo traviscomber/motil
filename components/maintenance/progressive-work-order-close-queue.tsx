@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import type { Dictionary, Locale } from '@/lib/i18n/dictionaries';
+import { formatWorkOrderNumber } from '@/lib/maintenance/work-order-display';
 
 type QueueRow = {
   work_order_id: string;
@@ -291,7 +292,7 @@ export function ProgressiveWorkOrderCloseQueue({ locale, dictionary }: { locale:
           <p className="font-medium">OTs pendientes</p>
           <p className="text-sm text-muted-foreground">{queue.length.toLocaleString(numberLocale)} OT{queue.length === 1 ? '' : 's'} para continuar o cerrar</p>
         </div>
-        <Badge variant="outline">{current.work_order_number || 'OT'}</Badge>
+        <Badge variant="outline">{formatWorkOrderNumber(current.work_order_number, locale)}</Badge>
       </div>
 
       <div className="overflow-hidden rounded-lg border bg-card">
@@ -308,7 +309,7 @@ export function ProgressiveWorkOrderCloseQueue({ locale, dictionary }: { locale:
             >
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-mono text-xs text-muted-foreground">{row.work_order_number || 'OT'}</span>
+                  <span className="font-mono text-xs text-muted-foreground">{formatWorkOrderNumber(row.work_order_number, locale)}</span>
                   {selected ? <Badge variant="secondary">Seleccionada</Badge> : null}
                 </div>
                 <p className="mt-1 truncate text-sm font-medium">{row.title || t.untitled}</p>
