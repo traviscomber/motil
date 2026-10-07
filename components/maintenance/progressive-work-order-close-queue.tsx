@@ -289,8 +289,8 @@ export function ProgressiveWorkOrderCloseQueue({ locale, dictionary }: { locale:
     <div className="mx-auto max-w-3xl space-y-4">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="font-medium">OTs pendientes</p>
-          <p className="text-sm text-muted-foreground">{queue.length.toLocaleString(numberLocale)} OT{queue.length === 1 ? '' : 's'} para continuar o cerrar</p>
+          <p className="font-medium">Cierre</p>
+          <p className="text-sm text-muted-foreground">{queue.length.toLocaleString(numberLocale)} OT pendiente{queue.length === 1 ? '' : 's'}</p>
         </div>
         <div className="flex items-center gap-2">
           {Number(current.standard_plan_steps_total || 0) > 0 ? (
@@ -317,13 +317,12 @@ export function ProgressiveWorkOrderCloseQueue({ locale, dictionary }: { locale:
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-mono text-xs text-muted-foreground">{formatWorkOrderNumber(row.work_order_number, locale)}</span>
-                  {selected ? <Badge variant="secondary">Seleccionada</Badge> : null}
                 </div>
                 <p className="mt-1 truncate text-sm font-medium">{row.title || t.untitled}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{row.asset?.name || t.noAsset} · {rowTitle}</p>
               </div>
               <span className="inline-flex items-center gap-2 text-sm font-medium">
-                {selected ? 'Continuar aquí' : 'Abrir'}
+                {selected ? 'Continuar' : 'Abrir'}
                 <ArrowRight className="h-4 w-4" />
               </span>
             </Link>
