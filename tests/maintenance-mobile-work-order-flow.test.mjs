@@ -17,8 +17,8 @@ test('only execution maintenance profiles receive the condensed work-order works
 
 test('the terrain flow blocks start before a canonical person is assigned', () => {
   assert.match(flow, /hasCanonicalAssignee = Boolean\(assignedPersonId\)/);
-  assert.match(flow, /Falta asignar responsable/);
-  assert.match(flow, /vinculada a una persona operativa/);
+  assert.match(flow, /Falta responsable/);
+  assert.match(flow, /Asigna una persona antes de iniciar/);
   assert.match(flow, /canEdit && hasCanonicalAssignee && status !== 'completed'/);
 });
 
@@ -28,6 +28,7 @@ test('the terrain flow preserves the start pause resume and evidence-gated close
   assert.match(flow, /Reanudar trabajo/);
   assert.match(flow, /Terminar y registrar evidencia/);
   assert.match(flow, /ordenes-trabajo\/cierre\?workOrderId=/);
-  assert.match(flow, /causa, acción preventiva, horas reales y evidencia de horómetro/);
+  assert.doesNotMatch(flow, /Sigue la instrucción de la orden/);
+  assert.doesNotMatch(flow, /causa, acción preventiva, horas reales y evidencia de horómetro/);
   assert.doesNotMatch(flow, /status:\s*'completed'/);
 });
