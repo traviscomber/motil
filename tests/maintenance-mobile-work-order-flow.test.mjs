@@ -9,7 +9,7 @@ test('only execution maintenance profiles receive the condensed work-order works
   assert.match(page, /viewer\?\.mode === 'execution'/);
   assert.match(page, /if \(isExecution\)/);
   assert.match(page, /<MobileWorkOrderFlow/);
-  assert.match(page, /assetName=\{workOrder\.asset_name \|\| workOrder\.asset_code\}/);
+  assert.match(page, /assetName=\{workOrder\.asset_name \|\| t\.noAsset\}/);
   assert.match(page, /description=\{workOrder\.description\}/);
   assert.match(page, /assignedPersonId=\{workOrder\.assigned_person_id\}/);
   assert.doesNotMatch(page, /isExecutionMobile \? 'hidden md:block' : undefined/);
