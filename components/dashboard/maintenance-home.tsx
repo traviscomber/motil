@@ -12,6 +12,7 @@ import { MobileTerrainPanel } from '@/components/maintenance/mobile-terrain-pane
 import { AutopilotDecisionStrip } from '@/components/maintenance/autopilot-decision-strip';
 import { CanonicalMaintenanceOverview } from '@/components/maintenance/canonical-maintenance-overview';
 import type { Dictionary, Locale } from '@/lib/i18n/dictionaries';
+import { formatWorkOrderText } from '@/lib/maintenance/work-order-display';
 
 type ActionItem = { id: string; kind: string; priority: number; title: string; description: string; evidence: string; href: string; assetHref?: string | null; autopilot?: { state: 'prepared'; risk: 'low' | 'medium' | 'high'; requiresHumanDecision: true; preparedAction: string; authority: string } };
 type Response = {
@@ -74,7 +75,7 @@ export function MaintenanceHome({ locale, dictionary }: { locale: Locale; dictio
   }
 
   if (mode === 'execution') {
-    return <div className="mx-auto w-full max-w-xl"><MobileTerrainPanel /></div>;
+    return <div className="mx-auto w-full max-w-xl"><MobileTerrainPanel locale={locale} /></div>;
   }
 
   const summary = data?.summary;
@@ -214,7 +215,7 @@ export function MaintenanceHome({ locale, dictionary }: { locale: Locale; dictio
           const kindKey = (action.kind in kindMeta ? action.kind : kindFallback) as KindKey;
           const meta = kindMeta[kindKey];
           const Icon = meta.icon;
-          return <div key={action.id} className="grid gap-3 p-4 md:grid-cols-[40px_1fr_auto] md:items-center"><div className="flex h-9 w-9 items-center justify-center rounded-md border bg-background"><Icon className="h-4 w-4" /></div><Link href={action.href} className="min-w-0 rounded-sm outline-none hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring"><div className="flex flex-wrap items-center gap-2"><span className="text-xs tabular-nums text-muted-foreground">#{index + 1}</span><Badge variant={meta.variant}>{t.kinds[kindKey]}</Badge><p className="font-medium">{action.title}</p></div><p className="mt-1 text-sm text-muted-foreground">{action.description}</p><p className="mt-1 text-xs text-muted-foreground">{fill(t.evidenceLabel, { text: action.evidence })}</p>{action.autopilot ? <div className="mt-2 border-l border-border pl-3 text-xs leading-5 text-muted-foreground"><p><span className="font-medium text-foreground">Autopilot prepara:</span> {action.autopilot.preparedAction}</p><p><span className="font-medium text-foreground">Decisión humana:</span> {action.autopilot.authority}</p></div> : null}</Link><Button asChild variant="ghost" size="icon-sm" aria-label={t.openActionAria}><Link href={action.href}><ArrowRight className="h-4 w-4" /></Link></Button></div>;
+          return <div key={action.id} className="grid gap-3 p-4 md:grid-cols-[40px_1fr_auto] md:items-center"><div className="flex h-9 w-9 items-center justify-center rounded-md border bg-background"><Icon className="h-4 w-4" /></div><Link href={action.href} className="min-w-0 rounded-sm outline-none hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring"><div className="flex flex-wrap items-center gap-2"><span className="text-xs tabular-nums text-muted-foreground">#{index + 1}</span><Badge variant={meta.variant}>{t.kinds[kindKey]}</Badge><p className="font-medium">{formatWorkOrderText(action.title, locale)}</p></div><p className="mt-1 text-sm text-muted-foreground">{action.description}</p><p className="mt-1 text-xs text-muted-foreground">{fill(t.evidenceLabel, { text: action.evidence })}</p>{action.autopilot ? <div className="mt-2 border-l border-border pl-3 text-xs leading-5 text-muted-foreground"><p><span className="font-medium text-foreground">Autopilot prepara:</span> {action.autopilot.preparedAction}</p><p><span className="font-medium text-foreground">Decisión humana:</span> {action.autopilot.authority}</p></div> : null}</Link><Button asChild variant="ghost" size="icon-sm" aria-label={t.openActionAria}><Link href={action.href}><ArrowRight className="h-4 w-4" /></Link></Button></div>;
         })}</div> : null}
       </CardContent>
     </Card>
