@@ -292,7 +292,14 @@ export function ProgressiveWorkOrderCloseQueue({ locale, dictionary }: { locale:
           <p className="font-medium">OTs pendientes</p>
           <p className="text-sm text-muted-foreground">{queue.length.toLocaleString(numberLocale)} OT{queue.length === 1 ? '' : 's'} para continuar o cerrar</p>
         </div>
-        <Badge variant="outline">{formatWorkOrderNumber(current.work_order_number, locale)}</Badge>
+        <div className="flex items-center gap-2">
+          {Number(current.standard_plan_steps_total || 0) > 0 ? (
+            <Badge variant="secondary">
+              {fill(t.planBadgeTemplate, { completed: current.standard_plan_steps_completed || 0, total: current.standard_plan_steps_total || 0 })}
+            </Badge>
+          ) : null}
+          <Badge variant="outline">{formatWorkOrderNumber(current.work_order_number, locale)}</Badge>
+        </div>
       </div>
 
       <div className="overflow-hidden rounded-lg border bg-card">
