@@ -13,6 +13,6 @@ test('in-progress idle OT restarts timer with play instead of invalid resume', (
 test('running OT exposes pause flow and paused OT resumes', () => {
   assert.match(mobile, /timerStatus === 'running' && !showPauseForm/);
   assert.match(mobile, /Pausar trabajo/);
-  assert.match(mobile, /¿Por qué pausas esta OT\?/);
+  assert.match(mobile, /Motivo de pausa/);
   assert.match(mobile, /timerAction\('resume'\)/);
 });
