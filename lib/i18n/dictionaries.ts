@@ -550,16 +550,16 @@ export const dictionaries = {
               { label: 'Acciones críticas', detail: '{n} vencidas' },
               { label: 'Escalaciones', detail: 'Requieren decisión superior' },
               { label: 'Excepciones importación', detail: 'Deuda de datos de Producción' },
-              { label: 'Calidad Producción', detail: '{n} fuentes HOLD', unavailable: 'Fuente de Producción no disponible' },
+              { label: 'Calidad Producción', detail: '{n} fuentes con observaciones', unavailable: 'Fuente de Producción no disponible' },
             ],
             shortcuts: [
-              { key: 'executiveCenter', label: 'Centro Ejecutivo', detail: 'Top decisiones, causa raíz y escalaciones' },
+              { key: 'executiveCenter', label: 'Centro Ejecutivo', detail: 'Decisiones prioritarias, causas y escalaciones' },
               { key: 'dataHealth', label: 'Calidad de datos', detail: 'Confianza y frescura por dominio' },
               { key: 'actions', label: 'Mis acciones', detail: 'Tareas y escalaciones visibles para Gerencia' },
             ],
           },
           general: {
-            eyebrow: 'MOTIL Mining OS',
+            eyebrow: 'MOTIL · Sistema Operativo para Minería',
             title: 'Inicio',
             description: 'Tu trabajo pendiente y accesos principales según la operación disponible.',
             metrics: [
