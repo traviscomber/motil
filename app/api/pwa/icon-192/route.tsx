@@ -2,7 +2,9 @@ import { ImageResponse } from 'next/og';
 
 export const runtime = 'edge';
 
-export async function GET() {
+export async function GET(request: Request) {
+  const wordmark = new URL('/brand/motil-wordmark.png', request.url).toString();
+
   return new ImageResponse(
     (
       <div
@@ -13,20 +15,28 @@ export async function GET() {
           alignItems: 'center',
           justifyContent: 'center',
           background: '#0a0a0a',
+          borderRadius: '22%',
         }}
       >
         <img
-          src="https://www.motil.app/icon-512.png"
+          src={wordmark}
           alt=""
-          width="192"
-          height="192"
-          style={{ width: '192px', height: '192px' }}
+          width="148"
+          height="43"
+          style={{
+            width: '77%',
+            height: 'auto',
+            objectFit: 'contain',
+          }}
         />
       </div>
     ),
     {
       width: 192,
       height: 192,
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+      },
     },
   );
 }
