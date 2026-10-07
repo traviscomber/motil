@@ -26,7 +26,7 @@ export async function generateMetadata(): Promise<Metadata> {
       ? 'MOTIL es un Sistema Operativo para Minería en Chile. Conecta producción, mantenimiento, inventario, compras, finanzas, RRHH, sostenibilidad HSE y legal con trazabilidad operacional y evidencia auditable.'
       : 'MOTIL is a Mining Operating System built in Chile. It connects production, maintenance, inventory, procurement, finance, HR, HSE and legal with operational traceability and auditable evidence.',
     applicationName: 'MOTIL Mining OS',
-    manifest: '/motil.webmanifest',
+    manifest: '/motil-v2.webmanifest',
     appleWebApp: {
       capable: true,
       title: 'MOTIL',
