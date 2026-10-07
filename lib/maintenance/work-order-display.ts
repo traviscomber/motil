@@ -1,16 +1,14 @@
 import type { Locale } from '@/lib/i18n/dictionaries';
 
-export function formatWorkOrderNumber(value: string | null | undefined, locale: Locale = 'es') {
+export function formatWorkOrderNumber(value: string | null | undefined, _locale: Locale = 'es') {
   const number = String(value || '').trim();
-  if (!number) return locale === 'en' ? 'WO' : 'OT';
-  if (locale === 'en') return number;
+  if (!number) return 'OT';
   return number.replace(/^WO-/i, 'OT-');
 }
 
-export function formatWorkOrderText(value: string | null | undefined, locale: Locale = 'es') {
+export function formatWorkOrderText(value: string | null | undefined, _locale: Locale = 'es') {
   const text = String(value || '');
-  if (locale === 'en') return text;
-  return text.replace(/\bWO-(?=\d)/gi, 'OT-');
+  return text.replace(/\bWO-/gi, 'OT-');
 }
 
 export function formatAssetIdentity(
