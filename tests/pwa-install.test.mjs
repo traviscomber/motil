@@ -7,6 +7,9 @@ const layout = await readFile(new URL('../app/layout.tsx', import.meta.url), 'ut
 const installer = await readFile(new URL('../components/pwa/install-motil-button.tsx', import.meta.url), 'utf8');
 const sidebar = await readFile(new URL('../components/layout/sidebar.tsx', import.meta.url), 'utf8');
 const iconRoute = await readFile(new URL('../app/api/pwa/icon-192/route.tsx', import.meta.url), 'utf8');
+const icon512Route = await readFile(new URL('../app/api/pwa/icon-512/route.tsx', import.meta.url), 'utf8');
+const staticManifest = await readFile(new URL('../public/motil-v2.webmanifest', import.meta.url), 'utf8');
+const legacyManifest = await readFile(new URL('../public/manifest.json', import.meta.url), 'utf8');
 const registrar = await readFile(new URL('../components/pwa/service-worker-registrar.tsx', import.meta.url), 'utf8');
 const serviceWorker = await readFile(new URL('../public/motil-sw-v2.js', import.meta.url), 'utf8');
 const nextConfig = await readFile(new URL('../next.config.js', import.meta.url), 'utf8');
@@ -32,10 +35,15 @@ test('MOTIL install control supports Chromium prompts and Apple home-screen guid
   assert.match(sidebar, /InstallMotilButton locale=\{locale\}/);
 });
 
-test('MOTIL provides the required 192px install icon alongside the existing 512px icon', () => {
+test('MOTIL install icons render the canonical MOTIL wordmark at 192px and 512px', () => {
+  assert.match(iconRoute, /brand\/motil-wordmark\.png/);
   assert.match(iconRoute, /width: 192/);
   assert.match(iconRoute, /height: 192/);
-  assert.match(iconRoute, /icon-512\.png/);
+  assert.match(icon512Route, /brand\/motil-wordmark\.png/);
+  assert.match(icon512Route, /width: 512/);
+  assert.match(icon512Route, /height: 512/);
+  assert.doesNotMatch(iconRoute, /icon-512\.png/);
+  assert.doesNotMatch(icon512Route, /icon-512\.png/);
 });
 
 
@@ -81,4 +89,18 @@ test('Android migrates away from stale legacy service worker registrations', () 
   assert.match(registrar, /registration\.unregister\(\)/);
   assert.match(registrar, /motil-sw-v2\.js/);
   assert.match(serviceWorker, /MOTIL_SW_VERSION = 'motil-pwa-v2'/);
+});
+
+
+test('all install manifests and metadata point to versioned MOTIL brand icons, not the legacy v0 icon', () => {
+  assert.match(manifest, /icon-192\?brand=motil-3/);
+  assert.match(manifest, /icon-512\?brand=motil-3/);
+  assert.match(staticManifest, /icon-192\?brand=motil-3/);
+  assert.match(staticManifest, /icon-512\?brand=motil-3/);
+  assert.match(legacyManifest, /icon-192\?brand=motil-3/);
+  assert.match(legacyManifest, /icon-512\?brand=motil-3/);
+  assert.match(layout, /icon-192\?brand=motil-3/);
+  assert.match(layout, /icon-512\?brand=motil-3/);
+  assert.doesNotMatch(staticManifest, /"\/icon-512\.png"/);
+  assert.doesNotMatch(legacyManifest, /"\/icon-512\.png"/);
 });
