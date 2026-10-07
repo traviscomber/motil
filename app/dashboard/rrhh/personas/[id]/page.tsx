@@ -1,11 +1,20 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { StatePanel } from '@/components/ui/state-panel';
 import {
   PageHeader,
@@ -52,6 +61,17 @@ export default function PersonLaborRecordPage() {
   const [data, setData] = useState<Payload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editForm, setEditForm] = useState({
+    full_name: '',
+    role_title: '',
+    email: '',
+    phone: '',
+    rut: '',
+    employment_status: 'active',
+  });
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch(`/api/rrhh/people?person_id=${encodeURIComponent(params.id)}`, { credentials: 'include' })
@@ -64,6 +84,46 @@ export default function PersonLaborRecordPage() {
       .catch((err) => setError(err instanceof Error ? err.message : 'No se pudo cargar la ficha laboral'))
       .finally(() => setLoading(false));
   }, [params.id]);
+
+  function openEdit() {
+    if (!data) return;
+    setEditForm({
+      full_name: data.person.full_name || '',
+      role_title: data.person.role_title || '',
+      email: data.person.email || '',
+      phone: data.person.phone || '',
+      rut: data.person.rut || '',
+      employment_status: data.person.employment_status || 'active',
+    });
+    setSaveError(null);
+    setEditOpen(true);
+  }
+
+  async function savePerson(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!data || !editForm.full_name.trim()) return;
+
+    setSaving(true);
+    setSaveError(null);
+
+    try {
+      const response = await fetch('/api/rrhh/people', {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ person_id: data.person.id, ...editForm }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload?.error || 'No se pudo actualizar la persona');
+
+      setData((current) => current ? { ...current, person: { ...current.person, ...payload.person } } : current);
+      setEditOpen(false);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'No se pudo actualizar la persona');
+    } finally {
+      setSaving(false);
+    }
+  }
 
   if (loading) {
     return <StatePanel tone="loading" title="Cargando ficha" description="Reuniendo la información disponible de la persona." />;
@@ -90,6 +150,10 @@ export default function PersonLaborRecordPage() {
           </PageHeaderDescription>
         </PageHeaderContent>
         <PageHeaderActions>
+          <Button variant="outline" onClick={openEdit}>
+            <Pencil className="mr-2 h-4 w-4" />
+            Editar
+          </Button>
           <Button asChild variant="outline">
             <Link href="/dashboard/rrhh"><ArrowLeft className="mr-2 h-4 w-4" />Personas</Link>
           </Button>
@@ -218,6 +282,94 @@ export default function PersonLaborRecordPage() {
           description="La ficha muestra sólo información disponible. Competencias, credenciales, EPP e historial aparecerán cuando existan registros reales."
         />
       ) : null}
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar persona</DialogTitle>
+            <DialogDescription>
+              Actualiza los datos básicos de RR.HH. La actividad operacional no se modifica desde aquí.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form className="space-y-4" onSubmit={savePerson}>
+            <div className="space-y-1.5">
+              <label htmlFor="edit-full-name" className="text-sm font-medium">Nombre completo</label>
+              <Input
+                id="edit-full-name"
+                required
+                value={editForm.full_name}
+                onChange={(event) => setEditForm((current) => ({ ...current, full_name: event.target.value }))}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label htmlFor="edit-role" className="text-sm font-medium">Cargo</label>
+              <Input
+                id="edit-role"
+                value={editForm.role_title}
+                onChange={(event) => setEditForm((current) => ({ ...current, role_title: event.target.value }))}
+              />
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <label htmlFor="edit-email" className="text-sm font-medium">Correo</label>
+                <Input
+                  id="edit-email"
+                  type="email"
+                  value={editForm.email}
+                  onChange={(event) => setEditForm((current) => ({ ...current, email: event.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label htmlFor="edit-phone" className="text-sm font-medium">Teléfono</label>
+                <Input
+                  id="edit-phone"
+                  value={editForm.phone}
+                  onChange={(event) => setEditForm((current) => ({ ...current, phone: event.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <label htmlFor="edit-rut" className="text-sm font-medium">RUT</label>
+                <Input
+                  id="edit-rut"
+                  value={editForm.rut}
+                  onChange={(event) => setEditForm((current) => ({ ...current, rut: event.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label htmlFor="edit-status" className="text-sm font-medium">Estado</label>
+                <select
+                  id="edit-status"
+                  value={editForm.employment_status}
+                  onChange={(event) => setEditForm((current) => ({ ...current, employment_status: event.target.value }))}
+                  className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
+                >
+                  <option value="active">Activo</option>
+                  <option value="inactive">Inactivo</option>
+                  <option value="suspended">Suspendido</option>
+                  <option value="terminated">Desvinculado</option>
+                </select>
+              </div>
+            </div>
+
+            {saveError ? <p className="text-sm text-destructive">{saveError}</p> : null}
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setEditOpen(false)} disabled={saving}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={saving || !editForm.full_name.trim()}>
+                {saving ? 'Guardando…' : 'Guardar cambios'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
