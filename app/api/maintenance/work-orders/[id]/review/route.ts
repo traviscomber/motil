@@ -8,15 +8,19 @@ import { requireOperationalMaintenanceWorkOrder } from '@/lib/maintenance/work-o
 
 async function getReviewerPerson(context: Awaited<ReturnType<typeof getOrganizationContext>>) {
   if (!context.ok) return null;
+
+  const accessLevel = await getModuleAccessLevel(context.userId, context.role, MODULE_KEYS.MANT_OPERACIONES);
+  if (accessLevel !== 'ED') return null;
+
   const { data, error } = await context.supabase
     .from('people')
-    .select('id,full_name')
+    .select('id,full_name,supervisor_person_id')
     .eq('organization_id', context.organizationId)
     .eq('profile_id', context.userId)
     .eq('employment_status', 'active')
     .maybeSingle();
   if (error || !data) return null;
-  return ['Ariel López', 'Mauricio Astudillo'].includes(String(data.full_name || '')) ? data : null;
+  return data;
 }
 
 async function authorizeRead(request: NextRequest, workOrderId: string) {
@@ -36,7 +40,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   const { data: workOrder, error: workOrderError } = await context.supabase
     .from('maintenance_work_orders')
-    .select('id,status,work_order_number')
+    .select('id,status,work_order_number,created_by,assigned_person_id')
     .eq('organization_id', context.organizationId)
     .eq('id', id)
     .maybeSingle();
@@ -52,6 +56,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   if (reviewError) return NextResponse.json({ error: reviewError.message }, { status: 500 });
 
   const reviewer = await getReviewerPerson(context);
+  const isOwnWorkOrder = Boolean(
+    reviewer &&
+    (workOrder.created_by === context.userId || workOrder.assigned_person_id === reviewer.id)
+  );
+
   return NextResponse.json({
     review: review || {
       status: String(workOrder.status || '') === 'completed' ? 'pending' : null,
@@ -60,6 +69,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       reviewed_at: null,
     },
     canApprove: Boolean(reviewer) && String(workOrder.status || '') === 'completed' && review?.status !== 'approved',
+    isOwnWorkOrder,
+    selfApprovalNotifiesSupervisor: Boolean(isOwnWorkOrder && reviewer?.supervisor_person_id),
   });
 }
 
@@ -73,12 +84,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   const reviewer = await getReviewerPerson(context);
   if (!reviewer) {
-    return NextResponse.json({ error: 'Solo Ariel López o Mauricio Astudillo pueden aprobar la OT.' }, { status: 403 });
+    return NextResponse.json({ error: 'No tienes permiso para aprobar órdenes de trabajo.' }, { status: 403 });
   }
 
   const { data: workOrder, error: workOrderError } = await context.supabase
     .from('maintenance_work_orders')
-    .select('id,status,work_order_number,canonical_asset_id')
+    .select('id,status,work_order_number,canonical_asset_id,created_by,assigned_person_id')
     .eq('organization_id', context.organizationId)
     .eq('id', id)
     .maybeSingle();
@@ -109,19 +120,50 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     .single();
   if (reviewError) return NextResponse.json({ error: reviewError.message }, { status: 500 });
 
+  const isSelfApproval = workOrder.created_by === context.userId || workOrder.assigned_person_id === reviewer.id;
+  let notifiedSupervisor: string | null = null;
+
+  if (isSelfApproval && reviewer.supervisor_person_id) {
+    const { data: supervisor, error: supervisorError } = await context.supabase
+      .from('people')
+      .select('id,full_name,profile_id')
+      .eq('organization_id', context.organizationId)
+      .eq('id', reviewer.supervisor_person_id)
+      .eq('employment_status', 'active')
+      .maybeSingle();
+    if (supervisorError) throw supervisorError;
+
+    if (supervisor?.profile_id) {
+      const { error: notificationError } = await context.supabase
+        .from('maintenance_notifications')
+        .upsert({
+          organization_id: context.organizationId,
+          recipient_profile_id: supervisor.profile_id,
+          recipient_person_id: supervisor.id,
+          work_order_id: id,
+          notification_type: 'work_order_self_approved',
+          title: `${workOrder.work_order_number || 'OT'} autoaprobada`,
+          message: `${reviewer.full_name} aprobó una OT propia. Revisa la evidencia si corresponde.`,
+          read_at: null,
+        }, { onConflict: 'organization_id,recipient_profile_id,work_order_id,notification_type' });
+      if (notificationError) throw notificationError;
+      notifiedSupervisor = supervisor.full_name;
+    }
+  }
+
   await context.supabase.from('work_order_events').insert({
     organization_id: context.organizationId,
     work_order_id: id,
     canonical_asset_id: workOrder.canonical_asset_id,
-    event_type: 'supervisor_approved',
+    event_type: isSelfApproval ? 'self_approved_supervisor_notified' : 'supervisor_approved',
     event_at: now,
     actor_id: context.userId,
     actor_name: reviewer.full_name,
     source_table: 'public.work_order_supervisor_reviews',
     source_record_id: review.id,
-    summary: 'OT aprobada por supervisión',
-    payload: { status: 'approved', note },
+    summary: isSelfApproval ? 'OT autoaprobada por usuario autorizado' : 'OT aprobada por supervisión',
+    payload: { status: 'approved', note, self_approval: isSelfApproval, notified_supervisor: notifiedSupervisor },
   });
 
-  return NextResponse.json({ review });
+  return NextResponse.json({ review, selfApproval: isSelfApproval, notifiedSupervisor });
 }

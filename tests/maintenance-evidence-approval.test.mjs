@@ -13,16 +13,19 @@ test('completed OT shows a durable evidence list', () => {
   assert.match(component, /photo\.file_name/);
 });
 
-test('approval is explicitly limited to Ariel or Mauricio', () => {
-  assert.match(reviewRoute, /Ariel López/);
-  assert.match(reviewRoute, /Mauricio Astudillo/);
-  assert.match(reviewRoute, /Solo Ariel López o Mauricio Astudillo pueden aprobar la OT/);
+test('approval follows maintenance edit authority and supports audited self-approval', () => {
+  assert.match(reviewRoute, /accessLevel !== 'ED'/);
+  assert.match(reviewRoute, /isSelfApproval/);
+  assert.match(reviewRoute, /work_order_self_approved/);
+  assert.match(reviewRoute, /supervisor_person_id/);
   assert.match(reviewRoute, /status: 'approved'/);
 });
 
 test('approval is separate from execution truth and is audited', () => {
   assert.match(migration, /work_order_supervisor_reviews/);
   assert.match(migration, /unique \(organization_id, work_order_id\)/);
-  assert.match(reviewRoute, /event_type: 'supervisor_approved'/);
+  assert.match(reviewRoute, /supervisor_approved/);
+  assert.match(reviewRoute, /self_approved_supervisor_notified/);
   assert.match(component, /Pendiente de aprobación/);
+  assert.match(component, /Se avisará a tu superior/);
 });

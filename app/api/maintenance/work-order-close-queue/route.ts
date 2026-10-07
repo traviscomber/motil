@@ -65,32 +65,34 @@ export async function GET(request: NextRequest) {
     const accessLevel = await getModuleAccessLevel(context.userId, context.role, MODULE_KEYS.MANT_OPERACIONES);
     let allowedWorkOrderIds: string[] | null = null;
 
-    if (accessLevel === 'SR') {
-      const { data: person, error: personError } = await context.supabase
-        .from('people')
-        .select('id')
-        .eq('organization_id', context.organizationId)
-        .eq('profile_id', context.userId)
-        .eq('employment_status', 'active')
-        .maybeSingle();
-      if (personError) throw personError;
-      if (!person) return NextResponse.json({ queue: [], summary: null, canEdit: false, source: 'work_order_close_readiness_v2' });
+    const { data: person, error: personError } = await context.supabase
+      .from('people')
+      .select('id')
+      .eq('organization_id', context.organizationId)
+      .eq('profile_id', context.userId)
+      .eq('employment_status', 'active')
+      .maybeSingle();
+    if (personError) throw personError;
 
+    if (person) {
       const { data: assignedOrders, error: assignedError } = await context.supabase
         .from('maintenance_work_orders')
         .select('id')
         .eq('organization_id', context.organizationId)
         .eq('assigned_person_id', person.id)
-        .not('status', 'in', '("completed","closed","cancelled","canceled")');
+        .eq('status', 'in_progress');
       if (assignedError) throw assignedError;
       allowedWorkOrderIds = (assignedOrders || []).map((row) => row.id);
-      if (allowedWorkOrderIds.length === 0) return NextResponse.json({ queue: [], summary: { openOrders: 0, readyToClose: 0, blocked: 0, pendingPlanSteps: 0, workOrdersWithPendingPlan: 0, missingRootCause: 0, missingPreventiveActions: 0, missingActualHours: 0, missingRuntimeEvidence: 0 }, canEdit: true, source: 'work_order_close_readiness_v2' });
+      if (allowedWorkOrderIds.length === 0) return NextResponse.json({ queue: [], summary: { openOrders: 0, readyToClose: 0, blocked: 0, pendingPlanSteps: 0, workOrdersWithPendingPlan: 0, missingRootCause: 0, missingPreventiveActions: 0, missingActualHours: 0, missingRuntimeEvidence: 0 }, canEdit: accessLevel === 'ED' || accessLevel === 'SR', source: 'work_order_close_readiness_v2', scope: 'assigned_to_me' });
+    } else if (accessLevel === 'SR') {
+      return NextResponse.json({ queue: [], summary: null, canEdit: false, source: 'work_order_close_readiness_v2', scope: 'assigned_to_me' });
     }
 
     let readinessQuery = context.supabase
       .from('work_order_close_readiness_v2')
       .select('*')
-      .eq('organization_id', context.organizationId);
+      .eq('organization_id', context.organizationId)
+      .eq('status', 'in_progress');
     if (allowedWorkOrderIds) readinessQuery = readinessQuery.in('work_order_id', allowedWorkOrderIds);
 
     const { data, error } = await readinessQuery;
@@ -129,7 +131,7 @@ export async function GET(request: NextRequest) {
       missingRuntimeEvidence: queue.filter((row) => row.missing_runtime_evidence).length,
     };
 
-    return NextResponse.json({ queue, summary, canEdit: accessLevel === 'ED' || accessLevel === 'SR', source: 'work_order_close_readiness_v2' });
+    return NextResponse.json({ queue, summary, canEdit: accessLevel === 'ED' || accessLevel === 'SR', source: 'work_order_close_readiness_v2', scope: person ? 'assigned_to_me' : 'organization' });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'No se pudo cargar la cola de cierre de OT';
     return NextResponse.json({ queue: [], error: message }, { status: 500 });
