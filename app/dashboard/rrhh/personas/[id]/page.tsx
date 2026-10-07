@@ -45,6 +45,7 @@ type Payload = {
   evaluations: any[];
   operatorActivity: any[];
   workOrders: any[];
+  peopleOptions: Array<{ id: string; full_name: string; role_title: string | null; employment_status: string }>;
 };
 
 function employmentLabel(status: string) {
@@ -72,6 +73,18 @@ export default function PersonLaborRecordPage() {
   });
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [assignmentOpen, setAssignmentOpen] = useState(false);
+  const [assignmentSaving, setAssignmentSaving] = useState(false);
+  const [assignmentError, setAssignmentError] = useState<string | null>(null);
+  const [assignmentForm, setAssignmentForm] = useState({
+    role_title: '',
+    area: '',
+    site_name: '',
+    supervisor_person_id: '',
+    shift_pattern: '',
+    employment_type: '',
+    start_date: new Date().toISOString().slice(0, 10),
+  });
 
   useEffect(() => {
     fetch(`/api/rrhh/people?person_id=${encodeURIComponent(params.id)}`, { credentials: 'include' })
@@ -97,6 +110,58 @@ export default function PersonLaborRecordPage() {
     });
     setSaveError(null);
     setEditOpen(true);
+  }
+
+  function openAssignment() {
+    if (!data) return;
+    const currentAssignment = data.assignments.find((item) => !item.end_date) || data.assignments[0] || null;
+    setAssignmentForm({
+      role_title: currentAssignment?.role_title || data.person.role_title || '',
+      area: currentAssignment?.area || '',
+      site_name: currentAssignment?.site_name || '',
+      supervisor_person_id: currentAssignment?.supervisor_person_id || '',
+      shift_pattern: currentAssignment?.shift_pattern || '',
+      employment_type: currentAssignment?.employment_type || '',
+      start_date: new Date().toISOString().slice(0, 10),
+    });
+    setAssignmentError(null);
+    setAssignmentOpen(true);
+  }
+
+  async function saveAssignment(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!data || !assignmentForm.start_date) return;
+
+    setAssignmentSaving(true);
+    setAssignmentError(null);
+
+    try {
+      const response = await fetch('/api/rrhh/assignments', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ person_id: data.person.id, ...assignmentForm }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload?.error || 'No se pudo guardar la asignación');
+
+      setData((current) => {
+        if (!current) return current;
+        const closed = current.assignments.map((item) =>
+          !item.end_date ? { ...item, end_date: assignmentForm.start_date, end_reason: 'Reasignación desde RRHH MOTIL' } : item
+        );
+        return {
+          ...current,
+          person: { ...current.person, role_title: payload.assignment.role_title || current.person.role_title },
+          assignments: [payload.assignment, ...closed],
+        };
+      });
+      setAssignmentOpen(false);
+    } catch (err) {
+      setAssignmentError(err instanceof Error ? err.message : 'No se pudo guardar la asignación');
+    } finally {
+      setAssignmentSaving(false);
+    }
   }
 
   async function savePerson(event: FormEvent<HTMLFormElement>) {
@@ -185,7 +250,12 @@ export default function PersonLaborRecordPage() {
       </section>
 
       <section className="border-b pb-5">
-        <h2 className="text-base font-semibold">Asignación actual</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-base font-semibold">Asignación actual</h2>
+          <Button type="button" variant="outline" size="sm" onClick={openAssignment}>
+            {currentAssignment ? 'Cambiar asignación' : 'Agregar asignación'}
+          </Button>
+        </div>
         {currentAssignment ? (
           <div className="mt-3 text-sm">
             <div className="flex flex-wrap items-center gap-2">
@@ -282,6 +352,79 @@ export default function PersonLaborRecordPage() {
           description="La ficha muestra sólo información disponible. Competencias, credenciales, EPP e historial aparecerán cuando existan registros reales."
         />
       ) : null}
+
+      <Dialog open={assignmentOpen} onOpenChange={setAssignmentOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{currentAssignment ? 'Cambiar asignación' : 'Agregar asignación'}</DialogTitle>
+            <DialogDescription>
+              Registra dónde trabaja la persona y a quién reporta. Al cambiarla, la asignación vigente queda en el historial.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form className="space-y-4" onSubmit={saveAssignment}>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <label htmlFor="assignment-role" className="text-sm font-medium">Cargo</label>
+                <Input id="assignment-role" value={assignmentForm.role_title} onChange={(event) => setAssignmentForm((current) => ({ ...current, role_title: event.target.value }))} />
+              </div>
+              <div className="space-y-1.5">
+                <label htmlFor="assignment-area" className="text-sm font-medium">Área</label>
+                <Input id="assignment-area" value={assignmentForm.area} onChange={(event) => setAssignmentForm((current) => ({ ...current, area: event.target.value }))} />
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <label htmlFor="assignment-site" className="text-sm font-medium">Faena / lugar</label>
+                <Input id="assignment-site" value={assignmentForm.site_name} onChange={(event) => setAssignmentForm((current) => ({ ...current, site_name: event.target.value }))} />
+              </div>
+              <div className="space-y-1.5">
+                <label htmlFor="assignment-supervisor" className="text-sm font-medium">Supervisor</label>
+                <select
+                  id="assignment-supervisor"
+                  value={assignmentForm.supervisor_person_id}
+                  onChange={(event) => setAssignmentForm((current) => ({ ...current, supervisor_person_id: event.target.value }))}
+                  className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
+                >
+                  <option value="">Sin supervisor informado</option>
+                  {data.peopleOptions.filter((option) => option.id !== person.id).map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.full_name}{option.role_title ? ` · ${option.role_title}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="space-y-1.5">
+                <label htmlFor="assignment-shift" className="text-sm font-medium">Turno</label>
+                <Input id="assignment-shift" placeholder="Ej. 7x7" value={assignmentForm.shift_pattern} onChange={(event) => setAssignmentForm((current) => ({ ...current, shift_pattern: event.target.value }))} />
+              </div>
+              <div className="space-y-1.5">
+                <label htmlFor="assignment-type" className="text-sm font-medium">Vínculo</label>
+                <Input id="assignment-type" placeholder="Ej. Contrato indefinido" value={assignmentForm.employment_type} onChange={(event) => setAssignmentForm((current) => ({ ...current, employment_type: event.target.value }))} />
+              </div>
+              <div className="space-y-1.5">
+                <label htmlFor="assignment-start" className="text-sm font-medium">Desde</label>
+                <Input id="assignment-start" type="date" required value={assignmentForm.start_date} onChange={(event) => setAssignmentForm((current) => ({ ...current, start_date: event.target.value }))} />
+              </div>
+            </div>
+
+            {assignmentError ? <p className="text-sm text-destructive">{assignmentError}</p> : null}
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setAssignmentOpen(false)} disabled={assignmentSaving}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={assignmentSaving || !assignmentForm.start_date}>
+                {assignmentSaving ? 'Guardando…' : 'Guardar asignación'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent>
