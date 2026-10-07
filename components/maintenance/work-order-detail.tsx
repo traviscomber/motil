@@ -17,6 +17,7 @@ import { WorkOrderPurchasingFlow } from '@/components/maintenance/work-order-pur
 import { WorkOrderStandardPlanPanel } from '@/components/maintenance/work-order-standard-plan-panel';
 import { WorkOrderTimer } from '@/components/maintenance/work-order-timer';
 import { MobileWorkOrderFlow } from '@/components/maintenance/mobile-work-order-flow';
+import { WorkOrderEvidenceAndApproval } from '@/components/maintenance/work-order-evidence-and-approval';
 import { EntityTimeline } from '@/components/shared/entity-timeline';
 import type { Dictionary, Locale } from '@/lib/i18n/dictionaries';
 
@@ -97,7 +98,7 @@ export function WorkOrderDetail({ locale, dictionary }: { locale: Locale; dictio
 
   if (isExecution) {
     return (
-      <div className="py-2 sm:py-6">
+      <div className="space-y-4 py-2 sm:py-6">
         <MobileWorkOrderFlow
           workOrderId={id}
           workOrderNumber={workOrder.work_order_number}
@@ -109,6 +110,9 @@ export function WorkOrderDetail({ locale, dictionary }: { locale: Locale; dictio
           canEdit={canEdit}
           onWorkOrderChange={mutate}
         />
+        <div className="mx-auto w-full max-w-xl">
+          <WorkOrderEvidenceAndApproval workOrderId={id} status={workOrder.status} />
+        </div>
       </div>
     );
   }
@@ -203,6 +207,8 @@ export function WorkOrderDetail({ locale, dictionary }: { locale: Locale; dictio
         </CardContent>
       </Card>
 
+      <WorkOrderEvidenceAndApproval workOrderId={id} status={workOrder.status} />
+
       <details className="group rounded-lg border bg-card">
         <summary className="flex cursor-pointer list-none items-center justify-between px-5 py-4 text-sm font-medium">
           Ver detalle técnico y abastecimiento
@@ -215,7 +221,8 @@ export function WorkOrderDetail({ locale, dictionary }: { locale: Locale; dictio
           <WorkOrderPartsPanel workOrderId={id} />
           <WorkOrderPurchasingFlow workOrderId={id} />
           <WorkOrderExecutionPanel workOrderId={id} />
-          <EntityTimeline entity="work_order" id={id} limit={50} />
+          {!isHistorical ? <WorkOrderEvidenceAndApproval workOrderId={id} status={workOrder.status} /> : null}
+    <EntityTimeline entity="work_order" id={id} limit={50} />
         </div>
       </details>
     </div>;
