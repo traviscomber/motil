@@ -11,12 +11,9 @@ import { StatePanel } from '@/components/ui/state-panel';
 import { formatWorkOrderNumber } from '@/lib/maintenance/work-order-display';
 import { createClient as createSupabaseClient } from '@/lib/supabase/client';
 
-type EvidenceTag = 'before' | 'during' | 'completed' | 'general';
-
 type EvidenceResponse = {
   evidence?: Array<{
     id: string;
-    evidence_tag?: EvidenceTag | null;
     file_name: string;
     created_at: string;
     signed_url?: string | null;
@@ -45,13 +42,6 @@ const PAUSE_REASONS = [
   'Cambio de prioridad operacional',
   'Otro',
 ] as const;
-
-const evidenceTagLabels: Record<EvidenceTag, string> = {
-  before: 'Antes / daño',
-  during: 'Durante trabajo',
-  completed: 'Trabajo terminado',
-  general: 'General',
-};
 
 const fetcher = async (url: string): Promise<TimerResponse> => {
   const response = await fetch(url, { credentials: 'include' });
@@ -109,7 +99,6 @@ export function MobileWorkOrderFlow({
     { revalidateOnFocus: true },
   );
   const photos = evidenceData?.evidence || [];
-  const [evidenceTag, setEvidenceTag] = useState<EvidenceTag>(status === 'in_progress' ? 'during' : 'before');
   const [uploadingEvidence, setUploadingEvidence] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -187,7 +176,6 @@ export function MobileWorkOrderFlow({
             fileName: upload.fileName || file.name || 'foto.jpg',
             mimeType: upload.mimeType || file.type || '',
             sizeBytes: upload.sizeBytes || file.size,
-            evidenceTag,
           }),
         });
         const completed = await completeResponse.json().catch(() => null);
@@ -327,17 +315,7 @@ export function MobileWorkOrderFlow({
               </div>
               <Badge variant="outline">{photos.length} foto{photos.length === 1 ? '' : 's'}</Badge>
             </div>
-            <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
-              <select
-                aria-label="Tag de evidencia"
-                value={evidenceTag}
-                onChange={(event) => setEvidenceTag(event.target.value as EvidenceTag)}
-                className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              >
-                <option value="before">{evidenceTagLabels.before}</option>
-                <option value="during">{evidenceTagLabels.during}</option>
-                <option value="completed">{evidenceTagLabels.completed}</option>
-              </select>
+            <div>
               <label className="inline-flex h-11 cursor-pointer items-center justify-center rounded-md border border-input bg-background px-4 text-sm font-medium hover:bg-accent">
                 <Camera className="mr-2 h-4 w-4" />
                 {uploadingEvidence ? 'Subiendo...' : 'Agregar fotos'}
@@ -362,9 +340,6 @@ export function MobileWorkOrderFlow({
                         <img src={photo.signed_url} alt={photo.file_name || 'Evidencia de OT'} className="h-full w-full object-cover" />
                       ) : null}
                     </div>
-                    <p className="mt-1 truncate text-[10px] text-muted-foreground">
-                      {evidenceTagLabels[(photo.evidence_tag || 'general') as EvidenceTag]}
-                    </p>
                   </a>
                 ))}
               </div>
