@@ -9,6 +9,7 @@ const sidebar = await readFile(new URL('../components/layout/sidebar.tsx', impor
 const iconRoute = await readFile(new URL('../app/api/pwa/icon-192/route.tsx', import.meta.url), 'utf8');
 const registrar = await readFile(new URL('../components/pwa/service-worker-registrar.tsx', import.meta.url), 'utf8');
 const serviceWorker = await readFile(new URL('../public/sw.js', import.meta.url), 'utf8');
+const nextConfig = await readFile(new URL('../next.config.js', import.meta.url), 'utf8');
 
 test('MOTIL exposes an installable standalone web app manifest', () => {
   assert.match(manifest, /name: 'MOTIL Mining OS'/);
@@ -55,4 +56,20 @@ test('MOTIL service worker stays network-authoritative and removes only legacy s
   assert.match(serviceWorker, /sostenibilidad-api-v2/);
   assert.doesNotMatch(serviceWorker, /cache\.put/);
   assert.doesNotMatch(serviceWorker, /caches\.open/);
+});
+
+
+test('PWA control files are never cached as immutable at the edge', () => {
+  assert.match(nextConfig, /source: '\/sw\.js'/);
+  assert.match(nextConfig, /Service-Worker-Allowed/);
+  assert.match(nextConfig, /source: '\/manifest\.webmanifest'/);
+  assert.match(nextConfig, /no-store, no-cache, must-revalidate/);
+  assert.doesNotMatch(nextConfig, /source: '\/:path\*'[\s\S]{0,1500}max-age=31536000, immutable/);
+});
+
+test('Android install prompt is captured globally before the sidebar button mounts', () => {
+  assert.match(registrar, /__motilInstallPrompt/);
+  assert.match(registrar, /motil-install-prompt-ready/);
+  assert.match(installer, /__motilInstallPrompt/);
+  assert.match(installer, /motil-install-prompt-ready/);
 });
