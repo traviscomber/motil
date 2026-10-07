@@ -30,7 +30,7 @@ export function WorkOrderEvidenceAndApproval({ workOrderId, status }: { workOrde
       : tag === 'during'
         ? 'Durante trabajo'
         : 'General';
-  const primaryPhoto = photos.find((photo: { evidence_tag?: string | null }) => photo.evidence_tag === 'completed') || primaryPhoto;
+  const primaryPhoto = photos.find((photo: { evidence_tag?: string | null }) => photo.evidence_tag === 'completed') || photos[0];
   const currentReview = review.data?.review;
   const canApprove = Boolean(review.data?.canApprove);
 
