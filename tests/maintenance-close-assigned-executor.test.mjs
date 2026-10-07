@@ -17,5 +17,7 @@ test('closure UI visibly confirms uploaded photo evidence', () => {
   assert.match(closeUi, /Evidencia/);
   assert.match(closeUi, /photo\.file_name/);
   assert.match(closeUi, /photo\.signed_url/);
-  assert.match(closeUi, /foto\$\{evidenceCount === 1/);
+  assert.match(closeUi, /completionEvidenceCount/);
+  assert.match(closeUi, /Trabajo terminado/);
+  assert.match(closeUi, /evidence_tag/);
 });
