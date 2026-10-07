@@ -14,17 +14,26 @@ test('execution users receive the dedicated assigned-work surface on every viewp
   assert.doesNotMatch(dashboard, /mode==='execution' \? 'hidden md:block' : undefined/);
 });
 
-test('terrain surface exposes one assigned next action without global maintenance queues', () => {
+test('terrain surface exposes the full assigned active queue without global maintenance queues', () => {
   assert.match(terrain, /\/api\/maintenance\/my-work/);
   assert.doesNotMatch(terrain, /\/api\/maintenance\/control-center/);
-  assert.match(terrain, /Siguiente trabajo/);
-  assert.match(terrain, /Abrir trabajo/);
+  assert.match(terrain, /actions\.map/);
+  assert.match(terrain, /Primera prioridad/);
+  assert.match(terrain, /action\.actionLabel/);
+  assert.match(terrain, /Puedes tener varias OTs asignadas/);
   assert.match(terrain, /Perfil aún no vinculado/);
   assert.match(terrain, /No tienes trabajo asignado/);
   assert.doesNotMatch(terrain, /Ver todas las órdenes/);
-  assert.match(terrain, /Sólo ves trabajo asignado a tu identidad operativa/);
   assert.doesNotMatch(terrain, /mobile-quick-complete/);
   assert.doesNotMatch(terrain, /MARCAR COMPLETADO/);
+});
+
+test('authorized field supervisors receive a visible create work order action', () => {
+  assert.match(terrain, /canCreateWorkOrder/);
+  assert.match(terrain, /Nueva OT/);
+  assert.match(terrain, /\/dashboard\/mantenimiento\/ordenes-trabajo\/create/);
+  assert.match(myWork, /getMaintenanceWorkOrderCreationCapability/);
+  assert.match(myWork, /canCreateWorkOrder: creationCapability\.canCreate/);
 });
 
 test('my-work API requires canonical person linkage and scopes work orders to that assignee and organization', () => {
