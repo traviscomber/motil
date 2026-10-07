@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import type { Dictionary, Locale } from '@/lib/i18n/dictionaries';
+import { formatAssetIdentity, formatWorkOrderNumber } from '@/lib/maintenance/work-order-display';
 
 type QueueRow = {
   work_order_id: string;
@@ -294,7 +295,7 @@ export function ProgressiveWorkOrderCloseQueue({ locale, dictionary }: { locale:
               {fill(t.planBadgeTemplate, { completed: current.standard_plan_steps_completed || 0, total: current.standard_plan_steps_total || 0 })}
             </Badge>
           ) : null}
-          <Badge variant="outline">{current.work_order_number || 'OT'}</Badge>
+          <Badge variant="outline">{formatWorkOrderNumber(current.work_order_number, locale)}</Badge>
         </div>
       </div>
 
@@ -302,8 +303,7 @@ export function ProgressiveWorkOrderCloseQueue({ locale, dictionary }: { locale:
         <CardContent className="space-y-6 p-5 sm:p-6">
           <div>
             <p className="text-xs text-muted-foreground">Equipo</p>
-            <p className="mt-1 font-medium">{current.asset?.name || t.noAsset}</p>
-            <p className="text-xs text-muted-foreground">{current.asset?.asset_code || ''}</p>
+            <p className="mt-1 font-medium">{formatAssetIdentity(current.asset?.name, current.asset?.asset_code) || t.noAsset}</p>
           </div>
 
           <div>

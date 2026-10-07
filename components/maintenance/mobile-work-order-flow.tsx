@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { StatePanel } from '@/components/ui/state-panel';
+import { formatWorkOrderNumber } from '@/lib/maintenance/work-order-display';
 
 type TimerResponse = {
   current?: {
@@ -196,7 +197,7 @@ export function MobileWorkOrderFlow({
         <CardContent className="space-y-5 p-5 sm:p-6">
           <div>
             <div className="flex items-center justify-between gap-3">
-              <p className="font-mono text-xs text-muted-foreground">{workOrderNumber || 'OT'}</p>
+              <p className="font-mono text-xs text-muted-foreground">{formatWorkOrderNumber(workOrderNumber, 'es')}</p>
               <Badge variant={timerStatus === 'running' ? 'default' : 'outline'}>
                 {timerStatus === 'running'
                   ? 'En curso'
