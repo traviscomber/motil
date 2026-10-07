@@ -111,8 +111,16 @@ export function WorkOrderDetail({ locale, dictionary }: { locale: Locale; dictio
           canEdit={canEdit}
           onWorkOrderChange={mutate}
         />
-        <div className="mx-auto w-full max-w-xl">
+        <div className="mx-auto w-full max-w-xl space-y-4">
           <WorkOrderEvidenceAndApproval workOrderId={id} status={workOrder.status} />
+          {workOrder.status === 'completed' ? (
+            <details className="rounded-lg border bg-card">
+              <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium">Historial de la OT</summary>
+              <div className="border-t p-4">
+                <EntityTimeline entity="work_order" id={id} limit={50} />
+              </div>
+            </details>
+          ) : null}
         </div>
       </div>
     );
