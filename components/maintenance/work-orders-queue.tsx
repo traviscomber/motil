@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import useSWR from 'swr';
-import { AlertCircle, Eye, Plus, Search } from 'lucide-react';
+import { AlertCircle, ChevronRight, Inbox, Plus, Search } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -67,13 +67,6 @@ function getPriorityLabel(priority: string | null | undefined, t: WorkOrdersT) {
   return priority || t.priority.none;
 }
 
-function getStatusClass(status: string | null | undefined) {
-  const value = normalizeText(status);
-  if (['completed', 'completado'].includes(value)) return 'border-emerald-200 bg-emerald-50 text-emerald-700';
-  if (['in_progress', 'en_progreso'].includes(value)) return 'border-blue-200 bg-blue-50 text-blue-700';
-  return 'border-amber-200 bg-amber-50 text-amber-700';
-}
-
 function isOverdue(order: WorkOrderItem) {
   if (!order.scheduled_date || ['completed', 'completado'].includes(normalizeText(order.status))) return false;
   const scheduled = new Date(order.scheduled_date);
@@ -93,7 +86,6 @@ export function WorkOrdersQueue({ locale, dictionary }: { locale: Locale; dictio
   const dateLocale = locale === 'en' ? 'en-US' : 'es-CL';
   const searchParams = useSearchParams();
   const missingAssetOnly = searchParams.get('dataHealth') === 'missing_asset';
-  const [updatingScheduleId, setUpdatingScheduleId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
@@ -148,25 +140,6 @@ export function WorkOrdersQueue({ locale, dictionary }: { locale: Locale; dictio
     .sort((a, b) => a.daysUntil - b.daysUntil)
     .slice(0, 7), [locale, operationalWorkOrders, t]);
 
-  const markScheduleComplete = async (scheduleId: string) => {
-    setUpdatingScheduleId(scheduleId);
-    try {
-      const response = await fetch(`/api/maintenance/work-orders/${scheduleId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ status: 'completed' }),
-      });
-      if (!response.ok) {
-        const payload = await response.json().catch(() => null);
-        throw new Error(payload?.error || 'request failed');
-      }
-      await mutate();
-    } finally {
-      setUpdatingScheduleId(null);
-    }
-  };
-
   return (
     <div className="space-y-6">
       <section className="flex flex-col gap-4 border-b border-border/70 pb-6 lg:flex-row lg:items-end lg:justify-between">
@@ -192,43 +165,94 @@ export function WorkOrdersQueue({ locale, dictionary }: { locale: Locale; dictio
 
       {!missingAssetOnly && historicalWorkOrders.length > 0 ? <Card className="shadow-none"><CardContent className="flex flex-col gap-2 p-4 text-sm sm:flex-row sm:items-center sm:justify-between"><div><p className="font-medium">{t.historicalBanner.title}</p><p className="text-muted-foreground">{fill(t.historicalBanner.description, { n: historicalWorkOrders.length })}</p></div><Button variant="outline" size="sm" onClick={() => setScopeFilter('historical')}>{t.historicalBanner.cta}</Button></CardContent></Card> : null}
 
-      <Card className="shadow-none"><CardContent className="p-4"><div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(260px,1fr)_180px_180px_auto]">
-        <div className="relative"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t.filters.searchPlaceholder} className="pl-9" /></div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}><SelectTrigger><SelectValue placeholder={t.filters.status} /></SelectTrigger><SelectContent><SelectItem value="all">{t.filters.statuses.all}</SelectItem><SelectItem value="open">{t.filters.statuses.open}</SelectItem><SelectItem value="in_progress">{t.filters.statuses.inProgress}</SelectItem><SelectItem value="completed">{t.filters.statuses.completed}</SelectItem></SelectContent></Select>
-        <Select value={priorityFilter} onValueChange={setPriorityFilter}><SelectTrigger><SelectValue placeholder={t.filters.priority} /></SelectTrigger><SelectContent><SelectItem value="all">{t.filters.priorities.all}</SelectItem><SelectItem value="critical">{t.filters.priorities.critical}</SelectItem><SelectItem value="high">{t.filters.priorities.high}</SelectItem><SelectItem value="medium">{t.filters.priorities.medium}</SelectItem><SelectItem value="low">{t.filters.priorities.low}</SelectItem></SelectContent></Select>
-        <Button variant="ghost" onClick={() => { setSearch(''); setStatusFilter('all'); setPriorityFilter('all'); setScopeFilter('operational'); }}>{t.filters.clear}</Button>
-      </div></CardContent></Card>
-
-      {!missingAssetOnly && scheduleItems.length > 0 ? <Card className="shadow-none"><CardHeader className="pb-3"><CardTitle className="text-base">{t.schedule.title}</CardTitle></CardHeader><CardContent>{updatingScheduleId ? <p className="mb-3 text-sm text-muted-foreground">{t.schedule.updating}</p> : null}<MaintenanceSchedule schedules={scheduleItems} onMarkComplete={markScheduleComplete} /></CardContent></Card> : null}
-
-      <Card className="shadow-none"><CardHeader className="pb-3"><CardTitle className="text-base">{missingAssetOnly ? t.listTitles.missingAsset : scopeFilter === 'historical' ? t.listTitles.historical : scopeFilter === 'all' ? t.listTitles.all : t.listTitles.operational}</CardTitle><p className="text-sm text-muted-foreground">{fill(t.counts, { filtered: filteredOrders.length, total: workOrders.length })}</p></CardHeader><CardContent>
-        {isLoading ? <div className="space-y-2">{Array.from({ length: 5 }).map((_, index) => <div key={index} className="h-20 animate-pulse rounded-lg bg-muted" />)}</div> : error ? <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-8 text-center"><p className="font-medium text-destructive">{t.states.loadError}</p><Button className="mt-4" variant="outline" onClick={() => void mutate()}>{t.states.retry}</Button></div> : filteredOrders.length === 0 ? <div className="rounded-lg border border-dashed p-10 text-center text-sm text-muted-foreground">{missingAssetOnly ? t.states.emptyDataHealth : t.states.empty}</div> : <div className="divide-y rounded-lg border">{filteredOrders.map((order) => {
-          const historical = order.record_scope === 'historical';
-          return <div key={order.id} className="grid gap-4 p-4 transition-colors hover:bg-muted/30 lg:grid-cols-[minmax(0,1.5fr)_minmax(160px,.8fr)_minmax(150px,.7fr)_auto] lg:items-center">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="font-mono text-xs text-muted-foreground">{order.work_order_number ? formatWorkOrderNumber(order.work_order_number, locale) : t.noFolio}</span>
-                <Badge variant="outline" className={getStatusClass(order.status)}>{getStatusLabel(order.status, t)}</Badge>
-                {historical ? <Badge variant="secondary">{t.historicalBadge}</Badge> : null}
-                {!historical && isOverdue(order) ? <Badge variant="destructive">{t.overdueBadge}</Badge> : null}
-                {!historical && !order.asset_name ? <Badge variant="destructive">{t.missingAssetBadge}</Badge> : null}
+      <Card className="overflow-hidden shadow-none">
+        <CardHeader className="border-b bg-muted/20 pb-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <Inbox className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-base">{missingAssetOnly ? t.listTitles.missingAsset : scopeFilter === 'historical' ? t.listTitles.historical : scopeFilter === 'all' ? t.listTitles.all : 'Bandeja de órdenes'}</CardTitle>
               </div>
-              <p className="mt-2 truncate font-medium">{order.title || t.untitled}</p>
-              <p className="mt-1 truncate text-sm text-muted-foreground">{order.asset_name || (historical ? t.noAssetHistorical : t.noAsset)}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{fill(t.counts, { filtered: filteredOrders.length, total: workOrders.length })}</p>
             </div>
-            <div>
-              <p className="text-xs text-muted-foreground">{t.typeAndPriority}</p>
-              <p className="mt-1 text-sm">{getWorkTypeLabel(order.work_type, t)} · {getPriorityLabel(order.priority, t)}</p>
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(220px,1fr)_160px_160px_auto]">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t.filters.searchPlaceholder} className="pl-9" />
+              </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}><SelectTrigger><SelectValue placeholder={t.filters.status} /></SelectTrigger><SelectContent><SelectItem value="all">{t.filters.statuses.all}</SelectItem><SelectItem value="open">{t.filters.statuses.open}</SelectItem><SelectItem value="in_progress">{t.filters.statuses.inProgress}</SelectItem><SelectItem value="completed">{t.filters.statuses.completed}</SelectItem></SelectContent></Select>
+              <Select value={priorityFilter} onValueChange={setPriorityFilter}><SelectTrigger><SelectValue placeholder={t.filters.priority} /></SelectTrigger><SelectContent><SelectItem value="all">{t.filters.priorities.all}</SelectItem><SelectItem value="critical">{t.filters.priorities.critical}</SelectItem><SelectItem value="high">{t.filters.priorities.high}</SelectItem><SelectItem value="medium">{t.filters.priorities.medium}</SelectItem><SelectItem value="low">{t.filters.priorities.low}</SelectItem></SelectContent></Select>
+              <Button variant="ghost" onClick={() => { setSearch(''); setStatusFilter('all'); setPriorityFilter('all'); setScopeFilter('operational'); }}>{t.filters.clear}</Button>
             </div>
-            <div>
-              <p className="text-xs text-muted-foreground">{t.ownerAndDate}</p>
-              <p className="mt-1 text-sm">{order.assigned_to_name || t.unassigned}</p>
-              <p className="text-xs text-muted-foreground">{order.scheduled_date ? new Date(order.scheduled_date).toLocaleDateString(dateLocale) : t.noDate}</p>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          {isLoading ? (
+            <div className="divide-y">{Array.from({ length: 6 }).map((_, index) => <div key={index} className="h-20 animate-pulse bg-muted/30" />)}</div>
+          ) : error ? (
+            <div className="p-8 text-center"><p className="font-medium text-destructive">{t.states.loadError}</p><Button className="mt-4" variant="outline" onClick={() => void mutate()}>{t.states.retry}</Button></div>
+          ) : filteredOrders.length === 0 ? (
+            <div className="p-10 text-center text-sm text-muted-foreground">{missingAssetOnly ? t.states.emptyDataHealth : t.states.empty}</div>
+          ) : (
+            <div className="divide-y">
+              <div className="hidden grid-cols-[90px_minmax(260px,1.5fr)_minmax(170px,.8fr)_minmax(170px,.8fr)_130px_32px] gap-4 bg-muted/20 px-4 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground lg:grid">
+                <span>Estado</span>
+                <span>Orden</span>
+                <span>Equipo</span>
+                <span>Responsable</span>
+                <span>Fecha</span>
+                <span />
+              </div>
+              {filteredOrders.map((order) => {
+                const historical = order.record_scope === 'historical';
+                const status = normalizeText(order.status);
+                const nextAction = ['completed', 'completado'].includes(status)
+                  ? 'Ver cierre'
+                  : ['in_progress', 'en_progreso'].includes(status)
+                    ? 'Continuar'
+                    : 'Abrir';
+                return (
+                  <Link
+                    key={order.id}
+                    href={`/dashboard/mantenimiento/ordenes-trabajo/${order.id}`}
+                    className="group grid gap-3 px-4 py-3 transition-colors hover:bg-muted/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:grid-cols-[90px_minmax(260px,1.5fr)_minmax(170px,.8fr)_minmax(170px,.8fr)_130px_32px] lg:items-center"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className={`h-2.5 w-2.5 rounded-full ${['completed', 'completado'].includes(status) ? 'bg-emerald-500' : ['in_progress', 'en_progreso'].includes(status) ? 'bg-blue-500' : isOverdue(order) ? 'bg-destructive' : 'bg-amber-500'}`} aria-hidden="true" />
+                      <span className="text-xs font-medium">{getStatusLabel(order.status, t)}</span>
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-mono text-xs text-muted-foreground">{order.work_order_number ? formatWorkOrderNumber(order.work_order_number, locale) : t.noFolio}</span>
+                        {historical ? <Badge variant="secondary">{t.historicalBadge}</Badge> : null}
+                        {!historical && isOverdue(order) ? <Badge variant="destructive">{t.overdueBadge}</Badge> : null}
+                        {!historical && !order.asset_name ? <Badge variant="destructive">{t.missingAssetBadge}</Badge> : null}
+                        {['critical', 'high', 'urgente', 'alta'].includes(normalizeText(order.priority)) ? <Badge variant="outline">{getPriorityLabel(order.priority, t)}</Badge> : null}
+                      </div>
+                      <p className="mt-1 truncate text-sm font-medium">{order.title || t.untitled}</p>
+                      <p className="mt-1 text-xs text-muted-foreground lg:hidden">{getWorkTypeLabel(order.work_type, t)} · {nextAction}</p>
+                    </div>
+                    <p className="truncate text-sm text-muted-foreground">{order.asset_name || (historical ? t.noAssetHistorical : t.noAsset)}</p>
+                    <p className="truncate text-sm">{order.assigned_to_name || t.unassigned}</p>
+                    <div>
+                      <p className="text-sm">{order.scheduled_date ? new Date(order.scheduled_date).toLocaleDateString(dateLocale) : t.noDate}</p>
+                      <p className="text-xs font-medium text-muted-foreground">{nextAction}</p>
+                    </div>
+                    <ChevronRight className="hidden h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 lg:block" />
+                  </Link>
+                );
+              })}
             </div>
-            <Button asChild variant="ghost" size="sm"><Link href={`/dashboard/mantenimiento/ordenes-trabajo/${order.id}`}><Eye className="mr-2 h-4 w-4" />{t.viewDetail}</Link></Button>
-          </div>;
-        })}</div>}
-      </CardContent></Card>
+          )}
+        </CardContent>
+      </Card>
+
+      {!missingAssetOnly && scheduleItems.length > 0 ? (
+        <details className="rounded-lg border bg-card">
+          <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium">{t.schedule.title} · {scheduleItems.length}</summary>
+          <div className="border-t p-4"><MaintenanceSchedule schedules={scheduleItems} /></div>
+        </details>
+      ) : null}
     </div>
   );
 }
