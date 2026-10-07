@@ -227,7 +227,7 @@ export function MobileWorkOrderFlow({
           <div className="flex items-center gap-3">
             <Clock3 className="h-5 w-5 text-muted-foreground" />
             <div>
-              <p className="text-xs text-muted-foreground">{timerStatus === 'running' ? 'Tiempo en curso' : 'Tiempo registrado'}</p>
+              <p className="text-xs text-muted-foreground">Tiempo registrado</p>
               <p className="font-mono text-4xl font-semibold tabular-nums">{duration(displaySeconds)}</p>
             </div>
           </div>
