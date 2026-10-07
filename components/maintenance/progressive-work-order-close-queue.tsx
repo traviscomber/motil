@@ -287,15 +287,40 @@ export function ProgressiveWorkOrderCloseQueue({ locale, dictionary }: { locale:
   return (
     <div className="mx-auto max-w-3xl space-y-4">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground">{queue.length.toLocaleString(numberLocale)} OT{queue.length === 1 ? '' : 's'} pendiente{queue.length === 1 ? '' : 's'}</p>
-        <div className="flex items-center gap-2">
-          {Number(current.standard_plan_steps_total || 0) > 0 ? (
-            <Badge variant="secondary">
-              {fill(t.planBadgeTemplate, { completed: current.standard_plan_steps_completed || 0, total: current.standard_plan_steps_total || 0 })}
-            </Badge>
-          ) : null}
-          <Badge variant="outline">{current.work_order_number || 'OT'}</Badge>
+        <div>
+          <p className="font-medium">OTs pendientes</p>
+          <p className="text-sm text-muted-foreground">{queue.length.toLocaleString(numberLocale)} OT{queue.length === 1 ? '' : 's'} para continuar o cerrar</p>
         </div>
+        <Badge variant="outline">{current.work_order_number || 'OT'}</Badge>
+      </div>
+
+      <div className="overflow-hidden rounded-lg border bg-card">
+        {queue.map((row) => {
+          const rowActionKey = ACTION_KEYS[row.next_action];
+          const rowTitle = rowActionKey ? t.actionTitles[rowActionKey] : t.fallbackAction.title;
+          const selected = row.work_order_id === current.work_order_id;
+          return (
+            <Link
+              key={row.work_order_id}
+              href={`/dashboard/mantenimiento/ordenes-trabajo/cierre?workOrderId=${encodeURIComponent(row.work_order_id)}`}
+              aria-current={selected ? 'page' : undefined}
+              className={`grid gap-2 border-b p-4 outline-none transition-colors last:border-b-0 hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:grid-cols-[1fr_auto] sm:items-center ${selected ? 'bg-muted/40' : ''}`}
+            >
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-mono text-xs text-muted-foreground">{row.work_order_number || 'OT'}</span>
+                  {selected ? <Badge variant="secondary">Seleccionada</Badge> : null}
+                </div>
+                <p className="mt-1 truncate text-sm font-medium">{row.title || t.untitled}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{row.asset?.name || t.noAsset} · {rowTitle}</p>
+              </div>
+              <span className="inline-flex items-center gap-2 text-sm font-medium">
+                {selected ? 'Continuar aquí' : 'Abrir'}
+                <ArrowRight className="h-4 w-4" />
+              </span>
+            </Link>
+          );
+        })}
       </div>
 
       <Card className="shadow-none">
