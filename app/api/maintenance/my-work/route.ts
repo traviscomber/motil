@@ -67,6 +67,17 @@ export async function GET(request: NextRequest) {
       .eq('assigned_person_id', person.id);
     if (workOrdersError) throw workOrdersError;
 
+    const assetIds = [...new Set((rows || []).map((row: any) => row.canonical_asset_id).filter(Boolean).map(String))];
+    const { data: assets, error: assetsError } = assetIds.length > 0
+      ? await context.supabase
+          .from('maintenance_canonical_assets_v1')
+          .select('id,name')
+          .eq('organization_id', context.organizationId)
+          .in('id', assetIds)
+      : { data: [], error: null };
+    if (assetsError) throw assetsError;
+    const assetNameById = new Map((assets || []).map((asset: any) => [String(asset.id), String(asset.name || '')]));
+
     const actions = (rows || [])
       .filter((row: any) => !terminalStatuses.has(String(row.status || '').toLowerCase()))
       .sort((a: any, b: any) => {
@@ -97,6 +108,7 @@ export async function GET(request: NextRequest) {
           id: String(row.id),
           workOrderNumber,
           title: row.title || 'Orden de trabajo asignada',
+          assetName: row.canonical_asset_id ? assetNameById.get(String(row.canonical_asset_id)) || null : null,
           evidence: `${scheduledEvidence}${priorityEvidence}`,
           href: `/dashboard/mantenimiento/ordenes-trabajo/${encodeURIComponent(String(row.id))}`,
           actionLabel: isActive ? 'Reanudar' : 'Iniciar',
@@ -114,7 +126,7 @@ export async function GET(request: NextRequest) {
       actions,
       canEdit: access.canWrite,
       canCreateWorkOrder: creationCapability.canCreate,
-      sources: ['profiles', 'cargos', 'people', 'maintenance_work_orders'],
+      sources: ['profiles', 'cargos', 'people', 'maintenance_work_orders', 'maintenance_canonical_assets_v1'],
     });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'No se pudo cargar tu trabajo asignado' }, { status: 500 });
