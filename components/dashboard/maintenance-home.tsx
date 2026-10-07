@@ -197,8 +197,6 @@ export function MaintenanceHome({ locale, dictionary }: { locale: Locale; dictio
       </div> : null}
     </section> : null}
 
-    <CanonicalMaintenanceOverview />
-
     {!isLoading && !error && summary ? <AutopilotDecisionStrip
       locale={locale}
       decisionCount={actions.length}
@@ -222,6 +220,8 @@ export function MaintenanceHome({ locale, dictionary }: { locale: Locale; dictio
         })}</div> : null}
       </CardContent>
     </Card>
+
+    <CanonicalMaintenanceOverview />
 
     <div className="flex flex-wrap gap-x-5 gap-y-2 border-t pt-4 text-sm text-muted-foreground" aria-label={t.relatedAria}>
       {mode === 'planning' ? <>
