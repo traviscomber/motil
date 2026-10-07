@@ -5,12 +5,15 @@ export function resolveMaintenanceViewerMode(cargoName: string | null): Maintena
   if (cargo === 'jefe departamento de mantenimiento') return 'leadership';
   if (cargo === 'jefe de planificación') return 'planning';
   if (cargo === 'jefe de equipos móviles y estacionarios') return 'leadership';
-  if (cargo === 'gerente operaciones' || cargo === 'jefe sostenibilidad') return 'oversight';
+  if (
+    cargo === 'gerente operaciones' ||
+    cargo === 'jefe sostenibilidad' ||
+    cargo.startsWith('jefe mina ') ||
+    cargo.startsWith('jefe de mina ')
+  ) return 'oversight';
   if (
     cargo.startsWith('mecánico') ||
     cargo.startsWith('jefe de taller mina') ||
-    cargo.startsWith('jefe mina ') ||
-    cargo.startsWith('jefe de mina ') ||
     cargo === 'encargado de camionetas y camiones' ||
     cargo === 'soldador'
   ) return 'execution';
