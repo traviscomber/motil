@@ -6,6 +6,7 @@ const pageUrl = new URL('../app/dashboard/rrhh/page.tsx', import.meta.url);
 const detailUrl = new URL('../app/dashboard/rrhh/personas/[id]/page.tsx', import.meta.url);
 const layoutUrl = new URL('../app/dashboard/rrhh/layout.tsx', import.meta.url);
 const apiUrl = new URL('../app/api/rrhh/people/route.ts', import.meta.url);
+const assignmentApiUrl = new URL('../app/api/rrhh/assignments/route.ts', import.meta.url);
 
 test('RRHH keeps unavailable counts distinct from zero and surfaces only real reconciliation work', async () => {
   const [page, api] = await Promise.all([
@@ -61,4 +62,27 @@ test('RRHH stage one supports simple create and edit without weakening tenant sc
   assert.match(api, /\.eq\('organization_id', context\.organizationId\)/);
   assert.match(api, /Ya existe una persona con ese/);
   assert.doesNotMatch(api, /export async function DELETE/);
+});
+
+
+test('RRHH basic assignment is tenant scoped and keeps one current assignment', async () => {
+  const [detail, assignmentApi] = await Promise.all([
+    readFile(detailUrl, 'utf8'),
+    readFile(assignmentApiUrl, 'utf8'),
+  ]);
+
+  assert.match(detail, /Agregar asignación/);
+  assert.match(detail, /Cambiar asignación/);
+  assert.match(detail, /\/api\/rrhh\/assignments/);
+  assert.match(detail, /Faena \/ lugar/);
+  assert.match(detail, /Supervisor/);
+  assert.match(detail, /Turno/);
+  assert.match(detail, /Vínculo/);
+
+  assert.match(assignmentApi, /\.eq\('organization_id', context\.organizationId\)/);
+  assert.match(assignmentApi, /\.is\('end_date', null\)/);
+  assert.match(assignmentApi, /Reasignación desde RRHH MOTIL/);
+  assert.match(assignmentApi, /Supervisor no válido para esta organización/);
+  assert.match(assignmentApi, /La persona no puede ser su propio supervisor/);
+  assert.doesNotMatch(assignmentApi, /export async function DELETE/);
 });
