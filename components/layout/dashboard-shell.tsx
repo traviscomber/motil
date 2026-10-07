@@ -53,7 +53,7 @@ export function DashboardShell({ children, locale, dictionary }: { children: Rea
         )}
         aria-hidden={ready && collapsed ? true : undefined}
       >
-        <Sidebar dictionary={dictionary} />
+        <Sidebar dictionary={dictionary} locale={locale} />
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col">

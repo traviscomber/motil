@@ -14,7 +14,7 @@ const dashboardHome = fs.readFileSync('components/dashboard/dashboard-home.tsx',
 test('dashboard layout resolves locale server-side and feeds the shell', () => {
   assert.match(layout, /getDictionaryForRequest\(\)/);
   assert.match(layout, /<DashboardShell locale=\{locale\} dictionary=\{dictionary\}>/);
-  assert.match(shell, /<Sidebar dictionary=\{dictionary\} \/>/);
+  assert.match(shell, /<Sidebar dictionary=\{dictionary\} locale=\{locale\} \/>/);
   assert.match(shell, /<Header sidebarCollapsed=\{collapsed\} onToggleSidebar=\{toggleSidebar\} locale=\{locale\} dictionary=\{dictionary\} \/>/);
 });
 
