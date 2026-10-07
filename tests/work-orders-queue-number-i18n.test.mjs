@@ -1,1 +1,11 @@
-import test from 'node:test';\nimport assert from 'node:assert/strict';\nimport { readFile } from 'node:fs/promises';\n\nconst queue = await readFile(new URL('../components/maintenance/work-orders-queue.tsx', import.meta.url), 'utf8');\n\ntest('Spanish work-order queue formats canonical numbers for display and search', () => {\n  assert.match(queue, /formatWorkOrderNumber/);\n  assert.match(queue, /formatWorkOrderNumber\\(order\\.work_order_number, locale\\)/);\n  assert.match(queue, /order\\.work_order_number, formatWorkOrderNumber\\(order\\.work_order_number, locale\\)/);\n});\n
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+
+const queue = await readFile(new URL('../components/maintenance/work-orders-queue.tsx', import.meta.url), 'utf8');
+
+test('Spanish work-order queue formats canonical numbers for display and search', () => {
+  assert.match(queue, /formatWorkOrderNumber/);
+  assert.match(queue, /formatWorkOrderNumber\(order\.work_order_number, locale\)/);
+  assert.match(queue, /order\.work_order_number, formatWorkOrderNumber\(order\.work_order_number, locale\)/);
+});
