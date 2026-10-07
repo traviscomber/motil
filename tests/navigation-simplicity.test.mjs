@@ -17,7 +17,7 @@ test('global navigation uses role-aware Inicio instead of parallel personal port
 test('role-aware Inicio keeps operational personalization', async () => {
   const dict = await readFile(dictPath, 'utf8');
 
-  assert.match(dict, /title: 'Mi Mantención'/);
+  assert.match(dict, /title: 'Mi Mantenimiento'/);
   assert.match(dict, /title: 'Mi Planta'/);
   assert.match(dict, /title: 'Mi Bodega'/);
   assert.match(dict, /title: 'Mi Administración'/);
