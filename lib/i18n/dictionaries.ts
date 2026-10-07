@@ -480,11 +480,11 @@ export const dictionaries = {
           maintenance: {
             eyebrow: 'Mantenimiento · disponibilidad y trabajo',
             title: 'Mi Mantenimiento',
-            description: 'Disponibilidad de activos, órdenes en ejecución y bloqueos que requieren intervención.',
+            description: 'Disponibilidad de equipos, órdenes en ejecución y bloqueos que requieren intervención.',
             metrics: [
               { label: 'OT activas', detail: '{n} en ejecución', unavailable: 'Fuente de Mantenimiento no disponible' },
               { label: 'Esperando repuestos', detail: 'Compra o abastecimiento pendiente' },
-              { label: 'OT sin equipo', detail: 'Requieren completar activo' },
+              { label: 'OT sin equipo', detail: 'Requieren asociar un equipo' },
               { label: 'Acciones críticas', detail: '{n} vencidas para tu cargo' },
             ],
             shortcuts: [
