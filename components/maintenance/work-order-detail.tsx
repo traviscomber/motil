@@ -104,7 +104,7 @@ export function WorkOrderDetail({ locale, dictionary }: { locale: Locale; dictio
           workOrderId={id}
           workOrderNumber={formatWorkOrderNumber(workOrder.work_order_number, locale)}
           title={workOrder.title}
-          assetName={workOrder.asset_name || workOrder.asset_code}
+          assetName={workOrder.asset_name || t.noAsset}
           description={workOrder.description}
           status={workOrder.status}
           assignedPersonId={workOrder.assigned_person_id}
