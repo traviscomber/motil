@@ -378,7 +378,7 @@ export async function POST(request: NextRequest) {
     const assignedPersonName = assignedPerson.full_name;
 
     const year = new Date().getFullYear();
-    const prefix = `WO-${year}-`;
+    const prefix = `OT-${year}-`;
     const plannedHours = Number(body.plannedDurationHours ?? body.planned_duration_hours ?? 0);
     const meterReading = body.meterReading ?? body.meter_reading ?? null;
 
