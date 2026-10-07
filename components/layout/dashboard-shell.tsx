@@ -23,10 +23,9 @@ export function DashboardShell({ children, locale, dictionary }: { children: Rea
   const [ready, setReady] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
   const maintenanceRoute = pathname.startsWith('/dashboard/mantenimiento');
-  const maintenanceExecution = !authLoading && maintenanceRoute && resolveMaintenanceViewerMode(user?.cargo || null) === 'execution';
-  const showPeriodControls = !maintenanceRoute || (!authLoading && !maintenanceExecution);
+  const showPeriodControls = !maintenanceRoute;
 
   useEffect(() => {
     setCollapsed(window.localStorage.getItem(STORAGE_KEY) === 'true');
