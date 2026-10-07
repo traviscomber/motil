@@ -5,6 +5,7 @@ import test from 'node:test';
 const queue = await readFile(new URL('../components/maintenance/work-orders-queue.tsx', import.meta.url), 'utf8');
 const api = await readFile(new URL('../app/api/maintenance/work-orders/route.ts', import.meta.url), 'utf8');
 const detail = await readFile(new URL('../components/maintenance/work-order-detail.tsx', import.meta.url), 'utf8');
+const detailApi = await readFile(new URL('../app/api/maintenance/work-orders/[id]/route.ts', import.meta.url), 'utf8');
 
 test('maintenance work orders render as an inbox-style clickable list', () => {
   assert.match(queue, /href=\{\`\/dashboard\/mantenimiento\/ordenes-trabajo\/\$\{order\.id\}\`\}/);
@@ -28,10 +29,12 @@ test('completed work orders keep approval state and an auditable log', () => {
   assert.match(detail, /EntityTimeline entity="work_order"/);
 });
 
-test('explicit DEMO and UAT work orders stay out of operational lists', () => {
+test('explicit DEMO and UAT work orders stay out of operational UI', () => {
   assert.match(api, /isExplicitDemoRecord/);
   assert.match(api, /\(demo\|uat\)/);
   assert.match(api, /filter\(\(row\) => !isExplicitDemoRecord\(row\)\)/);
+  assert.match(detailApi, /isExplicitDemoRecord/);
+  assert.match(detailApi, /!data \|\| isExplicitDemoRecord\(data\)/);
 });
 
 test('maintenance agenda stays secondary to the inbox', () => {
