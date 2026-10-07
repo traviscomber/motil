@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import useSWR from 'swr';
-import { ArrowRight, ClipboardList, RefreshCw } from 'lucide-react';
+import { ArrowRight, ClipboardList, Plus, RefreshCw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { StatePanel } from '@/components/ui/state-panel';
@@ -18,7 +18,7 @@ type TerrainAction = {
   priority?: string | null;
 };
 
-type TerrainResponse = { actions?: TerrainAction[]; identityLinked?: boolean };
+type TerrainResponse = { actions?: TerrainAction[]; identityLinked?: boolean; canCreateWorkOrder?: boolean };
 
 async function fetcher(url: string): Promise<TerrainResponse> {
   const response = await fetch(url, { credentials: 'include', cache: 'no-store' });
@@ -38,7 +38,7 @@ export function MobileTerrainPanel() {
 
   return (
     <section className="mx-auto w-full max-w-2xl space-y-4 py-1" aria-label="Trabajo en terreno">
-      <header className="flex items-center justify-between gap-3 px-1">
+      <header className="flex flex-col gap-3 px-1 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Mantenimiento</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight">Trabajo de hoy</h1>
@@ -48,16 +48,26 @@ export function MobileTerrainPanel() {
             </p>
           ) : null}
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          aria-label="Actualizar trabajo"
-          onClick={() => void mutate()}
-          disabled={isLoading}
-        >
-          <RefreshCw className={isLoading ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
-        </Button>
+        <div className="flex items-center gap-2">
+          {data?.canCreateWorkOrder ? (
+            <Button asChild>
+              <Link href="/dashboard/mantenimiento/ordenes-trabajo/create">
+                <Plus className="h-4 w-4" />
+                Nueva OT
+              </Link>
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            aria-label="Actualizar trabajo"
+            onClick={() => void mutate()}
+            disabled={isLoading}
+          >
+            <RefreshCw className={isLoading ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
+          </Button>
+        </div>
       </header>
 
       {isLoading ? <StatePanel tone="loading" title="Buscando tu trabajo asignado" className="min-h-48" /> : null}
