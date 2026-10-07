@@ -18,7 +18,7 @@ test('maintenance workspaces simplify progressively down the role chain', () => 
 });
 
 test('maintenance planning queue stays focused on decisions that make work executable', () => {
-  assert.match(page, /planningKinds = new Set\(\['operational_review', 'preventive_overdue', 'assignment_needed', 'meter_review', 'operational_blocker'\]\)/);
+  assert.match(page, /planningKinds = new Set\(\[[^\]]*'plan_step'[^\]]*'ready_to_close'[^\]]*'closure_evidence'[^\]]*\]\)/s);
   assert.match(dict, /Cola de planificación/);
   assert.match(dict, /Por asignar/);
   assert.match(dict, /Asignar trabajo/);
@@ -27,11 +27,13 @@ test('maintenance planning queue stays focused on decisions that make work execu
   assert.doesNotMatch(page, /executionKinds = new Set/);
 });
 
-test('maintenance leadership queue contains only decisions owned by leadership', () => {
-  assert.match(page, /leadershipKinds = new Set\(\['operational_review', 'preventive_overdue', 'operational_blocker', 'ready_to_close', 'reliability'\]\)/);
+test('maintenance leadership queue prioritizes actions that unblock and finish work', () => {
+  assert.match(page, /leadershipKinds = new Set\(\[[^\]]*'plan_step'[^\]]*'ready_to_close'[^\]]*'closure_evidence'[^\]]*\]\)/s);
   assert.match(page, /rawActions\.filter\(\(action\) => leadershipKinds\.has\(action\.kind\)\)/);
   assert.match(dict, /Qué debo decidir o destrabar/);
   assert.match(dict, /Decisiones de jefatura/);
+  assert.match(page, /approval_needed/);
+  assert.match(page, /supervisorInboxMode/);
   assert.match(dict, /Atender prioridad/);
 });
 
