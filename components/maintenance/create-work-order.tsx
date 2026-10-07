@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import useSWR from 'swr';
@@ -78,6 +78,46 @@ function fill(template: string, vars: Record<string, string | number>) {
   return template.replace(/\{(\w+)\}/g, (_, key: string) => String(vars[key] ?? ''));
 }
 
+const CREATE_OT_IDEMPOTENCY_STORAGE_KEY = 'motil:maintenance:create-ot-request';
+
+function createRequestId() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (character) => {
+    const random = Math.floor(Math.random() * 16);
+    const value = character === 'x' ? random : (random & 0x3) | 0x8;
+    return value.toString(16);
+  });
+}
+
+function getOrCreateRequestId(payload: unknown) {
+  const fingerprint = JSON.stringify(payload);
+  try {
+    const stored = JSON.parse(sessionStorage.getItem(CREATE_OT_IDEMPOTENCY_STORAGE_KEY) || 'null') as
+      | { requestId?: string; fingerprint?: string }
+      | null;
+    if (stored?.requestId && stored.fingerprint === fingerprint) return stored.requestId;
+
+    const requestId = createRequestId();
+    sessionStorage.setItem(
+      CREATE_OT_IDEMPOTENCY_STORAGE_KEY,
+      JSON.stringify({ requestId, fingerprint }),
+    );
+    return requestId;
+  } catch {
+    return createRequestId();
+  }
+}
+
+function clearRequestId() {
+  try {
+    sessionStorage.removeItem(CREATE_OT_IDEMPOTENCY_STORAGE_KEY);
+  } catch {
+    // Storage can be unavailable in private or restricted browser contexts.
+  }
+}
+
 export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictionary: Dictionary }) {
   const t = dictionary.app.workOrderCreate;
   const router = useRouter();
@@ -99,6 +139,7 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
   const [meterReading, setMeterReading] = useState('');
   const [meterUnit, setMeterUnit] = useState('hours');
   const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
 
   const fetcher = async (url: string) => {
     const response = await fetch(url, { credentials: 'include' });
@@ -194,40 +235,51 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
   };
 
   const submit = async () => {
+    if (submittingRef.current) return;
+
     const validationError = validate();
     if (validationError) return toast.error(validationError);
 
+    const requestPayload = {
+      assignedPersonId,
+      canonicalAssetId,
+      reviewId: reviewId || null,
+      title: title.trim(),
+      description: description.trim() || null,
+      materials: plannedMaterials.map((item) => ({
+        canonicalProductId: item.productId,
+        quantityRequired: item.quantityRequired,
+      })),
+      workType,
+      priority,
+      scheduledDate,
+      plannedDurationHours: plannedHours ? Number(plannedHours) : 0,
+      meterReading: meterReading ? Number(meterReading) : null,
+      meterUnit: meterReading ? meterUnit : null,
+    };
+    const creationRequestId = getOrCreateRequestId(requestPayload);
+
+    submittingRef.current = true;
     setSubmitting(true);
     try {
       const response = await fetch('/api/maintenance/work-orders', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': creationRequestId,
+        },
         credentials: 'include',
-        body: JSON.stringify({
-          assignedPersonId,
-          canonicalAssetId,
-          reviewId: reviewId || null,
-          title: title.trim(),
-          description: description.trim() || null,
-          materials: plannedMaterials.map((item) => ({
-            canonicalProductId: item.productId,
-            quantityRequired: item.quantityRequired,
-          })),
-          workType,
-          priority,
-          scheduledDate,
-          plannedDurationHours: plannedHours ? Number(plannedHours) : 0,
-          meterReading: meterReading ? Number(meterReading) : null,
-          meterUnit: meterReading ? meterUnit : null,
-        }),
+        body: JSON.stringify(requestPayload),
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok) throw new Error(payload?.error || t.createError);
+      clearRequestId();
       toast.success(reviewId ? t.toastLinked : t.toastCreated);
       router.push(`/dashboard/mantenimiento/ordenes-trabajo/${payload.data.id}`);
     } catch (submitError) {
       toast.error(submitError instanceof Error ? submitError.message : t.createError);
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   };
