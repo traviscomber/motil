@@ -6,7 +6,9 @@ const layout = await fs.readFile('app/dashboard/mantenimiento/layout.tsx', 'utf8
 
 test('maintenance navigation simplifies progressively by role', () => {
   assert.match(layout, /planning:\s*\{[\s\S]*flow:\s*\['Planificar', 'Órdenes'\][\s\S]*support:\s*\['Resumen', 'Activos', 'Fuentes'\]/);
-  assert.match(layout, /execution:\s*\{[\s\S]*flow:\s*\['Órdenes', 'Cierre'\][\s\S]*support:\s*\['Resumen'\]/);
+  assert.match(layout, /execution:\s*\{[\s\S]*flow:\s*\[\][\s\S]*support:\s*\[\]/);
+  assert.match(layout, /viewerLoading \|\| mode === 'execution'/);
+  assert.match(layout, /return <>\{children\}<\/>/);
   assert.match(layout, /leadership:\s*\{[\s\S]*'Imputación'[\s\S]*'Maestranza'[\s\S]*'Personal'[\s\S]*'Indicadores'/);
 });
 
