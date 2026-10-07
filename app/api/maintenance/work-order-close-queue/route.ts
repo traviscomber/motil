@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
         .select('id')
         .eq('organization_id', context.organizationId)
         .eq('assigned_person_id', person.id)
-        .not('status', 'in', '("completed","closed","cancelled","canceled")');
+        .eq('status', 'in_progress');
       if (assignedError) throw assignedError;
       allowedWorkOrderIds = (assignedOrders || []).map((row) => row.id);
       if (allowedWorkOrderIds.length === 0) return NextResponse.json({ queue: [], summary: { openOrders: 0, readyToClose: 0, blocked: 0, pendingPlanSteps: 0, workOrdersWithPendingPlan: 0, missingRootCause: 0, missingPreventiveActions: 0, missingActualHours: 0, missingRuntimeEvidence: 0 }, canEdit: accessLevel === 'ED' || accessLevel === 'SR', source: 'work_order_close_readiness_v2', scope: 'assigned_to_me' });
@@ -91,7 +91,8 @@ export async function GET(request: NextRequest) {
     let readinessQuery = context.supabase
       .from('work_order_close_readiness_v2')
       .select('*')
-      .eq('organization_id', context.organizationId);
+      .eq('organization_id', context.organizationId)
+      .eq('status', 'in_progress');
     if (allowedWorkOrderIds) readinessQuery = readinessQuery.in('work_order_id', allowedWorkOrderIds);
 
     const { data, error } = await readinessQuery;
