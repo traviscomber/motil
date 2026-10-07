@@ -32,3 +32,12 @@ test('the terrain flow preserves the start pause resume and evidence-gated close
   assert.doesNotMatch(flow, /causa, acción preventiva, horas reales y evidencia de horómetro/);
   assert.doesNotMatch(flow, /status:\s*'completed'/);
 });
+
+
+test('terrain execution hides technical backend failures from the operator', () => {
+  assert.match(flow, /function userFacingError/);
+  assert.match(flow, /uuid\|sql\|postgres\|relation\|column\|function\|rpc\|pgrst/);
+  assert.match(flow, /userFacingError\(cause, 'No se pudo iniciar el trabajo\.'/);
+  assert.match(flow, /userFacingError\(cause, 'No se pudo actualizar el tiempo\.'/);
+  assert.match(flow, /userFacingError\(cause, 'No se pudo preparar el cierre\.'/);
+});
