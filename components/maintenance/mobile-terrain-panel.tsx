@@ -13,6 +13,7 @@ type TerrainAction = {
   id: string;
   workOrderNumber: string;
   title: string;
+  assetName?: string | null;
   evidence: string;
   href: string;
   actionLabel: 'Iniciar' | 'Reanudar';
@@ -62,50 +63,43 @@ export function MobileTerrainPanel({ locale }: { locale: Locale }) {
   const identityLinked = data?.identityLinked !== false;
   const copy = locale === 'en'
     ? {
-        section: 'Maintenance',
-        title: 'Today’s work',
-        active: (count: number) => `${count} active WO${count === 1 ? '' : 's'} assigned`,
+        title: 'My work orders',
+        active: (count: number) => `${count} active`,
         newOrder: 'New WO',
-        refresh: 'Refresh work',
-        loading: 'Finding your assigned work',
-        loadError: 'Could not load work',
+        refresh: 'Refresh',
+        loading: 'Loading work orders',
+        loadError: 'Could not load work orders',
         retry: 'Retry',
-        unlinkedTitle: 'Profile not linked yet',
-        unlinkedDescription: 'Your user is not yet linked to a canonical operational person. Planning or leadership must complete that assignment before assigning a work order.',
-        emptyTitle: 'No assigned work',
-        emptyDescription: 'When an active work order is assigned to you, it will appear here.',
-        firstPriority: 'First priority',
+        unlinkedTitle: 'User not linked',
+        unlinkedDescription: 'This user is not linked to an active person record.',
+        emptyTitle: 'No assigned work orders',
+        emptyDescription: 'New assignments will appear here.',
         scheduled: 'Scheduled',
-        noDate: 'No scheduled date',
+        noDate: 'No date',
         priority: 'Priority',
-        footnote: 'You can have multiple assigned work orders. Work in progress or paused work appears first so you can resume it from this list.',
       }
     : {
-        section: 'Mantenimiento',
-        title: 'Trabajo de hoy',
-        active: (count: number) => `${count} OT${count === 1 ? '' : 's'} activa${count === 1 ? '' : 's'} asignada${count === 1 ? '' : 's'}`,
+        title: 'Mis OT',
+        active: (count: number) => `${count} OT activa${count === 1 ? '' : 's'}`,
         newOrder: 'Nueva OT',
-        refresh: 'Actualizar trabajo',
-        loading: 'Buscando tu trabajo asignado',
-        loadError: 'No se pudo cargar el trabajo',
+        refresh: 'Actualizar',
+        loading: 'Cargando OT',
+        loadError: 'No se pudieron cargar tus OT',
         retry: 'Reintentar',
-        unlinkedTitle: 'Perfil aún no vinculado',
-        unlinkedDescription: 'Tu usuario todavía no está asociado a una persona operativa canónica. Jefatura o planificación debe completar esa asignación antes de entregarte una OT.',
-        emptyTitle: 'No tienes trabajo asignado',
-        emptyDescription: 'Cuando te asignen una OT activa, aparecerá aquí.',
-        firstPriority: 'Primera prioridad',
+        unlinkedTitle: 'Usuario sin vínculo operativo',
+        unlinkedDescription: 'Este usuario no está asociado a una persona activa.',
+        emptyTitle: 'Sin OT asignadas',
+        emptyDescription: 'Las nuevas asignaciones aparecerán aquí.',
         scheduled: 'Programada',
-        noDate: 'Sin fecha programada',
+        noDate: 'Sin fecha',
         priority: 'Prioridad',
-        footnote: 'Puedes tener varias OTs asignadas. Las que están en curso o pausadas aparecen primero y puedes retomarlas desde esta lista.',
       };
 
   return (
     <section className="mx-auto w-full max-w-2xl space-y-4 py-1" aria-label={copy.title}>
       <header className="flex flex-col gap-3 px-1 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{copy.section}</p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight">{copy.title}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{copy.title}</h1>
           {!isLoading && !error && identityLinked ? (
             <p className="mt-1 text-sm text-muted-foreground">
               {copy.active(actions.length)}
@@ -141,7 +135,7 @@ export function MobileTerrainPanel({ locale }: { locale: Locale }) {
 
       {!isLoading && !error && identityLinked && actions.length > 0 ? (
         <div className="overflow-hidden rounded-lg border bg-card">
-          {actions.map((action, index) => {
+          {actions.map((action) => {
             const state = actionState(action, locale);
             const date = action.scheduledDate
               ? new Date(`${action.scheduledDate}T00:00:00`).toLocaleDateString(locale === 'en' ? 'en-US' : 'es-CL')
@@ -162,9 +156,10 @@ export function MobileTerrainPanel({ locale }: { locale: Locale }) {
                   <Badge variant={state.label === (locale === 'en' ? 'In progress' : 'En curso') ? 'default' : state.label === (locale === 'en' ? 'Paused' : 'Pausada') ? 'secondary' : 'outline'}>
                     {state.label}
                   </Badge>
-                  {index === 0 ? <span className="text-xs text-muted-foreground">{copy.firstPriority}</span> : null}
+
                 </div>
                 <p className="mt-1 font-medium">{action.title}</p>
+                {action.assetName ? <p className="mt-1 text-sm text-muted-foreground">{action.assetName}</p> : null}
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">{evidence}</p>
               </div>
               <span className="inline-flex items-center justify-end gap-2 text-sm font-medium">
@@ -176,9 +171,6 @@ export function MobileTerrainPanel({ locale }: { locale: Locale }) {
         </div>
       ) : null}
 
-      <p className="px-2 text-center text-xs leading-5 text-muted-foreground">
-        {copy.footnote}
-      </p>
     </section>
   );
 }
