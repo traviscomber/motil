@@ -4,11 +4,23 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import useSWR from 'swr';
-import { ChevronRight } from 'lucide-react';
+import { Bell, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type ViewerMode = 'leadership' | 'planning' | 'execution' | 'general';
 type ViewerContext = { mode?: ViewerMode };
+type MaintenanceNotification = {
+  id: string;
+  work_order_id?: string | null;
+  title: string;
+  message?: string | null;
+  read_at?: string | null;
+  created_at: string;
+};
+type NotificationResponse = {
+  notifications?: MaintenanceNotification[];
+  unreadCount?: number;
+};
 
 type NavItem = { href: string; label: string; step?: number };
 
@@ -109,6 +121,24 @@ export default function MaintenanceLayout({ children }: { children: ReactNode })
     (url) => fetcher<ViewerContext>(url),
     { revalidateOnFocus: false },
   );
+  const { data: notificationData, mutate: mutateNotifications } = useSWR<NotificationResponse>(
+    '/api/maintenance/notifications',
+    (url) => fetcher<NotificationResponse>(url),
+    { revalidateOnFocus: true },
+  );
+  const unreadNotifications = (notificationData?.notifications || []).filter((item) => !item.read_at);
+  const latestNotification = unreadNotifications[0] || null;
+
+  const markNotificationRead = async (id: string) => {
+    await fetch('/api/maintenance/notifications', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
+    await mutateNotifications();
+  };
+
   const mode: ViewerMode = viewer?.mode || 'general';
   const allowed = roleNavigation[mode];
   const visibleFlowItems = flowItems.filter((item) => allowed.flow.includes(item.label));
@@ -172,6 +202,24 @@ export default function MaintenanceLayout({ children }: { children: ReactNode })
           </> : null}
         </div>
       </section>
+      {latestNotification ? (
+        <section className="mx-auto flex w-full max-w-5xl items-start justify-between gap-3 rounded-lg border bg-card px-4 py-3" aria-label="Aviso de mantenimiento">
+          <div className="flex min-w-0 gap-3">
+            <Bell className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <div className="min-w-0">
+              <p className="text-sm font-medium">{latestNotification.title}</p>
+              {latestNotification.message ? <p className="mt-0.5 text-xs text-muted-foreground">{latestNotification.message}</p> : null}
+            </div>
+          </div>
+          <button
+            type="button"
+            className="shrink-0 text-xs font-medium text-muted-foreground hover:text-foreground"
+            onClick={() => void markNotificationRead(latestNotification.id)}
+          >
+            Visto
+          </button>
+        </section>
+      ) : null}
       {children}
     </div>
   );
