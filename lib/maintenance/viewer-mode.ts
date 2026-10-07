@@ -9,6 +9,8 @@ export function resolveMaintenanceViewerMode(cargoName: string | null): Maintena
   if (
     cargo.startsWith('mecánico') ||
     cargo.startsWith('jefe de taller mina') ||
+    cargo.startsWith('jefe mina ') ||
+    cargo.startsWith('jefe de mina ') ||
     cargo === 'encargado de camionetas y camiones' ||
     cargo === 'soldador'
   ) return 'execution';
