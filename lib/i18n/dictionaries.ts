@@ -939,6 +939,7 @@ export const dictionaries = {
           },
         },
         kinds: {
+          approval_needed: 'Aprobar cierre',
           operational_review: 'Revisión operacional',
           preventive_overdue: 'Preventivo vencido',
           assignment_needed: 'Asignar responsable',
@@ -2231,6 +2232,7 @@ export const dictionaries = {
           },
         },
         kinds: {
+          approval_needed: 'Approve closure',
           operational_review: 'Operational review',
           preventive_overdue: 'Overdue preventive',
           assignment_needed: 'Assign owner',
