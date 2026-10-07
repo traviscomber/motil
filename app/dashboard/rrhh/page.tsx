@@ -1,13 +1,23 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Search, UserRound } from 'lucide-react';
+import { Plus, Search, UserRound } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { StatePanel } from '@/components/ui/state-panel';
 import {
   PageHeader,
+  PageHeaderActions,
   PageHeaderContent,
   PageHeaderDescription,
   PageHeaderEyebrow,
@@ -33,6 +43,15 @@ type Person = {
   };
 };
 
+const emptyForm = {
+  full_name: '',
+  role_title: '',
+  email: '',
+  phone: '',
+  rut: '',
+  employment_status: 'active',
+};
+
 function employmentLabel(status: string) {
   const value = String(status || '').trim().toLowerCase();
   if (value === 'active') return 'Activo';
@@ -47,6 +66,10 @@ export default function RrhhPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [form, setForm] = useState(emptyForm);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/rrhh/people', { credentials: 'include' })
@@ -82,6 +105,35 @@ export default function RrhhPage() {
   const withoutRole = people.filter((person) => !person.role_title?.trim()).length;
   const countsUnavailable = loading || Boolean(error);
 
+  async function createPerson(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!form.full_name.trim()) return;
+
+    setSaving(true);
+    setSaveError(null);
+
+    try {
+      const response = await fetch('/api/rrhh/people', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload?.error || 'No se pudo crear la persona');
+
+      setPeople((current) =>
+        [...current, payload.person].sort((a, b) => a.full_name.localeCompare(b.full_name, 'es')),
+      );
+      setForm(emptyForm);
+      setDialogOpen(false);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'No se pudo crear la persona');
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <div className="space-y-5">
       <PageHeader>
@@ -92,6 +144,12 @@ export default function RrhhPage() {
             Consulta la dotación registrada, su cargo y la actividad operacional vinculada. Abre una persona para revisar su ficha.
           </PageHeaderDescription>
         </PageHeaderContent>
+        <PageHeaderActions>
+          <Button onClick={() => { setForm(emptyForm); setSaveError(null); setDialogOpen(true); }}>
+            <Plus className="mr-2 h-4 w-4" />
+            Nueva persona
+          </Button>
+        </PageHeaderActions>
       </PageHeader>
 
       <div className="grid gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-4">
@@ -174,6 +232,94 @@ export default function RrhhPage() {
           description={`${withoutRole} persona(s) sin cargo · ${withoutProfile} persona(s) sin acceso vinculado.`}
         />
       ) : null}
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Nueva persona</DialogTitle>
+            <DialogDescription>
+              Registra sólo los datos básicos. La persona puede completarse después desde su ficha.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form className="space-y-4" onSubmit={createPerson}>
+            <div className="space-y-1.5">
+              <label htmlFor="rrhh-full-name" className="text-sm font-medium">Nombre completo</label>
+              <Input
+                id="rrhh-full-name"
+                required
+                value={form.full_name}
+                onChange={(event) => setForm((current) => ({ ...current, full_name: event.target.value }))}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label htmlFor="rrhh-role" className="text-sm font-medium">Cargo</label>
+              <Input
+                id="rrhh-role"
+                value={form.role_title}
+                onChange={(event) => setForm((current) => ({ ...current, role_title: event.target.value }))}
+              />
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <label htmlFor="rrhh-email" className="text-sm font-medium">Correo</label>
+                <Input
+                  id="rrhh-email"
+                  type="email"
+                  value={form.email}
+                  onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label htmlFor="rrhh-phone" className="text-sm font-medium">Teléfono</label>
+                <Input
+                  id="rrhh-phone"
+                  value={form.phone}
+                  onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <label htmlFor="rrhh-rut" className="text-sm font-medium">RUT</label>
+                <Input
+                  id="rrhh-rut"
+                  value={form.rut}
+                  onChange={(event) => setForm((current) => ({ ...current, rut: event.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label htmlFor="rrhh-status" className="text-sm font-medium">Estado</label>
+                <select
+                  id="rrhh-status"
+                  value={form.employment_status}
+                  onChange={(event) => setForm((current) => ({ ...current, employment_status: event.target.value }))}
+                  className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
+                >
+                  <option value="active">Activo</option>
+                  <option value="inactive">Inactivo</option>
+                  <option value="suspended">Suspendido</option>
+                  <option value="terminated">Desvinculado</option>
+                </select>
+              </div>
+            </div>
+
+            {saveError ? <p className="text-sm text-destructive">{saveError}</p> : null}
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} disabled={saving}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={saving || !form.full_name.trim()}>
+                {saving ? 'Guardando…' : 'Crear persona'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
