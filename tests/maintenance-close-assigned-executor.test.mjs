@@ -14,7 +14,8 @@ test('safe close authorizes current model and assigned executor without legacy u
 });
 
 test('closure UI visibly confirms uploaded photo evidence', () => {
-  assert.match(closeUi, /Fotos cargadas/);
-  assert.match(closeUi, /item\.file_name/);
+  assert.match(closeUi, /Evidencia/);
+  assert.match(closeUi, /photo\.file_name/);
+  assert.match(closeUi, /photo\.signed_url/);
   assert.match(closeUi, /foto\$\{evidenceCount === 1/);
 });

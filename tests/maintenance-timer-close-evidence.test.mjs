@@ -29,7 +29,7 @@ test('closure UI requires a camera or image evidence and uses dedicated close en
   assert.match(closeQueue, /capture="environment"/);
   assert.match(closeQueue, /accept="image\/jpeg,image\/png,image\/webp,image\/heic,image\/heif"/);
   assert.match(closeQueue, /uploadEvidence/);
-  assert.match(closeQueue, /ImagePlus/);
+  assert.match(closeQueue, /Agregar foto/);
   assert.match(closeQueue, /\/evidence/);
   assert.match(closeQueue, /\/close/);
   assert.doesNotMatch(closeQueue, /patchCurrent\(\{ status:'completed'/);
