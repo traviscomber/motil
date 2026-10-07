@@ -15,7 +15,7 @@ test('pause API requires a non-empty reason before calling the timer RPC', () =>
 
 test('terrain execution asks for a pause reason and keeps the reason visible while paused', () => {
   assert.match(mobile, /Entró una OT más crítica/);
-  assert.match(mobile, /¿Por qué pausas esta OT?/);
+  assert.match(mobile, /Motivo de pausa/);
   assert.match(mobile, /Selecciona un motivo/);
   assert.match(mobile, /Confirmar pausa/);
   assert.match(mobile, /Motivo de la pausa/);
