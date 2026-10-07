@@ -58,6 +58,8 @@ export async function GET(request: NextRequest) {
     }
 
     const mode = resolveMaintenanceViewerMode(cargoName);
+    const reviewerCargo = String(cargoName || '').trim().toLowerCase();
+    const canApproveWorkOrders = reviewerCargo === 'jefe de planificación' || reviewerCargo === 'jefe de equipos móviles y estacionarios';
     if (mode !== 'planning' && mode !== 'leadership') {
       return NextResponse.json({ error: 'Esta vista corresponde a planificación y supervisión de mantenimiento.' }, { status: 403 });
     }
@@ -71,18 +73,22 @@ export async function GET(request: NextRequest) {
         .not('status', 'in', '("completed","closed","cancelled","canceled")')
         .order('updated_at', { ascending: false })
         .limit(100),
-      context.supabase
-        .from('maintenance_work_orders')
-        .select('id,work_order_number,title,status,priority,scheduled_date,assigned_to_name,canonical_asset_id,timer_status,timer_start_time,total_timer_seconds,closed_at,updated_at')
-        .eq('organization_id', context.organizationId)
-        .not('created_by', 'is', null)
-        .eq('status', 'completed')
-        .order('closed_at', { ascending: false, nullsFirst: false })
-        .limit(50),
-      context.supabase
-        .from('work_order_supervisor_reviews')
-        .select('work_order_id,status,reviewed_by_name,reviewed_at')
-        .eq('organization_id', context.organizationId),
+      canApproveWorkOrders
+        ? context.supabase
+            .from('maintenance_work_orders')
+            .select('id,work_order_number,title,status,priority,scheduled_date,assigned_to_name,canonical_asset_id,timer_status,timer_start_time,total_timer_seconds,closed_at,updated_at')
+            .eq('organization_id', context.organizationId)
+            .not('created_by', 'is', null)
+            .eq('status', 'completed')
+            .order('closed_at', { ascending: false, nullsFirst: false })
+            .limit(50)
+        : Promise.resolve({ data: [], error: null }),
+      canApproveWorkOrders
+        ? context.supabase
+            .from('work_order_supervisor_reviews')
+            .select('work_order_id,status,reviewed_by_name,reviewed_at')
+            .eq('organization_id', context.organizationId)
+        : Promise.resolve({ data: [], error: null }),
     ]);
 
     const sourceError = activeResult.error || completedResult.error || reviewsResult.error;
@@ -189,6 +195,7 @@ export async function GET(request: NextRequest) {
       board,
       summary,
       mode,
+      canApproveWorkOrders,
       sources: ['maintenance_work_orders', 'work_order_events', 'work_order_supervisor_reviews', 'maintenance_canonical_assets_v1'],
     });
   } catch (error) {
