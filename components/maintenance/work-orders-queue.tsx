@@ -47,7 +47,7 @@ function getStatusLabel(status: string | null | undefined, t: WorkOrdersT) {
   if (['completed', 'completado'].includes(value)) return t.status.completed;
   if (['in_progress', 'en_progreso'].includes(value)) return t.status.inProgress;
   if (['open', 'abierta', 'pending', 'pendiente'].includes(value)) return t.status.open;
-  return status || t.status.none;
+  return t.status.none;
 }
 
 function getWorkTypeLabel(workType: string | null | undefined, t: WorkOrdersT) {
@@ -55,7 +55,7 @@ function getWorkTypeLabel(workType: string | null | undefined, t: WorkOrdersT) {
   if (value === 'corrective') return t.workType.corrective;
   if (value === 'preventive') return t.workType.preventive;
   if (value === 'predictive') return t.workType.predictive;
-  return workType || t.workType.none;
+  return t.workType.none;
 }
 
 function getPriorityLabel(priority: string | null | undefined, t: WorkOrdersT) {
@@ -64,7 +64,7 @@ function getPriorityLabel(priority: string | null | undefined, t: WorkOrdersT) {
   if (['high', 'alta'].includes(value)) return t.priority.high;
   if (['medium', 'media'].includes(value)) return t.priority.medium;
   if (['low', 'baja'].includes(value)) return t.priority.low;
-  return priority || t.priority.none;
+  return t.priority.none;
 }
 
 function getStatusClass(status: string | null | undefined) {
