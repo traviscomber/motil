@@ -19,7 +19,10 @@ test('terrain surface exposes the full assigned active queue without global main
   assert.doesNotMatch(terrain, /\/api\/maintenance\/control-center/);
   assert.match(terrain, /actions\.map/);
   assert.match(terrain, /Primera prioridad/);
-  assert.match(terrain, /action\.actionLabel/);
+  assert.match(terrain, /actionState\(action, locale\)/);
+  assert.match(terrain, /priorityLabel\(action\.priority, locale\)/);
+  assert.match(terrain, /Prioridad/);
+  assert.match(terrain, /Media/);
   assert.match(terrain, /Puedes tener varias OTs asignadas/);
   assert.match(terrain, /Perfil aún no vinculado/);
   assert.match(terrain, /No tienes trabajo asignado/);
