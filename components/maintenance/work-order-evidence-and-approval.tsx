@@ -41,8 +41,15 @@ export function WorkOrderEvidenceAndApproval({ workOrderId, status }: { workOrde
     <div className="space-y-4">
       <Card className="shadow-none">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Evidencia fotográfica</CardTitle>
-          <p className="text-sm text-muted-foreground">{photos.length ? `${photos.length} archivo${photos.length === 1 ? '' : 's'} registrado${photos.length === 1 ? '' : 's'}` : 'Sin evidencia registrada.'}</p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <CardTitle className="text-base">Evidencia fotográfica</CardTitle>
+              <p className="mt-1 text-sm text-muted-foreground">{photos.length ? `${photos.length} archivo${photos.length === 1 ? '' : 's'} registrado${photos.length === 1 ? '' : 's'}` : 'Sin evidencia registrada.'}</p>
+            </div>
+            {status === 'completed' && canApprove && photos.length > 0 && currentReview?.status !== 'approved' ? (
+              <Button onClick={() => void approve()}><CheckCircle2 className="mr-2 h-4 w-4" />Aprobar OT</Button>
+            ) : null}
+          </div>
         </CardHeader>
         <CardContent>
           {photos.length ? (
@@ -78,28 +85,16 @@ export function WorkOrderEvidenceAndApproval({ workOrderId, status }: { workOrde
         </CardContent>
       </Card>
 
-      {status === 'completed' ? (
-        <Card className="shadow-none">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Aprobación</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              {currentReview?.status === 'approved' ? (
-                <>
-                  <p className="flex items-center gap-2 text-sm font-medium"><CheckCircle2 className="h-4 w-4" />Aprobada</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{currentReview.reviewed_by_name || 'Supervisor'} · {formatDate(currentReview.reviewed_at)}</p>
-                </>
-              ) : (
-                <>
-                  <p className="text-sm font-medium">Pendiente de aprobación</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Ariel López o Mauricio Astudillo revisan la evidencia y aprueban la OT.</p>
-                </>
-              )}
-            </div>
-            {canApprove ? <Button onClick={() => void approve()}><CheckCircle2 className="mr-2 h-4 w-4" />Aprobar OT</Button> : null}
-          </CardContent>
-        </Card>
+      {status === 'completed' && currentReview?.status === 'approved' ? (
+        <div className="rounded-lg border bg-muted/20 px-4 py-3">
+          <p className="flex items-center gap-2 text-sm font-medium"><CheckCircle2 className="h-4 w-4" />OT aprobada</p>
+          <p className="mt-1 text-xs text-muted-foreground">{currentReview.reviewed_by_name || 'Supervisor'} · {formatDate(currentReview.reviewed_at)}</p>
+        </div>
+      ) : status === 'completed' && !canApprove ? (
+        <div className="rounded-lg border bg-muted/20 px-4 py-3 text-sm">
+          <p className="font-medium">Pendiente de aprobación</p>
+          <p className="mt-1 text-xs text-muted-foreground">Ariel López o Mauricio Astudillo revisan la evidencia y aprueban la OT.</p>
+        </div>
       ) : null}
     </div>
   );
