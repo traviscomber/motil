@@ -40,3 +40,24 @@ test('RRHH stage one keeps navigation and person detail intentionally simple', a
   assert.match(detail, /hasHistory \?/);
   assert.match(detail, /La ficha muestra sólo información disponible/);
 });
+
+test('RRHH stage one supports simple create and edit without weakening tenant scope', async () => {
+  const [page, detail, api] = await Promise.all([
+    readFile(pageUrl, 'utf8'),
+    readFile(detailUrl, 'utf8'),
+    readFile(apiUrl, 'utf8'),
+  ]);
+
+  assert.match(page, /Nueva persona/);
+  assert.match(page, /method: 'POST'/);
+  assert.match(detail, />Editar</);
+  assert.match(detail, /method: 'PATCH'/);
+
+  assert.match(api, /export async function POST/);
+  assert.match(api, /export async function PATCH/);
+  assert.match(api, /source_type: 'manual'/);
+  assert.match(api, /source_reference: 'RRHH MOTIL'/);
+  assert.match(api, /\.eq\('organization_id', context\.organizationId\)/);
+  assert.match(api, /Ya existe una persona con ese/);
+  assert.doesNotMatch(api, /export async function DELETE/);
+});
