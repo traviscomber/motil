@@ -1672,6 +1672,8 @@ export const dictionaries = {
           'centros-costos': 'Cost centers',
           mantenimiento: 'Maintenance',
           'ordenes-trabajo': 'Work orders',
+          create: 'Create WO',
+          cierre: 'Close',
           planificacion: 'Preventive planning',
           bitacora: 'Logbook',
           movil: 'Field operations',
