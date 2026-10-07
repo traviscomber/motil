@@ -24,6 +24,10 @@ type WorkOrderItem = {
   title: string | null;
   work_type?: string | null;
   assigned_to_name?: string | null;
+  completion_date?: string | null;
+  approval_status?: string | null;
+  reviewed_by_name?: string | null;
+  reviewed_at?: string | null;
   record_scope?: 'operational' | 'historical';
 };
 
@@ -89,7 +93,7 @@ export function WorkOrdersQueue({ locale, dictionary }: { locale: Locale; dictio
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
-  const [scopeFilter, setScopeFilter] = useState('operational');
+  const [viewFilter, setViewFilter] = useState<'active' | 'approval' | 'completed' | 'historical'>('active');
 
   const { data, error, isLoading, mutate } = useSWR('/api/maintenance/work-orders', async (url: string) => {
     const response = await fetch(url, { credentials: 'include' });
@@ -105,20 +109,31 @@ export function WorkOrdersQueue({ locale, dictionary }: { locale: Locale; dictio
   const inProgress = operationalWorkOrders.filter((order) => ['in_progress', 'en_progreso'].includes(normalizeText(order.status))).length;
   const critical = operationalWorkOrders.filter((order) => ['critical', 'urgente'].includes(normalizeText(order.priority))).length;
   const overdue = operationalWorkOrders.filter(isOverdue).length;
+  const completedOrders = operationalWorkOrders.filter((order) => ['completed', 'completado'].includes(normalizeText(order.status)));
+  const pendingApproval = completedOrders.filter((order) => normalizeText(order.approval_status) !== 'approved').length;
 
   const filteredOrders = useMemo(() => {
     const query = normalizeText(search);
     return workOrders.filter((order) => {
-      const matchesScope = missingAssetOnly
-        ? order.record_scope !== 'historical'
-        : scopeFilter === 'all' || order.record_scope === scopeFilter;
+      const status = normalizeText(order.status);
+      const completed = ['completed', 'completado'].includes(status);
+      const operational = order.record_scope !== 'historical';
+      const matchesView = missingAssetOnly
+        ? operational
+        : viewFilter === 'historical'
+          ? order.record_scope === 'historical'
+          : viewFilter === 'approval'
+            ? operational && completed && normalizeText(order.approval_status) !== 'approved'
+            : viewFilter === 'completed'
+              ? operational && completed
+              : operational && !completed;
       const matchesDataHealth = !missingAssetOnly || !order.asset_name;
       const matchesSearch = !query || [order.work_order_number, formatWorkOrderNumber(order.work_order_number, locale), order.title, order.asset_name, order.assigned_to_name].some((value) => normalizeText(value).includes(query));
       const matchesStatus = statusFilter === 'all' || normalizeText(order.status) === statusFilter;
       const matchesPriority = priorityFilter === 'all' || normalizeText(order.priority) === priorityFilter;
-      return matchesScope && matchesDataHealth && matchesSearch && matchesStatus && matchesPriority;
+      return matchesView && matchesDataHealth && matchesSearch && matchesStatus && matchesPriority;
     });
-  }, [locale, missingAssetOnly, priorityFilter, scopeFilter, search, statusFilter, workOrders]);
+  }, [locale, missingAssetOnly, priorityFilter, search, statusFilter, viewFilter, workOrders]);
 
   const scheduleItems = useMemo(() => operationalWorkOrders
     .filter((order) => order.scheduled_date && !['completed', 'completado'].includes(normalizeText(order.status)))
@@ -163,7 +178,7 @@ export function WorkOrdersQueue({ locale, dictionary }: { locale: Locale; dictio
         ))}
       </div>
 
-      {!missingAssetOnly && historicalWorkOrders.length > 0 ? <Card className="shadow-none"><CardContent className="flex flex-col gap-2 p-4 text-sm sm:flex-row sm:items-center sm:justify-between"><div><p className="font-medium">{t.historicalBanner.title}</p><p className="text-muted-foreground">{fill(t.historicalBanner.description, { n: historicalWorkOrders.length })}</p></div><Button variant="outline" size="sm" onClick={() => setScopeFilter('historical')}>{t.historicalBanner.cta}</Button></CardContent></Card> : null}
+      {!missingAssetOnly && historicalWorkOrders.length > 0 ? <Card className="shadow-none"><CardContent className="flex flex-col gap-2 p-4 text-sm sm:flex-row sm:items-center sm:justify-between"><div><p className="font-medium">{t.historicalBanner.title}</p><p className="text-muted-foreground">{fill(t.historicalBanner.description, { n: historicalWorkOrders.length })}</p></div><Button variant="outline" size="sm" onClick={() => setViewFilter('historical')}>{t.historicalBanner.cta}</Button></CardContent></Card> : null}
 
       <Card className="overflow-hidden shadow-none">
         <CardHeader className="border-b bg-muted/20 pb-4">
@@ -171,9 +186,16 @@ export function WorkOrdersQueue({ locale, dictionary }: { locale: Locale; dictio
             <div>
               <div className="flex items-center gap-2">
                 <Inbox className="h-4 w-4 text-muted-foreground" />
-                <CardTitle className="text-base">{missingAssetOnly ? t.listTitles.missingAsset : scopeFilter === 'historical' ? t.listTitles.historical : scopeFilter === 'all' ? t.listTitles.all : 'Bandeja de órdenes'}</CardTitle>
+                <CardTitle className="text-base">{missingAssetOnly ? t.listTitles.missingAsset : viewFilter === 'historical' ? t.listTitles.historical : viewFilter === 'approval' ? t.listTitles.approval : viewFilter === 'completed' ? t.listTitles.completed : t.listTitles.operational}</CardTitle>
               </div>
               <p className="mt-1 text-sm text-muted-foreground">{fill(t.counts, { filtered: filteredOrders.length, total: workOrders.length })}</p>
+              {!missingAssetOnly ? (
+                <div className="mt-3 flex flex-wrap gap-1 rounded-md border bg-background p-1">
+                  <Button size="sm" variant={viewFilter === 'active' ? 'secondary' : 'ghost'} onClick={() => setViewFilter('active')}>{t.inboxViews.active}</Button>
+                  <Button size="sm" variant={viewFilter === 'approval' ? 'secondary' : 'ghost'} onClick={() => setViewFilter('approval')}>{t.inboxViews.approval}{pendingApproval ? ` · ${pendingApproval}` : ''}</Button>
+                  <Button size="sm" variant={viewFilter === 'completed' ? 'secondary' : 'ghost'} onClick={() => setViewFilter('completed')}>{t.inboxViews.completed}{completedOrders.length ? ` · ${completedOrders.length}` : ''}</Button>
+                </div>
+              ) : null}
             </div>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(220px,1fr)_160px_160px_auto]">
               <div className="relative">
@@ -182,7 +204,7 @@ export function WorkOrdersQueue({ locale, dictionary }: { locale: Locale; dictio
               </div>
               <Select value={statusFilter} onValueChange={setStatusFilter}><SelectTrigger><SelectValue placeholder={t.filters.status} /></SelectTrigger><SelectContent><SelectItem value="all">{t.filters.statuses.all}</SelectItem><SelectItem value="open">{t.filters.statuses.open}</SelectItem><SelectItem value="in_progress">{t.filters.statuses.inProgress}</SelectItem><SelectItem value="completed">{t.filters.statuses.completed}</SelectItem></SelectContent></Select>
               <Select value={priorityFilter} onValueChange={setPriorityFilter}><SelectTrigger><SelectValue placeholder={t.filters.priority} /></SelectTrigger><SelectContent><SelectItem value="all">{t.filters.priorities.all}</SelectItem><SelectItem value="critical">{t.filters.priorities.critical}</SelectItem><SelectItem value="high">{t.filters.priorities.high}</SelectItem><SelectItem value="medium">{t.filters.priorities.medium}</SelectItem><SelectItem value="low">{t.filters.priorities.low}</SelectItem></SelectContent></Select>
-              <Button variant="ghost" onClick={() => { setSearch(''); setStatusFilter('all'); setPriorityFilter('all'); setScopeFilter('operational'); }}>{t.filters.clear}</Button>
+              <Button variant="ghost" onClick={() => { setSearch(''); setStatusFilter('all'); setPriorityFilter('all'); setViewFilter('active'); }}>{t.filters.clear}</Button>
             </div>
           </div>
         </CardHeader>
@@ -206,8 +228,10 @@ export function WorkOrdersQueue({ locale, dictionary }: { locale: Locale; dictio
               {filteredOrders.map((order) => {
                 const historical = order.record_scope === 'historical';
                 const status = normalizeText(order.status);
-                const nextAction = ['completed', 'completado'].includes(status)
-                  ? 'Ver cierre'
+                const completed = ['completed', 'completado'].includes(status);
+                const approved = normalizeText(order.approval_status) === 'approved';
+                const nextAction = completed
+                  ? approved ? t.approval.record : t.approval.review
                   : ['in_progress', 'en_progreso'].includes(status)
                     ? 'Continuar'
                     : 'Abrir';
@@ -218,13 +242,14 @@ export function WorkOrdersQueue({ locale, dictionary }: { locale: Locale; dictio
                     className="group grid gap-3 px-4 py-3 transition-colors hover:bg-muted/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:grid-cols-[90px_minmax(260px,1.5fr)_minmax(170px,.8fr)_minmax(170px,.8fr)_130px_32px] lg:items-center"
                   >
                     <div className="flex items-center gap-2">
-                      <span className={`h-2.5 w-2.5 rounded-full ${['completed', 'completado'].includes(status) ? 'bg-emerald-500' : ['in_progress', 'en_progreso'].includes(status) ? 'bg-blue-500' : isOverdue(order) ? 'bg-destructive' : 'bg-amber-500'}`} aria-hidden="true" />
+                      <span className={`h-2.5 w-2.5 rounded-full ${completed ? approved ? 'bg-emerald-500' : 'bg-amber-500' : ['in_progress', 'en_progreso'].includes(status) ? 'bg-blue-500' : isOverdue(order) ? 'bg-destructive' : 'bg-amber-500'}`} aria-hidden="true" />
                       <span className="text-xs font-medium">{getStatusLabel(order.status, t)}</span>
                     </div>
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="font-mono text-xs text-muted-foreground">{order.work_order_number ? formatWorkOrderNumber(order.work_order_number, locale) : t.noFolio}</span>
                         {historical ? <Badge variant="secondary">{t.historicalBadge}</Badge> : null}
+                        {!historical && completed ? <Badge variant={approved ? 'secondary' : 'outline'}>{approved ? t.approval.approved : t.approval.pending}</Badge> : null}
                         {!historical && isOverdue(order) ? <Badge variant="destructive">{t.overdueBadge}</Badge> : null}
                         {!historical && !order.asset_name ? <Badge variant="destructive">{t.missingAssetBadge}</Badge> : null}
                         {['critical', 'high', 'urgente', 'alta'].includes(normalizeText(order.priority)) ? <Badge variant="outline">{getPriorityLabel(order.priority, t)}</Badge> : null}
@@ -235,7 +260,7 @@ export function WorkOrdersQueue({ locale, dictionary }: { locale: Locale; dictio
                     <p className="truncate text-sm text-muted-foreground">{order.asset_name || (historical ? t.noAssetHistorical : t.noAsset)}</p>
                     <p className="truncate text-sm">{order.assigned_to_name || t.unassigned}</p>
                     <div>
-                      <p className="text-sm">{order.scheduled_date ? new Date(order.scheduled_date).toLocaleDateString(dateLocale) : t.noDate}</p>
+                      <p className="text-sm">{completed && order.completion_date ? new Date(order.completion_date).toLocaleDateString(dateLocale) : order.scheduled_date ? new Date(order.scheduled_date).toLocaleDateString(dateLocale) : t.noDate}</p>
                       <p className="text-xs font-medium text-muted-foreground">{nextAction}</p>
                     </div>
                     <ChevronRight className="hidden h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 lg:block" />
