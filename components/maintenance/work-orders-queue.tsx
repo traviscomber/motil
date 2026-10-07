@@ -67,13 +67,6 @@ function getPriorityLabel(priority: string | null | undefined, t: WorkOrdersT) {
   return priority || t.priority.none;
 }
 
-function getStatusClass(status: string | null | undefined) {
-  const value = normalizeText(status);
-  if (['completed', 'completado'].includes(value)) return 'border-emerald-200 bg-emerald-50 text-emerald-700';
-  if (['in_progress', 'en_progreso'].includes(value)) return 'border-blue-200 bg-blue-50 text-blue-700';
-  return 'border-amber-200 bg-amber-50 text-amber-700';
-}
-
 function isOverdue(order: WorkOrderItem) {
   if (!order.scheduled_date || ['completed', 'completado'].includes(normalizeText(order.status))) return false;
   const scheduled = new Date(order.scheduled_date);
