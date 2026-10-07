@@ -74,6 +74,7 @@ test('Autopilot prepares actions but preserves human authority',()=>{
   assert.match(api,/Supervisor valida la señal y decide si crea la OT/);
   assert.match(api,/Planificador confirma ventana, alcance y recursos/);
   assert.match(api,/Responsable autorizado revisa y ejecuta el cierre/);
-  assert.match(page,/Autopilot prepara:/);
+  assert.match(page,/MOTIL prepara:/);
   assert.match(page,/Decisión humana:/);
+  assert.match(page,/Autopilot prepares:/);
 });
