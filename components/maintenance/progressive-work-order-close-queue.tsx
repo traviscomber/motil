@@ -11,6 +11,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import type { Dictionary, Locale } from '@/lib/i18n/dictionaries';
 import { formatAssetIdentity, formatWorkOrderNumber } from '@/lib/maintenance/work-order-display';
+import { createClient as createSupabaseClient } from '@/lib/supabase/client';
 
 type QueueRow = {
   work_order_id: string;
@@ -178,16 +179,51 @@ export function ProgressiveWorkOrderCloseQueue({ locale, dictionary }: { locale:
     setUploadingEvidence(true);
     setActionError(null);
     try {
-      const form = new FormData();
-      form.append('file', file);
-      const response = await fetch(`/api/maintenance/work-orders/${current.work_order_id}/evidence`, {
+      const prepareResponse = await fetch(`/api/maintenance/work-orders/${current.work_order_id}/evidence`, {
         method: 'POST',
         credentials: 'include',
-        body: form,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'create_upload',
+          fileName: file.name || 'foto.jpg',
+          mimeType: file.type || '',
+          sizeBytes: file.size,
+        }),
       });
-      const payload = await response.json().catch(() => null);
-      if (!response.ok) throw new Error(payload?.error || 'No se pudo guardar la evidencia.');
-      await mutateEvidence();
+      const prepared = await prepareResponse.json().catch(() => null);
+      if (!prepareResponse.ok) throw new Error(prepared?.error || 'No se pudo preparar la foto.');
+
+      const upload = prepared?.upload;
+      if (!upload?.storagePath || !upload?.token || !upload?.evidenceId) {
+        throw new Error('No se pudo preparar la subida de la foto.');
+      }
+
+      const supabase = createSupabaseClient();
+      const { error: uploadError } = await supabase.storage
+        .from('maintenance-work-order-evidence')
+        .uploadToSignedUrl(upload.storagePath, upload.token, file, {
+          contentType: upload.mimeType || file.type || 'image/jpeg',
+          cacheControl: '3600',
+        });
+      if (uploadError) throw new Error(uploadError.message || 'No se pudo subir la foto.');
+
+      const completeResponse = await fetch(`/api/maintenance/work-orders/${current.work_order_id}/evidence`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'complete_upload',
+          evidenceId: upload.evidenceId,
+          storagePath: upload.storagePath,
+          fileName: upload.fileName || file.name || 'foto.jpg',
+          mimeType: upload.mimeType || file.type || '',
+          sizeBytes: upload.sizeBytes || file.size,
+        }),
+      });
+      const completed = await completeResponse.json().catch(() => null);
+      if (!completeResponse.ok) throw new Error(completed?.error || 'La foto subió, pero no se pudo registrar.');
+
+      await Promise.all([mutateEvidence(), mutate()]);
     } catch (cause) {
       setActionError(cause instanceof Error ? cause.message : 'No se pudo guardar la evidencia.');
     } finally {
