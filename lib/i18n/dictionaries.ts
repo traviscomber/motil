@@ -474,7 +474,7 @@ export const dictionaries = {
             shortcuts: [
               { key: 'productionIntel', label: 'Inteligencia Producción', detail: 'Plan, ritmo, confianza y forecast' },
               { key: 'plantMetallurgy', label: 'Planta y metalurgia', detail: 'Turnos, tratamiento y metalurgia' },
-              { key: 'actions', label: 'Mis acciones', detail: 'Incluye Data Health asignado a Planta' },
+              { key: 'actions', label: 'Mis acciones', detail: 'Incluye Calidad de datos asignado a Planta' },
             ],
           },
           maintenance: {
@@ -488,10 +488,10 @@ export const dictionaries = {
               { label: 'Acciones críticas', detail: '{n} vencidas para tu cargo' },
             ],
             shortcuts: [
-              { key: 'maintenanceIntel', label: 'Inteligencia de Mantenimiento', detail: 'Backlog, recurrencia y abastecimiento' },
+              { key: 'maintenanceIntel', label: 'Inteligencia de Mantenimiento', detail: 'Pendientes, recurrencia y abastecimiento' },
               { key: 'availability', label: 'Disponibilidad', detail: 'Estado y disponibilidad por equipo' },
               { key: 'workOrders', label: 'Órdenes de trabajo', detail: 'Planificar, ejecutar y cerrar OT' },
-              { key: 'actions', label: 'Mis acciones', detail: 'Incluye Data Health y escalaciones del cargo' },
+              { key: 'actions', label: 'Mis acciones', detail: 'Incluye Calidad de datos y escalaciones del cargo' },
             ],
           },
           drilling: {
@@ -517,7 +517,7 @@ export const dictionaries = {
             shortcuts: [
               { key: 'warehouseIntel', label: 'Inteligencia Bodega', detail: 'Stock, calidad y readiness predictivo' },
               { key: 'warehouse', label: 'Bodega', detail: 'Existencias y productos canónicos' },
-              { key: 'actions', label: 'Mis acciones', detail: 'Data Health y reposición asignada a Bodega' },
+              { key: 'actions', label: 'Mis acciones', detail: 'Calidad de datos y reposición asignada a Bodega' },
             ],
           },
           sustainability: {
@@ -552,7 +552,7 @@ export const dictionaries = {
             ],
             shortcuts: [
               { key: 'executiveCenter', label: 'Centro Ejecutivo', detail: 'Top decisiones, causa raíz y escalaciones' },
-              { key: 'dataHealth', label: 'Data Health', detail: 'Confianza y frescura por dominio' },
+              { key: 'dataHealth', label: 'Calidad de datos', detail: 'Confianza y frescura por dominio' },
               { key: 'actions', label: 'Mis acciones', detail: 'Tareas y escalaciones visibles para Gerencia' },
             ],
           },
@@ -718,7 +718,7 @@ export const dictionaries = {
         items: {
           executive: 'Centro ejecutivo',
           performance: 'Desempeño',
-          dataHealth: 'Data Health',
+          dataHealth: 'Calidad de datos',
         },
       },
       calendar: {
@@ -958,20 +958,20 @@ export const dictionaries = {
           workOrders: 'Órdenes de trabajo',
           reliability: 'Confiabilidad',
           dataQuality: 'Calidad de datos',
-          decisionIntelligence: 'Decision Intelligence',
+          decisionIntelligence: 'Inteligencia de decisiones',
         },
       },
       workOrders: {
         eyebrow: 'Mantenimiento · Operación diaria',
         title: 'Órdenes de trabajo',
         descriptionDefault: 'La operación nueva de Motil se mantiene separada del histórico importado. Los KPI, vencimientos y próximas intervenciones usan sólo OT operacionales; el histórico queda disponible como evidencia.',
-        descriptionDataHealth: 'Cola Data Health: sólo OT operacionales de Motil que todavía no tienen un activo canónico asociado. El histórico importado no entra en esta cola.',
+        descriptionDataHealth: 'Cola Calidad de datos: sólo OT operacionales de Motil que todavía no tienen un activo canónico asociado. El histórico importado no entra en esta cola.',
         viewAll: 'Ver todas las OT',
         progressiveClose: 'Cierre progresivo',
         refresh: 'Actualizar',
         newOrder: 'Nueva OT',
         dataHealthBanner: {
-          title: 'Data Health · OT operacional sin activo canónico',
+          title: 'Calidad de datos · OT operacional sin activo canónico',
           description: 'Esta vista no corrige automáticamente la asociación. El histórico importado queda fuera porque no representa trabajo nuevo pendiente en Motil.',
         },
         summary: {
@@ -1082,7 +1082,7 @@ export const dictionaries = {
           meterUnit: 'Unidad de lectura',
         },
         assetStatus: { active: 'Disponible', operational: 'Operativo', maintenance: 'En mantenimiento', inactive: 'Fuera de servicio' },
-        workTypes: { corrective: 'Correctivo', preventive: 'Preventivo', predictive: 'Predictive', inspection: 'Inspección' },
+        workTypes: { corrective: 'Correctivo', preventive: 'Preventivo', predictive: 'Predictivo', inspection: 'Inspección' },
         priorities: { low: 'Baja', medium: 'Media', high: 'Alta', critical: 'Crítica' },
         meterUnits: { hours: 'Horas', km: 'Kilómetros', cycles: 'Ciclos' },
         validation: {
