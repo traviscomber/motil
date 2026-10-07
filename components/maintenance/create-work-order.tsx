@@ -332,7 +332,7 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
             ) : null}
             {selectedAsset ? (
               <p className="text-xs text-muted-foreground">
-                {selectedAsset.type}{selectedAsset.model ? ` · ${selectedAsset.model}` : ''} · {t.assetStatus[selectedAsset.status as keyof typeof t.assetStatus] || selectedAsset.status}
+                {selectedAsset.type}{selectedAsset.model ? ` · ${selectedAsset.model}` : ''} · {t.assetStatus[selectedAsset.status as keyof typeof t.assetStatus] || (locale === 'en' ? 'Status not available' : 'Estado no informado')}
               </p>
             ) : null}
           </div>
