@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getOrganizationContext } from '@/lib/api/organization-context';
 import { getModuleAccessLevel, MODULE_KEYS } from '@/lib/api/module-access';
 import { requireAssignedMaintenanceExecution } from '@/lib/maintenance/work-order-execution-access';
+import { requireOperationalMaintenanceWorkOrder } from '@/lib/maintenance/work-order-scope';
 
 async function getReviewerPerson(context: Awaited<ReturnType<typeof getOrganizationContext>>) {
   if (!context.ok) return null;
@@ -66,6 +67,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const { id } = await params;
   const context = await getOrganizationContext(request);
   if (!context.ok) return context.response;
+
+  const guard = await requireOperationalMaintenanceWorkOrder(context.supabase, context.organizationId, id);
+  if (!guard.ok) return NextResponse.json({ error: guard.error, record_scope: guard.scope }, { status: guard.status });
 
   const reviewer = await getReviewerPerson(context);
   if (!reviewer) {
