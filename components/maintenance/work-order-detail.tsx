@@ -221,8 +221,7 @@ export function WorkOrderDetail({ locale, dictionary }: { locale: Locale; dictio
           <WorkOrderPartsPanel workOrderId={id} />
           <WorkOrderPurchasingFlow workOrderId={id} />
           <WorkOrderExecutionPanel workOrderId={id} />
-          {!isHistorical ? <WorkOrderEvidenceAndApproval workOrderId={id} status={workOrder.status} /> : null}
-    <EntityTimeline entity="work_order" id={id} limit={50} />
+          <EntityTimeline entity="work_order" id={id} limit={50} />
         </div>
       </details>
     </div>;
@@ -253,6 +252,7 @@ export function WorkOrderDetail({ locale, dictionary }: { locale: Locale; dictio
       <WorkOrderPurchasingFlow workOrderId={id} />
       <WorkOrderExecutionPanel workOrderId={id} />
     </> : null}
+    {!isHistorical ? <WorkOrderEvidenceAndApproval workOrderId={id} status={workOrder.status} /> : null}
     <EntityTimeline entity="work_order" id={id} limit={50} />
   </div>;
 }
