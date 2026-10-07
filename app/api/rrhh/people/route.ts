@@ -4,9 +4,63 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getOrganizationContext } from '@/lib/api/organization-context';
 
 const allowedRoles = new Set(['superadmin', 'admin', 'manager']);
+const employmentStatuses = new Set(['active', 'inactive', 'suspended', 'terminated']);
 
 function allowed(role?: string) {
   return allowedRoles.has(String(role || '').trim().toLowerCase());
+}
+
+function cleanOptional(value: unknown) {
+  const text = String(value ?? '').trim();
+  return text || null;
+}
+
+function normalizeName(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function normalizeEmploymentStatus(value: unknown) {
+  const status = String(value || 'active').trim().toLowerCase();
+  return employmentStatuses.has(status) ? status : null;
+}
+
+async function findDuplicate(
+  supabase: any,
+  organizationId: string,
+  rut: string | null,
+  email: string | null,
+  excludeId?: string,
+) {
+  if (rut) {
+    let query = supabase
+      .from('people')
+      .select('id,full_name')
+      .eq('organization_id', organizationId)
+      .eq('rut', rut);
+    if (excludeId) query = query.neq('id', excludeId);
+    const { data, error } = await query.maybeSingle();
+    if (error) throw error;
+    if (data) return { field: 'RUT', person: data };
+  }
+
+  if (email) {
+    let query = supabase
+      .from('people')
+      .select('id,full_name')
+      .eq('organization_id', organizationId)
+      .ilike('email', email);
+    if (excludeId) query = query.neq('id', excludeId);
+    const { data, error } = await query.maybeSingle();
+    if (error) throw error;
+    if (data) return { field: 'correo', person: data };
+  }
+
+  return null;
 }
 
 export async function GET(request: NextRequest) {
@@ -87,5 +141,129 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('[rrhh/people]', error);
     return NextResponse.json({ error: error instanceof Error ? error.message : 'No se pudo cargar RRHH' }, { status: 500 });
+  }
+}
+
+export async function POST(request: NextRequest) {
+  const context = await getOrganizationContext(request);
+  if (!context.ok) return context.response;
+  if (!allowed(context.role)) return NextResponse.json({ error: 'Forbidden: RRHH access required' }, { status: 403 });
+
+  try {
+    const body = await request.json();
+    const fullName = String(body?.full_name || '').trim();
+    const rut = cleanOptional(body?.rut);
+    const email = cleanOptional(body?.email)?.toLowerCase() || null;
+    const phone = cleanOptional(body?.phone);
+    const roleTitle = cleanOptional(body?.role_title);
+    const employmentStatus = normalizeEmploymentStatus(body?.employment_status);
+
+    if (!fullName) return NextResponse.json({ error: 'El nombre es obligatorio' }, { status: 400 });
+    if (!employmentStatus) return NextResponse.json({ error: 'Estado laboral inválido' }, { status: 400 });
+
+    const duplicate = await findDuplicate(context.supabase, context.organizationId, rut, email);
+    if (duplicate) {
+      return NextResponse.json(
+        { error: `Ya existe una persona con ese ${duplicate.field}: ${duplicate.person.full_name}` },
+        { status: 409 },
+      );
+    }
+
+    const { data: person, error } = await context.supabase
+      .from('people')
+      .insert({
+        organization_id: context.organizationId,
+        full_name: fullName,
+        normalized_name: normalizeName(fullName),
+        rut,
+        email,
+        phone,
+        role_title: roleTitle,
+        employment_status: employmentStatus,
+        source_type: 'manual',
+        source_reference: 'RRHH MOTIL',
+      })
+      .select('id,full_name,rut,email,phone,role_title,employment_status,profile_id,source_type,source_reference,updated_at')
+      .single();
+
+    if (error) throw error;
+
+    return NextResponse.json({
+      person: {
+        ...person,
+        evidence: {
+          caseCount: 0,
+          openCaseCount: 0,
+          evaluationCount: 0,
+          latestScore: null,
+          activityCount: 0,
+          workOrderCount: 0,
+        },
+      },
+    }, { status: 201 });
+  } catch (error) {
+    console.error('[rrhh/people POST]', error);
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'No se pudo crear la persona' }, { status: 500 });
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  const context = await getOrganizationContext(request);
+  if (!context.ok) return context.response;
+  if (!allowed(context.role)) return NextResponse.json({ error: 'Forbidden: RRHH access required' }, { status: 403 });
+
+  try {
+    const body = await request.json();
+    const personId = String(body?.person_id || '').trim();
+    const fullName = String(body?.full_name || '').trim();
+    const rut = cleanOptional(body?.rut);
+    const email = cleanOptional(body?.email)?.toLowerCase() || null;
+    const phone = cleanOptional(body?.phone);
+    const roleTitle = cleanOptional(body?.role_title);
+    const employmentStatus = normalizeEmploymentStatus(body?.employment_status);
+
+    if (!personId) return NextResponse.json({ error: 'person_id es obligatorio' }, { status: 400 });
+    if (!fullName) return NextResponse.json({ error: 'El nombre es obligatorio' }, { status: 400 });
+    if (!employmentStatus) return NextResponse.json({ error: 'Estado laboral inválido' }, { status: 400 });
+
+    const { data: existing, error: existingError } = await context.supabase
+      .from('people')
+      .select('id')
+      .eq('organization_id', context.organizationId)
+      .eq('id', personId)
+      .maybeSingle();
+    if (existingError) throw existingError;
+    if (!existing) return NextResponse.json({ error: 'Persona no encontrada' }, { status: 404 });
+
+    const duplicate = await findDuplicate(context.supabase, context.organizationId, rut, email, personId);
+    if (duplicate) {
+      return NextResponse.json(
+        { error: `Ya existe una persona con ese ${duplicate.field}: ${duplicate.person.full_name}` },
+        { status: 409 },
+      );
+    }
+
+    const { data: person, error } = await context.supabase
+      .from('people')
+      .update({
+        full_name: fullName,
+        normalized_name: normalizeName(fullName),
+        rut,
+        email,
+        phone,
+        role_title: roleTitle,
+        employment_status: employmentStatus,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('organization_id', context.organizationId)
+      .eq('id', personId)
+      .select('id,full_name,rut,email,phone,role_title,employment_status,profile_id,source_type,source_reference,updated_at')
+      .single();
+
+    if (error) throw error;
+    return NextResponse.json({ person });
+  } catch (error) {
+    console.error('[rrhh/people PATCH]', error);
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'No se pudo actualizar la persona' }, { status: 500 });
   }
 }
