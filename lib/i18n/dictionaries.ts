@@ -1033,7 +1033,7 @@ export const dictionaries = {
       },
       workOrderCreate: {
         eyebrow: 'Mantenimiento',
-        title: 'Crear orden de trabajo',
+        title: 'Nueva OT',
         descriptionReview: 'Convierte una condición crítica reportada por Sondaje en una OT trazable. Al crearla, la revisión quedará vinculada automáticamente.',
         descriptionDefault: 'Registra el equipo, el trabajo requerido y la planificación inicial. Los repuestos solicitados quedan trazados sin bloquear la OT por stock durante la puesta en marcha.',
         back: 'Volver',
@@ -1067,7 +1067,7 @@ export const dictionaries = {
           workTitle: 'Trabajo a realizar *',
           workTitlePlaceholder: 'Ej. Cambiar filtros y revisar sistema hidráulico',
           workTitleHint: 'Usa una descripción breve que permita identificar la orden rápidamente.',
-          description: 'Descripción y alcance',
+          description: 'Detalle (opcional)',
           descriptionPlaceholder: 'Condición observada, diagnóstico inicial y alcance esperado',
           materials: 'Materiales / insumos solicitados',
           materialsPlaceholder: 'Ej. Filtro de aceite, filtro de combustible y aceite según vale de consumo',
@@ -1106,7 +1106,7 @@ export const dictionaries = {
         cancel: 'Cancelar',
         creating: 'Creando orden…',
         createAndResolve: 'Crear OT y resolver revisión',
-        create: 'Crear orden',
+        create: 'Crear OT',
       },
       workOrderDetail: {
         back: 'Órdenes de trabajo',
