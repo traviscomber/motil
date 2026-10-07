@@ -64,8 +64,9 @@ export async function GET(request: NextRequest) {
   try {
     const accessLevel = await getModuleAccessLevel(context.userId, context.role, MODULE_KEYS.MANT_OPERACIONES);
     let allowedWorkOrderIds: string[] | null = null;
+    let canEditAssigned = false;
 
-    if (accessLevel === 'SR') {
+    if (accessLevel !== 'ED') {
       const { data: person, error: personError } = await context.supabase
         .from('people')
         .select('id')
@@ -74,17 +75,37 @@ export async function GET(request: NextRequest) {
         .eq('employment_status', 'active')
         .maybeSingle();
       if (personError) throw personError;
-      if (!person) return NextResponse.json({ queue: [], summary: null, canEdit: false, source: 'work_order_close_readiness_v2' });
 
-      const { data: assignedOrders, error: assignedError } = await context.supabase
-        .from('maintenance_work_orders')
-        .select('id')
-        .eq('organization_id', context.organizationId)
-        .eq('assigned_person_id', person.id)
-        .not('status', 'in', '("completed","closed","cancelled","canceled")');
-      if (assignedError) throw assignedError;
-      allowedWorkOrderIds = (assignedOrders || []).map((row) => row.id);
-      if (allowedWorkOrderIds.length === 0) return NextResponse.json({ queue: [], summary: { openOrders: 0, readyToClose: 0, blocked: 0, pendingPlanSteps: 0, workOrdersWithPendingPlan: 0, missingRootCause: 0, missingPreventiveActions: 0, missingActualHours: 0, missingRuntimeEvidence: 0 }, canEdit: true, source: 'work_order_close_readiness_v2' });
+      if (person) {
+        const { data: assignedOrders, error: assignedError } = await context.supabase
+          .from('maintenance_work_orders')
+          .select('id')
+          .eq('organization_id', context.organizationId)
+          .eq('assigned_person_id', person.id)
+          .not('status', 'in', '("completed","closed","cancelled","canceled")');
+        if (assignedError) throw assignedError;
+        allowedWorkOrderIds = (assignedOrders || []).map((row) => row.id);
+        canEditAssigned = allowedWorkOrderIds.length > 0;
+      }
+
+      if (accessLevel === 'SR' && !canEditAssigned) {
+        return NextResponse.json({
+          queue: [],
+          summary: {
+            openOrders: 0,
+            readyToClose: 0,
+            blocked: 0,
+            pendingPlanSteps: 0,
+            workOrdersWithPendingPlan: 0,
+            missingRootCause: 0,
+            missingPreventiveActions: 0,
+            missingActualHours: 0,
+            missingRuntimeEvidence: 0,
+          },
+          canEdit: false,
+          source: 'work_order_close_readiness_v2',
+        });
+      }
     }
 
     let readinessQuery = context.supabase
@@ -129,7 +150,7 @@ export async function GET(request: NextRequest) {
       missingRuntimeEvidence: queue.filter((row) => row.missing_runtime_evidence).length,
     };
 
-    return NextResponse.json({ queue, summary, canEdit: accessLevel === 'ED' || accessLevel === 'SR', source: 'work_order_close_readiness_v2' });
+    return NextResponse.json({ queue, summary, canEdit: accessLevel === 'ED' || canEditAssigned, source: 'work_order_close_readiness_v2' });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'No se pudo cargar la cola de cierre de OT';
     return NextResponse.json({ queue: [], error: message }, { status: 500 });
