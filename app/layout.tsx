@@ -12,11 +12,13 @@ const geist = Geist({ subsets: ['latin'], variable: '--font-geist-sans', display
 const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono', display: 'swap' });
 const montserrat = Montserrat({ subsets: ['latin'], variable: '--font-montserrat', display: 'swap' });
 const manrope = Manrope({ subsets: ['latin'], variable: '--font-manrope', display: 'swap' });
+const PWA_COMPAT_METADATA = { manifest: '/manifest.webmanifest' } as const;
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   const es = locale !== 'en';
   return {
+    ...PWA_COMPAT_METADATA,
     metadataBase: new URL('https://www.motil.app'),
     title: {
       default: es ? 'MOTIL | Sistema Operativo para Minería en Chile' : 'MOTIL | Mining Operating System in Chile',
