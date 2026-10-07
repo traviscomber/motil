@@ -18,12 +18,14 @@ test('terrain surface exposes the full assigned active queue without global main
   assert.match(terrain, /\/api\/maintenance\/my-work/);
   assert.doesNotMatch(terrain, /\/api\/maintenance\/control-center/);
   assert.match(terrain, /actions\.map/);
-  assert.match(terrain, /Primera prioridad/);
+  assert.match(terrain, /Mis OT/);
   assert.match(terrain, /actionState\(action, locale\)/);
   assert.match(terrain, /priorityLabel\(action\.priority, locale\)/);
   assert.match(terrain, /Prioridad/);
   assert.match(terrain, /Media/);
-  assert.match(terrain, /Puedes tener varias OTs asignadas/);
+  assert.match(terrain, /action\.assetName/);
+  assert.doesNotMatch(terrain, /Primera prioridad/);
+  assert.doesNotMatch(terrain, /Puedes tener varias OTs asignadas/);
   assert.match(terrain, /Perfil aún no vinculado/);
   assert.match(terrain, /No tienes trabajo asignado/);
   assert.doesNotMatch(terrain, /Ver todas las órdenes/);
@@ -48,4 +50,6 @@ test('my-work API requires canonical person linkage and scopes work orders to th
   assert.match(myWork, /\.from\('maintenance_work_orders'\)/);
   assert.match(myWork, /\.eq\('assigned_person_id', person\.id\)/);
   assert.match(myWork, /terminalStatuses/);
+  assert.match(myWork, /maintenance_canonical_assets_v1/);
+  assert.match(myWork, /assetNameById/);
 });
