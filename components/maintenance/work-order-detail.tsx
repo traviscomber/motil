@@ -40,12 +40,12 @@ function statusLabel(status: string | null | undefined, t: WorkOrderDetailT) {
   if (status === 'in_progress') return t.status.inProgress;
   if (status === 'open') return t.status.open;
   if (status === 'planned') return t.status.planned;
-  return status || t.status.none;
+  return t.status.none;
 }
 
 function priorityLabel(priority: string | null | undefined, t: WorkOrderDetailT) {
   const labels: Record<string, string> = { low: t.priority.low, medium: t.priority.medium, high: t.priority.high, critical: t.priority.critical };
-  return labels[priority || ''] || priority || t.priority.none;
+  return labels[priority || ''] || t.priority.none;
 }
 
 function typeLabel(type: string | null | undefined, t: WorkOrderDetailT) {
@@ -58,7 +58,7 @@ function typeLabel(type: string | null | undefined, t: WorkOrderDetailT) {
     predictivo: t.workType.predictive,
     inspection: t.workType.inspection,
   };
-  return labels[type || ''] || type || t.workType.none;
+  return labels[type || ''] || t.workType.none;
 }
 
 export function WorkOrderDetail({ locale, dictionary }: { locale: Locale; dictionary: Dictionary }) {
