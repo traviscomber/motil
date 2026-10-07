@@ -24,6 +24,8 @@ export function WorkOrderEvidenceAndApproval({ workOrderId, status }: { workOrde
   const photos = evidence.data?.evidence || [];
   const currentReview = review.data?.review;
   const canApprove = Boolean(review.data?.canApprove);
+  const isOwnWorkOrder = Boolean(review.data?.isOwnWorkOrder);
+  const selfApprovalNotifiesSupervisor = Boolean(review.data?.selfApprovalNotifiesSupervisor);
 
   const approve = async () => {
     const response = await fetch(`/api/maintenance/work-orders/${workOrderId}/review`, {
@@ -81,7 +83,13 @@ export function WorkOrderEvidenceAndApproval({ workOrderId, status }: { workOrde
               ) : (
                 <>
                   <p className="text-sm font-medium">Pendiente de aprobación</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Ariel López o Mauricio Astudillo revisan la evidencia y aprueban la OT.</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {canApprove && isOwnWorkOrder && selfApprovalNotifiesSupervisor
+                      ? 'Puedes aprobarla. Se avisará a tu superior.'
+                      : canApprove
+                        ? 'Revisa la evidencia y aprueba.'
+                        : 'Esperando revisión.'}
+                  </p>
                 </>
               )}
             </div>
