@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
       if (personError) throw personError;
       if (!person) return NextResponse.json({ error: 'Persona no encontrada' }, { status: 404 });
 
-      const [assignments, cases, competencies, credentials, epp, evaluations, operatorActivity, workOrders] = await Promise.all([
+      const [assignments, cases, competencies, credentials, epp, evaluations, operatorActivity, workOrders, peopleOptions] = await Promise.all([
         context.supabase.from('people_employment_assignments').select('*').eq('organization_id', context.organizationId).eq('person_id', personId).order('start_date', { ascending: false }),
         context.supabase.from('people_case_events').select('*').eq('organization_id', context.organizationId).eq('person_id', personId).order('event_date', { ascending: false }),
         context.supabase.from('person_competencies').select('*').eq('organization_id', context.organizationId).eq('person_id', personId).order('created_at', { ascending: false }),
@@ -90,9 +90,10 @@ export async function GET(request: NextRequest) {
         context.supabase.from('person_performance_evaluations').select('*').eq('organization_id', context.organizationId).eq('person_id', personId).order('period_end', { ascending: false }),
         context.supabase.from('production_operator_activity').select('id,operation_date,shift_code,worker_type,role_snapshot,canonical_asset_id,activity_type,activity_status,planned_hours,actual_hours,output_quantity,output_unit,checklist_completed,safety_observation,incident_id,notes,created_at').eq('organization_id', context.organizationId).eq('person_id', personId).order('operation_date', { ascending: false }).limit(100),
         context.supabase.from('maintenance_work_orders').select('id,work_order_number,title,status,priority,work_type,scheduled_date,completion_date,planned_duration_hours,actual_duration_hours,canonical_asset_id').eq('organization_id', context.organizationId).eq('assigned_person_id', personId).order('created_at', { ascending: false }).limit(100),
+        context.supabase.from('people').select('id,full_name,role_title,employment_status').eq('organization_id', context.organizationId).eq('employment_status', 'active').order('full_name'),
       ]);
 
-      const queries = [assignments, cases, competencies, credentials, epp, evaluations, operatorActivity, workOrders];
+      const queries = [assignments, cases, competencies, credentials, epp, evaluations, operatorActivity, workOrders, peopleOptions];
       const failed = queries.find((result) => result.error);
       if (failed?.error) throw failed.error;
 
@@ -106,6 +107,7 @@ export async function GET(request: NextRequest) {
         evaluations: evaluations.data || [],
         operatorActivity: operatorActivity.data || [],
         workOrders: workOrders.data || [],
+        peopleOptions: peopleOptions.data || [],
       });
     }
 
