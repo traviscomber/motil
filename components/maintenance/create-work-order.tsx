@@ -76,6 +76,23 @@ function fill(template: string, vars: Record<string, string | number>) {
   return template.replace(/\{(\w+)\}/g, (_, key: string) => String(vars[key] ?? ''));
 }
 
+function assetIdentity(asset: Pick<Asset, 'code' | 'name'>) {
+  const code = String(asset.code || '').trim();
+  const name = String(asset.name || '').trim();
+  const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  if (code && name && normalize(code) !== normalize(name)) return `${code} · ${name}`;
+  return name || code;
+}
+
+function userFacingCreateError(cause: unknown, fallback: string) {
+  const message = cause instanceof Error ? cause.message.trim() : '';
+  if (!message) return fallback;
+  if (/uuid|sql|postgres|relation|column|function|rpc|pgrst|foreign key|invalid input|stack|undefined|null value|error code|failed/i.test(message)) {
+    return fallback;
+  }
+  return message;
+}
+
 export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictionary: Dictionary }) {
   const t = dictionary.app.workOrderCreate;
   const router = useRouter();
@@ -137,7 +154,7 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
 
   useEffect(() => {
     if (!selectedAsset || assetQuery) return;
-    setAssetQuery(`${selectedAsset.code} · ${selectedAsset.name}`);
+    setAssetQuery(assetIdentity(selectedAsset));
   }, [selectedAsset, assetQuery]);
 
   useEffect(() => {
@@ -169,7 +186,7 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
 
   const chooseAsset = (asset: Asset) => {
     setCanonicalAssetId(asset.id);
-    setAssetQuery(`${asset.code} · ${asset.name}`);
+    setAssetQuery(assetIdentity(asset));
   };
 
   const addMaterial = (item: MaterialCatalogItem) => {
@@ -224,7 +241,7 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
       toast.success(reviewId ? t.toastLinked : t.toastCreated);
       router.push(`/dashboard/mantenimiento/ordenes-trabajo/${payload.data.id}`);
     } catch (submitError) {
-      toast.error(submitError instanceof Error ? submitError.message : t.createError);
+      toast.error(userFacingCreateError(submitError, t.createError));
     } finally {
       setSubmitting(false);
     }
@@ -310,13 +327,13 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
                 disabled={isLoading || Boolean(error) || Boolean(reviewId)}
               />
             </div>
-            {!reviewId && assetQuery !== (selectedAsset ? `${selectedAsset.code} · ${selectedAsset.name}` : '') ? (
+            {!reviewId && assetQuery !== (selectedAsset ? assetIdentity(selectedAsset) : '') ? (
               <div className="max-h-56 overflow-y-auto rounded-md border bg-card">
                 {filteredAssets.length === 0 ? (
                   <p className="p-3 text-sm text-muted-foreground">No hay equipos con ese criterio.</p>
                 ) : filteredAssets.map((asset) => (
                   <button key={asset.id} type="button" onClick={() => chooseAsset(asset)} className="block w-full border-b px-3 py-2 text-left last:border-b-0 hover:bg-muted/50">
-                    <p className="text-sm font-medium">{asset.code} · {asset.name}</p>
+                    <p className="text-sm font-medium">{assetIdentity(asset)}</p>
                     <p className="mt-0.5 text-xs text-muted-foreground">{asset.type}{asset.model ? ` · ${asset.model}` : ''}</p>
                   </button>
                 ))}
