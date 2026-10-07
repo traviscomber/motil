@@ -20,6 +20,10 @@ type BeforeInstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
 };
 
+type MotilInstallWindow = Window & {
+  __motilInstallPrompt?: BeforeInstallPromptEvent | null;
+};
+
 function detectStandalone() {
   const iosStandalone = (navigator as Navigator & { standalone?: boolean }).standalone === true;
   return window.matchMedia('(display-mode: standalone)').matches || iosStandalone;
@@ -46,13 +50,23 @@ export function InstallMotilButton({ locale }: { locale: Locale }) {
     setInstalled(detectStandalone());
     setPlatform(detectPlatform());
 
+    const motilWindow = window as MotilInstallWindow;
+    if (motilWindow.__motilInstallPrompt) {
+      setInstallPrompt(motilWindow.__motilInstallPrompt);
+    }
+
     const media = window.matchMedia('(display-mode: standalone)');
     const onDisplayModeChange = () => setInstalled(detectStandalone());
+    const syncInstallPrompt = () => {
+      setInstallPrompt(motilWindow.__motilInstallPrompt || null);
+    };
     const onBeforeInstall = (event: Event) => {
       event.preventDefault();
+      motilWindow.__motilInstallPrompt = event as BeforeInstallPromptEvent;
       setInstallPrompt(event as BeforeInstallPromptEvent);
     };
     const onInstalled = () => {
+      motilWindow.__motilInstallPrompt = null;
       setInstalled(true);
       setInstallPrompt(null);
       setInstructionsOpen(false);
@@ -61,24 +75,32 @@ export function InstallMotilButton({ locale }: { locale: Locale }) {
     media.addEventListener?.('change', onDisplayModeChange);
     window.addEventListener('beforeinstallprompt', onBeforeInstall);
     window.addEventListener('appinstalled', onInstalled);
+    window.addEventListener('motil-install-prompt-ready', syncInstallPrompt);
+    window.addEventListener('motil-app-installed', onInstalled);
 
     return () => {
       media.removeEventListener?.('change', onDisplayModeChange);
       window.removeEventListener('beforeinstallprompt', onBeforeInstall);
       window.removeEventListener('appinstalled', onInstalled);
+      window.removeEventListener('motil-install-prompt-ready', syncInstallPrompt);
+      window.removeEventListener('motil-app-installed', onInstalled);
     };
   }, []);
 
   if (installed) return null;
 
   const install = async () => {
-    if (!installPrompt) {
+    const motilWindow = window as MotilInstallWindow;
+    const prompt = installPrompt || motilWindow.__motilInstallPrompt || null;
+
+    if (!prompt) {
       setInstructionsOpen(true);
       return;
     }
 
-    await installPrompt.prompt();
-    const choice = await installPrompt.userChoice;
+    await prompt.prompt();
+    const choice = await prompt.userChoice;
+    motilWindow.__motilInstallPrompt = null;
     setInstallPrompt(null);
     if (choice.outcome === 'accepted') setInstalled(true);
   };
