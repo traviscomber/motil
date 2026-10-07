@@ -69,6 +69,7 @@ export function MobileTerrainPanel({ locale }: { locale: Locale }) {
         refresh: 'Refresh',
         loading: 'Loading work orders',
         loadError: 'Could not load work orders',
+        loadErrorDescription: 'Refresh and try again.',
         retry: 'Retry',
         unlinkedTitle: 'User not linked',
         unlinkedDescription: 'This user is not linked to an active person record.',
@@ -85,6 +86,7 @@ export function MobileTerrainPanel({ locale }: { locale: Locale }) {
         refresh: 'Actualizar',
         loading: 'Cargando OT',
         loadError: 'No se pudieron cargar tus OT',
+        loadErrorDescription: 'Actualiza e intenta nuevamente.',
         retry: 'Reintentar',
         unlinkedTitle: 'Usuario sin vínculo operativo',
         unlinkedDescription: 'Este usuario no está asociado a una persona activa.',
@@ -129,7 +131,7 @@ export function MobileTerrainPanel({ locale }: { locale: Locale }) {
       </header>
 
       {isLoading ? <StatePanel tone="loading" title={copy.loading} className="min-h-48" /> : null}
-      {error ? <StatePanel tone="error" title={copy.loadError} description={error.message} actions={<Button variant="outline" onClick={() => void mutate()}>{copy.retry}</Button>} /> : null}
+      {error ? <StatePanel tone="error" title={copy.loadError} description={copy.loadErrorDescription} actions={<Button variant="outline" onClick={() => void mutate()}>{copy.retry}</Button>} /> : null}
       {!isLoading && !error && !identityLinked ? <StatePanel tone="warning" title={copy.unlinkedTitle} description={copy.unlinkedDescription} className="min-h-48" /> : null}
       {!isLoading && !error && identityLinked && actions.length === 0 ? <StatePanel tone="neutral" title={copy.emptyTitle} description={copy.emptyDescription} className="min-h-48" /> : null}
 
