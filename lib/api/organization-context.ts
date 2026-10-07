@@ -80,6 +80,13 @@ function isAssignedWorkOrderExecutionMutation(request: NextRequest) {
   const method = request.method.toUpperCase();
   const path = request.nextUrl.pathname;
 
+  // Creation is authorized inside the canonical work-order route by cargo +
+  // mant_operaciones capability. This narrow bypass prevents the legacy
+  // coarse role gate from blocking valid mine/workshop leadership cargos.
+  if (method === 'POST' && path === '/api/maintenance/work-orders') {
+    return true;
+  }
+
   if (method === 'PATCH' && /^\/api\/maintenance\/work-orders\/[^/]+$/.test(path)) {
     return true;
   }

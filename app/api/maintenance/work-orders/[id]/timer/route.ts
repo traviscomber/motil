@@ -27,7 +27,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   const body = (await request.json().catch(() => null)) as { action?: string; notes?: string | null } | null;
   const action = String(body?.action || '');
+  const notes = body?.notes?.trim() || null;
   if (!TIMER_ACTIONS.has(action)) return NextResponse.json({ ok: false, error: 'Invalid action' }, { status: 400 });
+  if (action === 'pause' && !notes) {
+    return NextResponse.json({ ok: false, error: 'Debes indicar por qué pausas la orden de trabajo.' }, { status: 400 });
+  }
 
   const { data, error } = await context.supabase.rpc('update_work_order_timer', {
     p_organization_id: context.organizationId,
@@ -35,7 +39,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     p_action: action,
     p_actor_id: context.userId,
     p_actor_name: context.userName || context.userEmail || null,
-    p_notes: body?.notes?.trim() || null,
+    p_notes: notes,
   });
 
   if (error) return timerErrorResponse(error);
