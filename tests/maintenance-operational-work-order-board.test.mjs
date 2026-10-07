@@ -12,6 +12,9 @@ test('supervisor OT board is limited to planning and maintenance leadership role
   assert.match(route, /work_order_events/);
   assert.match(route, /work_order_supervisor_reviews/);
   assert.match(route, /maintenance_canonical_assets_v1/);
+  assert.match(route, /canApproveWorkOrders/);
+  assert.match(route, /jefe de planificación/);
+  assert.match(route, /jefe de equipos móviles y estacionarios/);
 });
 
 test('board makes live state, owner, timer and pause comment visible in one row', () => {
