@@ -336,7 +336,6 @@ export function ProgressiveWorkOrderCloseQueue({ locale, dictionary }: { locale:
           <div>
             <p className="text-xs text-muted-foreground">Equipo</p>
             <p className="mt-1 font-medium">{current.asset?.name || t.noAsset}</p>
-            <p className="text-xs text-muted-foreground">{current.asset?.asset_code || ''}</p>
           </div>
 
           <div>
