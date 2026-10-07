@@ -131,7 +131,7 @@ export function MobileWorkOrderFlow({
     }
   }
 
-  async function timerAction(action: 'pause' | 'resume', notes?: string) {
+  async function timerAction(action: 'play' | 'pause' | 'resume', notes?: string) {
     setBusy(true);
     setMessage(null);
     try {
@@ -230,6 +230,11 @@ export function MobileWorkOrderFlow({
             <Button size="lg" className="h-14 w-full text-base" disabled={busy} onClick={() => void startWork()}>
               <CirclePlay className="mr-2 h-5 w-5" />
               {busy ? 'Iniciando...' : 'Iniciar trabajo'}
+            </Button>
+          ) : timerStatus === 'idle' ? (
+            <Button size="lg" className="h-14 w-full text-base" disabled={busy} onClick={() => void timerAction('play')}>
+              <CirclePlay className="mr-2 h-5 w-5" />
+              {busy ? 'Iniciando...' : 'Reanudar trabajo'}
             </Button>
           ) : timerStatus === 'running' && !showPauseForm ? (
             <Button size="lg" className="h-14 w-full text-base" disabled={busy} onClick={() => { setMessage(null); setShowPauseForm(true); }}>
