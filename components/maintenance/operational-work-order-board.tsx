@@ -23,6 +23,8 @@ type BoardRow = {
   totalTimerSeconds: number;
   lastPauseComment: string | null;
   lastPauseAt: string | null;
+  lastComment: string | null;
+  lastCommentAt: string | null;
   asset?: { id: string; code: string | null; name: string | null } | null;
   href: string;
 };
@@ -120,6 +122,7 @@ export function OperationalWorkOrderBoard({ locale }: { locale: Locale }) {
         noAssignee: 'Unassigned',
         pausePrefix: 'Pause',
         noPauseComment: 'Pause without a recorded comment',
+        commentPrefix: 'Comment',
       }
     : {
         eyebrow: 'Mantenimiento · operación',
@@ -143,6 +146,7 @@ export function OperationalWorkOrderBoard({ locale }: { locale: Locale }) {
         noAssignee: 'Sin asignar',
         pausePrefix: 'Pausa',
         noPauseComment: 'Pausa sin comentario registrado',
+        commentPrefix: 'Comentario',
       };
 
   return (
@@ -176,6 +180,7 @@ export function OperationalWorkOrderBoard({ locale }: { locale: Locale }) {
             const pauseText = row.state === 'paused'
               ? row.lastPauseComment || copy.noPauseComment
               : null;
+            const commentText = row.state !== 'paused' ? row.lastComment : null;
 
             return (
               <Link
@@ -197,6 +202,7 @@ export function OperationalWorkOrderBoard({ locale }: { locale: Locale }) {
                     {row.asset?.code || copy.noCode} · {row.asset?.name || copy.noAsset}
                   </p>
                   {pauseText ? <p className="mt-2 text-sm font-medium">{copy.pausePrefix}: {pauseText}</p> : null}
+                  {commentText ? <p className="mt-2 text-sm text-muted-foreground">{copy.commentPrefix}: {commentText}</p> : null}
                 </div>
 
                 <div>
