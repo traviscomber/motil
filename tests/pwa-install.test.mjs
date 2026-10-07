@@ -7,6 +7,8 @@ const layout = await readFile(new URL('../app/layout.tsx', import.meta.url), 'ut
 const installer = await readFile(new URL('../components/pwa/install-motil-button.tsx', import.meta.url), 'utf8');
 const sidebar = await readFile(new URL('../components/layout/sidebar.tsx', import.meta.url), 'utf8');
 const iconRoute = await readFile(new URL('../app/api/pwa/icon-192/route.tsx', import.meta.url), 'utf8');
+const registrar = await readFile(new URL('../components/pwa/service-worker-registrar.tsx', import.meta.url), 'utf8');
+const serviceWorker = await readFile(new URL('../public/sw.js', import.meta.url), 'utf8');
 
 test('MOTIL exposes an installable standalone web app manifest', () => {
   assert.match(manifest, /name: 'MOTIL Mining OS'/);
@@ -33,4 +35,24 @@ test('MOTIL provides the required 192px install icon alongside the existing 512p
   assert.match(iconRoute, /width: 192/);
   assert.match(iconRoute, /height: 192/);
   assert.match(iconRoute, /icon-512\.png/);
+});
+
+
+test('MOTIL registers a root-scoped service worker required by Chrome Android installability', () => {
+  assert.match(layout, /PwaServiceWorkerRegistrar/);
+  assert.match(layout, /mobile-web-app-capable/);
+  assert.match(registrar, /navigator\.serviceWorker\.register\('\/sw\.js'/);
+  assert.match(registrar, /scope: '\/'/);
+  assert.match(registrar, /updateViaCache: 'none'/);
+});
+
+test('MOTIL service worker stays network-authoritative and removes only legacy sustainability caches', () => {
+  assert.match(serviceWorker, /self\.addEventListener\('install'/);
+  assert.match(serviceWorker, /self\.addEventListener\('activate'/);
+  assert.match(serviceWorker, /self\.addEventListener\('fetch'/);
+  assert.match(serviceWorker, /event\.respondWith\(fetch\(request\)\)/);
+  assert.match(serviceWorker, /sostenibilidad-v2/);
+  assert.match(serviceWorker, /sostenibilidad-api-v2/);
+  assert.doesNotMatch(serviceWorker, /cache\.put/);
+  assert.doesNotMatch(serviceWorker, /caches\.open/);
 });
