@@ -16,8 +16,8 @@ test('field maintenance executors enter through assigned-work maintenance home',
 test('execution routing reuses the canonical maintenance viewer-mode resolver', () => {
   assert.match(viewerMode, /cargo\.startsWith\('mecánico'\)/);
   assert.match(viewerMode, /cargo\.startsWith\('jefe de taller mina'\)/);
-  assert.match(viewerMode, /cargo\.startsWith\('jefe mina '\)/);
-  assert.match(viewerMode, /cargo\.startsWith\('jefe de mina '\)/);
+  assert.match(viewerMode, /cargo\.startsWith\('jefe mina '\)[\s\S]*return 'oversight'/);
+  assert.match(viewerMode, /cargo\.startsWith\('jefe de mina '\)[\s\S]*return 'oversight'/);
   assert.match(viewerMode, /cargo === 'encargado de camionetas y camiones'/);
   assert.match(viewerMode, /cargo === 'soldador'/);
   assert.match(viewerMode, /return 'execution'/);
