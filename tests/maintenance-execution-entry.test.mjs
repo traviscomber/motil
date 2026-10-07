@@ -29,10 +29,12 @@ test('execution maintenance home is the assigned-work surface at every viewport'
   assert.doesNotMatch(maintenanceHome, /md:hidden"><MobileTerrainPanel/);
 });
 
-test('execution profiles cannot browse the general work-order queue', () => {
+test('execution profiles cannot browse the general work-order queue and route guard uses canonical profile role', () => {
   assert.match(proxy, /resolveMaintenanceViewerMode/);
-  assert.match(proxy, /request\.cookies\.get\('user_cargo'\)/);
+  assert.match(proxy, /maintenanceViewerModeForProfile\(customSession\.user\.id\)/);
+  assert.match(proxy, /\.from\('profiles'\)\.select\('cargo_id'\)/);
+  assert.match(proxy, /\.from\('cargos'\)\.select\('name'\)/);
   assert.match(proxy, /pathname === '\/dashboard\/mantenimiento\/ordenes-trabajo'/);
-  assert.match(proxy, /resolveMaintenanceViewerMode\(cargoName\) === 'execution'/);
+  assert.match(proxy, /maintenanceMode === 'execution'/);
   assert.match(proxy, /NextResponse\.redirect\(new URL\('\/dashboard\/mantenimiento'/);
 });
