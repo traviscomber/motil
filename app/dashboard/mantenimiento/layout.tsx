@@ -7,7 +7,7 @@ import useSWR from 'swr';
 import { ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-type ViewerMode = 'leadership' | 'planning' | 'execution' | 'general';
+type ViewerMode = 'leadership' | 'planning' | 'execution' | 'oversight' | 'general';
 type ViewerContext = { mode?: ViewerMode };
 
 type NavItem = { href: string; label: string; step?: number };
@@ -40,6 +40,10 @@ const roleNavigation: Record<ViewerMode, { flow: string[]; support: string[] }> 
   execution: {
     flow: [],
     support: [],
+  },
+  oversight: {
+    flow: [],
+    support: ['Resumen', 'Activos'],
   },
   general: {
     flow: ['Planificar', 'Órdenes', 'Cierre'],
