@@ -20,6 +20,7 @@ import { MobileWorkOrderFlow } from '@/components/maintenance/mobile-work-order-
 import { WorkOrderEvidenceAndApproval } from '@/components/maintenance/work-order-evidence-and-approval';
 import { EntityTimeline } from '@/components/shared/entity-timeline';
 import type { Dictionary, Locale } from '@/lib/i18n/dictionaries';
+import { formatWorkOrderNumber } from '@/lib/maintenance/work-order-display';
 
 type WorkOrderDetailT = Dictionary['app']['workOrderDetail'];
 
@@ -101,7 +102,7 @@ export function WorkOrderDetail({ locale, dictionary }: { locale: Locale; dictio
       <div className="space-y-4 py-2 sm:py-6">
         <MobileWorkOrderFlow
           workOrderId={id}
-          workOrderNumber={workOrder.work_order_number}
+          workOrderNumber={formatWorkOrderNumber(workOrder.work_order_number, locale)}
           title={workOrder.title}
           assetName={workOrder.asset_name || workOrder.asset_code}
           description={workOrder.description}
@@ -136,7 +137,7 @@ export function WorkOrderDetail({ locale, dictionary }: { locale: Locale; dictio
         <div>
           <Button asChild variant="ghost" size="sm" className="-ml-3 mb-2"><Link href="/dashboard/mantenimiento/ordenes-trabajo"><ArrowLeft className="mr-2 h-4 w-4" />{t.back}</Link></Button>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-mono text-sm text-muted-foreground">{workOrder.work_order_number}</span>
+            <span className="font-mono text-sm text-muted-foreground">{formatWorkOrderNumber(workOrder.work_order_number, locale)}</span>
             <Badge variant="outline">{statusLabel(workOrder.status, t)}</Badge>
           </div>
           <h1 className="mt-2 text-2xl font-semibold tracking-tight">{workOrder.title || t.untitled}</h1>
@@ -229,7 +230,7 @@ export function WorkOrderDetail({ locale, dictionary }: { locale: Locale; dictio
 
   return <div className="space-y-6">
     <section className="flex flex-col gap-4 border-b border-border/70 pb-6 lg:flex-row lg:items-start lg:justify-between">
-      <div><Button asChild variant="ghost" size="sm" className="-ml-3 mb-2"><Link href="/dashboard/mantenimiento/ordenes-trabajo"><ArrowLeft className="mr-2 h-4 w-4" />{t.back}</Link></Button><div className="flex flex-wrap items-center gap-2"><span className="font-mono text-sm text-muted-foreground">{workOrder.work_order_number}</span><Badge variant="outline">{statusLabel(workOrder.status, t)}</Badge>{isHistorical ? <Badge variant="secondary">{t.historicalBadge}</Badge> : <Badge variant="outline">{t.operationalBadge}</Badge>}</div><h1 className="mt-2 text-3xl font-semibold tracking-tight">{workOrder.title || t.untitled}</h1><p className="mt-2 text-sm text-muted-foreground">{workOrder.asset_code || t.noCode} · {workOrder.asset_name || t.noAsset}</p></div>
+      <div><Button asChild variant="ghost" size="sm" className="-ml-3 mb-2"><Link href="/dashboard/mantenimiento/ordenes-trabajo"><ArrowLeft className="mr-2 h-4 w-4" />{t.back}</Link></Button><div className="flex flex-wrap items-center gap-2"><span className="font-mono text-sm text-muted-foreground">{formatWorkOrderNumber(workOrder.work_order_number, locale)}</span><Badge variant="outline">{statusLabel(workOrder.status, t)}</Badge>{isHistorical ? <Badge variant="secondary">{t.historicalBadge}</Badge> : <Badge variant="outline">{t.operationalBadge}</Badge>}</div><h1 className="mt-2 text-3xl font-semibold tracking-tight">{workOrder.title || t.untitled}</h1><p className="mt-2 text-sm text-muted-foreground">{workOrder.asset_code || t.noCode} · {workOrder.asset_name || t.noAsset}</p></div>
       {!isHistorical ? <div className="flex gap-2">{workOrder.status !== 'in_progress' && workOrder.status !== 'completed' ? <Button onClick={() => void patchOrder({ status: 'in_progress' })} disabled={!canEdit || !workOrder.assigned_person_id}><PlayCircle className="mr-2 h-4 w-4" />{t.actions.startWork}</Button> : null}{workOrder.status === 'in_progress' ? <Button asChild><Link href={`/dashboard/mantenimiento/ordenes-trabajo/cierre?workOrderId=${id}`}><CheckCircle2 className="mr-2 h-4 w-4" />{t.actions.continueClose}</Link></Button> : null}<DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" size="icon" aria-label={t.actions.moreActions}><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem disabled={!canEdit} onClick={() => void patchOrder({ status: 'open' })}><RotateCcw className="mr-2 h-4 w-4" />{t.actions.reopen}</DropdownMenuItem></DropdownMenuContent></DropdownMenu></div> : null}
     </section>
 
