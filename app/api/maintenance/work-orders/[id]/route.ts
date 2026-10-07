@@ -199,9 +199,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         .select('id', { head: true, count: 'exact' })
         .eq('organization_id', context.organizationId)
         .eq('work_order_id', id)
-        .eq('evidence_type', 'photo');
+        .eq('evidence_type', 'photo')
+      .eq('evidence_tag', 'completed');
       if (evidenceError) throw evidenceError;
-      if ((evidenceCount || 0) < 1) return NextResponse.json({ error: 'Agrega al menos una foto como evidencia antes de cerrar la OT.' }, { status: 409 });
+      if ((evidenceCount || 0) < 1) return NextResponse.json({ error: 'Agrega al menos una foto con tag Trabajo terminado antes de cerrar la OT.' }, { status: 409 });
 
       const rootCause = String(body.root_cause || '').trim();
       const preventiveActions = String(body.preventive_actions || '').trim();
