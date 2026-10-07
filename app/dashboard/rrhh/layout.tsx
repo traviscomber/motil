@@ -7,8 +7,6 @@ import { cn } from '@/lib/utils';
 
 const views = [
   { href: '/dashboard/rrhh', label: 'Personas' },
-  { href: '/dashboard/rrhh/operacion', label: 'Capacidad operacional' },
-  { href: '/dashboard/rrhh/fuentes', label: 'Fuentes' },
   { href: '/dashboard/tareas', label: 'Calendario' },
 ];
 
