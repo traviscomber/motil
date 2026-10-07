@@ -39,6 +39,15 @@ const fetcher = async (url: string): Promise<TimerResponse> => {
   return payload as TimerResponse;
 };
 
+function userFacingError(cause: unknown, fallback: string) {
+  const message = cause instanceof Error ? cause.message.trim() : '';
+  if (!message) return fallback;
+  if (/uuid|sql|postgres|relation|column|function|rpc|pgrst|foreign key|invalid input|stack|undefined|null value|error code|failed/i.test(message)) {
+    return fallback;
+  }
+  return message;
+}
+
 function duration(totalSeconds: number) {
   const safe = Math.max(0, Math.floor(totalSeconds));
   const hours = Math.floor(safe / 3600);
@@ -125,7 +134,7 @@ export function MobileWorkOrderFlow({
       }
       await Promise.all([onWorkOrderChange(), mutate()]);
     } catch (cause) {
-      setMessage(cause instanceof Error ? cause.message : 'No se pudo iniciar el trabajo.');
+      setMessage(userFacingError(cause, 'No se pudo iniciar el trabajo.'));
     } finally {
       setBusy(false);
     }
@@ -147,7 +156,7 @@ export function MobileWorkOrderFlow({
         setPauseDetail('');
       }
     } catch (cause) {
-      setMessage(cause instanceof Error ? cause.message : 'No se pudo actualizar el tiempo.');
+      setMessage(userFacingError(cause, 'No se pudo actualizar el tiempo.'));
     } finally {
       setBusy(false);
     }
@@ -179,7 +188,7 @@ export function MobileWorkOrderFlow({
       }
       router.push(`/dashboard/mantenimiento/ordenes-trabajo/cierre?workOrderId=${encodeURIComponent(workOrderId)}`);
     } catch (cause) {
-      setMessage(cause instanceof Error ? cause.message : 'No se pudo preparar el cierre.');
+      setMessage(userFacingError(cause, 'No se pudo preparar el cierre.'));
       setBusy(false);
     }
   }
