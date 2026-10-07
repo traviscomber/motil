@@ -6,7 +6,11 @@ const viewerMode = await fs.readFile('lib/maintenance/viewer-mode.ts', 'utf8');
 const viewerContext = await fs.readFile('app/api/maintenance/viewer-context/route.ts', 'utf8');
 
 test('cross-functional maintenance viewers resolve to oversight without inventing execution ownership', () => {
-  assert.match(viewerMode, /cargo === 'gerente operaciones' \|\| cargo === 'jefe sostenibilidad'\) return 'oversight'/);
+  assert.match(viewerMode, /cargo === 'gerente operaciones'/);
+  assert.match(viewerMode, /cargo === 'jefe sostenibilidad'/);
+  assert.match(viewerMode, /cargo\.startsWith\('jefe mina '\)/);
+  assert.match(viewerMode, /cargo\.startsWith\('jefe de mina '\)/);
+  assert.match(viewerMode, /return 'oversight'/);
   assert.match(viewerMode, /cargo === 'jefe de planificación'\) return 'planning'/);
   assert.match(viewerMode, /cargo === 'jefe departamento de mantenimiento'\) return 'leadership'/);
   assert.match(viewerMode, /cargo\.startsWith\('mecánico'\)/);

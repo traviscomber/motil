@@ -49,7 +49,7 @@ test('progressive closure exposes one next action and requires an explicit close
   assert.match(page, /getDictionaryForRequest\(\)/);
   assert.match(dictionaries, /nextActionBadge: 'Siguiente acción'/);
   assert.match(dictionaries, /saveContinue: 'Guardar y continuar'/);
-  assert.match(dictionaries, /closeFreeze: 'Cerrar OT y congelar costo'/);
+  assert.match(dictionaries, /closeFreeze: 'Cerrar OT'/);
 });
 
 test('scheduled maintenance hands completion to the safe progressive closure flow', () => {

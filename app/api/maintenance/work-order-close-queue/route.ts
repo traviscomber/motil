@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getOrganizationContext } from '@/lib/api/organization-context';
 import { getModuleAccessLevel, MODULE_KEYS } from '@/lib/api/module-access';
+import { resolveMaintenanceViewerMode } from '@/lib/maintenance/viewer-mode';
 
 type CloseQueueRow = {
   organization_id: string;
@@ -63,9 +64,30 @@ export async function GET(request: NextRequest) {
 
   try {
     const accessLevel = await getModuleAccessLevel(context.userId, context.role, MODULE_KEYS.MANT_OPERACIONES);
+    const { data: profile, error: profileError } = await context.supabase
+      .from('profiles')
+      .select('cargo_id')
+      .eq('id', context.userId)
+      .eq('organization_id', context.organizationId)
+      .maybeSingle();
+    if (profileError) throw profileError;
+
+    let cargoName: string | null = null;
+    if (profile?.cargo_id) {
+      const { data: cargo, error: cargoError } = await context.supabase
+        .from('cargos')
+        .select('name')
+        .eq('id', profile.cargo_id)
+        .maybeSingle();
+      if (cargoError) throw cargoError;
+      cargoName = cargo?.name || null;
+    }
+
+    const executionScope = resolveMaintenanceViewerMode(cargoName) === 'execution';
+    const scopeToAssignee = executionScope || accessLevel === 'SR';
     let allowedWorkOrderIds: string[] | null = null;
 
-    if (accessLevel === 'SR') {
+    if (scopeToAssignee) {
       const { data: person, error: personError } = await context.supabase
         .from('people')
         .select('id')
@@ -74,7 +96,7 @@ export async function GET(request: NextRequest) {
         .eq('employment_status', 'active')
         .maybeSingle();
       if (personError) throw personError;
-      if (!person) return NextResponse.json({ queue: [], summary: null, canEdit: false, source: 'work_order_close_readiness_v2' });
+      if (!person) return NextResponse.json({ queue: [], summary: null, canEdit: false, assignedOnly: true, source: 'work_order_close_readiness_v2' });
 
       const { data: assignedOrders, error: assignedError } = await context.supabase
         .from('maintenance_work_orders')
@@ -84,7 +106,7 @@ export async function GET(request: NextRequest) {
         .not('status', 'in', '("completed","closed","cancelled","canceled")');
       if (assignedError) throw assignedError;
       allowedWorkOrderIds = (assignedOrders || []).map((row) => row.id);
-      if (allowedWorkOrderIds.length === 0) return NextResponse.json({ queue: [], summary: { openOrders: 0, readyToClose: 0, blocked: 0, pendingPlanSteps: 0, workOrdersWithPendingPlan: 0, missingRootCause: 0, missingPreventiveActions: 0, missingActualHours: 0, missingRuntimeEvidence: 0 }, canEdit: true, source: 'work_order_close_readiness_v2' });
+      if (allowedWorkOrderIds.length === 0) return NextResponse.json({ queue: [], summary: { openOrders: 0, readyToClose: 0, blocked: 0, pendingPlanSteps: 0, workOrdersWithPendingPlan: 0, missingRootCause: 0, missingPreventiveActions: 0, missingActualHours: 0, missingRuntimeEvidence: 0 }, canEdit: accessLevel === 'ED' || accessLevel === 'SR', assignedOnly: true, source: 'work_order_close_readiness_v2' });
     }
 
     let readinessQuery = context.supabase
@@ -129,7 +151,7 @@ export async function GET(request: NextRequest) {
       missingRuntimeEvidence: queue.filter((row) => row.missing_runtime_evidence).length,
     };
 
-    return NextResponse.json({ queue, summary, canEdit: accessLevel === 'ED' || accessLevel === 'SR', source: 'work_order_close_readiness_v2' });
+    return NextResponse.json({ queue, summary, canEdit: accessLevel === 'ED' || accessLevel === 'SR', assignedOnly: scopeToAssignee, source: 'work_order_close_readiness_v2' });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'No se pudo cargar la cola de cierre de OT';
     return NextResponse.json({ queue: [], error: message }, { status: 500 });

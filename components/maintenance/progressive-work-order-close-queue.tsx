@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import type { Dictionary, Locale } from '@/lib/i18n/dictionaries';
+import { formatWorkOrderNumber } from '@/lib/maintenance/work-order-display';
 
 type QueueRow = {
   work_order_id: string;
@@ -287,15 +288,46 @@ export function ProgressiveWorkOrderCloseQueue({ locale, dictionary }: { locale:
   return (
     <div className="mx-auto max-w-3xl space-y-4">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground">{queue.length.toLocaleString(numberLocale)} OT{queue.length === 1 ? '' : 's'} pendiente{queue.length === 1 ? '' : 's'}</p>
+        <div>
+          <p className="font-medium">Cierre</p>
+          <p className="text-sm text-muted-foreground">{queue.length.toLocaleString(numberLocale)} OT pendiente{queue.length === 1 ? '' : 's'}</p>
+        </div>
         <div className="flex items-center gap-2">
           {Number(current.standard_plan_steps_total || 0) > 0 ? (
             <Badge variant="secondary">
               {fill(t.planBadgeTemplate, { completed: current.standard_plan_steps_completed || 0, total: current.standard_plan_steps_total || 0 })}
             </Badge>
           ) : null}
-          <Badge variant="outline">{current.work_order_number || 'OT'}</Badge>
+          <Badge variant="outline">{formatWorkOrderNumber(current.work_order_number, locale)}</Badge>
         </div>
+      </div>
+
+      <div className="overflow-hidden rounded-lg border bg-card">
+        {queue.map((row) => {
+          const rowActionKey = ACTION_KEYS[row.next_action];
+          const rowTitle = rowActionKey ? t.actionTitles[rowActionKey] : t.fallbackAction.title;
+          const selected = row.work_order_id === current.work_order_id;
+          return (
+            <Link
+              key={row.work_order_id}
+              href={`/dashboard/mantenimiento/ordenes-trabajo/cierre?workOrderId=${encodeURIComponent(row.work_order_id)}`}
+              aria-current={selected ? 'page' : undefined}
+              className={`grid gap-2 border-b p-4 outline-none transition-colors last:border-b-0 hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:grid-cols-[1fr_auto] sm:items-center ${selected ? 'bg-muted/40' : ''}`}
+            >
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-mono text-xs text-muted-foreground">{formatWorkOrderNumber(row.work_order_number, locale)}</span>
+                </div>
+                <p className="mt-1 truncate text-sm font-medium">{row.title || t.untitled}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{row.asset?.name || t.noAsset} · {rowTitle}</p>
+              </div>
+              <span className="inline-flex items-center gap-2 text-sm font-medium">
+                {selected ? 'Continuar' : 'Abrir'}
+                <ArrowRight className="h-4 w-4" />
+              </span>
+            </Link>
+          );
+        })}
       </div>
 
       <Card className="shadow-none">
@@ -303,7 +335,6 @@ export function ProgressiveWorkOrderCloseQueue({ locale, dictionary }: { locale:
           <div>
             <p className="text-xs text-muted-foreground">Equipo</p>
             <p className="mt-1 font-medium">{current.asset?.name || t.noAsset}</p>
-            <p className="text-xs text-muted-foreground">{current.asset?.asset_code || ''}</p>
           </div>
 
           <div>

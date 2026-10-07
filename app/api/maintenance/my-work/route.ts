@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getOrganizationContext } from '@/lib/api/organization-context';
 import { MODULE_KEYS, requireModuleAccess } from '@/lib/api/module-access';
 import { resolveMaintenanceViewerMode } from '@/lib/maintenance/viewer-mode';
+import { getMaintenanceWorkOrderCreationCapability } from '@/lib/maintenance/work-order-create-access';
 
 const terminalStatuses = new Set(['completed', 'closed', 'cancelled']);
 const activeTimerStatuses = new Set(['running', 'paused']);
@@ -47,21 +48,56 @@ export async function GET(request: NextRequest) {
       .maybeSingle();
     if (personError) throw personError;
 
+    const creationCapability = await getMaintenanceWorkOrderCreationCapability(context);
+
     if (!person?.id) {
       return NextResponse.json({
         identityLinked: false,
         actions: [],
         canEdit: access.canWrite,
+        canCreateWorkOrder: creationCapability.canCreate,
         sources: ['profiles', 'cargos', 'people'],
       });
     }
 
     const { data: rows, error: workOrdersError } = await context.supabase
       .from('maintenance_work_orders')
-      .select('id,work_order_number,title,status,priority,scheduled_date,start_date,created_at,timer_status,total_timer_minutes,canonical_asset_id')
+      .select('id,work_order_number,title,status,priority,scheduled_date,start_date,created_at,timer_status,total_timer_minutes,total_timer_seconds,canonical_asset_id')
       .eq('organization_id', context.organizationId)
       .eq('assigned_person_id', person.id);
     if (workOrdersError) throw workOrdersError;
+
+    const assetIds = [...new Set((rows || []).map((row: any) => row.canonical_asset_id).filter(Boolean).map(String))];
+    const workOrderIds = (rows || []).map((row: any) => String(row.id));
+    const [assetResult, pauseResult] = await Promise.all([
+      assetIds.length > 0
+        ? context.supabase
+            .from('maintenance_canonical_assets_v1')
+            .select('id,name')
+            .eq('organization_id', context.organizationId)
+            .in('id', assetIds)
+        : Promise.resolve({ data: [], error: null }),
+      workOrderIds.length > 0
+        ? context.supabase
+            .from('work_order_events')
+            .select('work_order_id,event_at,payload')
+            .eq('organization_id', context.organizationId)
+            .eq('event_type', 'timer_pause')
+            .in('work_order_id', workOrderIds)
+            .order('event_at', { ascending: false })
+            .limit(200)
+        : Promise.resolve({ data: [], error: null }),
+    ]);
+    if (assetResult.error || pauseResult.error) throw assetResult.error || pauseResult.error;
+
+    const assetNameById = new Map((assetResult.data || []).map((asset: any) => [String(asset.id), String(asset.name || '')]));
+    const lastPauseByWorkOrder = new Map<string, string>();
+    for (const event of pauseResult.data || []) {
+      const workOrderId = String((event as any).work_order_id);
+      if (lastPauseByWorkOrder.has(workOrderId)) continue;
+      const note = String((event as any).payload?.notes || '').trim();
+      if (note) lastPauseByWorkOrder.set(workOrderId, note);
+    }
 
     const actions = (rows || [])
       .filter((row: any) => !terminalStatuses.has(String(row.status || '').toLowerCase()))
@@ -75,17 +111,35 @@ export async function GET(request: NextRequest) {
         return Date.parse(String(a.created_at || '')) - Date.parse(String(b.created_at || ''));
       })
       .map((row: any) => {
-        const number = row.work_order_number || 'OT';
-        const timerState = String(row.timer_status || '').toLowerCase();
-        const isActive = activeTimerStatuses.has(timerState) || String(row.status || '').toLowerCase() === 'in_progress';
+        const workOrderNumber = row.work_order_number || 'OT';
+        const workOrderStatus = String(row.status || '').toLowerCase();
+        const timerStatus = String(row.timer_status || '').toLowerCase();
+        const isActive = activeTimerStatuses.has(timerStatus) || workOrderStatus === 'in_progress';
+        const stateLabel = timerStatus === 'running'
+          ? 'En curso'
+          : timerStatus === 'paused'
+            ? 'Pausada'
+            : workOrderStatus === 'in_progress'
+              ? 'Por reanudar'
+              : 'Pendiente';
         const scheduledEvidence = row.scheduled_date ? `Programada ${row.scheduled_date}` : 'Sin fecha programada';
         const priorityEvidence = row.priority ? ` · Prioridad ${row.priority}` : '';
+
         return {
           id: String(row.id),
-          title: `${isActive ? 'Continuar' : 'Iniciar'} · ${number}`,
-          description: row.title || 'Orden de trabajo asignada',
+          workOrderNumber,
+          title: row.title || 'Orden de trabajo asignada',
+          assetName: row.canonical_asset_id ? assetNameById.get(String(row.canonical_asset_id)) || null : null,
+          pauseReason: timerStatus === 'paused' ? lastPauseByWorkOrder.get(String(row.id)) || null : null,
           evidence: `${scheduledEvidence}${priorityEvidence}`,
           href: `/dashboard/mantenimiento/ordenes-trabajo/${encodeURIComponent(String(row.id))}`,
+          actionLabel: isActive ? 'Reanudar' : 'Iniciar',
+          stateLabel,
+          status: workOrderStatus,
+          timerStatus,
+          priority: row.priority || null,
+          scheduledDate: row.scheduled_date || null,
+          totalTimerSeconds: Number(row.total_timer_seconds || 0),
         };
       });
 
@@ -93,7 +147,8 @@ export async function GET(request: NextRequest) {
       identityLinked: true,
       actions,
       canEdit: access.canWrite,
-      sources: ['profiles', 'cargos', 'people', 'maintenance_work_orders'],
+      canCreateWorkOrder: creationCapability.canCreate,
+      sources: ['profiles', 'cargos', 'people', 'maintenance_work_orders', 'maintenance_canonical_assets_v1', 'work_order_events'],
     });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'No se pudo cargar tu trabajo asignado' }, { status: 500 });

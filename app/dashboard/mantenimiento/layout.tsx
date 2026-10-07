@@ -7,7 +7,7 @@ import useSWR from 'swr';
 import { ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-type ViewerMode = 'leadership' | 'planning' | 'execution' | 'general';
+type ViewerMode = 'leadership' | 'planning' | 'execution' | 'oversight' | 'general';
 type ViewerContext = { mode?: ViewerMode };
 
 type NavItem = { href: string; label: string; step?: number };
@@ -38,8 +38,12 @@ const roleNavigation: Record<ViewerMode, { flow: string[]; support: string[] }> 
     support: ['Resumen', 'Activos', 'Fuentes'],
   },
   execution: {
-    flow: ['Órdenes', 'Cierre'],
-    support: ['Resumen'],
+    flow: [],
+    support: [],
+  },
+  oversight: {
+    flow: [],
+    support: ['Resumen', 'Activos'],
   },
   general: {
     flow: ['Planificar', 'Órdenes', 'Cierre'],
@@ -104,7 +108,7 @@ function isSupportActive(pathname: string, href: string) {
 
 export default function MaintenanceLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const { data: viewer } = useSWR<ViewerContext>(
+  const { data: viewer, error: viewerError, isLoading: viewerLoading } = useSWR<ViewerContext>(
     '/api/maintenance/viewer-context',
     (url) => fetcher<ViewerContext>(url),
     { revalidateOnFocus: false },
@@ -113,6 +117,10 @@ export default function MaintenanceLayout({ children }: { children: ReactNode })
   const allowed = roleNavigation[mode];
   const visibleFlowItems = flowItems.filter((item) => allowed.flow.includes(item.label));
   const visibleSupportItems = supportItems.filter((item) => allowed.support.includes(item.label));
+
+  if (viewerLoading || viewerError || mode === 'execution') {
+    return <>{children}</>;
+  }
 
   return (
     <div className="space-y-5">

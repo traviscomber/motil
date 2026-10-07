@@ -48,6 +48,11 @@ type ReviewRouteRow = {
   source_report_id: string;
   review_id: string;
   canonical_asset_id: string | null;
+  asset_code: string | null;
+  asset_name: string | null;
+  review_reason: string | null;
+  equipment_status_raw: string | null;
+  machine_observations: string | null;
 };
 
 const TASK_COLUMNS = [
@@ -172,6 +177,32 @@ function responsibilityLabel(responsibility: RoleTask['responsibility']) {
   if (responsibility === 'support') return 'Apoyo';
   if (responsibility === 'escalation') return 'Escalación';
   return responsibility;
+}
+
+function maintenanceReviewCopy(base: RoleTask, reviewById: Map<string, ReviewRouteRow>) {
+  const [kind, rawId, ...rest] = base.task_key.split(':');
+  if (kind !== 'maintenance_review' || !rawId || rest.length !== 0) {
+    return { title: base.title, evidence_summary: base.evidence_summary };
+  }
+
+  const review = reviewById.get(rawId);
+  if (!review) return { title: base.title, evidence_summary: base.evidence_summary };
+
+  const reason = String(review.review_reason || '').toLowerCase();
+  const title =
+    reason === 'out_of_service'
+      ? 'Mantenimiento: equipo fuera de servicio'
+      : reason === 'operational_with_observations'
+        ? 'Mantenimiento: equipo con observaciones'
+        : reason === 'machine_observation'
+          ? 'Mantenimiento: observación de equipo'
+          : 'Mantenimiento: revisión de equipo';
+
+  const asset = String(review.asset_name || '').trim();
+  const observation = String(review.machine_observations || '').trim();
+  const evidence_summary = [asset, observation].filter(Boolean).join(' · ') || 'Equipo pendiente de revisión';
+
+  return { title, evidence_summary };
 }
 
 function deduplicateTasks(rows: RoleTask[]) {
@@ -358,27 +389,47 @@ export async function GET(request: NextRequest) {
       })
       .filter((value): value is string => Boolean(value))
   ));
+  const maintenanceReviewIds = Array.from(new Set(
+    baseRows
+      .map((task) => {
+        const [kind, rawId, ...rest] = task.task_key.split(':');
+        return kind === 'maintenance_review' && rawId && rest.length === 0 ? rawId : null;
+      })
+      .filter((value): value is string => Boolean(value))
+  ));
 
-  let reviewRows: ReviewRouteRow[] = [];
-  if (drillingSourceIds.length) {
-    const { data, error } = await context.supabase
-      .from('drilling_maintenance_review_queue_v1')
-      .select('source_report_id, review_id, canonical_asset_id')
-      .eq('organization_id', context.organizationId)
-      .in('source_report_id', drillingSourceIds);
+  const reviewSelect = 'source_report_id, review_id, canonical_asset_id, asset_code, asset_name, review_reason, equipment_status_raw, machine_observations';
+  const [sourceReviews, taskReviews] = await Promise.all([
+    drillingSourceIds.length
+      ? context.supabase
+          .from('drilling_maintenance_review_queue_v1')
+          .select(reviewSelect)
+          .eq('organization_id', context.organizationId)
+          .in('source_report_id', drillingSourceIds)
+      : Promise.resolve({ data: [], error: null }),
+    maintenanceReviewIds.length
+      ? context.supabase
+          .from('drilling_maintenance_review_queue_v1')
+          .select(reviewSelect)
+          .eq('organization_id', context.organizationId)
+          .in('review_id', maintenanceReviewIds)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
 
-    if (error) {
-      console.warn('[role-task-inbox] review route lookup failed; using module fallback', error);
-    } else {
-      reviewRows = (data || []) as ReviewRouteRow[];
-    }
+  if (sourceReviews.error || taskReviews.error) {
+    console.warn('[role-task-inbox] maintenance review lookup failed; using source copy', sourceReviews.error || taskReviews.error);
   }
+
+  const reviewRows = [...(sourceReviews.data || []), ...(taskReviews.data || [])] as ReviewRouteRow[];
 
   const stateMap = new Map<string, TaskState>(
     ((stateResult.data || []) as TaskState[]).map((state) => [state.source_key, state])
   );
   const reviewRoutes = new Map<string, ReviewRouteRow>(
     reviewRows.map((row) => [row.source_report_id, row])
+  );
+  const reviewById = new Map<string, ReviewRouteRow>(
+    reviewRows.map((row) => [row.review_id, row])
   );
   const catalogByPrefix = new Map<string, ActionCatalogRow[]>();
 
@@ -403,8 +454,11 @@ export async function GET(request: NextRequest) {
         }))
       : [];
 
+    const presentation = maintenanceReviewCopy(base as RoleTask, reviewById);
     const task: RoleTask = {
       ...base,
+      title: presentation.title,
+      evidence_summary: presentation.evidence_summary,
       personal_status: state?.status || 'pending',
       snoozed_until: snoozedUntil,
       visible_now: visibleNow,

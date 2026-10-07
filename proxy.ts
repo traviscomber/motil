@@ -82,6 +82,19 @@ async function canAccessDashboardRoute(profileId: string, role: string | null | 
     : (accessRows ?? []).some((row) => row.access_level === 'ED' || row.access_level === 'LEC');
 }
 
+async function maintenanceViewerModeForProfile(profileId: string) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceRoleKey) return 'general' as const;
+
+  const admin = createClient(url, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { data: profile } = await admin.from('profiles').select('cargo_id').eq('id', profileId).maybeSingle();
+  if (!profile?.cargo_id) return 'general' as const;
+
+  const { data: cargo } = await admin.from('cargos').select('name').eq('id', profile.cargo_id).maybeSingle();
+  return resolveMaintenanceViewerMode(cargo?.name || null);
+}
+
 async function isActiveCustomSessionProfile(profileId: string) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -283,12 +296,11 @@ async function proxyRequest(request: NextRequest) {
   }
 
   if (pathname.startsWith('/dashboard') && customSession) {
-    const cargoName = request.cookies.get('user_cargo')?.value || null;
-    if (
-      pathname === '/dashboard/mantenimiento/ordenes-trabajo' &&
-      resolveMaintenanceViewerMode(cargoName) === 'execution'
-    ) {
-      return withSecurityHeaders(NextResponse.redirect(new URL('/dashboard/mantenimiento', request.url)));
+    if (pathname === '/dashboard/mantenimiento/ordenes-trabajo') {
+      const maintenanceMode = await maintenanceViewerModeForProfile(customSession.user.id);
+      if (maintenanceMode === 'execution') {
+        return withSecurityHeaders(NextResponse.redirect(new URL('/dashboard/mantenimiento', request.url)));
+      }
     }
 
     try {

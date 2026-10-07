@@ -16,6 +16,8 @@ test('field maintenance executors enter through assigned-work maintenance home',
 test('execution routing reuses the canonical maintenance viewer-mode resolver', () => {
   assert.match(viewerMode, /cargo\.startsWith\('mecánico'\)/);
   assert.match(viewerMode, /cargo\.startsWith\('jefe de taller mina'\)/);
+  assert.match(viewerMode, /cargo\.startsWith\('jefe mina '\)[\s\S]*return 'oversight'/);
+  assert.match(viewerMode, /cargo\.startsWith\('jefe de mina '\)[\s\S]*return 'oversight'/);
   assert.match(viewerMode, /cargo === 'encargado de camionetas y camiones'/);
   assert.match(viewerMode, /cargo === 'soldador'/);
   assert.match(viewerMode, /return 'execution'/);
@@ -23,16 +25,18 @@ test('execution routing reuses the canonical maintenance viewer-mode resolver', 
 
 test('execution maintenance home is the assigned-work surface at every viewport', () => {
   assert.match(maintenanceHome, /if \(mode === 'execution'\) \{/);
-  assert.match(maintenanceHome, /<MobileTerrainPanel \/>/);
+  assert.match(maintenanceHome, /<MobileTerrainPanel locale=\{locale\} \/>/);
   assert.match(maintenanceHome, /max-w-xl/);
   assert.doesNotMatch(maintenanceHome, /mode==='execution' \? 'hidden md:block'/);
   assert.doesNotMatch(maintenanceHome, /md:hidden"><MobileTerrainPanel/);
 });
 
-test('execution profiles cannot browse the general work-order queue', () => {
+test('execution profiles cannot browse the general work-order queue and route guard uses canonical profile role', () => {
   assert.match(proxy, /resolveMaintenanceViewerMode/);
-  assert.match(proxy, /request\.cookies\.get\('user_cargo'\)/);
+  assert.match(proxy, /maintenanceViewerModeForProfile\(customSession\.user\.id\)/);
+  assert.match(proxy, /\.from\('profiles'\)\.select\('cargo_id'\)/);
+  assert.match(proxy, /\.from\('cargos'\)\.select\('name'\)/);
   assert.match(proxy, /pathname === '\/dashboard\/mantenimiento\/ordenes-trabajo'/);
-  assert.match(proxy, /resolveMaintenanceViewerMode\(cargoName\) === 'execution'/);
+  assert.match(proxy, /maintenanceMode === 'execution'/);
   assert.match(proxy, /NextResponse\.redirect\(new URL\('\/dashboard\/mantenimiento'/);
 });

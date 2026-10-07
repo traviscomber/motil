@@ -4,6 +4,7 @@ import useSWR from 'swr';
 import { CheckCircle2, Image as ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { StatePanel } from '@/components/ui/state-panel';
 
 const fetcher = async (url: string) => {
   const response = await fetch(url, { credentials: 'include' });
@@ -24,6 +25,23 @@ export function WorkOrderEvidenceAndApproval({ workOrderId, status }: { workOrde
   const photos = evidence.data?.evidence || [];
   const currentReview = review.data?.review;
   const canApprove = Boolean(review.data?.canApprove);
+
+  if (status !== 'completed' && evidence.isLoading) return null;
+  if (status !== 'completed' && !evidence.error && photos.length === 0) return null;
+  if (status === 'completed' && (evidence.isLoading || review.isLoading)) {
+    return <StatePanel tone="loading" title="Cargando cierre" className="min-h-24" />;
+  }
+  if (evidence.error || (status === 'completed' && review.error)) {
+    return (
+      <StatePanel
+        tone="error"
+        title="No se pudo cargar el cierre"
+        description="Actualiza para revisar evidencia y aprobación."
+        actions={<Button variant="outline" onClick={() => void Promise.all([evidence.mutate(), review.mutate()])}>Reintentar</Button>}
+        className="min-h-0 py-4"
+      />
+    );
+  }
 
   const approve = async () => {
     const response = await fetch(`/api/maintenance/work-orders/${workOrderId}/review`, {
@@ -81,7 +99,7 @@ export function WorkOrderEvidenceAndApproval({ workOrderId, status }: { workOrde
               ) : (
                 <>
                   <p className="text-sm font-medium">Pendiente de aprobación</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Ariel López o Mauricio Astudillo revisan la evidencia y aprueban la OT.</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Planificación o Jefatura de Equipos revisa la evidencia y aprueba la OT.</p>
                 </>
               )}
             </div>

@@ -8,15 +8,34 @@ import { requireOperationalMaintenanceWorkOrder } from '@/lib/maintenance/work-o
 
 async function getReviewerPerson(context: Awaited<ReturnType<typeof getOrganizationContext>>) {
   if (!context.ok) return null;
-  const { data, error } = await context.supabase
-    .from('people')
-    .select('id,full_name')
-    .eq('organization_id', context.organizationId)
-    .eq('profile_id', context.userId)
-    .eq('employment_status', 'active')
+
+  const [{ data: person, error: personError }, { data: profile, error: profileError }] = await Promise.all([
+    context.supabase
+      .from('people')
+      .select('id,full_name')
+      .eq('organization_id', context.organizationId)
+      .eq('profile_id', context.userId)
+      .eq('employment_status', 'active')
+      .maybeSingle(),
+    context.supabase
+      .from('profiles')
+      .select('cargo_id')
+      .eq('organization_id', context.organizationId)
+      .eq('id', context.userId)
+      .maybeSingle(),
+  ]);
+  if (personError || profileError || !person || !profile?.cargo_id) return null;
+
+  const { data: cargo, error: cargoError } = await context.supabase
+    .from('cargos')
+    .select('name')
+    .eq('id', profile.cargo_id)
     .maybeSingle();
-  if (error || !data) return null;
-  return ['Ariel López', 'Mauricio Astudillo'].includes(String(data.full_name || '')) ? data : null;
+  if (cargoError || !cargo?.name) return null;
+
+  const cargoName = String(cargo.name).trim().toLowerCase();
+  const allowed = new Set(['jefe de planificación', 'jefe de equipos móviles y estacionarios']);
+  return allowed.has(cargoName) ? person : null;
 }
 
 async function authorizeRead(request: NextRequest, workOrderId: string) {
@@ -73,7 +92,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   const reviewer = await getReviewerPerson(context);
   if (!reviewer) {
-    return NextResponse.json({ error: 'Solo Ariel López o Mauricio Astudillo pueden aprobar la OT.' }, { status: 403 });
+    return NextResponse.json({ error: 'Solo Planificación o Jefatura de Equipos puede aprobar la OT.' }, { status: 403 });
   }
 
   const { data: workOrder, error: workOrderError } = await context.supabase

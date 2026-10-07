@@ -12,7 +12,11 @@ const geologyResultsUrl=new URL('../components/production/geologia-results-decis
 
 test('dashboard exposes optional historical month selection through the URL',async()=>{
   const [provider,shell,helper]=await Promise.all([readFile(providerUrl,'utf8'),readFile(shellUrl,'utf8'),readFile(periodApiUrl,'utf8')]);
-  assert.match(shell,/DashboardPeriodProvider/);
+  assert.match(shell,/DashboardPeriodProvider showControls=\{showPeriodControls\}/);
+  assert.match(shell,/maintenanceRoute = pathname\.startsWith\('\/dashboard\/mantenimiento'\)/);
+  assert.match(shell,/showPeriodControls = !maintenanceRoute/);
+  assert.match(provider,/showControls=true/);
+  assert.match(provider,/showControls \? <div/);
   assert.match(provider,/Todo el histórico/);
   assert.match(provider,/params\.set\('month',next\)/);
   assert.match(helper,/^\s*if\(!month\)return \{month:null,start:null,end:null\};/m);

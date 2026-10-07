@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MaintenanceSchedule } from '@/components/maintenance/maintenance-schedule';
 import type { Dictionary, Locale } from '@/lib/i18n/dictionaries';
+import { formatWorkOrderNumber } from '@/lib/maintenance/work-order-display';
 
 type WorkOrderItem = {
   id: string;
@@ -46,7 +47,7 @@ function getStatusLabel(status: string | null | undefined, t: WorkOrdersT) {
   if (['completed', 'completado'].includes(value)) return t.status.completed;
   if (['in_progress', 'en_progreso'].includes(value)) return t.status.inProgress;
   if (['open', 'abierta', 'pending', 'pendiente'].includes(value)) return t.status.open;
-  return status || t.status.none;
+  return t.status.none;
 }
 
 function getWorkTypeLabel(workType: string | null | undefined, t: WorkOrdersT) {
@@ -54,7 +55,7 @@ function getWorkTypeLabel(workType: string | null | undefined, t: WorkOrdersT) {
   if (value === 'corrective') return t.workType.corrective;
   if (value === 'preventive') return t.workType.preventive;
   if (value === 'predictive') return t.workType.predictive;
-  return workType || t.workType.none;
+  return t.workType.none;
 }
 
 function getPriorityLabel(priority: string | null | undefined, t: WorkOrdersT) {
@@ -63,7 +64,7 @@ function getPriorityLabel(priority: string | null | undefined, t: WorkOrdersT) {
   if (['high', 'alta'].includes(value)) return t.priority.high;
   if (['medium', 'media'].includes(value)) return t.priority.medium;
   if (['low', 'baja'].includes(value)) return t.priority.low;
-  return priority || t.priority.none;
+  return t.priority.none;
 }
 
 function getStatusClass(status: string | null | undefined) {
@@ -120,12 +121,12 @@ export function WorkOrdersQueue({ locale, dictionary }: { locale: Locale; dictio
         ? order.record_scope !== 'historical'
         : scopeFilter === 'all' || order.record_scope === scopeFilter;
       const matchesDataHealth = !missingAssetOnly || !order.asset_name;
-      const matchesSearch = !query || [order.work_order_number, order.title, order.asset_name, order.assigned_to_name].some((value) => normalizeText(value).includes(query));
+      const matchesSearch = !query || [order.work_order_number, formatWorkOrderNumber(order.work_order_number, locale), order.title, order.asset_name, order.assigned_to_name].some((value) => normalizeText(value).includes(query));
       const matchesStatus = statusFilter === 'all' || normalizeText(order.status) === statusFilter;
       const matchesPriority = priorityFilter === 'all' || normalizeText(order.priority) === priorityFilter;
       return matchesScope && matchesDataHealth && matchesSearch && matchesStatus && matchesPriority;
     });
-  }, [missingAssetOnly, priorityFilter, scopeFilter, search, statusFilter, workOrders]);
+  }, [locale, missingAssetOnly, priorityFilter, scopeFilter, search, statusFilter, workOrders]);
 
   const scheduleItems = useMemo(() => operationalWorkOrders
     .filter((order) => order.scheduled_date && !['completed', 'completado'].includes(normalizeText(order.status)))
@@ -138,14 +139,14 @@ export function WorkOrdersQueue({ locale, dictionary }: { locale: Locale; dictio
       return {
         id: order.id,
         assetName: order.asset_name || t.noAsset,
-        taskName: `${order.work_order_number || 'OT'} · ${order.title || t.untitled}`,
+        taskName: `${formatWorkOrderNumber(order.work_order_number, locale)} · ${order.title || t.untitled}`,
         nextScheduledDate: order.scheduled_date || '',
         priority: priority === 'critical' || priority === 'high' ? 'high' : priority === 'low' ? 'low' : 'medium',
         daysUntil: Math.ceil((scheduledDate.getTime() - today.getTime()) / 86400000),
       };
     })
     .sort((a, b) => a.daysUntil - b.daysUntil)
-    .slice(0, 7), [operationalWorkOrders, t]);
+    .slice(0, 7), [locale, operationalWorkOrders, t]);
 
   const markScheduleComplete = async (scheduleId: string) => {
     setUpdatingScheduleId(scheduleId);
@@ -208,7 +209,7 @@ export function WorkOrdersQueue({ locale, dictionary }: { locale: Locale; dictio
           return <div key={order.id} className="grid gap-4 p-4 transition-colors hover:bg-muted/30 lg:grid-cols-[minmax(0,1.5fr)_minmax(160px,.8fr)_minmax(150px,.7fr)_auto] lg:items-center">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="font-mono text-xs text-muted-foreground">{order.work_order_number || t.noFolio}</span>
+                <span className="font-mono text-xs text-muted-foreground">{order.work_order_number ? formatWorkOrderNumber(order.work_order_number, locale) : t.noFolio}</span>
                 <Badge variant="outline" className={getStatusClass(order.status)}>{getStatusLabel(order.status, t)}</Badge>
                 {historical ? <Badge variant="secondary">{t.historicalBadge}</Badge> : null}
                 {!historical && isOverdue(order) ? <Badge variant="destructive">{t.overdueBadge}</Badge> : null}

@@ -4,6 +4,7 @@ import test from 'node:test';
 
 const migration = await readFile(new URL('../supabase/migrations/20261005202500_close_work_order_assigned_executor.sql', import.meta.url), 'utf8');
 const closeUi = await readFile(new URL('../components/maintenance/progressive-work-order-close-queue.tsx', import.meta.url), 'utf8');
+const closeQueueApi = await readFile(new URL('../app/api/maintenance/work-order-close-queue/route.ts', import.meta.url), 'utf8');
 
 test('safe close authorizes current model and assigned executor without legacy user_roles dependency', () => {
   assert.match(migration, /public\.profiles/);
@@ -18,4 +19,12 @@ test('closure UI visibly confirms uploaded photo evidence', () => {
   assert.match(closeUi, /photo\.file_name/);
   assert.match(closeUi, /photo\.signed_url/);
   assert.match(closeUi, /foto\$\{evidenceCount === 1/);
+});
+
+
+test('execution close queue is always scoped to the signed-in assigned person', () => {
+  assert.match(closeQueueApi, /resolveMaintenanceViewerMode\(cargoName\) === 'execution'/);
+  assert.match(closeQueueApi, /scopeToAssignee = executionScope \|\| accessLevel === 'SR'/);
+  assert.match(closeQueueApi, /\.eq\('assigned_person_id', person\.id\)/);
+  assert.match(closeQueueApi, /assignedOnly: scopeToAssignee/);
 });

@@ -14,8 +14,6 @@ import {
   PageHeader,
   PageHeaderActions,
   PageHeaderContent,
-  PageHeaderDescription,
-  PageHeaderEyebrow,
   PageHeaderTitle,
 } from '@/components/ui/page-header';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -76,6 +74,23 @@ type WorkOrderCreateT = Dictionary['app']['workOrderCreate'];
 
 function fill(template: string, vars: Record<string, string | number>) {
   return template.replace(/\{(\w+)\}/g, (_, key: string) => String(vars[key] ?? ''));
+}
+
+function assetIdentity(asset: Pick<Asset, 'code' | 'name'>) {
+  const code = String(asset.code || '').trim();
+  const name = String(asset.name || '').trim();
+  const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  if (code && name && normalize(code) !== normalize(name)) return `${code} · ${name}`;
+  return name || code;
+}
+
+function userFacingCreateError(cause: unknown, fallback: string) {
+  const message = cause instanceof Error ? cause.message.trim() : '';
+  if (!message) return fallback;
+  if (/uuid|sql|postgres|relation|column|function|rpc|pgrst|foreign key|invalid input|stack|undefined|null value|error code|failed/i.test(message)) {
+    return fallback;
+  }
+  return message;
 }
 
 export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictionary: Dictionary }) {
@@ -139,7 +154,7 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
 
   useEffect(() => {
     if (!selectedAsset || assetQuery) return;
-    setAssetQuery(`${selectedAsset.code} · ${selectedAsset.name}`);
+    setAssetQuery(assetIdentity(selectedAsset));
   }, [selectedAsset, assetQuery]);
 
   useEffect(() => {
@@ -171,7 +186,7 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
 
   const chooseAsset = (asset: Asset) => {
     setCanonicalAssetId(asset.id);
-    setAssetQuery(`${asset.code} · ${asset.name}`);
+    setAssetQuery(assetIdentity(asset));
   };
 
   const addMaterial = (item: MaterialCatalogItem) => {
@@ -226,7 +241,7 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
       toast.success(reviewId ? t.toastLinked : t.toastCreated);
       router.push(`/dashboard/mantenimiento/ordenes-trabajo/${payload.data.id}`);
     } catch (submitError) {
-      toast.error(submitError instanceof Error ? submitError.message : t.createError);
+      toast.error(userFacingCreateError(submitError, t.createError));
     } finally {
       setSubmitting(false);
     }
@@ -236,11 +251,7 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
     <div className="mx-auto max-w-3xl space-y-5">
       <PageHeader>
         <PageHeaderContent>
-          <PageHeaderEyebrow>{t.eyebrow}</PageHeaderEyebrow>
           <PageHeaderTitle>{t.title}</PageHeaderTitle>
-          <PageHeaderDescription>
-            Elige primero al responsable, luego busca el equipo y define el trabajo. Los insumos son opcionales.
-          </PageHeaderDescription>
         </PageHeaderContent>
         <PageHeaderActions>
           <Button asChild variant="outline">
@@ -250,10 +261,10 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
       </PageHeader>
 
       {error ? (
-        <StatePanel tone="error" title={t.loadEquipmentError} description={error.message} actions={<Button variant="outline" onClick={() => void mutate()}>{t.retry}</Button>} className="min-h-0 py-5" />
+        <StatePanel tone="error" title={t.loadEquipmentError} description="Actualiza e intenta nuevamente." actions={<Button variant="outline" onClick={() => void mutate()}>{t.retry}</Button>} className="min-h-0 py-5" />
       ) : null}
 
-      {reviewError ? <StatePanel tone="error" title={t.loadReviewError} description={reviewError.message} className="min-h-0 py-5" /> : null}
+      {reviewError ? <StatePanel tone="error" title={t.loadReviewError} description="Actualiza e intenta nuevamente." className="min-h-0 py-5" /> : null}
 
       {reviewId && !reviewError ? (
         <Card className="shadow-none">
@@ -273,12 +284,11 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
 
       <Card className="shadow-none">
         <CardHeader className="pb-4">
-          <CardTitle className="text-base">1. Responsable</CardTitle>
-          <CardDescription>Primero define quién será responsable de la OT.</CardDescription>
+          <CardTitle className="text-base">Responsable</CardTitle>
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="space-y-2">
-            <Label htmlFor="assignee">Responsable de la OT</Label>
+            <Label htmlFor="assignee">Responsable</Label>
             <Select value={assignedPersonId} onValueChange={setAssignedPersonId} disabled={assigneesLoading || Boolean(assigneeError)}>
               <SelectTrigger id="assignee">
                 <SelectValue placeholder={assigneesLoading ? 'Cargando responsables...' : 'Seleccionar responsable'} />
@@ -291,15 +301,14 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
                 ))}
               </SelectContent>
             </Select>
-            {assigneeError ? <p className="text-xs text-destructive">{assigneeError.message}</p> : null}
+            {assigneeError ? <p className="text-xs text-destructive">No se pudieron cargar los responsables.</p> : null}
           </div>
         </CardContent>
       </Card>
 
       <Card className="shadow-none">
         <CardHeader className="pb-4">
-          <CardTitle className="text-base">2. Qué hay que hacer</CardTitle>
-          <CardDescription>Selecciona el equipo y describe el trabajo.</CardDescription>
+          <CardTitle className="text-base">Equipo y trabajo</CardTitle>
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="space-y-2">
@@ -313,18 +322,18 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
                   setAssetQuery(event.target.value);
                   if (!reviewId) setCanonicalAssetId('');
                 }}
-                placeholder={isLoading ? t.fields.loadingAssets : 'Buscar por código, equipo, modelo o faena'}
+                placeholder={isLoading ? t.fields.loadingAssets : 'Buscar equipo'}
                 className="pl-9"
                 disabled={isLoading || Boolean(error) || Boolean(reviewId)}
               />
             </div>
-            {!reviewId && assetQuery !== (selectedAsset ? `${selectedAsset.code} · ${selectedAsset.name}` : '') ? (
+            {!reviewId && assetQuery !== (selectedAsset ? assetIdentity(selectedAsset) : '') ? (
               <div className="max-h-56 overflow-y-auto rounded-md border bg-card">
                 {filteredAssets.length === 0 ? (
                   <p className="p-3 text-sm text-muted-foreground">No hay equipos con ese criterio.</p>
                 ) : filteredAssets.map((asset) => (
                   <button key={asset.id} type="button" onClick={() => chooseAsset(asset)} className="block w-full border-b px-3 py-2 text-left last:border-b-0 hover:bg-muted/50">
-                    <p className="text-sm font-medium">{asset.code} · {asset.name}</p>
+                    <p className="text-sm font-medium">{assetIdentity(asset)}</p>
                     <p className="mt-0.5 text-xs text-muted-foreground">{asset.type}{asset.model ? ` · ${asset.model}` : ''}</p>
                   </button>
                 ))}
@@ -332,7 +341,7 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
             ) : null}
             {selectedAsset ? (
               <p className="text-xs text-muted-foreground">
-                {selectedAsset.type}{selectedAsset.model ? ` · ${selectedAsset.model}` : ''} · {t.assetStatus[selectedAsset.status as keyof typeof t.assetStatus] || selectedAsset.status}
+                {selectedAsset.type}{selectedAsset.model ? ` · ${selectedAsset.model}` : ''} · {t.assetStatus[selectedAsset.status as keyof typeof t.assetStatus] || (locale === 'en' ? 'Status not available' : 'Estado no informado')}
               </p>
             ) : null}
           </div>
@@ -378,11 +387,10 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
 
       <details className="group rounded-lg border bg-card" open={plannedMaterials.length > 0}>
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-sm font-medium">
-          <span className="flex items-center gap-2"><PackageSearch className="h-4 w-4" />Insumos de bodega <span className="font-normal text-muted-foreground">(opcional)</span></span>
+          <span className="flex items-center gap-2"><PackageSearch className="h-4 w-4" />Insumos <span className="font-normal text-muted-foreground">(opcional)</span></span>
           <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
         </summary>
         <div className="space-y-4 border-t px-5 py-5">
-          <p className="text-sm text-muted-foreground">Selecciona lo que debería estar disponible para ejecutar la OT. No descuenta stock todavía.</p>
           <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_100px]">
             <div className="space-y-2">
               <Label htmlFor="material-search">Buscar insumo</Label>
@@ -432,8 +440,7 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
 
       <Card className="shadow-none">
         <CardHeader className="pb-4">
-          <CardTitle className="text-base">3. Cuándo</CardTitle>
-          <CardDescription>La OT puede crearse sin duración ni horómetro. Los insumos de bodega son opcionales.</CardDescription>
+          <CardTitle className="text-base">Fecha</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
@@ -468,7 +475,6 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
       </details>
 
       <div className="sticky bottom-3 z-10 flex items-center justify-between gap-3 rounded-lg border bg-background/95 p-3 shadow-sm backdrop-blur">
-        <p className="hidden text-sm text-muted-foreground sm:block">El responsable, equipo e insumos quedan ligados a la OT desde el inicio.</p>
         <div className="ml-auto flex gap-2">
           <Button asChild variant="outline"><Link href="/dashboard/mantenimiento/ordenes-trabajo">{t.cancel}</Link></Button>
           <Button onClick={submit} disabled={submitting || isLoading || assigneesLoading || Boolean(error) || Boolean(assigneeError) || reviewLoading || Boolean(reviewError) || Boolean(review?.linked_work_order_id)}>

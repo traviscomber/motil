@@ -32,7 +32,7 @@ export function AutopilotDecisionStrip({
         clear: 'No pending decisions',
       }
     : {
-        label: 'MOTIL Autopilot',
+        label: 'MOTIL · decisiones asistidas',
         title: 'Decisiones de hoy',
         description: 'MOTIL prepara el contexto operacional. Las personas mantienen la autoridad sobre aprobaciones, prioridades y cierre.',
         decisions: 'decisiones humanas',

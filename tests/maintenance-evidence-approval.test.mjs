@@ -13,10 +13,10 @@ test('completed OT shows a durable evidence list', () => {
   assert.match(component, /photo\.file_name/);
 });
 
-test('approval is explicitly limited to Ariel or Mauricio', () => {
-  assert.match(reviewRoute, /Ariel López/);
-  assert.match(reviewRoute, /Mauricio Astudillo/);
-  assert.match(reviewRoute, /Solo Ariel López o Mauricio Astudillo pueden aprobar la OT/);
+test('approval is explicitly limited to the canonical planning and equipment leadership cargos', () => {
+  assert.match(reviewRoute, /jefe de planificación/);
+  assert.match(reviewRoute, /jefe de equipos móviles y estacionarios/);
+  assert.match(reviewRoute, /Solo Planificación o Jefatura de Equipos puede aprobar la OT/);
   assert.match(reviewRoute, /status: 'approved'/);
 });
 
