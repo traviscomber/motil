@@ -5,7 +5,6 @@ import { getOrganizationContext } from '@/lib/api/organization-context';
 import { MODULE_KEYS, requireModuleAccess } from '@/lib/api/module-access';
 import { resolveMaintenanceViewerMode } from '@/lib/maintenance/viewer-mode';
 
-const TERMINAL = ['completed', 'closed', 'cancelled', 'canceled'];
 
 type AssetRow = {
   id: string;
