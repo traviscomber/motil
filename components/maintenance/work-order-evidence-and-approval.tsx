@@ -2,6 +2,7 @@
 
 import useSWR from 'swr';
 import { CheckCircle2, Image as ImageIcon } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -22,6 +23,14 @@ export function WorkOrderEvidenceAndApproval({ workOrderId, status }: { workOrde
   const review = useSWR(status === 'completed' ? `/api/maintenance/work-orders/${workOrderId}/review` : null, fetcher);
 
   const photos = evidence.data?.evidence || [];
+  const tagLabel = (tag?: string | null) => tag === 'completed'
+    ? 'Trabajo terminado'
+    : tag === 'before'
+      ? 'Antes / daño'
+      : tag === 'during'
+        ? 'Durante trabajo'
+        : 'General';
+  const primaryPhoto = photos.find((photo: { evidence_tag?: string | null }) => photo.evidence_tag === 'completed') || primaryPhoto;
   const currentReview = review.data?.review;
   const canApprove = Boolean(review.data?.canApprove);
 
@@ -47,27 +56,33 @@ export function WorkOrderEvidenceAndApproval({ workOrderId, status }: { workOrde
         <CardContent>
           {photos.length ? (
             <div className="space-y-3">
-              <a href={photos[0]?.signed_url || '#'} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-lg border bg-muted">
-                {photos[0]?.signed_url ? (
+              <a href={primaryPhoto?.signed_url || '#'} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-lg border bg-muted">
+                {primaryPhoto?.signed_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={photos[0].signed_url} alt={photos[0].file_name || 'Evidencia principal de OT'} className="max-h-[560px] w-full object-contain" />
+                  <img src={primaryPhoto.signed_url} alt={primaryPhoto.file_name || 'Evidencia principal de OT'} className="max-h-[560px] w-full object-contain" />
                 ) : <div className="flex min-h-64 items-center justify-center"><ImageIcon className="h-8 w-8 text-muted-foreground" /></div>}
               </a>
               <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
-                <span>{formatDate(photos[0]?.created_at)}</span>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline">{tagLabel(primaryPhoto?.evidence_tag)}</Badge>
+                  <span>{formatDate(primaryPhoto?.created_at)}</span>
+                </div>
                 <span>Abrir imagen completa</span>
               </div>
               {photos.length > 1 ? (
                 <details className="rounded-lg border">
                   <summary className="cursor-pointer px-4 py-3 text-sm font-medium">Ver {photos.length - 1} evidencia{photos.length - 1 === 1 ? '' : 's'} adicional{photos.length - 1 === 1 ? '' : 'es'}</summary>
                   <div className="grid gap-3 border-t p-3 sm:grid-cols-2">
-                    {photos.slice(1).map((photo: { id: string; file_name?: string | null; created_at?: string | null; signed_url?: string | null }) => (
+                    {photos.filter((photo: { id: string }) => photo.id !== primaryPhoto?.id).map((photo: { id: string; evidence_tag?: string | null; file_name?: string | null; created_at?: string | null; signed_url?: string | null }) => (
                       <a key={photo.id} href={photo.signed_url || '#'} target="_blank" rel="noreferrer" className="overflow-hidden rounded-md border bg-muted">
                         {photo.signed_url ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={photo.signed_url} alt={photo.file_name || 'Evidencia de OT'} className="h-44 w-full object-cover" />
                         ) : <div className="flex h-44 items-center justify-center"><ImageIcon className="h-5 w-5 text-muted-foreground" /></div>}
-                        <div className="px-3 py-2 text-xs text-muted-foreground">{formatDate(photo.created_at)}</div>
+                        <div className="flex items-center justify-between gap-2 px-3 py-2 text-xs text-muted-foreground">
+                          <Badge variant="outline">{tagLabel(photo.evidence_tag)}</Badge>
+                          <span>{formatDate(photo.created_at)}</span>
+                        </div>
                       </a>
                     ))}
                   </div>
