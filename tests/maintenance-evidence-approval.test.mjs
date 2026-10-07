@@ -24,7 +24,8 @@ test('approval follows maintenance edit authority and supports audited self-appr
 test('approval is separate from execution truth and is audited', () => {
   assert.match(migration, /work_order_supervisor_reviews/);
   assert.match(migration, /unique \(organization_id, work_order_id\)/);
-  assert.match(reviewRoute, /event_type: 'supervisor_approved'/);
+  assert.match(reviewRoute, /supervisor_approved/);
+  assert.match(reviewRoute, /self_approved_supervisor_notified/);
   assert.match(component, /Pendiente de aprobación/);
   assert.match(component, /Se avisará a tu superior/);
 });
