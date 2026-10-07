@@ -14,13 +14,13 @@ test('execution roles stay in the dedicated simple work-order workspace on every
 
 test('execution workspace exposes only job context, timer and controlled finish action', () => {
   assert.match(flow, />Equipo</);
-  assert.match(flow, />Qué hacer</);
+  assert.match(flow, />Trabajo</);
   assert.match(flow, />Tiempo registrado</);
   assert.match(flow, /Iniciar trabajo/);
   assert.match(flow, /Pausar trabajo/);
   assert.match(flow, /Reanudar trabajo/);
   assert.match(flow, /Terminar y registrar evidencia/);
-  assert.match(flow, /causa, acción preventiva, horas reales y evidencia de horómetro/);
+  assert.doesNotMatch(flow, /causa, acción preventiva, horas reales y evidencia de horómetro/);
 });
 
 test('administrative detail remains outside the execution-role early return', () => {
