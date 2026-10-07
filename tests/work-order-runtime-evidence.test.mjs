@@ -42,5 +42,5 @@ test('progressive close queue exposes horometer as one explicit next action', ()
   assert.match(ui, /work-order-runtime-evidence/);
   assert.match(dictionaries, /recordRuntimeEvidence: 'Resolver horómetro'/);
   assert.match(dictionaries, /registerReading: 'Registrar lectura'/);
-  assert.match(dictionaries, /closeFreeze: 'Cerrar OT y congelar costo'/);
+  assert.match(dictionaries, /closeFreeze: 'Cerrar OT'/);
 });
