@@ -3,12 +3,25 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
-import { CirclePause, CirclePlay, Clock3, ShieldCheck, SquareStop, Wrench } from 'lucide-react';
+import { Camera, CirclePause, CirclePlay, Clock3, ShieldCheck, SquareStop, Wrench } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { StatePanel } from '@/components/ui/state-panel';
 import { formatWorkOrderNumber } from '@/lib/maintenance/work-order-display';
+import { createClient as createSupabaseClient } from '@/lib/supabase/client';
+
+type EvidenceTag = 'before' | 'during' | 'completed' | 'general';
+
+type EvidenceResponse = {
+  evidence?: Array<{
+    id: string;
+    evidence_tag?: EvidenceTag | null;
+    file_name: string;
+    created_at: string;
+    signed_url?: string | null;
+  }>;
+};
 
 type TimerResponse = {
   current?: {
@@ -33,11 +46,25 @@ const PAUSE_REASONS = [
   'Otro',
 ] as const;
 
+const evidenceTagLabels: Record<EvidenceTag, string> = {
+  before: 'Antes / daño',
+  during: 'Durante trabajo',
+  completed: 'Trabajo terminado',
+  general: 'General',
+};
+
 const fetcher = async (url: string): Promise<TimerResponse> => {
   const response = await fetch(url, { credentials: 'include' });
   const payload = await response.json().catch(() => null);
   if (!response.ok) throw new Error(payload?.error || 'No se pudo cargar el estado del trabajo.');
   return payload as TimerResponse;
+};
+
+const evidenceFetcher = async (url: string): Promise<EvidenceResponse> => {
+  const response = await fetch(url, { credentials: 'include' });
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(payload?.error || 'No se pudo cargar la evidencia.');
+  return payload as EvidenceResponse;
 };
 
 function duration(totalSeconds: number) {
@@ -76,6 +103,14 @@ export function MobileWorkOrderFlow({
     fetcher,
     { refreshInterval: 30_000, revalidateOnFocus: true },
   );
+  const { data: evidenceData, mutate: mutateEvidence } = useSWR<EvidenceResponse>(
+    canEdit && hasCanonicalAssignee ? `/api/maintenance/work-orders/${workOrderId}/evidence` : null,
+    evidenceFetcher,
+    { revalidateOnFocus: true },
+  );
+  const photos = evidenceData?.evidence || [];
+  const [evidenceTag, setEvidenceTag] = useState<EvidenceTag>(status === 'in_progress' ? 'during' : 'before');
+  const [uploadingEvidence, setUploadingEvidence] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [showPauseForm, setShowPauseForm] = useState(false);
@@ -105,6 +140,65 @@ export function MobileWorkOrderFlow({
     const response = await fetch(url, { credentials: 'include', ...options });
     const payload = await response.json().catch(() => null);
     if (!response.ok) throw new Error(payload?.error || 'No se pudo guardar el cambio.');
+  }
+
+  async function uploadEvidence(files: FileList | null) {
+    if (!files?.length) return;
+    setUploadingEvidence(true);
+    setMessage(null);
+    try {
+      const supabase = createSupabaseClient();
+      for (const file of Array.from(files)) {
+        const prepareResponse = await fetch(`/api/maintenance/work-orders/${workOrderId}/evidence`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'create_upload',
+            fileName: file.name || 'foto.jpg',
+            mimeType: file.type || '',
+            sizeBytes: file.size,
+          }),
+        });
+        const prepared = await prepareResponse.json().catch(() => null);
+        if (!prepareResponse.ok) throw new Error(prepared?.error || 'No se pudo preparar la foto.');
+
+        const upload = prepared?.upload;
+        if (!upload?.storagePath || !upload?.token || !upload?.evidenceId) {
+          throw new Error('No se pudo preparar la subida de la foto.');
+        }
+
+        const { error: uploadError } = await supabase.storage
+          .from('maintenance-work-order-evidence')
+          .uploadToSignedUrl(upload.storagePath, upload.token, file, {
+            contentType: upload.mimeType || file.type || 'image/jpeg',
+            cacheControl: '3600',
+          });
+        if (uploadError) throw new Error(uploadError.message || 'No se pudo subir la foto.');
+
+        const completeResponse = await fetch(`/api/maintenance/work-orders/${workOrderId}/evidence`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'complete_upload',
+            evidenceId: upload.evidenceId,
+            storagePath: upload.storagePath,
+            fileName: upload.fileName || file.name || 'foto.jpg',
+            mimeType: upload.mimeType || file.type || '',
+            sizeBytes: upload.sizeBytes || file.size,
+            evidenceTag,
+          }),
+        });
+        const completed = await completeResponse.json().catch(() => null);
+        if (!completeResponse.ok) throw new Error(completed?.error || 'La foto subió, pero no se pudo registrar.');
+      }
+      await mutateEvidence();
+    } catch (cause) {
+      setMessage(cause instanceof Error ? cause.message : 'No se pudo guardar la evidencia.');
+    } finally {
+      setUploadingEvidence(false);
+    }
   }
 
   async function startWork() {
@@ -223,6 +317,58 @@ export function MobileWorkOrderFlow({
               <p className="text-xs text-muted-foreground">Qué hacer</p>
               <p className="mt-1 text-sm leading-6">{description || 'Sigue la instrucción de la orden y registra evidencia al terminar.'}</p>
             </div>
+          </div>
+
+          <div className="space-y-3 rounded-lg border bg-muted/10 p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium">Fotos de la OT</p>
+                <p className="text-xs text-muted-foreground">Puedes agregar todas las fotos necesarias.</p>
+              </div>
+              <Badge variant="outline">{photos.length} foto{photos.length === 1 ? '' : 's'}</Badge>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+              <select
+                aria-label="Tag de evidencia"
+                value={evidenceTag}
+                onChange={(event) => setEvidenceTag(event.target.value as EvidenceTag)}
+                className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              >
+                <option value="before">{evidenceTagLabels.before}</option>
+                <option value="during">{evidenceTagLabels.during}</option>
+                <option value="completed">{evidenceTagLabels.completed}</option>
+              </select>
+              <label className="inline-flex h-11 cursor-pointer items-center justify-center rounded-md border border-input bg-background px-4 text-sm font-medium hover:bg-accent">
+                <Camera className="mr-2 h-4 w-4" />
+                {uploadingEvidence ? 'Subiendo...' : 'Agregar fotos'}
+                <input
+                  className="sr-only"
+                  type="file"
+                  multiple
+                  accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+                  capture="environment"
+                  disabled={uploadingEvidence}
+                  onChange={(event) => void uploadEvidence(event.target.files)}
+                />
+              </label>
+            </div>
+            {photos.length ? (
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {photos.map((photo) => (
+                  <a key={photo.id} href={photo.signed_url || '#'} target="_blank" rel="noreferrer" className="w-20 shrink-0">
+                    <div className="h-16 overflow-hidden rounded-md border bg-muted">
+                      {photo.signed_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={photo.signed_url} alt={photo.file_name || 'Evidencia de OT'} className="h-full w-full object-cover" />
+                      ) : null}
+                    </div>
+                    <p className="mt-1 truncate text-[10px] text-muted-foreground">
+                      {evidenceTagLabels[(photo.evidence_tag || 'general') as EvidenceTag]}
+                    </p>
+                  </a>
+                ))}
+              </div>
+            ) : null}
           </div>
 
           <div className="flex items-center gap-3">

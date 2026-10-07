@@ -10,6 +10,12 @@ const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/h
 const ALLOWED_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif']);
 const MAX_BYTES = 20 * 1024 * 1024;
 const BUCKET = 'maintenance-work-order-evidence';
+const EVIDENCE_TAGS = new Set(['before', 'during', 'completed', 'general']);
+
+function normalizeEvidenceTag(value: unknown) {
+  const tag = String(value || 'general').trim().toLowerCase();
+  return EVIDENCE_TAGS.has(tag) ? tag : '';
+}
 
 async function authorize(request: NextRequest, workOrderId: string) {
   const context = await getOrganizationContext(request);
@@ -72,7 +78,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   const { data, error } = await context.supabase
     .from('work_order_evidence_files')
-    .select('id,evidence_type,file_name,mime_type,size_bytes,notes,captured_at,created_at,storage_bucket,storage_path')
+    .select('id,evidence_type,evidence_tag,file_name,mime_type,size_bytes,notes,captured_at,created_at,storage_bucket,storage_path')
     .eq('organization_id', context.organizationId)
     .eq('work_order_id', id)
     .order('created_at', { ascending: false });
@@ -85,6 +91,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     return {
       id: row.id,
       evidence_type: row.evidence_type,
+      evidence_tag: row.evidence_tag,
       file_name: row.file_name,
       mime_type: row.mime_type,
       size_bytes: row.size_bytes,
@@ -152,6 +159,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         const extension = safeExtension(fileName);
         const mimeType = normalizeMimeType(String(body?.mimeType || ''), extension);
         const notes = String(body?.notes || '').trim() || null;
+        const evidenceTag = normalizeEvidenceTag(body?.evidenceTag);
         const expectedPrefix = `${context.organizationId}/${id}/`;
 
         if (!/^[0-9a-f-]{36}$/i.test(evidenceId) || !storagePath.startsWith(expectedPrefix) || !storagePath.includes(evidenceId)) {
@@ -159,6 +167,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         }
         if (!fileName || !extension || !mimeType || !Number.isFinite(sizeBytes) || sizeBytes <= 0 || sizeBytes > MAX_BYTES) {
           return NextResponse.json({ error: 'Los datos de la foto no son válidos.' }, { status: 400 });
+        }
+        if (!evidenceTag) {
+          return NextResponse.json({ error: 'Tag de evidencia no válido.' }, { status: 400 });
         }
 
         const folder = `${context.organizationId}/${id}`;
@@ -178,6 +189,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
             organization_id: context.organizationId,
             work_order_id: id,
             evidence_type: 'photo',
+            evidence_tag: evidenceTag,
             storage_bucket: BUCKET,
             storage_path: storagePath,
             file_name: fileName,
@@ -187,7 +199,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
             captured_at: new Date().toISOString(),
             created_by: context.userId,
           })
-          .select('id,evidence_type,file_name,mime_type,size_bytes,notes,captured_at,created_at')
+          .select('id,evidence_type,evidence_tag,file_name,mime_type,size_bytes,notes,captured_at,created_at')
           .single();
 
         if (error) {
@@ -204,8 +216,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           actor_name: context.userName || context.userEmail || null,
           source_table: 'public.work_order_evidence_files',
           source_record_id: evidenceId,
-          summary: 'Evidencia fotográfica de ejecución agregada',
-          payload: { evidence_id: evidenceId, mime_type: mimeType, size_bytes: sizeBytes, upload_path: 'signed_direct' },
+          summary: `Evidencia fotográfica agregada · ${evidenceTag}`,
+          payload: { evidence_id: evidenceId, evidence_tag: evidenceTag, mime_type: mimeType, size_bytes: sizeBytes, upload_path: 'signed_direct' },
         });
 
         return NextResponse.json({ evidence: data }, { status: 201 });
@@ -217,11 +229,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const form = await request.formData();
     const file = form.get('file');
     const notes = String(form.get('notes') || '').trim() || null;
+    const evidenceTag = normalizeEvidenceTag(form.get('evidenceTag'));
     if (!(file instanceof File)) return NextResponse.json({ error: 'Selecciona una foto como evidencia.' }, { status: 400 });
 
     const extension = safeExtension(file.name);
     const mimeType = normalizeMimeType(file.type, extension);
     if (!extension || !mimeType) return NextResponse.json({ error: 'Formato no permitido. Usa JPG, PNG, WEBP, HEIC o HEIF.' }, { status: 400 });
+    if (!evidenceTag) return NextResponse.json({ error: 'Tag de evidencia no válido.' }, { status: 400 });
     if (file.size <= 0 || file.size > 12 * 1024 * 1024) return NextResponse.json({ error: 'Para fotos grandes usa la subida directa desde la pantalla de cierre.' }, { status: 400 });
 
     const evidenceId = crypto.randomUUID();
@@ -242,6 +256,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         organization_id: context.organizationId,
         work_order_id: id,
         evidence_type: 'photo',
+        evidence_tag: evidenceTag,
         storage_bucket: BUCKET,
         storage_path: storagePath,
         file_name: file.name || `evidence-${evidenceId}.${extension}`,
@@ -251,7 +266,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         captured_at: new Date().toISOString(),
         created_by: context.userId,
       })
-      .select('id,evidence_type,file_name,mime_type,size_bytes,notes,captured_at,created_at')
+      .select('id,evidence_type,evidence_tag,file_name,mime_type,size_bytes,notes,captured_at,created_at')
       .single();
 
     if (error) {
@@ -268,8 +283,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       actor_name: context.userName || context.userEmail || null,
       source_table: 'public.work_order_evidence_files',
       source_record_id: evidenceId,
-      summary: 'Evidencia fotográfica de ejecución agregada',
-      payload: { evidence_id: evidenceId, mime_type: mimeType, size_bytes: file.size, upload_path: 'server_fallback' },
+      summary: `Evidencia fotográfica agregada · ${evidenceTag}`,
+      payload: { evidence_id: evidenceId, evidence_tag: evidenceTag, mime_type: mimeType, size_bytes: file.size, upload_path: 'server_fallback' },
     });
 
     return NextResponse.json({ evidence: data }, { status: 201 });
