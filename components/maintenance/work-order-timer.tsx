@@ -137,19 +137,19 @@ export function WorkOrderTimer({ workOrderId, onActionComplete }: WorkOrderTimer
       <div className="text-center">
         <div className="font-mono text-4xl font-bold tabular-nums text-primary">{formatDuration(displaySeconds)}</div>
         <p className="mt-2 text-xs text-muted-foreground">
-          Estado: {timerStatus === 'running' ? 'En progreso' : timerStatus === 'paused' ? 'Pausado' : 'Detenido'}
+          Estado: {timerStatus === 'running' ? 'En curso' : timerStatus === 'paused' ? 'Pausado' : 'Listo para continuar'}
         </p>
       </div>
 
       {timerStatus === 'running' && pauseOpen ? (
-        <div className="space-y-3 rounded-lg border bg-muted/20 p-3">
+        <div className="space-y-2 rounded-lg border bg-muted/20 p-3">
           <div>
             <label htmlFor={`pause-reason-${workOrderId}`} className="text-xs font-medium">Motivo de la pausa</label>
             <select
               id={`pause-reason-${workOrderId}`}
               value={pauseReason}
               onChange={(event) => setPauseReason(event.target.value)}
-              className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              className="mt-1 flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             >
               <option value="">Selecciona un motivo</option>
               {PAUSE_REASONS.map((reason) => <option key={reason} value={reason}>{reason}</option>)}
@@ -162,10 +162,10 @@ export function WorkOrderTimer({ workOrderId, onActionComplete }: WorkOrderTimer
             rows={2}
             maxLength={500}
             placeholder="Detalle adicional"
-            className="flex min-h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            className="flex min-h-16 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
           />
           <div className="grid grid-cols-2 gap-2">
-            <Button variant="outline" size="sm" disabled={loading} onClick={() => { setPauseOpen(false); setMessage(null); }}>Cancelar</Button>
+            <Button variant="ghost" size="sm" disabled={loading} onClick={() => { setPauseOpen(false); setMessage(null); }}>Cancelar</Button>
             <Button size="sm" disabled={loading || !pauseReason} onClick={() => void pauseWork()}>
               <Pause className="mr-2 h-4 w-4" />
               Confirmar pausa
@@ -184,16 +184,16 @@ export function WorkOrderTimer({ workOrderId, onActionComplete }: WorkOrderTimer
             <>
               <Button onClick={() => { setMessage(null); setPauseOpen(true); }} disabled={loading} className="flex-1 gap-2" variant="outline" size="sm">
                 <Pause className="h-4 w-4" />
-                Pausa
+                Pausar
               </Button>
-              <Button onClick={() => void handleAction('terminate')} disabled={loading} className="flex-1 gap-2" variant="destructive" size="sm">
+              <Button onClick={() => void handleAction('terminate')} disabled={loading} className="flex-1 gap-2" variant="outline" size="sm">
                 <StopCircle className="h-4 w-4" />
                 Terminar
               </Button>
             </>
           )}
           {timerStatus === 'paused' && (
-            <Button onClick={() => void handleAction('terminate')} disabled={loading} className="w-full gap-2" variant="destructive" size="sm">
+            <Button onClick={() => void handleAction('terminate')} disabled={loading} className="w-full gap-2" variant="outline" size="sm">
               <StopCircle className="h-4 w-4" />
               Terminar
             </Button>
