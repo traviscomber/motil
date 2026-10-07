@@ -24,6 +24,7 @@ test('board makes live state, owner, timer and pause comment visible in one row'
   assert.match(board, /timerStartTime/);
   assert.match(board, /Revisar pausa/);
   assert.match(board, /Revisar y aprobar/);
+  assert.doesNotMatch(board, /row\.asset\?\.code \|\| copy\.noCode/);
 });
 
 test('planning and leadership see the operational board before secondary maintenance content', () => {
