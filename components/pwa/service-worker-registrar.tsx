@@ -40,7 +40,21 @@ export function PwaServiceWorkerRegistrar() {
 
     const register = async () => {
       try {
-        const registration = await navigator.serviceWorker.register('/sw.js', {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(
+          registrations
+            .filter((registration) => {
+              const urls = [
+                registration.active?.scriptURL,
+                registration.waiting?.scriptURL,
+                registration.installing?.scriptURL,
+              ].filter(Boolean);
+              return urls.some((url) => url?.endsWith('/sw.js'));
+            })
+            .map((registration) => registration.unregister()),
+        );
+
+        const registration = await navigator.serviceWorker.register('/motil-sw-v2.js', {
           scope: '/',
           updateViaCache: 'none',
         });
