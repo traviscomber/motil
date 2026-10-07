@@ -198,7 +198,13 @@ export function MobileWorkOrderFlow({
             <div className="flex items-center justify-between gap-3">
               <p className="font-mono text-xs text-muted-foreground">{workOrderNumber || 'OT'}</p>
               <Badge variant={timerStatus === 'running' ? 'default' : 'outline'}>
-                {timerStatus === 'running' ? 'En curso' : timerStatus === 'paused' ? 'Pausada' : 'Pendiente'}
+                {timerStatus === 'running'
+                  ? 'En curso'
+                  : timerStatus === 'paused'
+                    ? 'Pausada'
+                    : status === 'in_progress'
+                      ? 'Lista para continuar'
+                      : 'Pendiente'}
               </Badge>
             </div>
             <h1 className="mt-3 text-2xl font-semibold leading-tight">{title || 'Trabajo asignado'}</h1>
@@ -221,8 +227,8 @@ export function MobileWorkOrderFlow({
           <div className="flex items-center gap-3">
             <Clock3 className="h-5 w-5 text-muted-foreground" />
             <div>
-              <p className="text-xs text-muted-foreground">Tiempo registrado</p>
-              <p className="font-mono text-3xl font-semibold tabular-nums">{duration(displaySeconds)}</p>
+              <p className="text-xs text-muted-foreground">{timerStatus === 'running' ? 'Tiempo en curso' : 'Tiempo registrado'}</p>
+              <p className="font-mono text-4xl font-semibold tabular-nums">{duration(displaySeconds)}</p>
             </div>
           </div>
 
@@ -242,36 +248,32 @@ export function MobileWorkOrderFlow({
               Pausar trabajo
             </Button>
           ) : timerStatus === 'running' && showPauseForm ? (
-            <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
-              <div>
-                <label htmlFor="pause-reason" className="text-sm font-medium">¿Por qué pausas esta OT?</label>
-                <select
-                  id="pause-reason"
-                  value={pauseReason}
-                  onChange={(event) => setPauseReason(event.target.value)}
-                  className="mt-2 flex h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                >
-                  <option value="">Selecciona un motivo</option>
-                  {PAUSE_REASONS.map((reason) => <option key={reason} value={reason}>{reason}</option>)}
-                </select>
-              </div>
-              <div>
-                <label htmlFor="pause-detail" className="text-sm font-medium">Detalle {pauseReason === 'Otro' ? '(obligatorio)' : '(opcional)'}</label>
-                <textarea
-                  id="pause-detail"
-                  value={pauseDetail}
-                  onChange={(event) => setPauseDetail(event.target.value)}
-                  rows={3}
-                  maxLength={500}
-                  placeholder="Ej.: se asignó una OT crítica por detención de equipo."
-                  className="mt-2 flex min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <Button variant="outline" className="h-12" disabled={busy} onClick={() => { setShowPauseForm(false); setMessage(null); }}>
+            <div className="space-y-2 rounded-lg border bg-muted/20 p-3">
+              <label htmlFor="pause-reason" className="text-sm font-medium">Motivo de pausa</label>
+              <select
+                id="pause-reason"
+                value={pauseReason}
+                onChange={(event) => setPauseReason(event.target.value)}
+                className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              >
+                <option value="">Selecciona un motivo</option>
+                {PAUSE_REASONS.map((reason) => <option key={reason} value={reason}>{reason}</option>)}
+              </select>
+              <textarea
+                id="pause-detail"
+                aria-label="Comentario de la pausa"
+                value={pauseDetail}
+                onChange={(event) => setPauseDetail(event.target.value)}
+                rows={2}
+                maxLength={500}
+                placeholder={pauseReason === 'Otro' ? 'Describe el motivo' : 'Comentario opcional'}
+                className="flex min-h-16 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              />
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <Button variant="ghost" className="h-11" disabled={busy} onClick={() => { setShowPauseForm(false); setMessage(null); }}>
                   Cancelar
                 </Button>
-                <Button className="h-12" disabled={busy || !pauseReason} onClick={() => void pauseWork()}>
+                <Button className="h-11" disabled={busy || !pauseReason} onClick={() => void pauseWork()}>
                   <CirclePause className="mr-2 h-4 w-4" />
                   {busy ? 'Pausando...' : 'Confirmar pausa'}
                 </Button>
