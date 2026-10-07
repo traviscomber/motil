@@ -11,6 +11,7 @@ import { StatePanel } from '@/components/ui/state-panel';
 import { MobileTerrainPanel } from '@/components/maintenance/mobile-terrain-panel';
 import { AutopilotDecisionStrip } from '@/components/maintenance/autopilot-decision-strip';
 import { CanonicalMaintenanceOverview } from '@/components/maintenance/canonical-maintenance-overview';
+import { OperationalWorkOrderBoard } from '@/components/maintenance/operational-work-order-board';
 import type { Dictionary, Locale } from '@/lib/i18n/dictionaries';
 import { formatWorkOrderText } from '@/lib/maintenance/work-order-display';
 
@@ -169,6 +170,8 @@ export function MaintenanceHome({ locale, dictionary }: { locale: Locale; dictio
               : <Button asChild><Link href="/dashboard/mantenimiento/ordenes-trabajo"><ArrowRight className="h-4 w-4" />{t.cta.reviewOrders}</Link></Button>}
       </PageHeaderActions>
     </PageHeader>
+
+    {mode === 'planning' || mode === 'leadership' ? <OperationalWorkOrderBoard locale={locale} /> : null}
 
     <section aria-label={t.metricsAria} className={`grid gap-3 sm:grid-cols-2 ${metrics.length === 4 ? 'xl:grid-cols-4' : 'xl:grid-cols-3'}`}>
       {metrics.map(([label, value, detail, href]) => <Link key={label} href={href} className="rounded-lg border bg-card px-4 py-4 shadow-none outline-none transition-colors hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-ring"><p className="text-xs text-muted-foreground">{label}</p><div className="mt-2 flex items-end justify-between gap-3"><p className="text-3xl font-semibold tracking-tight">{isLoading ? '—' : value}</p><p className="text-right text-xs text-muted-foreground">{detail}</p></div></Link>)}
