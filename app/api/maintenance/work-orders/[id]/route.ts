@@ -23,6 +23,14 @@ function progressFromStatus(status: string | null) {
   return 0;
 }
 
+function isExplicitDemoRecord(row: Record<string, unknown>) {
+  const value = `${String(row.title || '')} ${String(row.description || '')}`
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+  return /(^|\s)(demo|uat)(\s|$)/.test(value);
+}
+
 async function loadCanonicalAsset(context: Awaited<ReturnType<typeof getOrganizationContext>> & { ok: true }, assetId: string | null) {
   if (!assetId) return null;
   const { data, error } = await context.supabase.from('maintenance_canonical_assets_v1')
@@ -119,7 +127,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   try {
     const { data, error } = await context.supabase.from('maintenance_work_orders').select('*').eq('id', id).eq('organization_id', context.organizationId).maybeSingle();
     if (error) throw error;
-    if (!data) return NextResponse.json({ error: 'No se encontró la orden de trabajo' }, { status: 404 });
+    if (!data || isExplicitDemoRecord(data)) return NextResponse.json({ error: 'No se encontró la orden de trabajo' }, { status: 404 });
 
     const accessLevel = await getModuleAccessLevel(context.userId, context.role, MODULE_KEYS.MANT_OPERACIONES);
     const canReadModule = accessLevel === 'ED' || accessLevel === 'LEC';

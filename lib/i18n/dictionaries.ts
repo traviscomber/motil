@@ -1003,9 +1003,22 @@ export const dictionaries = {
         },
         listTitles: {
           missingAsset: 'OT operacionales pendientes de asociación canónica',
-          historical: 'Histórico de órdenes',
+          historical: 'Histórico importado',
           all: 'Todas las órdenes',
-          operational: 'Órdenes operacionales Motil',
+          operational: 'Órdenes activas',
+          approval: 'Pendientes de aprobación',
+          completed: 'Registro de finalizadas',
+        },
+        inboxViews: {
+          active: 'Activas',
+          approval: 'Por aprobar',
+          completed: 'Finalizadas',
+        },
+        approval: {
+          pending: 'Por aprobar',
+          approved: 'Aprobada',
+          review: 'Revisar y aprobar',
+          record: 'Ver registro',
         },
         counts: '{filtered} de {total} órdenes totales',
         states: {
@@ -2296,9 +2309,22 @@ export const dictionaries = {
         },
         listTitles: {
           missingAsset: 'Operational WOs pending canonical association',
-          historical: 'Work order history',
+          historical: 'Imported history',
           all: 'All work orders',
-          operational: 'Motil operational work orders',
+          operational: 'Active work orders',
+          approval: 'Pending approval',
+          completed: 'Completed work log',
+        },
+        inboxViews: {
+          active: 'Active',
+          approval: 'To approve',
+          completed: 'Completed',
+        },
+        approval: {
+          pending: 'To approve',
+          approved: 'Approved',
+          review: 'Review and approve',
+          record: 'View record',
         },
         counts: '{filtered} of {total} total orders',
         states: {

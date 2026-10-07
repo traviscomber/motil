@@ -31,6 +31,12 @@ type WorkOrderRow = {
 };
 
 type CanonicalAssetRow = { id: string; asset_code: string; name: string; asset_type: string | null; is_active: boolean };
+type SupervisorReviewRow = {
+  work_order_id: string;
+  status: string | null;
+  reviewed_by_name: string | null;
+  reviewed_at: string | null;
+};
 
 type WorkOrderPayload = {
   canonicalAssetId?: string;
@@ -66,7 +72,15 @@ type WorkOrderPayload = {
   cost_center_id?: string | null;
 };
 
-function mapWorkOrder(row: WorkOrderRow, asset?: CanonicalAssetRow | null) {
+function isExplicitDemoRecord(row: WorkOrderRow) {
+  const value = `${row.title || ''} ${row.description || ''}`
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+  return /(^|\s)(demo|uat)(\s|$)/.test(value);
+}
+
+function mapWorkOrder(row: WorkOrderRow, asset?: CanonicalAssetRow | null, review?: SupervisorReviewRow | null) {
   return {
     ...row,
     asset_id: row.canonical_asset_id,
@@ -75,6 +89,9 @@ function mapWorkOrder(row: WorkOrderRow, asset?: CanonicalAssetRow | null) {
     asset_type: asset?.asset_type || null,
     record_scope: row.created_by ? 'operational' : 'historical',
     progress_percentage: row.status === 'completed' ? 100 : row.status === 'in_progress' ? 50 : 0,
+    approval_status: row.status === 'completed' ? (review?.status || 'pending') : null,
+    reviewed_by_name: review?.reviewed_by_name || null,
+    reviewed_at: review?.reviewed_at || null,
   };
 }
 
@@ -88,6 +105,22 @@ async function loadAssetMap(context: Awaited<ReturnType<typeof getOrganizationCo
     .in('id', ids);
   if (error) throw error;
   return new Map(((data || []) as CanonicalAssetRow[]).map((asset) => [asset.id, asset]));
+}
+
+async function loadReviewMap(context: Awaited<ReturnType<typeof getOrganizationContext>> & { ok: true }, rows: WorkOrderRow[]) {
+  const ids = rows
+    .filter((row) => row.status === 'completed')
+    .map((row) => row.id);
+  if (ids.length === 0) return new Map<string, SupervisorReviewRow>();
+
+  const { data, error } = await context.supabase
+    .from('work_order_supervisor_reviews')
+    .select('work_order_id,status,reviewed_by_name,reviewed_at')
+    .eq('organization_id', context.organizationId)
+    .in('work_order_id', ids);
+  if (error) throw error;
+
+  return new Map(((data || []) as SupervisorReviewRow[]).map((review) => [review.work_order_id, review]));
 }
 
 async function resolveExecutionPersonId(context: Awaited<ReturnType<typeof getOrganizationContext>> & { ok: true }) {
@@ -204,10 +237,17 @@ export async function GET(request: NextRequest) {
     if (Number.isFinite(limit) && limit > 0) query = query.limit(limit);
     const { data, error } = await query;
     if (error) throw error;
-    const rows = (data || []) as WorkOrderRow[];
-    const assetMap = await loadAssetMap(context, rows);
+    const rows = ((data || []) as WorkOrderRow[]).filter((row) => !isExplicitDemoRecord(row));
+    const [assetMap, reviewMap] = await Promise.all([
+      loadAssetMap(context, rows),
+      loadReviewMap(context, rows),
+    ]);
     return NextResponse.json({
-      workOrders: rows.map((row) => mapWorkOrder(row, row.canonical_asset_id ? assetMap.get(row.canonical_asset_id) : null)),
+      workOrders: rows.map((row) => mapWorkOrder(
+        row,
+        row.canonical_asset_id ? assetMap.get(row.canonical_asset_id) : null,
+        reviewMap.get(row.id) || null,
+      )),
       canonical: true,
       assignedOnly: executionScope.execution,
     });
