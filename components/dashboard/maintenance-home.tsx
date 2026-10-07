@@ -92,7 +92,9 @@ export function MaintenanceHome({ locale, dictionary }: { locale: Locale; dictio
   const firstLeadershipAction = mode === 'leadership' ? actions[0] : undefined;
   const firstOversightAction = mode === 'oversight' ? actions[0] : undefined;
   const preventiveGroupDetail = summary?.unplannedOverdueInterventionGroups != null
-    ? fill(t.interventionCount, { n: summary.unplannedOverdueInterventionGroups })
+    ? summary.unplannedOverdueInterventionGroups === 1
+      ? locale === 'en' ? '1 intervention' : '1 intervención'
+      : fill(t.interventionCount, { n: summary.unplannedOverdueInterventionGroups })
     : t.toPlan;
 
   const ml = t.metricLabels;
