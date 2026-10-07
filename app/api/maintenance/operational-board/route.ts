@@ -108,7 +108,7 @@ export async function GET(request: NextRequest) {
             .from('work_order_events')
             .select('work_order_id,event_at,payload')
             .eq('organization_id', context.organizationId)
-            .eq('event_type', 'timer_pause')
+            .in('event_type', ['timer_pause', 'timer_play', 'timer_resume', 'timer_terminate'])
             .in('work_order_id', ids)
             .order('event_at', { ascending: false })
             .limit(300)
@@ -125,14 +125,20 @@ export async function GET(request: NextRequest) {
     if (pauseResult.error || assetResult.error) throw pauseResult.error || assetResult.error;
 
     const lastPause = new Map<string, { comment: string | null; at: string | null }>();
+    const lastComment = new Map<string, { comment: string; at: string | null }>();
     for (const event of pauseResult.data || []) {
       const id = String((event as any).work_order_id);
-      if (lastPause.has(id)) continue;
       const payload = ((event as any).payload || {}) as Record<string, unknown>;
-      lastPause.set(id, {
-        comment: typeof payload.notes === 'string' && payload.notes.trim() ? payload.notes.trim() : null,
-        at: (event as any).event_at || null,
-      });
+      const note = typeof payload.notes === 'string' && payload.notes.trim() ? payload.notes.trim() : null;
+      if (note && !lastComment.has(id)) {
+        lastComment.set(id, { comment: note, at: (event as any).event_at || null });
+      }
+      if ((event as any).event_type === 'timer_pause' && !lastPause.has(id)) {
+        lastPause.set(id, {
+          comment: note,
+          at: (event as any).event_at || null,
+        });
+      }
     }
 
     const assetMap = new Map<string, AssetRow>();
@@ -142,6 +148,7 @@ export async function GET(request: NextRequest) {
       const isPendingApproval = String(row.status || '').toLowerCase() === 'completed' && !approvedIds.has(String(row.id));
       const state = stateFor(row, isPendingApproval);
       const pause = lastPause.get(String(row.id)) || null;
+      const comment = lastComment.get(String(row.id)) || null;
       const asset = row.canonical_asset_id ? assetMap.get(String(row.canonical_asset_id)) || null : null;
       return {
         id: String(row.id),
@@ -157,6 +164,8 @@ export async function GET(request: NextRequest) {
         totalTimerSeconds: Number(row.total_timer_seconds || 0),
         lastPauseComment: pause?.comment || null,
         lastPauseAt: pause?.at || null,
+        lastComment: comment?.comment || null,
+        lastCommentAt: comment?.at || null,
         asset: asset ? { id: asset.id, code: asset.asset_code, name: asset.name } : null,
         href: `/dashboard/mantenimiento/ordenes-trabajo/${encodeURIComponent(String(row.id))}`,
       };
