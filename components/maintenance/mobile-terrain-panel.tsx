@@ -14,6 +14,7 @@ type TerrainAction = {
   workOrderNumber: string;
   title: string;
   assetName?: string | null;
+  pauseReason?: string | null;
   evidence: string;
   href: string;
   actionLabel: 'Iniciar' | 'Reanudar';
@@ -78,6 +79,7 @@ export function MobileTerrainPanel({ locale }: { locale: Locale }) {
         scheduled: 'Scheduled',
         noDate: 'No date',
         priority: 'Priority',
+        pause: 'Pause',
       }
     : {
         title: 'Mis OT',
@@ -95,6 +97,7 @@ export function MobileTerrainPanel({ locale }: { locale: Locale }) {
         scheduled: 'Programada',
         noDate: 'Sin fecha',
         priority: 'Prioridad',
+        pause: 'Pausa',
       };
 
   return (
@@ -162,6 +165,7 @@ export function MobileTerrainPanel({ locale }: { locale: Locale }) {
                 </div>
                 <p className="mt-1 font-medium">{action.title}</p>
                 {action.assetName ? <p className="mt-1 text-sm text-muted-foreground">{action.assetName}</p> : null}
+                {action.pauseReason ? <p className="mt-1 text-sm font-medium">{copy.pause}: {action.pauseReason}</p> : null}
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">{evidence}</p>
               </div>
               <span className="inline-flex items-center justify-end gap-2 text-sm font-medium">
