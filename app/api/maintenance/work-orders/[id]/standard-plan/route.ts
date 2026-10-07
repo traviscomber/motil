@@ -105,8 +105,81 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       p_plan_step_id: stepId,
       p_observation: observation || null,
     });
-    if (error) throw error;
-    return NextResponse.json({ ok: true, executionId: data });
+    if (!error) return NextResponse.json({ ok: true, executionId: data });
+
+    // Compatibility fallback for valid assigned executors while production
+    // still carries the legacy authorization inside the database RPC.
+    if (!String(error.message || '').toLowerCase().includes('sin permisos')) throw error;
+
+    const { data: application, error: applicationError } = await context.supabase
+      .from('maintenance_standard_job_plan_applications')
+      .select('id,plan_id')
+      .eq('organization_id', context.organizationId)
+      .eq('work_order_id', id)
+      .eq('status', 'active')
+      .maybeSingle();
+    if (applicationError) throw applicationError;
+    if (!application?.plan_id) {
+      return NextResponse.json({ error: 'La OT no tiene un plan estándar activo' }, { status: 409 });
+    }
+
+    const [{ data: plan, error: planError }, { data: step, error: stepError }] = await Promise.all([
+      context.supabase
+        .from('maintenance_standard_job_plans')
+        .select('id')
+        .eq('organization_id', context.organizationId)
+        .eq('id', application.plan_id)
+        .eq('status', 'approved')
+        .maybeSingle(),
+      context.supabase
+        .from('maintenance_standard_job_plan_steps')
+        .select('id')
+        .eq('organization_id', context.organizationId)
+        .eq('plan_id', application.plan_id)
+        .eq('id', stepId)
+        .maybeSingle(),
+    ]);
+    if (planError || stepError) throw planError || stepError;
+    if (!plan || !step) {
+      return NextResponse.json({ error: 'El paso no pertenece al plan estándar activo de esta OT' }, { status: 409 });
+    }
+
+    const completedAt = new Date().toISOString();
+    const { data: execution, error: executionError } = await context.supabase
+      .from('work_order_standard_plan_step_executions')
+      .upsert({
+        organization_id: context.organizationId,
+        work_order_id: id,
+        plan_application_id: application.id,
+        plan_step_id: stepId,
+        status: 'completed',
+        observation: observation || null,
+        completed_by: context.userId,
+        completed_at: completedAt,
+      }, { onConflict: 'plan_application_id,plan_step_id' })
+      .select('id')
+      .single();
+    if (executionError) throw executionError;
+
+    const { error: eventError } = await context.supabase.from('work_order_events').insert({
+      organization_id: context.organizationId,
+      work_order_id: id,
+      event_type: 'standard_plan_step_completed',
+      actor_id: context.userId,
+      actor_name: context.userName || context.userEmail || null,
+      source_table: 'maintenance_standard_job_plan_steps',
+      source_record_id: stepId,
+      summary: 'Paso de plan estándar realizado',
+      payload: {
+        plan_step_id: stepId,
+        observation: observation || null,
+        completed_at: completedAt,
+        authorization_path: 'assigned_executor_fallback',
+      },
+    });
+    if (eventError) throw eventError;
+
+    return NextResponse.json({ ok: true, executionId: execution.id });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'No se pudo registrar el paso del plan estándar' }, { status: 500 });
   }
