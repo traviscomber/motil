@@ -24,6 +24,7 @@ export function DashboardShell({ children, locale, dictionary }: { children: Rea
   const pathname = usePathname();
   const router = useRouter();
   const { user } = useAuth();
+  const maintenanceExecution = pathname.startsWith('/dashboard/mantenimiento') && resolveMaintenanceViewerMode(user?.cargo || null) === 'execution';
 
   useEffect(() => {
     setCollapsed(window.localStorage.getItem(STORAGE_KEY) === 'true');
@@ -61,7 +62,7 @@ export function DashboardShell({ children, locale, dictionary }: { children: Rea
         <DailyManagementContextNav dictionary={dictionary} />
         <DocumentationContextNav dictionary={dictionary} />
         <OperationalAttentionContextNav dictionary={dictionary} />
-        <DashboardPeriodProvider>
+        <DashboardPeriodProvider showControls={!maintenanceExecution}>
           <main className="flex-1 overflow-x-hidden bg-muted/20 px-4 py-5 md:px-6 md:py-6 xl:px-8 xl:py-7">
             <div className="motil-page space-y-6">
               {children}
