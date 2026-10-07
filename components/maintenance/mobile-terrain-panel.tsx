@@ -6,6 +6,8 @@ import { ArrowRight, ClipboardList, Plus, RefreshCw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { StatePanel } from '@/components/ui/state-panel';
+import { formatWorkOrderNumber } from '@/lib/maintenance/work-order-display';
+import type { Locale } from '@/lib/i18n/dictionaries';
 
 type TerrainAction = {
   id: string;
@@ -27,7 +29,7 @@ async function fetcher(url: string): Promise<TerrainResponse> {
   return payload as TerrainResponse;
 }
 
-export function MobileTerrainPanel() {
+export function MobileTerrainPanel({ locale }: { locale: Locale }) {
   const { data, error, isLoading, mutate } = useSWR<TerrainResponse>(
     '/api/maintenance/my-work',
     fetcher,
@@ -88,7 +90,7 @@ export function MobileTerrainPanel() {
               </div>
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-mono text-xs text-muted-foreground">{action.workOrderNumber}</span>
+                  <span className="font-mono text-xs text-muted-foreground">{formatWorkOrderNumber(action.workOrderNumber, locale)}</span>
                   <Badge variant={action.stateLabel === 'En curso' ? 'default' : action.stateLabel === 'Pausada' ? 'secondary' : 'outline'}>
                     {action.stateLabel}
                   </Badge>
