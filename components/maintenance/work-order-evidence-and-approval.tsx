@@ -81,7 +81,7 @@ export function WorkOrderEvidenceAndApproval({ workOrderId, status }: { workOrde
               ) : (
                 <>
                   <p className="text-sm font-medium">Pendiente de aprobación</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Ariel López o Mauricio Astudillo revisan la evidencia y aprueban la OT.</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Planificación o Jefatura de Equipos revisa la evidencia y aprueba la OT.</p>
                 </>
               )}
             </div>
