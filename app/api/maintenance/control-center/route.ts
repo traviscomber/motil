@@ -47,6 +47,14 @@ const isOutOfServiceReview = (row: any) => {
   return reason === 'out_of_service' || status.includes('fuera de servicio');
 };
 
+const reviewReasonLabel = (value: unknown) => {
+  const reason = String(value || '').toLowerCase();
+  if (reason === 'out_of_service') return 'Equipo fuera de servicio';
+  if (reason === 'operational_with_observations') return 'Equipo operativo con observaciones';
+  if (reason === 'machine_observation') return 'Observación de equipo';
+  return 'Observación operacional pendiente de revisión';
+};
+
 const preventiveGroupKey = (row: any) => [
   row.canonical_asset_id || row.asset_code || row.asset_name || 'unknown-asset',
   row.due_meter ?? 'unknown-due',
@@ -82,8 +90,8 @@ export async function GET(request: NextRequest) {
 
     for (const row of drillingReviewRows) {
       const outOfService = isOutOfServiceReview(row);
-      const equipment = row.asset_code || row.asset_name || 'Equipo';
-      const observation = String(row.machine_observations || row.review_reason || 'Observación operacional pendiente de revisión').trim();
+      const equipment = row.asset_name || 'Equipo';
+      const observation = String(row.machine_observations || reviewReasonLabel(row.review_reason)).trim();
       const dateEvidence = row.operation_date ? ` · ${row.operation_date}` : '';
       const reviewPriority = outOfService ? 'critical' : 'high';
       actions.push({
@@ -124,7 +132,7 @@ export async function GET(request: NextRequest) {
           kind: 'meter_review',
           priority: 20,
           title: `Revisar base de horómetro · ${row.task_name || 'Pauta'}`,
-          description: `${row.asset_code || 'Equipo'} · la lectura nueva contradice el snapshot de la pauta`,
+          description: `${row.asset_name || 'Equipo'} · la lectura nueva contradice el registro de horómetro de la pauta`,
           evidence: 'No se genera alerta automática hasta resolver la evidencia.',
           href: '/dashboard/mantenimiento/horometros',
           assetHref: assetHref(row.canonical_asset_id),
@@ -135,7 +143,7 @@ export async function GET(request: NextRequest) {
     for (const [key, rows] of overduePreventiveGroups) {
       const row = rows[0];
       const grouped = rows.length > 1;
-      const equipment = row.asset_code || row.asset_name || 'Equipo';
+      const equipment = row.asset_name || 'Equipo';
       const taskNames = rows.map((item:any) => String(item.task_name || 'Pauta'));
       const overdueHours = Math.max(...rows.map((item:any) => Math.abs(Number(item.remaining_hours || 0))));
       const params = new URLSearchParams();
