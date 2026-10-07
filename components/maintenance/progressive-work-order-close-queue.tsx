@@ -395,6 +395,7 @@ export function ProgressiveWorkOrderCloseQueue({ locale, dictionary }: { locale:
                     className="sr-only"
                     type="file"
                     accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+                    capture="environment"
                     disabled={uploadingEvidence}
                     onChange={(event) => void uploadEvidence(event.target.files?.[0] || null)}
                   />
