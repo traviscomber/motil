@@ -337,34 +337,68 @@ export async function POST(request: NextRequest) {
 
     const assignedPersonName = assignedPerson.full_name;
 
-    const { count } = await context.supabase.from('maintenance_work_orders').select('*', { head: true, count: 'exact' }).eq('organization_id', context.organizationId);
-    const workOrderNumber = `WO-${new Date().getFullYear()}-${String((count || 0) + 1).padStart(4, '0')}`;
+    const year = new Date().getFullYear();
+    const prefix = `WO-${year}-`;
     const plannedHours = Number(body.plannedDurationHours ?? body.planned_duration_hours ?? 0);
     const meterReading = body.meterReading ?? body.meter_reading ?? null;
-    const { data, error } = await context.supabase.from('maintenance_work_orders').insert({
-      organization_id: context.organizationId,
-      work_order_number: workOrderNumber,
-      canonical_asset_id: canonicalAssetId,
-      asset_id: null,
-      assigned_person_id: assignedPersonId,
-      title: body.title.trim(),
-      description: body.description?.trim() || null,
-      work_type: body.workType || body.work_type || 'preventive',
-      status: 'open',
-      priority: body.priority || 'medium',
-      scheduled_date: body.scheduledDate || body.scheduled_date || null,
-      planned_duration_hours: Number.isFinite(plannedHours) ? plannedHours : 0,
-      assigned_to_name: assignedPersonName,
-      meter_reading: meterReading === null || meterReading === '' ? null : Number(meterReading),
-      meter_unit: body.meterUnit || body.meter_unit || null,
-      cost_center_id: body.costCenterId || body.cost_center_id || null,
-      created_by: context.authUserId,
-      updated_at: new Date().toISOString(),
-    }).select('*').single();
-    if (error) throw error;
-    await recordRequestedMaterials(context, data as WorkOrderRow, requestedMaterials);
-    await recordStructuredMaterials(context, data.id, materials);
-    return NextResponse.json({ data: mapWorkOrder(data as WorkOrderRow, asset as CanonicalAssetRow) }, { status: 201 });
+
+    const { data: latestOrder, error: latestOrderError } = await context.supabase
+      .from('maintenance_work_orders')
+      .select('work_order_number')
+      .eq('organization_id', context.organizationId)
+      .like('work_order_number', `${prefix}%`)
+      .order('work_order_number', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (latestOrderError) throw latestOrderError;
+
+    const latestSequence = Number.parseInt(String(latestOrder?.work_order_number || '').slice(prefix.length), 10);
+    let nextSequence = Number.isFinite(latestSequence) ? latestSequence + 1 : 1;
+    let createdOrder: WorkOrderRow | null = null;
+
+    for (let attempt = 0; attempt < 3 && !createdOrder; attempt += 1) {
+      const workOrderNumber = `${prefix}${String(nextSequence).padStart(4, '0')}`;
+      const { data: insertedOrder, error: insertError } = await context.supabase
+        .from('maintenance_work_orders')
+        .insert({
+          organization_id: context.organizationId,
+          work_order_number: workOrderNumber,
+          canonical_asset_id: canonicalAssetId,
+          asset_id: null,
+          assigned_person_id: assignedPersonId,
+          title: body.title.trim(),
+          description: body.description?.trim() || null,
+          work_type: body.workType || body.work_type || 'preventive',
+          status: 'open',
+          priority: body.priority || 'medium',
+          scheduled_date: body.scheduledDate || body.scheduled_date || null,
+          planned_duration_hours: Number.isFinite(plannedHours) ? plannedHours : 0,
+          assigned_to_name: assignedPersonName,
+          meter_reading: meterReading === null || meterReading === '' ? null : Number(meterReading),
+          meter_unit: body.meterUnit || body.meter_unit || null,
+          cost_center_id: body.costCenterId || body.cost_center_id || null,
+          created_by: context.authUserId,
+          updated_at: new Date().toISOString(),
+        })
+        .select('*')
+        .single();
+
+      if (!insertError) {
+        createdOrder = insertedOrder as WorkOrderRow;
+        break;
+      }
+
+      if (insertError.code !== '23505') throw insertError;
+      nextSequence += 1;
+    }
+
+    if (!createdOrder) {
+      throw new Error('No se pudo reservar un número único para la orden de trabajo. Intenta nuevamente.');
+    }
+
+    await recordRequestedMaterials(context, createdOrder, requestedMaterials);
+    await recordStructuredMaterials(context, createdOrder.id, materials);
+    return NextResponse.json({ data: mapWorkOrder(createdOrder, asset as CanonicalAssetRow) }, { status: 201 });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'No se pudo crear la orden de trabajo';
     console.error('[maintenance/work-orders:post]', error);
