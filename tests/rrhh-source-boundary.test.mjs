@@ -50,7 +50,8 @@ test('RRHH stage one supports simple create and edit without weakening tenant sc
 
   assert.match(page, /Nueva persona/);
   assert.match(page, /method: 'POST'/);
-  assert.match(detail, />Editar</);
+  assert.match(detail, /onClick={openEdit}/);
+  assert.match(detail, /Editar/);
   assert.match(detail, /method: 'PATCH'/);
 
   assert.match(api, /export async function POST/);
