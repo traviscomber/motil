@@ -17,6 +17,6 @@ test('maintenance work orders render as an inbox-style clickable list', () => {
 
 test('maintenance agenda stays secondary to the inbox', () => {
   assert.match(queue, /<details className="rounded-lg border bg-card">/);
-  assert.match(queue, /Ver agenda próxima/);
+  assert.match(queue, /t\.schedule\.title/);
   assert.doesNotMatch(queue, /onMarkComplete=\{markScheduleComplete\}/);
 });
