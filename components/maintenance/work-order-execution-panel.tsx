@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { formatWorkOrderNumber } from '@/lib/maintenance/work-order-display';
 
 const fetcher = async (url: string) => {
   const response = await fetch(url, { credentials: 'include' });
@@ -273,7 +274,7 @@ export function WorkOrderExecutionPanel({ workOrderId }: { workOrderId: string }
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div><p className="text-xs text-muted-foreground">Orden</p><p className="mt-1 font-medium">{workOrder.work_order_number || 'Sin número'}</p></div>
+            <div><p className="text-xs text-muted-foreground">Orden</p><p className="mt-1 font-medium">{workOrder.work_order_number ? formatWorkOrderNumber(workOrder.work_order_number, 'es') : 'Sin número'}</p></div>
             <div><p className="text-xs text-muted-foreground">Responsable</p><p className="mt-1 font-medium">{workOrder.assigned_to_name || 'Sin asignar'}</p></div>
             <div><p className="text-xs text-muted-foreground">Fecha programada</p><p className="mt-1 font-medium">{dateLabel(workOrder.scheduled_date)}</p></div>
             <div><p className="text-xs text-muted-foreground">Fecha de cierre</p><p className="mt-1 font-medium">{dateLabel(workOrder.completion_date)}</p></div>

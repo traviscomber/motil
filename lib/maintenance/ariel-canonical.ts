@@ -19,7 +19,7 @@ export type CanonicalMaintenanceMember = {
 export const ARIEL_MAINTENANCE_TEAM: readonly CanonicalMaintenanceMember[] = [
   {
     name: 'Gustavo Vega',
-    role: 'Jefe Departamento Mantención Mecánica',
+    role: 'Jefe Departamento de Mantenimiento',
     responsibilities: ['Dirigir', 'Administrar'],
   },
   {
@@ -34,17 +34,17 @@ export const ARIEL_MAINTENANCE_TEAM: readonly CanonicalMaintenanceMember[] = [
   },
   {
     name: 'Juan Araya',
-    role: 'Encargado de taller',
+    role: 'Jefe de Taller Mina Peumo',
     responsibilities: ['Mantener, revisar y reparar equipos mina', 'Dirigir personal a cargo'],
   },
   {
     name: 'Joaquín Martínez',
-    role: 'Encargado de taller',
+    role: 'Jefe de Taller Mina Don Jaime',
     responsibilities: ['Mantener, revisar y reparar equipos mina', 'Dirigir personal a cargo'],
   },
   {
     name: 'José Tapia',
-    role: 'Encargado de taller',
+    role: 'Jefe de Taller Mina San Pedro',
     responsibilities: ['Mantener, revisar y reparar equipos mina', 'Dirigir personal a cargo'],
   },
   {
@@ -53,20 +53,13 @@ export const ARIEL_MAINTENANCE_TEAM: readonly CanonicalMaintenanceMember[] = [
     role: 'Encargado de Camionetas, Camiones y Furgones',
     responsibilities: ['Dirigir', 'Mantener camiones, camionetas y furgones', 'Preparar camiones, camionetas y furgones'],
   },
-  {
-    name: 'Esteban Díaz',
-    role: 'Jefe de Bodega',
-    responsibilities: [],
-  },
 ] as const;
 
 export const ARIEL_MAINTENANCE_FLOW = [
   { from: 'Gustavo Vega', to: 'Ariel López', relationship: 'Coordinación y decisión' },
   { from: 'Ariel López', to: 'Mauricio Astudillo', relationship: 'Planificación y coordinación' },
+  { from: 'Mauricio Astudillo', to: 'Joaquín Martínez', relationship: 'Supervisión y ejecución en Mina Don Jaime' },
   { from: 'Ariel López', to: 'Rodrigo Olmo', relationship: 'Planificación y coordinación' },
-  { from: 'Esteban Díaz', to: 'Rodrigo Olmo', relationship: 'Bodega y apoyo operativo' },
-  { from: 'Esteban Díaz', to: 'Ariel López', relationship: 'Bodega y planificación' },
-  { from: 'Esteban Díaz', to: 'Mauricio Astudillo', relationship: 'Bodega y mantenimiento' },
 ] as const;
 
 export type ArielVehicleCanonical = {
