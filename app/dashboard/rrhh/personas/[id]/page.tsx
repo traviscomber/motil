@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
@@ -17,7 +17,17 @@ import {
 } from '@/components/ui/page-header';
 
 type Payload = {
-  person: { id: string; full_name: string; rut: string | null; email: string | null; phone: string | null; role_title: string | null; employment_status: string; profile_id: string | null; source_type: string };
+  person: {
+    id: string;
+    full_name: string;
+    rut: string | null;
+    email: string | null;
+    phone: string | null;
+    role_title: string | null;
+    employment_status: string;
+    profile_id: string | null;
+    source_type: string;
+  };
   assignments: any[];
   cases: any[];
   competencies: any[];
@@ -27,6 +37,15 @@ type Payload = {
   operatorActivity: any[];
   workOrders: any[];
 };
+
+function employmentLabel(status: string) {
+  const value = String(status || '').trim().toLowerCase();
+  if (value === 'active') return 'Activo';
+  if (value === 'inactive') return 'Inactivo';
+  if (value === 'suspended') return 'Suspendido';
+  if (value === 'terminated') return 'Desvinculado';
+  return status || 'Sin estado';
+}
 
 export default function PersonLaborRecordPage() {
   const params = useParams<{ id: string }>();
@@ -46,77 +65,159 @@ export default function PersonLaborRecordPage() {
       .finally(() => setLoading(false));
   }, [params.id]);
 
-  const latestEvaluation = useMemo(() => data?.evaluations?.find((evaluation) => evaluation.status === 'finalized') || null, [data]);
-
-  if (loading) return <StatePanel tone="loading" title="Cargando ficha laboral" description="Reuniendo evidencia desde RRHH y módulos operacionales." />;
-  if (error || !data) return <StatePanel tone="error" title="No se pudo cargar la ficha laboral" description={error || 'Persona no disponible.'} />;
+  if (loading) {
+    return <StatePanel tone="loading" title="Cargando ficha" description="Reuniendo la información disponible de la persona." />;
+  }
+  if (error || !data) {
+    return <StatePanel tone="error" title="No se pudo cargar la ficha" description={error || 'Persona no disponible.'} />;
+  }
 
   const { person } = data;
-  const evidenceCount = data.cases.length + data.competencies.length + data.credentials.length + data.epp.length + data.evaluations.length + data.operatorActivity.length + data.workOrders.length;
+  const hasOperationalData = data.workOrders.length > 0 || data.operatorActivity.length > 0;
+  const hasRequirements = data.competencies.length > 0 || data.credentials.length > 0 || data.epp.length > 0;
+  const hasHistory = data.cases.length > 0 || data.evaluations.length > 0;
+  const currentAssignment = data.assignments.find((item) => !item.end_date) || data.assignments[0] || null;
 
   return (
     <div className="space-y-5">
       <PageHeader>
         <PageHeaderContent>
-          <PageHeaderEyebrow>RRHH · Ficha Laboral 360°</PageHeaderEyebrow>
+          <PageHeaderEyebrow>RRHH · Persona</PageHeaderEyebrow>
           <PageHeaderTitle>{person.full_name}</PageHeaderTitle>
-          <PageHeaderDescription>{person.role_title || 'Cargo no informado'}{person.rut ? ` · ${person.rut}` : ''}</PageHeaderDescription>
+          <PageHeaderDescription>
+            {person.role_title || 'Cargo pendiente'}
+            {person.rut ? ` · ${person.rut}` : ''}
+          </PageHeaderDescription>
         </PageHeaderContent>
         <PageHeaderActions>
-          <Button asChild variant="outline"><Link href="/dashboard/rrhh"><ArrowLeft className="mr-2 h-4 w-4" />Personas</Link></Button>
+          <Button asChild variant="outline">
+            <Link href="/dashboard/rrhh"><ArrowLeft className="mr-2 h-4 w-4" />Personas</Link>
+          </Button>
         </PageHeaderActions>
       </PageHeader>
 
-      <div className="grid gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-5">
+      <div className="grid gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-4">
         {[
-          ['Estado', person.employment_status],
-          ['Score formal', latestEvaluation?.overall_score ?? '—'],
-          ['OT', data.workOrders.length],
-          ['Actividades', data.operatorActivity.length],
-          ['Evidencias', evidenceCount],
-        ].map(([label, value]) => <div key={label} className="bg-card px-4 py-3"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-lg font-semibold">{value}</p></div>)}
+          ['Estado', employmentLabel(person.employment_status)],
+          ['Cargo', person.role_title || 'Pendiente'],
+          ['Acceso', person.profile_id ? 'Vinculado' : 'Sin vincular'],
+          ['Actividad', data.workOrders.length + data.operatorActivity.length],
+        ].map(([label, value]) => (
+          <div key={label} className="bg-card px-4 py-3">
+            <p className="text-xs text-muted-foreground">{label}</p>
+            <p className="mt-1 text-lg font-semibold">{value}</p>
+          </div>
+        ))}
       </div>
 
       <section className="border-b pb-5">
-        <h2 className="text-base font-semibold">Identidad laboral</h2>
+        <h2 className="text-base font-semibold">Datos de la persona</h2>
         <div className="mt-3 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
           <div><p className="text-xs text-muted-foreground">Correo</p><p>{person.email || 'No informado'}</p></div>
           <div><p className="text-xs text-muted-foreground">Teléfono</p><p>{person.phone || 'No informado'}</p></div>
-          <div><p className="text-xs text-muted-foreground">Usuario ERP</p><p>{person.profile_id ? 'Vinculado' : 'Sin vincular'}</p></div>
-          <div><p className="text-xs text-muted-foreground">Fuente</p><p>{person.source_type}</p></div>
+          <div><p className="text-xs text-muted-foreground">RUT</p><p>{person.rut || 'No informado'}</p></div>
+          <div><p className="text-xs text-muted-foreground">Fuente</p><p>{person.source_type || 'No informada'}</p></div>
         </div>
       </section>
 
       <section className="border-b pb-5">
-        <h2 className="text-base font-semibold">Asignaciones laborales</h2>
-        {data.assignments.length === 0 ? <p className="mt-2 text-sm text-muted-foreground">Sin historial estructurado todavía.</p> : <div className="mt-2 divide-y">{data.assignments.map((item) => <div key={item.id} className="py-3 text-sm"><div className="flex flex-wrap items-center justify-between gap-2"><span className="font-medium">{item.role_title || item.area || 'Asignación'}</span><span className="text-muted-foreground">{item.start_date}{item.end_date ? ` → ${item.end_date}` : ' → vigente'}</span></div><p className="mt-1 text-muted-foreground">{[item.site_name, item.shift_pattern, item.employment_type].filter(Boolean).join(' · ') || 'Sin detalle adicional'}</p></div>)}</div>}
+        <h2 className="text-base font-semibold">Asignación actual</h2>
+        {currentAssignment ? (
+          <div className="mt-3 text-sm">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-medium">{currentAssignment.role_title || currentAssignment.area || person.role_title || 'Asignación'}</span>
+              <Badge variant="outline">{currentAssignment.end_date ? 'Histórica' : 'Vigente'}</Badge>
+            </div>
+            <p className="mt-1 text-muted-foreground">
+              {[currentAssignment.site_name, currentAssignment.shift_pattern, currentAssignment.employment_type].filter(Boolean).join(' · ') || 'Sin detalle adicional'}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Desde {currentAssignment.start_date || 'fecha no informada'}
+              {currentAssignment.end_date ? ` hasta ${currentAssignment.end_date}` : ''}
+            </p>
+          </div>
+        ) : (
+          <StatePanel
+            tone="neutral"
+            title="Asignación pendiente"
+            description="Todavía no existe una asignación laboral estructurada para esta persona."
+          />
+        )}
       </section>
 
       <section className="border-b pb-5">
-        <div className="flex items-center justify-between"><h2 className="text-base font-semibold">Desempeño y trabajo</h2><Badge variant="outline">evidencia automática + evaluación</Badge></div>
-        <div className="mt-3 grid gap-4 lg:grid-cols-2">
-          <div><p className="text-sm font-medium">Órdenes de trabajo</p><div className="mt-2 divide-y border-y">{data.workOrders.slice(0, 12).map((wo) => <div key={wo.id} className="py-2 text-sm"><div className="flex justify-between gap-3"><span>{wo.work_order_number} · {wo.title}</span><span className="text-muted-foreground">{wo.status || '—'}</span></div></div>)}{data.workOrders.length === 0 ? <p className="py-3 text-sm text-muted-foreground">Sin OT vinculadas por person_id.</p> : null}</div></div>
-          <div><p className="text-sm font-medium">Actividad operacional</p><div className="mt-2 divide-y border-y">{data.operatorActivity.slice(0, 12).map((activity) => <div key={activity.id} className="py-2 text-sm"><div className="flex justify-between gap-3"><span>{activity.operation_date} · {activity.activity_type}</span><span className="text-muted-foreground">{activity.activity_status}</span></div><p className="text-xs text-muted-foreground">Turno {activity.shift_code}{activity.output_quantity != null ? ` · ${activity.output_quantity} ${activity.output_unit || ''}` : ''}</p></div>)}{data.operatorActivity.length === 0 ? <p className="py-3 text-sm text-muted-foreground">Sin actividad operacional registrada todavía.</p> : null}</div></div>
-        </div>
+        <h2 className="text-base font-semibold">Actividad operacional</h2>
+        {!hasOperationalData ? (
+          <p className="mt-2 text-sm text-muted-foreground">No hay actividad operacional vinculada todavía.</p>
+        ) : (
+          <div className="mt-3 grid gap-4 lg:grid-cols-2">
+            <div>
+              <p className="text-sm font-medium">Órdenes de trabajo</p>
+              <div className="mt-2 divide-y border-y">
+                {data.workOrders.slice(0, 8).map((wo) => (
+                  <div key={wo.id} className="py-2 text-sm">
+                    <div className="flex justify-between gap-3">
+                      <span>{wo.work_order_number} · {wo.title}</span>
+                      <span className="text-muted-foreground">{wo.status || '—'}</span>
+                    </div>
+                  </div>
+                ))}
+                {data.workOrders.length === 0 ? <p className="py-3 text-sm text-muted-foreground">Sin OT vinculadas.</p> : null}
+              </div>
+            </div>
+
+            <div>
+              <p className="text-sm font-medium">Operación</p>
+              <div className="mt-2 divide-y border-y">
+                {data.operatorActivity.slice(0, 8).map((activity) => (
+                  <div key={activity.id} className="py-2 text-sm">
+                    <div className="flex justify-between gap-3">
+                      <span>{activity.operation_date} · {activity.activity_type}</span>
+                      <span className="text-muted-foreground">{activity.activity_status}</span>
+                    </div>
+                  </div>
+                ))}
+                {data.operatorActivity.length === 0 ? <p className="py-3 text-sm text-muted-foreground">Sin actividad registrada.</p> : null}
+              </div>
+            </div>
+          </div>
+        )}
       </section>
 
-      <section className="border-b pb-5">
-        <h2 className="text-base font-semibold">Competencias, credenciales y EPP</h2>
-        <div className="mt-3 grid gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-3">
-          {[
-            ['Competencias', data.competencies.length],
-            ['Credenciales', data.credentials.length],
-            ['Asignaciones EPP', data.epp.length],
-          ].map(([label, value]) => <div key={label} className="bg-card px-4 py-3"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-xl font-semibold">{value}</p></div>)}
-        </div>
-      </section>
+      {hasRequirements ? (
+        <section className="border-b pb-5">
+          <h2 className="text-base font-semibold">Requisitos y habilitación</h2>
+          <div className="mt-3 grid gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-3">
+            {[
+              ['Competencias', data.competencies.length],
+              ['Credenciales', data.credentials.length],
+              ['EPP', data.epp.length],
+            ].map(([label, value]) => (
+              <div key={label} className="bg-card px-4 py-3">
+                <p className="text-xs text-muted-foreground">{label}</p>
+                <p className="mt-1 text-xl font-semibold">{value}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
-      <section>
-        <h2 className="text-base font-semibold">Casos e historial laboral</h2>
-        {data.cases.length === 0 ? <p className="mt-2 text-sm text-muted-foreground">No existen eventos laborales registrados para esta persona.</p> : <div className="mt-2 divide-y border-y">{data.cases.map((event) => <div key={event.id} className="py-3"><div className="flex flex-wrap items-center gap-2"><span className="font-medium">{event.title}</span><Badge variant="outline">{event.event_type}</Badge>{event.severity ? <Badge variant="secondary">{event.severity}</Badge> : null}</div><p className="mt-1 text-sm text-muted-foreground">{event.event_date} · {event.review_status}</p><p className="mt-1 text-sm">{event.description}</p>{event.employee_response ? <p className="mt-2 text-sm text-muted-foreground">Respuesta del trabajador: {event.employee_response}</p> : null}</div>)}</div>}
-      </section>
+      {hasHistory ? (
+        <section>
+          <h2 className="text-base font-semibold">Historial laboral</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {data.cases.length} caso(s) · {data.evaluations.length} evaluación(es) registradas.
+          </p>
+        </section>
+      ) : null}
 
-      <StatePanel tone="neutral" title="Evidencia, no decisión automática" description="La ficha consolida hechos y evaluaciones. Un score o evento aislado no determina una desvinculación; cualquier decisión laboral debe revisar hechos, contexto, descargos y validaciones correspondientes." />
+      {!hasRequirements && !hasHistory ? (
+        <StatePanel
+          tone="neutral"
+          title="Ficha inicial"
+          description="La ficha muestra sólo información disponible. Competencias, credenciales, EPP e historial aparecerán cuando existan registros reales."
+        />
+      ) : null}
     </div>
   );
 }
