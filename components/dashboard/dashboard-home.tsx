@@ -16,6 +16,7 @@ import {
 import { StatePanel } from '@/components/ui/state-panel';
 import { HomeDecisionPriorities } from '@/components/dashboard/home-decision-priorities';
 import type { Dictionary, Locale } from '@/lib/i18n/dictionaries';
+import { resolveMaintenanceViewerMode } from '@/lib/maintenance/viewer-mode';
 
 type RoleTask = {
   task_key: string;
@@ -94,6 +95,8 @@ function resolveMode(cargoName: string | null | undefined): HomeMode {
   if (/todos los cargos|gerenc|director|administrador|admin|jefatura general/.test(cargo)) return 'management';
   if (/sostenibilidad|prevencion|hse|medio ambiente/.test(cargo)) return 'sustainability';
   if (/jefe adm|administracion|finanzas|financiero/.test(cargo)) return 'finance';
+  const maintenanceMode = resolveMaintenanceViewerMode(cargoName || null);
+  if (maintenanceMode === 'planning' || maintenanceMode === 'leadership' || maintenanceMode === 'execution') return 'maintenance';
   if (/mantencion|mantenimiento|mecan|taller|jefe man\.? eq|jefe mant|planificador.*mant/.test(cargo)) return 'maintenance';
   if (/sondaje|perforacion|perforista/.test(cargo)) return 'drilling';
   if (/jefe.*planta|planta.*jefe|metalurg/.test(cargo)) return 'plant';
