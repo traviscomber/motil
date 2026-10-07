@@ -4,6 +4,7 @@ import { Geist, Geist_Mono, Manrope, Montserrat } from 'next/font/google';
 import { ThemeProvider } from 'next-themes';
 import { Toaster } from 'sonner';
 import { getLocale } from '@/lib/i18n/server';
+import { PwaServiceWorkerRegistrar } from '@/components/pwa/service-worker-registrar';
 import './globals.css';
 import './motil-system.css';
 
@@ -30,6 +31,9 @@ export async function generateMetadata(): Promise<Metadata> {
       capable: true,
       title: 'MOTIL',
       statusBarStyle: 'black-translucent',
+    },
+    other: {
+      'mobile-web-app-capable': 'yes',
     },
     authors: [{ name: 'Neuralia' }],
     creator: 'Neuralia',
@@ -96,6 +100,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
       <head><meta charSet="utf-8" /></head>
       <body className="bg-background font-sans text-foreground antialiased selection:bg-primary/20 selection:text-foreground">
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} storageKey="motil-theme" disableTransitionOnChange>
+          <PwaServiceWorkerRegistrar />
           {children}
           <Toaster position="top-right" />
         </ThemeProvider>
