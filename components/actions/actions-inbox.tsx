@@ -292,7 +292,7 @@ export function ActionsInbox({ locale, dictionary }: { locale: Locale; dictionar
                         </div>
                         <p className="mt-2 font-medium">{task.title}</p>
                         {task.evidence_summary ? <p className="mt-1 text-sm text-muted-foreground">{task.evidence_summary}</p> : null}
-                        <p className="mt-1 text-xs text-muted-foreground">{task.domain} · {task.cargo_name}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">{t.families[familyKey(task)]} · {task.cargo_name}</p>
                       </div>
                       <div className="flex flex-wrap gap-2">
                         <Button size="sm" variant="ghost" onClick={() => void setState(task.task_key, state?.status === 'read' ? 'pending' : 'read')}>{state?.status === 'read' ? t.markPending : t.markRead}</Button>
