@@ -45,8 +45,11 @@ test('97 controlled closure exposes one next evidence action and preserves unkno
   assert.match(dictionaries, /una sola acción siguiente por vez/);
   assert.match(dictionaries, /nextActionBadge: 'Siguiente acción'/);
   assert.doesNotMatch(closurePage, /Volver a órdenes/);
-  assert.match(closureQueue, /lg:grid-cols-4/);
-  assert.match(closureQueue, /value == null \? '—'/);
+  assert.match(closurePage, /max-w-3xl/);
+  assert.match(closureQueue, /Siguiente paso/);
+  assert.match(closureQueue, /Cerrar OT/);
+  assert.doesNotMatch(closureQueue, /lg:grid-cols-4/);
+  assert.doesNotMatch(closureQueue, /total_cost/);
   assert.doesNotMatch(closureQueue, /lg:grid-cols-6/);
   assert.doesNotMatch(closureQueue, /RefreshCw/);
 });
