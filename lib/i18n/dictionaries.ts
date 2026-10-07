@@ -659,7 +659,7 @@ export const dictionaries = {
           plant: 'Producción',
           finance: 'Finanzas',
           hse: 'Sostenibilidad',
-          maintenance: 'Mantención',
+          maintenance: 'Mantenimiento',
           other: 'Otras acciones',
         },
         criticalCount: '{n} crítica',
