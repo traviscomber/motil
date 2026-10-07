@@ -31,6 +31,8 @@ test('terrain surface exposes the full assigned active queue without global main
   assert.doesNotMatch(terrain, /Ver todas las órdenes/);
   assert.doesNotMatch(terrain, /mobile-quick-complete/);
   assert.doesNotMatch(terrain, /MARCAR COMPLETADO/);
+  assert.doesNotMatch(terrain, /description=\{error\.message\}/);
+  assert.match(terrain, /Actualiza e intenta nuevamente/);
 });
 
 test('authorized field supervisors receive a visible create work order action', () => {
