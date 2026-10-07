@@ -14,8 +14,6 @@ import {
   PageHeader,
   PageHeaderActions,
   PageHeaderContent,
-  PageHeaderDescription,
-  PageHeaderEyebrow,
   PageHeaderTitle,
 } from '@/components/ui/page-header';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -236,11 +234,7 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
     <div className="mx-auto max-w-3xl space-y-5">
       <PageHeader>
         <PageHeaderContent>
-          <PageHeaderEyebrow>{t.eyebrow}</PageHeaderEyebrow>
           <PageHeaderTitle>{t.title}</PageHeaderTitle>
-          <PageHeaderDescription>
-            Elige primero al responsable, luego busca el equipo y define el trabajo. Los insumos son opcionales.
-          </PageHeaderDescription>
         </PageHeaderContent>
         <PageHeaderActions>
           <Button asChild variant="outline">
@@ -250,10 +244,10 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
       </PageHeader>
 
       {error ? (
-        <StatePanel tone="error" title={t.loadEquipmentError} description={error.message} actions={<Button variant="outline" onClick={() => void mutate()}>{t.retry}</Button>} className="min-h-0 py-5" />
+        <StatePanel tone="error" title={t.loadEquipmentError} description="Actualiza e intenta nuevamente." actions={<Button variant="outline" onClick={() => void mutate()}>{t.retry}</Button>} className="min-h-0 py-5" />
       ) : null}
 
-      {reviewError ? <StatePanel tone="error" title={t.loadReviewError} description={reviewError.message} className="min-h-0 py-5" /> : null}
+      {reviewError ? <StatePanel tone="error" title={t.loadReviewError} description="Actualiza e intenta nuevamente." className="min-h-0 py-5" /> : null}
 
       {reviewId && !reviewError ? (
         <Card className="shadow-none">
@@ -273,12 +267,11 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
 
       <Card className="shadow-none">
         <CardHeader className="pb-4">
-          <CardTitle className="text-base">1. Responsable</CardTitle>
-          <CardDescription>Primero define quién será responsable de la OT.</CardDescription>
+          <CardTitle className="text-base">Responsable</CardTitle>
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="space-y-2">
-            <Label htmlFor="assignee">Responsable de la OT</Label>
+            <Label htmlFor="assignee">Responsable</Label>
             <Select value={assignedPersonId} onValueChange={setAssignedPersonId} disabled={assigneesLoading || Boolean(assigneeError)}>
               <SelectTrigger id="assignee">
                 <SelectValue placeholder={assigneesLoading ? 'Cargando responsables...' : 'Seleccionar responsable'} />
@@ -291,15 +284,14 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
                 ))}
               </SelectContent>
             </Select>
-            {assigneeError ? <p className="text-xs text-destructive">{assigneeError.message}</p> : null}
+            {assigneeError ? <p className="text-xs text-destructive">No se pudieron cargar los responsables.</p> : null}
           </div>
         </CardContent>
       </Card>
 
       <Card className="shadow-none">
         <CardHeader className="pb-4">
-          <CardTitle className="text-base">2. Qué hay que hacer</CardTitle>
-          <CardDescription>Selecciona el equipo y describe el trabajo.</CardDescription>
+          <CardTitle className="text-base">Equipo y trabajo</CardTitle>
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="space-y-2">
@@ -313,7 +305,7 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
                   setAssetQuery(event.target.value);
                   if (!reviewId) setCanonicalAssetId('');
                 }}
-                placeholder={isLoading ? t.fields.loadingAssets : 'Buscar por código, equipo, modelo o faena'}
+                placeholder={isLoading ? t.fields.loadingAssets : 'Buscar equipo'}
                 className="pl-9"
                 disabled={isLoading || Boolean(error) || Boolean(reviewId)}
               />
@@ -378,11 +370,10 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
 
       <details className="group rounded-lg border bg-card" open={plannedMaterials.length > 0}>
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-sm font-medium">
-          <span className="flex items-center gap-2"><PackageSearch className="h-4 w-4" />Insumos de bodega <span className="font-normal text-muted-foreground">(opcional)</span></span>
+          <span className="flex items-center gap-2"><PackageSearch className="h-4 w-4" />Insumos <span className="font-normal text-muted-foreground">(opcional)</span></span>
           <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
         </summary>
         <div className="space-y-4 border-t px-5 py-5">
-          <p className="text-sm text-muted-foreground">Selecciona lo que debería estar disponible para ejecutar la OT. No descuenta stock todavía.</p>
           <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_100px]">
             <div className="space-y-2">
               <Label htmlFor="material-search">Buscar insumo</Label>
@@ -432,8 +423,7 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
 
       <Card className="shadow-none">
         <CardHeader className="pb-4">
-          <CardTitle className="text-base">3. Cuándo</CardTitle>
-          <CardDescription>La OT puede crearse sin duración ni horómetro. Los insumos de bodega son opcionales.</CardDescription>
+          <CardTitle className="text-base">Fecha</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
@@ -468,7 +458,6 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
       </details>
 
       <div className="sticky bottom-3 z-10 flex items-center justify-between gap-3 rounded-lg border bg-background/95 p-3 shadow-sm backdrop-blur">
-        <p className="hidden text-sm text-muted-foreground sm:block">El responsable, equipo e insumos quedan ligados a la OT desde el inicio.</p>
         <div className="ml-auto flex gap-2">
           <Button asChild variant="outline"><Link href="/dashboard/mantenimiento/ordenes-trabajo">{t.cancel}</Link></Button>
           <Button onClick={submit} disabled={submitting || isLoading || assigneesLoading || Boolean(error) || Boolean(assigneeError) || reviewLoading || Boolean(reviewError) || Boolean(review?.linked_work_order_id)}>
