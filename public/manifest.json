@@ -1,14 +1,17 @@
 {
-  "name": "Motil - Gestión Operacional Minera",
-  "short_name": "Motil",
+  "name": "MOTIL Mining OS",
+  "short_name": "MOTIL",
   "description": "Plataforma integral de gestión operacional minera. Producción, Mantención, HSE, Documentos, Compras y Finanzas integrados.",
   "start_url": "/dashboard",
   "scope": "/",
   "display": "standalone",
-  "orientation": "portrait-primary",
-  "background_color": "#ffffff",
-  "theme_color": "#f59e0b",
-  "categories": ["business", "productivity"],
+  "orientation": "any",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
+  "categories": [
+    "business",
+    "productivity"
+  ],
   "screenshots": [
     {
       "src": "/screenshots/screenshot1.png",
@@ -25,28 +28,16 @@
   ],
   "icons": [
     {
-      "src": "/icon-192.png",
+      "src": "/api/pwa/icon-192?brand=motil-3",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "any maskable"
     },
     {
-      "src": "/icon-512.png",
+      "src": "/api/pwa/icon-512?brand=motil-3",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/icon-maskable-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable"
-    },
-    {
-      "src": "/icon-maskable-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
+      "purpose": "any maskable"
     }
   ],
   "shortcuts": [
@@ -57,8 +48,8 @@
       "url": "/dashboard",
       "icons": [
         {
-          "src": "/icon-96.png",
-          "sizes": "96x96",
+          "src": "/api/pwa/icon-192?brand=motil-3",
+          "sizes": "192x192",
           "type": "image/png"
         }
       ]
@@ -70,8 +61,8 @@
       "url": "/dashboard/operaciones",
       "icons": [
         {
-          "src": "/icon-96.png",
-          "sizes": "96x96",
+          "src": "/api/pwa/icon-192?brand=motil-3",
+          "sizes": "192x192",
           "type": "image/png"
         }
       ]
@@ -83,8 +74,8 @@
       "url": "/dashboard/hse",
       "icons": [
         {
-          "src": "/icon-96.png",
-          "sizes": "96x96",
+          "src": "/api/pwa/icon-192?brand=motil-3",
+          "sizes": "192x192",
           "type": "image/png"
         }
       ]
@@ -101,7 +92,12 @@
       "files": [
         {
           "name": "file",
-          "accept": ["image/*", "application/pdf", ".doc", ".docx"]
+          "accept": [
+            "image/*",
+            "application/pdf",
+            ".doc",
+            ".docx"
+          ]
         }
       ]
     }

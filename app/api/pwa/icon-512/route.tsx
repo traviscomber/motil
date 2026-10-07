@@ -21,8 +21,8 @@ export async function GET(request: Request) {
         <img
           src={wordmark}
           alt=""
-          width="148"
-          height="43"
+          width="394"
+          height="115"
           style={{
             width: '77%',
             height: 'auto',
@@ -32,8 +32,8 @@ export async function GET(request: Request) {
       </div>
     ),
     {
-      width: 192,
-      height: 192,
+      width: 512,
+      height: 512,
       headers: {
         'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
       },
