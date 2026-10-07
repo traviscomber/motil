@@ -7,7 +7,9 @@ import { requireAssignedMaintenanceExecution } from '@/lib/maintenance/work-orde
 import { requireOperationalMaintenanceWorkOrder } from '@/lib/maintenance/work-order-scope';
 
 const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']);
-const MAX_BYTES = 12 * 1024 * 1024;
+const ALLOWED_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif']);
+const MAX_BYTES = 20 * 1024 * 1024;
+const BUCKET = 'maintenance-work-order-evidence';
 
 async function authorize(request: NextRequest, workOrderId: string) {
   const context = await getOrganizationContext(request);
@@ -17,6 +19,50 @@ async function authorize(request: NextRequest, workOrderId: string) {
   const executionAccess = await requireAssignedMaintenanceExecution(context, workOrderId);
   if (!executionAccess.ok) return { ok: false as const, response: executionAccess.response };
   return { ...context, executionPersonId: executionAccess.personId };
+}
+
+function safeExtension(fileName: string) {
+  const ext = (fileName.split('.').pop() || '').replace(/[^a-z0-9]/gi, '').toLowerCase();
+  return ALLOWED_EXTENSIONS.has(ext) ? ext : '';
+}
+
+function normalizeMimeType(mimeType: string, extension: string) {
+  const value = mimeType.trim().toLowerCase();
+  if (value === 'image/jpg') return 'image/jpeg';
+  if (ALLOWED_TYPES.has(value)) return value;
+  if (!value || value === 'application/octet-stream') {
+    if (extension === 'jpg' || extension === 'jpeg') return 'image/jpeg';
+    if (extension === 'png') return 'image/png';
+    if (extension === 'webp') return 'image/webp';
+    if (extension === 'heic') return 'image/heic';
+    if (extension === 'heif') return 'image/heif';
+  }
+  return '';
+}
+
+async function requireOpenOperationalWorkOrder(
+  context: Extract<Awaited<ReturnType<typeof authorize>>, { ok: true }>,
+  id: string,
+) {
+  const guard = await requireOperationalMaintenanceWorkOrder(context.supabase, context.organizationId, id);
+  if (!guard.ok) {
+    return { ok: false as const, response: NextResponse.json({ error: guard.error, record_scope: guard.scope }, { status: guard.status }) };
+  }
+
+  const { data: workOrder, error } = await context.supabase
+    .from('maintenance_work_orders')
+    .select('id,status')
+    .eq('organization_id', context.organizationId)
+    .eq('id', id)
+    .maybeSingle();
+  if (error) throw error;
+  if (!workOrder) {
+    return { ok: false as const, response: NextResponse.json({ error: 'No se encontró la orden de trabajo.' }, { status: 404 }) };
+  }
+  if (['completed', 'closed', 'cancelled', 'canceled'].includes(String(workOrder.status || '').toLowerCase())) {
+    return { ok: false as const, response: NextResponse.json({ error: 'La OT ya no admite nueva evidencia de ejecución.' }, { status: 409 }) };
+  }
+  return { ok: true as const };
 }
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -57,35 +103,133 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (!context.ok) return context.response;
 
   try {
-    const guard = await requireOperationalMaintenanceWorkOrder(context.supabase, context.organizationId, id);
-    if (!guard.ok) return NextResponse.json({ error: guard.error, record_scope: guard.scope }, { status: guard.status });
+    const workOrderCheck = await requireOpenOperationalWorkOrder(context, id);
+    if (!workOrderCheck.ok) return workOrderCheck.response;
+
+    const contentType = request.headers.get('content-type') || '';
+
+    if (contentType.includes('application/json')) {
+      const body = await request.json();
+      const action = String(body?.action || '');
+
+      if (action === 'create_upload') {
+        const fileName = String(body?.fileName || '').trim();
+        const sizeBytes = Number(body?.sizeBytes || 0);
+        const extension = safeExtension(fileName);
+        const mimeType = normalizeMimeType(String(body?.mimeType || ''), extension);
+
+        if (!fileName || !extension || !mimeType) {
+          return NextResponse.json({ error: 'Formato no permitido. Usa JPG, PNG, WEBP, HEIC o HEIF.' }, { status: 400 });
+        }
+        if (!Number.isFinite(sizeBytes) || sizeBytes <= 0 || sizeBytes > MAX_BYTES) {
+          return NextResponse.json({ error: 'La foto debe pesar menos de 20 MB.' }, { status: 400 });
+        }
+
+        const evidenceId = crypto.randomUUID();
+        const storagePath = `${context.organizationId}/${id}/${evidenceId}.${extension}`;
+        const { data: signed, error: signedError } = await context.supabase.storage
+          .from(BUCKET)
+          .createSignedUploadUrl(storagePath);
+        if (signedError || !signed?.token) throw signedError || new Error('No se pudo preparar la subida de la foto.');
+
+        return NextResponse.json({
+          upload: {
+            evidenceId,
+            storagePath,
+            token: signed.token,
+            mimeType,
+            fileName,
+            sizeBytes,
+          },
+        });
+      }
+
+      if (action === 'complete_upload') {
+        const evidenceId = String(body?.evidenceId || '').trim();
+        const storagePath = String(body?.storagePath || '').trim();
+        const fileName = String(body?.fileName || '').trim();
+        const sizeBytes = Number(body?.sizeBytes || 0);
+        const extension = safeExtension(fileName);
+        const mimeType = normalizeMimeType(String(body?.mimeType || ''), extension);
+        const notes = String(body?.notes || '').trim() || null;
+        const expectedPrefix = `${context.organizationId}/${id}/`;
+
+        if (!/^[0-9a-f-]{36}$/i.test(evidenceId) || !storagePath.startsWith(expectedPrefix) || !storagePath.includes(evidenceId)) {
+          return NextResponse.json({ error: 'La evidencia no coincide con esta OT.' }, { status: 400 });
+        }
+        if (!fileName || !extension || !mimeType || !Number.isFinite(sizeBytes) || sizeBytes <= 0 || sizeBytes > MAX_BYTES) {
+          return NextResponse.json({ error: 'Los datos de la foto no son válidos.' }, { status: 400 });
+        }
+
+        const folder = `${context.organizationId}/${id}`;
+        const objectName = storagePath.slice(folder.length + 1);
+        const { data: objects, error: listError } = await context.supabase.storage
+          .from(BUCKET)
+          .list(folder, { search: objectName, limit: 10 });
+        if (listError) throw listError;
+        if (!(objects || []).some((object) => object.name === objectName)) {
+          return NextResponse.json({ error: 'La foto no terminó de subir. Intenta nuevamente.' }, { status: 409 });
+        }
+
+        const { data, error } = await context.supabase
+          .from('work_order_evidence_files')
+          .insert({
+            id: evidenceId,
+            organization_id: context.organizationId,
+            work_order_id: id,
+            evidence_type: 'photo',
+            storage_bucket: BUCKET,
+            storage_path: storagePath,
+            file_name: fileName,
+            mime_type: mimeType,
+            size_bytes: sizeBytes,
+            notes,
+            captured_at: new Date().toISOString(),
+            created_by: context.userId,
+          })
+          .select('id,evidence_type,file_name,mime_type,size_bytes,notes,captured_at,created_at')
+          .single();
+
+        if (error) {
+          await context.supabase.storage.from(BUCKET).remove([storagePath]);
+          throw error;
+        }
+
+        await context.supabase.from('work_order_events').insert({
+          organization_id: context.organizationId,
+          work_order_id: id,
+          event_type: 'execution_evidence_added',
+          event_at: new Date().toISOString(),
+          actor_id: context.userId,
+          actor_name: context.userName || context.userEmail || null,
+          source_table: 'public.work_order_evidence_files',
+          source_record_id: evidenceId,
+          summary: 'Evidencia fotográfica de ejecución agregada',
+          payload: { evidence_id: evidenceId, mime_type: mimeType, size_bytes: sizeBytes, upload_path: 'signed_direct' },
+        });
+
+        return NextResponse.json({ evidence: data }, { status: 201 });
+      }
+
+      return NextResponse.json({ error: 'Acción de evidencia no válida.' }, { status: 400 });
+    }
 
     const form = await request.formData();
     const file = form.get('file');
     const notes = String(form.get('notes') || '').trim() || null;
     if (!(file instanceof File)) return NextResponse.json({ error: 'Selecciona una foto como evidencia.' }, { status: 400 });
-    if (!ALLOWED_TYPES.has(file.type)) return NextResponse.json({ error: 'Formato no permitido. Usa JPG, PNG, WEBP o HEIC.' }, { status: 400 });
-    if (file.size <= 0 || file.size > MAX_BYTES) return NextResponse.json({ error: 'La foto debe pesar menos de 12 MB.' }, { status: 400 });
 
-    const { data: workOrder, error: woError } = await context.supabase
-      .from('maintenance_work_orders')
-      .select('id,status')
-      .eq('organization_id', context.organizationId)
-      .eq('id', id)
-      .maybeSingle();
-    if (woError) throw woError;
-    if (!workOrder) return NextResponse.json({ error: 'No se encontró la orden de trabajo.' }, { status: 404 });
-    if (['completed', 'closed', 'cancelled', 'canceled'].includes(String(workOrder.status || '').toLowerCase())) {
-      return NextResponse.json({ error: 'La OT ya no admite nueva evidencia de ejecución.' }, { status: 409 });
-    }
+    const extension = safeExtension(file.name);
+    const mimeType = normalizeMimeType(file.type, extension);
+    if (!extension || !mimeType) return NextResponse.json({ error: 'Formato no permitido. Usa JPG, PNG, WEBP, HEIC o HEIF.' }, { status: 400 });
+    if (file.size <= 0 || file.size > 12 * 1024 * 1024) return NextResponse.json({ error: 'Para fotos grandes usa la subida directa desde la pantalla de cierre.' }, { status: 400 });
 
-    const ext = (file.name.split('.').pop() || 'jpg').replace(/[^a-z0-9]/gi, '').toLowerCase() || 'jpg';
     const evidenceId = crypto.randomUUID();
-    const storagePath = `${context.organizationId}/${id}/${evidenceId}.${ext}`;
+    const storagePath = `${context.organizationId}/${id}/${evidenceId}.${extension}`;
     const bytes = new Uint8Array(await file.arrayBuffer());
-    const bucket = context.supabase.storage.from('maintenance-work-order-evidence');
+    const bucket = context.supabase.storage.from(BUCKET);
     const { error: uploadError } = await bucket.upload(storagePath, bytes, {
-      contentType: file.type,
+      contentType: mimeType,
       cacheControl: '3600',
       upsert: false,
     });
@@ -98,10 +242,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         organization_id: context.organizationId,
         work_order_id: id,
         evidence_type: 'photo',
-        storage_bucket: 'maintenance-work-order-evidence',
+        storage_bucket: BUCKET,
         storage_path: storagePath,
-        file_name: file.name || `evidence-${evidenceId}.${ext}`,
-        mime_type: file.type,
+        file_name: file.name || `evidence-${evidenceId}.${extension}`,
+        mime_type: mimeType,
         size_bytes: file.size,
         notes,
         captured_at: new Date().toISOString(),
@@ -125,7 +269,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       source_table: 'public.work_order_evidence_files',
       source_record_id: evidenceId,
       summary: 'Evidencia fotográfica de ejecución agregada',
-      payload: { evidence_id: evidenceId, mime_type: file.type, size_bytes: file.size },
+      payload: { evidence_id: evidenceId, mime_type: mimeType, size_bytes: file.size, upload_path: 'server_fallback' },
     });
 
     return NextResponse.json({ evidence: data }, { status: 201 });
