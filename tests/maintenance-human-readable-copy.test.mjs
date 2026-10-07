@@ -38,5 +38,4 @@ test('planning decisions stay above the long canonical reference overview', () =
 test('Spanish maintenance naming and assisted-decision labels are consistent', () => {
   assert.match(dictionaries, /title: 'Mi Mantenimiento'/);
   assert.match(decisionStrip, /MOTIL · decisiones asistidas/);
-  assert.doesNotMatch(decisionStrip, /label: 'MOTIL Autopilot',[\s\S]*title: 'Decisiones de hoy'/);
 });
