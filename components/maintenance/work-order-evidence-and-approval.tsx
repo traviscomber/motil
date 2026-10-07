@@ -46,21 +46,33 @@ export function WorkOrderEvidenceAndApproval({ workOrderId, status }: { workOrde
         </CardHeader>
         <CardContent>
           {photos.length ? (
-            <div className="divide-y rounded-lg border">
-              {photos.map((photo: { id: string; file_name?: string | null; created_at?: string | null; signed_url?: string | null }) => (
-                <a key={photo.id} href={photo.signed_url || '#'} target="_blank" rel="noreferrer" className="flex items-center gap-3 p-3 hover:bg-muted/30">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-muted">
-                    {photo.signed_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={photo.signed_url} alt={photo.file_name || 'Evidencia de OT'} className="h-full w-full object-cover" />
-                    ) : <ImageIcon className="h-5 w-5 text-muted-foreground" />}
+            <div className="space-y-3">
+              <a href={photos[0]?.signed_url || '#'} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-lg border bg-muted">
+                {photos[0]?.signed_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={photos[0].signed_url} alt={photos[0].file_name || 'Evidencia principal de OT'} className="max-h-[560px] w-full object-contain" />
+                ) : <div className="flex min-h-64 items-center justify-center"><ImageIcon className="h-8 w-8 text-muted-foreground" /></div>}
+              </a>
+              <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                <span>{formatDate(photos[0]?.created_at)}</span>
+                <span>Abrir imagen completa</span>
+              </div>
+              {photos.length > 1 ? (
+                <details className="rounded-lg border">
+                  <summary className="cursor-pointer px-4 py-3 text-sm font-medium">Ver {photos.length - 1} evidencia{photos.length - 1 === 1 ? '' : 's'} adicional{photos.length - 1 === 1 ? '' : 'es'}</summary>
+                  <div className="grid gap-3 border-t p-3 sm:grid-cols-2">
+                    {photos.slice(1).map((photo: { id: string; file_name?: string | null; created_at?: string | null; signed_url?: string | null }) => (
+                      <a key={photo.id} href={photo.signed_url || '#'} target="_blank" rel="noreferrer" className="overflow-hidden rounded-md border bg-muted">
+                        {photo.signed_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={photo.signed_url} alt={photo.file_name || 'Evidencia de OT'} className="h-44 w-full object-cover" />
+                        ) : <div className="flex h-44 items-center justify-center"><ImageIcon className="h-5 w-5 text-muted-foreground" /></div>}
+                        <div className="px-3 py-2 text-xs text-muted-foreground">{formatDate(photo.created_at)}</div>
+                      </a>
+                    ))}
                   </div>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{photo.file_name || 'Foto de evidencia'}</p>
-                    <p className="text-xs text-muted-foreground">{formatDate(photo.created_at)}</p>
-                  </div>
-                </a>
-              ))}
+                </details>
+              ) : null}
             </div>
           ) : null}
         </CardContent>

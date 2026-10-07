@@ -33,9 +33,10 @@ function fill(template: string, vars: Record<string, string | number>) {
   return template.replace(/\{(\w+)\}/g, (_, key: string) => String(vars[key] ?? ''));
 }
 
-type KindKey = 'operational_review' | 'preventive_overdue' | 'assignment_needed' | 'meter_review' | 'operational_blocker' | 'plan_step' | 'ready_to_close' | 'closure_evidence' | 'reliability';
+type KindKey = 'approval_needed' | 'operational_review' | 'preventive_overdue' | 'assignment_needed' | 'meter_review' | 'operational_blocker' | 'plan_step' | 'ready_to_close' | 'closure_evidence' | 'reliability';
 
 const kindMeta: Record<KindKey, { icon: typeof AlertTriangle; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
+  approval_needed: { icon: CheckCircle2, variant: 'secondary' },
   operational_review: { icon: AlertTriangle, variant: 'destructive' },
   preventive_overdue: { icon: Clock3, variant: 'destructive' },
   assignment_needed: { icon: Wrench, variant: 'outline' },
@@ -57,8 +58,8 @@ const maintenanceFlow = [
   { step: '05', flowKey: 'learn' as const, href: '/dashboard/mantenimiento/decision-intelligence' },
 ] as const;
 
-const planningKinds = new Set(['operational_review', 'preventive_overdue', 'assignment_needed', 'meter_review', 'operational_blocker']);
-const leadershipKinds = new Set(['operational_review', 'preventive_overdue', 'operational_blocker', 'ready_to_close', 'reliability']);
+const planningKinds = new Set(['approval_needed', 'operational_review', 'preventive_overdue', 'assignment_needed', 'meter_review', 'operational_blocker', 'plan_step', 'ready_to_close', 'closure_evidence']);
+const leadershipKinds = new Set(['approval_needed', 'operational_review', 'preventive_overdue', 'assignment_needed', 'operational_blocker', 'plan_step', 'ready_to_close', 'closure_evidence', 'reliability']);
 const oversightKinds = new Set(['operational_review', 'operational_blocker', 'reliability']);
 
 type WorkMode = Exclude<ViewerMode, 'execution'>;
@@ -86,6 +87,7 @@ export function MaintenanceHome({ locale, dictionary }: { locale: Locale; dictio
       : mode === 'oversight'
         ? rawActions.filter((action) => oversightKinds.has(action.kind))
         : rawActions;
+  const supervisorInboxMode = mode === 'planning' || mode === 'leadership';
   const firstAssignment = mode === 'planning' ? actions.find((action) => action.kind === 'assignment_needed') : undefined;
   const firstLeadershipAction = mode === 'leadership' ? actions[0] : undefined;
   const firstOversightAction = mode === 'oversight' ? actions[0] : undefined;
@@ -169,11 +171,11 @@ export function MaintenanceHome({ locale, dictionary }: { locale: Locale; dictio
       </PageHeaderActions>
     </PageHeader>
 
-    <section aria-label={t.metricsAria} className={`grid gap-3 sm:grid-cols-2 ${metrics.length === 4 ? 'xl:grid-cols-4' : 'xl:grid-cols-3'}`}>
+    {!supervisorInboxMode ? <section aria-label={t.metricsAria} className={`grid gap-3 sm:grid-cols-2 ${metrics.length === 4 ? 'xl:grid-cols-4' : 'xl:grid-cols-3'}`}>
       {metrics.map(([label, value, detail, href]) => <Link key={label} href={href} className="rounded-lg border bg-card px-4 py-4 shadow-none outline-none transition-colors hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-ring"><p className="text-xs text-muted-foreground">{label}</p><div className="mt-2 flex items-end justify-between gap-3"><p className="text-3xl font-semibold tracking-tight">{isLoading ? '—' : value}</p><p className="text-right text-xs text-muted-foreground">{detail}</p></div></Link>)}
-    </section>
+    </section> : null}
 
-    {showOwnedFlow ? <section aria-labelledby="maintenance-flow-title" className="border-y border-border py-4">
+    {!supervisorInboxMode && showOwnedFlow ? <section aria-labelledby="maintenance-flow-title" className="border-y border-border py-4">
       <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t.flow.label}</p>
@@ -193,9 +195,9 @@ export function MaintenanceHome({ locale, dictionary }: { locale: Locale; dictio
       </div> : null}
     </section> : null}
 
-    <CanonicalMaintenanceOverview />
+    {!supervisorInboxMode ? <CanonicalMaintenanceOverview /> : null}
 
-    {!isLoading && !error && summary ? <AutopilotDecisionStrip
+    {!supervisorInboxMode && !isLoading && !error && summary ? <AutopilotDecisionStrip
       locale={locale}
       decisionCount={actions.length}
       blockerCount={summary.operationallyBlocked || 0}
@@ -203,7 +205,7 @@ export function MaintenanceHome({ locale, dictionary }: { locale: Locale; dictio
       firstActionHref={actions[0]?.href || '/dashboard/mantenimiento/ordenes-trabajo'}
     /> : null}
 
-    {!isLoading && !error && Number(summary?.outOfServiceOperationalReviews || 0) > 0 ? <StatePanel tone="warning" title={fill(t.outOfServiceWarning.title, { n: summary?.outOfServiceOperationalReviews || 0 })} description={t.outOfServiceWarning.description} className="min-h-0 py-5" /> : null}
+    {!supervisorInboxMode && !isLoading && !error && Number(summary?.outOfServiceOperationalReviews || 0) > 0 ? <StatePanel tone="warning" title={fill(t.outOfServiceWarning.title, { n: summary?.outOfServiceOperationalReviews || 0 })} description={t.outOfServiceWarning.description} className="min-h-0 py-5" /> : null}
 
     {error ? <StatePanel tone="error" title={t.error.title} description={error.message} actions={<Button variant="outline" onClick={() => void mutate()}>{t.error.retry}</Button>} className="min-h-0 py-5" /> : null}
 
@@ -214,7 +216,7 @@ export function MaintenanceHome({ locale, dictionary }: { locale: Locale; dictio
           const kindKey = (action.kind in kindMeta ? action.kind : kindFallback) as KindKey;
           const meta = kindMeta[kindKey];
           const Icon = meta.icon;
-          return <div key={action.id} className="grid gap-3 p-4 md:grid-cols-[40px_1fr_auto] md:items-center"><div className="flex h-9 w-9 items-center justify-center rounded-md border bg-background"><Icon className="h-4 w-4" /></div><Link href={action.href} className="min-w-0 rounded-sm outline-none hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring"><div className="flex flex-wrap items-center gap-2"><span className="text-xs tabular-nums text-muted-foreground">#{index + 1}</span><Badge variant={meta.variant}>{t.kinds[kindKey]}</Badge><p className="font-medium">{action.title}</p></div><p className="mt-1 text-sm text-muted-foreground">{action.description}</p><p className="mt-1 text-xs text-muted-foreground">{fill(t.evidenceLabel, { text: action.evidence })}</p>{action.autopilot ? <div className="mt-2 border-l border-border pl-3 text-xs leading-5 text-muted-foreground"><p><span className="font-medium text-foreground">Autopilot prepara:</span> {action.autopilot.preparedAction}</p><p><span className="font-medium text-foreground">Decisión humana:</span> {action.autopilot.authority}</p></div> : null}</Link><Button asChild variant="ghost" size="icon-sm" aria-label={t.openActionAria}><Link href={action.href}><ArrowRight className="h-4 w-4" /></Link></Button></div>;
+          return <div key={action.id} className="grid gap-3 p-4 md:grid-cols-[40px_1fr_auto] md:items-center"><div className="flex h-9 w-9 items-center justify-center rounded-md border bg-background"><Icon className="h-4 w-4" /></div><Link href={action.href} className="min-w-0 rounded-sm outline-none hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring"><div className="flex flex-wrap items-center gap-2"><span className="text-xs tabular-nums text-muted-foreground">#{index + 1}</span><Badge variant={meta.variant}>{t.kinds[kindKey]}</Badge><p className="font-medium">{action.title}</p></div><details className="mt-2 text-xs text-muted-foreground"><summary className="cursor-pointer select-none font-medium text-foreground/80">Ver detalle</summary><div className="mt-2 space-y-1 border-l border-border pl-3"><p>{action.description}</p><p>{fill(t.evidenceLabel, { text: action.evidence })}</p>{action.autopilot ? <><p><span className="font-medium text-foreground">Preparado:</span> {action.autopilot.preparedAction}</p><p><span className="font-medium text-foreground">Decisión:</span> {action.autopilot.authority}</p></> : null}</div></details></Link><Button asChild variant="ghost" size="icon-sm" aria-label={t.openActionAria}><Link href={action.href}><ArrowRight className="h-4 w-4" /></Link></Button></div>;
         })}</div> : null}
       </CardContent>
     </Card>

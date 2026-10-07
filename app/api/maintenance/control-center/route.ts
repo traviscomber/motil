@@ -60,14 +60,16 @@ export async function GET(request: NextRequest) {
   if (!context.ok) return context.response;
 
   try {
-    const [closeResult, preventiveResult, reliabilityResult, operationalOrdersResult, drillingReviewResult] = await Promise.all([
+    const [closeResult, preventiveResult, reliabilityResult, operationalOrdersResult, drillingReviewResult, completedOrdersResult, supervisorReviewsResult] = await Promise.all([
       context.supabase.from('work_order_close_readiness_v2').select('*').eq('organization_id', context.organizationId),
       context.supabase.from('preventive_maintenance_hour_status_v1').select('*').eq('organization_id', context.organizationId),
       context.supabase.from('maintenance_reliability_by_asset_v1').select('canonical_asset_id,asset_code,asset_name,audited_closures,recurring_cause_count,max_same_cause_occurrences,has_recurring_root_cause').eq('organization_id', context.organizationId),
       context.supabase.from('maintenance_work_orders').select('id,work_order_number,title,canonical_asset_id,assigned_person_id').eq('organization_id', context.organizationId).not('created_by', 'is', null).neq('status', 'completed'),
       context.supabase.from('drilling_maintenance_review_queue_v1').select('review_id,canonical_asset_id,asset_code,asset_name,operation_date,review_reason,equipment_status_raw,machine_observations,review_status,linked_work_order_id,has_linked_work_order').eq('organization_id', context.organizationId).eq('review_status', 'pending').eq('has_linked_work_order', false).order('operation_date', { ascending: true }).limit(50),
+      context.supabase.from('maintenance_work_orders').select('id,work_order_number,title,canonical_asset_id,completion_date,assigned_to_name').eq('organization_id', context.organizationId).not('created_by', 'is', null).eq('status', 'completed').order('completion_date', { ascending: false, nullsFirst: false }).limit(100),
+      context.supabase.from('work_order_supervisor_reviews').select('work_order_id,status').eq('organization_id', context.organizationId),
     ]);
-    const error = closeResult.error || preventiveResult.error || reliabilityResult.error || operationalOrdersResult.error || drillingReviewResult.error;
+    const error = closeResult.error || preventiveResult.error || reliabilityResult.error || operationalOrdersResult.error || drillingReviewResult.error || completedOrdersResult.error || supervisorReviewsResult.error;
     if (error) throw error;
 
     const operationalOrderRows = operationalOrdersResult.data || [];
@@ -78,6 +80,9 @@ export async function GET(request: NextRequest) {
     const preventiveRows = preventiveResult.data || [];
     const reliabilityRows = reliabilityResult.data || [];
     const drillingReviewRows = drillingReviewResult.data || [];
+    const completedOrderRows = completedOrdersResult.data || [];
+    const approvedWorkOrderIds = new Set((supervisorReviewsResult.data || []).filter((row:any) => String(row.status || '').toLowerCase() === 'approved').map((row:any) => String(row.work_order_id)));
+    const pendingApprovalRows = completedOrderRows.filter((row:any) => !approvedWorkOrderIds.has(String(row.id)));
     const actions: ActionItem[] = [];
 
     for (const row of drillingReviewRows) {
@@ -94,6 +99,19 @@ export async function GET(request: NextRequest) {
         description: `${row.asset_name || equipment} · ${row.equipment_status_raw || 'Observación de terreno'}`,
         evidence: `${observation}${dateEvidence}`,
         href: `/dashboard/mantenimiento/ordenes-trabajo/create?reviewId=${encodeURIComponent(String(row.review_id))}&workType=corrective&priority=${reviewPriority}`,
+        assetHref: assetHref(row.canonical_asset_id),
+      });
+    }
+
+    for (const row of pendingApprovalRows) {
+      actions.push({
+        id: `approval:${row.id}`,
+        kind: 'approval_needed',
+        priority: 8,
+        title: `Aprobar cierre · ${row.work_order_number || 'OT'}`,
+        description: `${row.title || 'Orden de trabajo terminada'}${row.assigned_to_name ? ` · ${row.assigned_to_name}` : ''}`,
+        evidence: row.completion_date ? `Terminada ${new Date(row.completion_date).toLocaleString('es-CL')}` : 'OT terminada pendiente de revisión',
+        href: `/dashboard/mantenimiento/ordenes-trabajo/${encodeURIComponent(String(row.id))}`,
         assetHref: assetHref(row.canonical_asset_id),
       });
     }
@@ -198,6 +216,7 @@ export async function GET(request: NextRequest) {
         operationallyBlocked: closeRows.filter((row:any) => Number(row.open_procurement_orders || 0) > 0 || Number(row.pending_parts || 0) > 0 || Number(row.unmet_material_requirements || 0) > 0 || Number(row.pending_external_services || 0) > 0 || Number(row.open_labor_entries || 0) > 0 || Boolean(row.external_cost_conflict)).length,
         pendingPlanSteps: closeRows.reduce((sum:number,row:any) => sum + Number(row.standard_plan_steps_pending || 0), 0),
         readyToClose: closeRows.filter((row:any) => row.ready_to_close).length,
+        pendingApprovals: pendingApprovalRows.length,
         recurringReliabilityAssets: reliabilityRows.filter((row:any) => row.has_recurring_root_cause).length,
         totalActions: actions.length,
       },
@@ -209,7 +228,7 @@ export async function GET(request: NextRequest) {
       semantics: {
         preventiveGrouping: 'Las pautas vencidas del mismo activo, vencimiento y frecuencia se agrupan sólo para coordinar la intervención. Cada pauta conserva su identidad y su OT independiente.',
       },
-      sources: ['work_order_close_readiness_v2','preventive_maintenance_hour_status_v1','maintenance_reliability_by_asset_v1','maintenance_work_orders','drilling_maintenance_review_queue_v1'],
+      sources: ['work_order_close_readiness_v2','preventive_maintenance_hour_status_v1','maintenance_reliability_by_asset_v1','maintenance_work_orders','drilling_maintenance_review_queue_v1','work_order_supervisor_reviews'],
     });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'No se pudo cargar el centro de mantenimiento' }, { status: 500 });
