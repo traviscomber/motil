@@ -24,6 +24,8 @@ test('terrain surface exposes the full assigned active queue without global main
   assert.match(terrain, /Prioridad/);
   assert.match(terrain, /Media/);
   assert.match(terrain, /action\.assetName/);
+  assert.match(terrain, /action\.pauseReason/);
+  assert.match(terrain, /Pausa/);
   assert.doesNotMatch(terrain, /Primera prioridad/);
   assert.doesNotMatch(terrain, /Puedes tener varias OTs asignadas/);
   assert.match(terrain, /Usuario sin vínculo operativo/);
@@ -54,4 +56,7 @@ test('my-work API requires canonical person linkage and scopes work orders to th
   assert.match(myWork, /terminalStatuses/);
   assert.match(myWork, /maintenance_canonical_assets_v1/);
   assert.match(myWork, /assetNameById/);
+  assert.match(myWork, /work_order_events/);
+  assert.match(myWork, /lastPauseByWorkOrder/);
+  assert.match(myWork, /timerStatus === 'paused'/);
 });
