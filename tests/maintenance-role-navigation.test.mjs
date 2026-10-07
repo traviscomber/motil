@@ -10,6 +10,7 @@ test('maintenance navigation simplifies progressively by role', () => {
   assert.match(layout, /viewerLoading \|\| viewerError \|\| mode === 'execution'/);
   assert.match(layout, /return <>\{children\}<\/>/);
   assert.match(layout, /leadership:\s*\{[\s\S]*'Imputación'[\s\S]*'Maestranza'[\s\S]*'Personal'[\s\S]*'Indicadores'/);
+  assert.match(layout, /oversight:\s*\{[\s\S]*flow:\s*\[\][\s\S]*support:\s*\['Resumen', 'Activos'\]/);
 });
 
 test('role-aware maintenance navigation derives from viewer context', () => {
