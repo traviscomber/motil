@@ -43,6 +43,15 @@ function statusLabel(status: string | null | undefined, t: WorkOrderDetailT) {
   return t.status.none;
 }
 
+function assetIdentity(code: string | null | undefined, name: string | null | undefined, t: WorkOrderDetailT) {
+  const assetCode = String(code || '').trim();
+  const assetName = String(name || '').trim();
+  const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+  if (assetName && assetCode && normalize(assetName) !== normalize(assetCode)) return `${assetCode} · ${assetName}`;
+  return assetName || assetCode || t.noAsset;
+}
+
 function priorityLabel(priority: string | null | undefined, t: WorkOrderDetailT) {
   const labels: Record<string, string> = { low: t.priority.low, medium: t.priority.medium, high: t.priority.high, critical: t.priority.critical };
   return labels[priority || ''] || t.priority.none;
@@ -141,7 +150,7 @@ export function WorkOrderDetail({ locale, dictionary }: { locale: Locale; dictio
             <Badge variant="outline">{statusLabel(workOrder.status, t)}</Badge>
           </div>
           <h1 className="mt-2 text-2xl font-semibold tracking-tight">{workOrder.title || t.untitled}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{workOrder.asset_code || t.noCode} · {workOrder.asset_name || t.noAsset}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{assetIdentity(workOrder.asset_code, workOrder.asset_name, t)}</p>
         </div>
         <Button asChild variant="outline"><Link href={`/dashboard/mantenimiento/equipos/${workOrder.canonical_asset_id || workOrder.asset_id}`}>Ficha 360</Link></Button>
       </section>
@@ -230,7 +239,7 @@ export function WorkOrderDetail({ locale, dictionary }: { locale: Locale; dictio
 
   return <div className="space-y-6">
     <section className="flex flex-col gap-4 border-b border-border/70 pb-6 lg:flex-row lg:items-start lg:justify-between">
-      <div><Button asChild variant="ghost" size="sm" className="-ml-3 mb-2"><Link href="/dashboard/mantenimiento/ordenes-trabajo"><ArrowLeft className="mr-2 h-4 w-4" />{t.back}</Link></Button><div className="flex flex-wrap items-center gap-2"><span className="font-mono text-sm text-muted-foreground">{formatWorkOrderNumber(workOrder.work_order_number, locale)}</span><Badge variant="outline">{statusLabel(workOrder.status, t)}</Badge>{isHistorical ? <Badge variant="secondary">{t.historicalBadge}</Badge> : <Badge variant="outline">{t.operationalBadge}</Badge>}</div><h1 className="mt-2 text-3xl font-semibold tracking-tight">{workOrder.title || t.untitled}</h1><p className="mt-2 text-sm text-muted-foreground">{workOrder.asset_code || t.noCode} · {workOrder.asset_name || t.noAsset}</p></div>
+      <div><Button asChild variant="ghost" size="sm" className="-ml-3 mb-2"><Link href="/dashboard/mantenimiento/ordenes-trabajo"><ArrowLeft className="mr-2 h-4 w-4" />{t.back}</Link></Button><div className="flex flex-wrap items-center gap-2"><span className="font-mono text-sm text-muted-foreground">{formatWorkOrderNumber(workOrder.work_order_number, locale)}</span><Badge variant="outline">{statusLabel(workOrder.status, t)}</Badge>{isHistorical ? <Badge variant="secondary">{t.historicalBadge}</Badge> : <Badge variant="outline">{t.operationalBadge}</Badge>}</div><h1 className="mt-2 text-3xl font-semibold tracking-tight">{workOrder.title || t.untitled}</h1><p className="mt-2 text-sm text-muted-foreground">{assetIdentity(workOrder.asset_code, workOrder.asset_name, t)}</p></div>
       {!isHistorical ? <div className="flex gap-2">{workOrder.status !== 'in_progress' && workOrder.status !== 'completed' ? <Button onClick={() => void patchOrder({ status: 'in_progress' })} disabled={!canEdit || !workOrder.assigned_person_id}><PlayCircle className="mr-2 h-4 w-4" />{t.actions.startWork}</Button> : null}{workOrder.status === 'in_progress' ? <Button asChild><Link href={`/dashboard/mantenimiento/ordenes-trabajo/cierre?workOrderId=${id}`}><CheckCircle2 className="mr-2 h-4 w-4" />{t.actions.continueClose}</Link></Button> : null}<DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" size="icon" aria-label={t.actions.moreActions}><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem disabled={!canEdit} onClick={() => void patchOrder({ status: 'open' })}><RotateCcw className="mr-2 h-4 w-4" />{t.actions.reopen}</DropdownMenuItem></DropdownMenuContent></DropdownMenu></div> : null}
     </section>
 
