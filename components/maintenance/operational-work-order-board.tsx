@@ -54,12 +54,13 @@ function duration(totalSeconds: number) {
   return `${seconds}s`;
 }
 
-function stateCopy(state: BoardRow['state']) {
-  if (state === 'paused') return { label: 'Pausada', action: 'Revisar pausa' };
-  if (state === 'running') return { label: 'En curso', action: 'Ver en curso' };
-  if (state === 'pending_approval') return { label: 'Por aprobar', action: 'Revisar y aprobar' };
-  if (state === 'resume') return { label: 'Por reanudar', action: 'Abrir' };
-  return { label: 'Pendiente', action: 'Abrir' };
+function stateCopy(state: BoardRow['state'], locale: Locale) {
+  const en = locale === 'en';
+  if (state === 'paused') return { label: en ? 'Paused' : 'Pausada', action: en ? 'Review pause' : 'Revisar pausa' };
+  if (state === 'running') return { label: en ? 'In progress' : 'En curso', action: en ? 'View work' : 'Ver en curso' };
+  if (state === 'pending_approval') return { label: en ? 'Awaiting approval' : 'Por aprobar', action: en ? 'Review and approve' : 'Revisar y aprobar' };
+  if (state === 'resume') return { label: en ? 'Resume' : 'Por reanudar', action: en ? 'Open' : 'Abrir' };
+  return { label: en ? 'Pending' : 'Pendiente', action: en ? 'Open' : 'Abrir' };
 }
 
 export function OperationalWorkOrderBoard({ locale }: { locale: Locale }) {
@@ -81,34 +82,82 @@ export function OperationalWorkOrderBoard({ locale }: { locale: Locale }) {
   const visibleRows = useMemo(() => rows.slice(0, 30), [rows]);
 
   if (isLoading) {
-    return <StatePanel tone="loading" title="Cargando órdenes de trabajo" className="min-h-40" />;
+    return <StatePanel tone="loading" title={locale === 'en' ? 'Loading work orders' : 'Cargando órdenes de trabajo'} className="min-h-40" />;
   }
 
   if (error) {
     return (
       <StatePanel
         tone="error"
-        title="No se pudo cargar la mesa de OT"
+        title={locale === 'en' ? 'Could not load the WO board' : 'No se pudo cargar la mesa de OT'}
         description={error.message}
-        actions={<Button variant="outline" onClick={() => void mutate()}>Reintentar</Button>}
+        actions={<Button variant="outline" onClick={() => void mutate()}>{locale === 'en' ? 'Retry' : 'Reintentar'}</Button>}
         className="min-h-0 py-5"
       />
     );
   }
 
+  const copy = locale === 'en'
+    ? {
+        eyebrow: 'Maintenance · operations',
+        title: 'Work orders',
+        description: 'What is happening now, who owns it, and what needs attention.',
+        running: 'In progress',
+        paused: 'Paused',
+        pending: 'Pending',
+        approval: 'Awaiting approval',
+        emptyTitle: 'No WOs need attention',
+        emptyDescription: 'Active work orders or approvals will appear here.',
+        retry: 'Retry',
+        loadError: 'Could not load the WO board',
+        loading: 'Loading work orders',
+        assignee: 'Owner',
+        time: 'Time',
+        notStarted: 'Not started',
+        scheduled: 'Scheduled',
+        noCode: 'No code',
+        noAsset: 'Equipment not provided',
+        noAssignee: 'Unassigned',
+        pausePrefix: 'Pause',
+        noPauseComment: 'Pause without a recorded comment',
+      }
+    : {
+        eyebrow: 'Mantenimiento · operación',
+        title: 'Órdenes de trabajo',
+        description: 'Lo que está ocurriendo ahora, quién lo tiene y qué requiere atención.',
+        running: 'En curso',
+        paused: 'Pausadas',
+        pending: 'Pendientes',
+        approval: 'Por aprobar',
+        emptyTitle: 'No hay OT que requieran atención',
+        emptyDescription: 'Las OT activas o pendientes de aprobación aparecerán aquí.',
+        retry: 'Reintentar',
+        loadError: 'No se pudo cargar la mesa de OT',
+        loading: 'Cargando órdenes de trabajo',
+        assignee: 'Responsable',
+        time: 'Tiempo',
+        notStarted: 'Sin iniciar',
+        scheduled: 'Programada',
+        noCode: 'Sin código',
+        noAsset: 'Equipo no informado',
+        noAssignee: 'Sin asignar',
+        pausePrefix: 'Pausa',
+        noPauseComment: 'Pausa sin comentario registrado',
+      };
+
   return (
     <section className="space-y-3" aria-labelledby="operational-ot-title">
       <div className="flex flex-col gap-3 border-b pb-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Mantenimiento · operación</p>
-          <h2 id="operational-ot-title" className="mt-1 text-xl font-semibold">Órdenes de trabajo</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Lo que está ocurriendo ahora, quién lo tiene y qué requiere atención.</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{copy.eyebrow}</p>
+          <h2 id="operational-ot-title" className="mt-1 text-xl font-semibold">{copy.title}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{copy.description}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline">En curso {summary?.running ?? 0}</Badge>
-          <Badge variant="outline">Pausadas {summary?.paused ?? 0}</Badge>
-          <Badge variant="outline">Pendientes {summary?.pending ?? 0}</Badge>
-          <Badge variant="outline">Por aprobar {summary?.pendingApproval ?? 0}</Badge>
+          <Badge variant="outline">{copy.running} {summary?.running ?? 0}</Badge>
+          <Badge variant="outline">{copy.paused} {summary?.paused ?? 0}</Badge>
+          <Badge variant="outline">{copy.pending} {summary?.pending ?? 0}</Badge>
+          <Badge variant="outline">{copy.approval} {summary?.pendingApproval ?? 0}</Badge>
           <Button type="button" variant="ghost" size="icon" aria-label="Actualizar órdenes" onClick={() => void mutate()}>
             <RefreshCw className="h-4 w-4" />
           </Button>
@@ -116,16 +165,16 @@ export function OperationalWorkOrderBoard({ locale }: { locale: Locale }) {
       </div>
 
       {visibleRows.length === 0 ? (
-        <StatePanel tone="neutral" title="No hay OT que requieran atención" description="Las OT activas o pendientes de aprobación aparecerán aquí." className="min-h-32" />
+        <StatePanel tone="neutral" title={copy.emptyTitle} description={copy.emptyDescription} className="min-h-32" />
       ) : (
         <div className="overflow-hidden rounded-lg border bg-card">
           {visibleRows.map((row) => {
-            const copy = stateCopy(row.state);
+            const state = stateCopy(row.state, locale);
             const elapsed = row.state === 'running' && row.timerStartTime
               ? row.totalTimerSeconds + Math.max(0, Math.floor((nowMs - new Date(row.timerStartTime).getTime()) / 1000))
               : row.totalTimerSeconds;
             const pauseText = row.state === 'paused'
-              ? row.lastPauseComment || 'Pausa sin comentario registrado'
+              ? row.lastPauseComment || copy.noPauseComment
               : null;
 
             return (
@@ -139,33 +188,33 @@ export function OperationalWorkOrderBoard({ locale }: { locale: Locale }) {
                     <span className="font-mono text-xs text-muted-foreground">{formatWorkOrderNumber(row.workOrderNumber, locale)}</span>
                     <Badge variant={row.state === 'paused' ? 'secondary' : row.state === 'running' ? 'default' : 'outline'}>
                       {row.state === 'paused' ? <CirclePause className="mr-1 h-3 w-3" /> : row.state === 'running' ? <CirclePlay className="mr-1 h-3 w-3" /> : null}
-                      {copy.label}
+                      {state.label}
                     </Badge>
                     {row.priority === 'critical' || row.priority === 'high' ? <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{row.priority === 'critical' ? 'Crítica' : 'Alta'}</span> : null}
                   </div>
                   <p className="mt-1 truncate font-medium">{row.title || 'Orden de trabajo'}</p>
                   <p className="mt-1 truncate text-xs text-muted-foreground">
-                    {row.asset?.code || 'Sin código'} · {row.asset?.name || 'Equipo no informado'}
+                    {row.asset?.code || copy.noCode} · {row.asset?.name || copy.noAsset}
                   </p>
-                  {pauseText ? <p className="mt-2 text-sm font-medium">{pauseText}</p> : null}
+                  {pauseText ? <p className="mt-2 text-sm font-medium">{copy.pausePrefix}: {pauseText}</p> : null}
                 </div>
 
                 <div>
-                  <p className="text-xs text-muted-foreground">Responsable</p>
-                  <p className="mt-1 text-sm font-medium">{row.assignedToName || 'Sin asignar'}</p>
+                  <p className="text-xs text-muted-foreground">{copy.assignee}</p>
+                  <p className="mt-1 text-sm font-medium">{row.assignedToName || copy.noAssignee}</p>
                 </div>
 
                 <div>
-                  <p className="text-xs text-muted-foreground">Tiempo</p>
+                  <p className="text-xs text-muted-foreground">{copy.time}</p>
                   <p className="mt-1 flex items-center gap-2 text-sm font-medium">
                     <Clock3 className="h-4 w-4 text-muted-foreground" />
-                    {elapsed > 0 ? duration(elapsed) : 'Sin iniciar'}
+                    {elapsed > 0 ? duration(elapsed) : copy.notStarted}
                   </p>
-                  {row.scheduledDate ? <p className="mt-1 text-xs text-muted-foreground">Programada {row.scheduledDate}</p> : null}
+                  {row.scheduledDate ? <p className="mt-1 text-xs text-muted-foreground">{copy.scheduled} {row.scheduledDate}</p> : null}
                 </div>
 
                 <span className="inline-flex items-center justify-end gap-2 text-sm font-medium">
-                  {copy.action}
+                  {state.action}
                   <ArrowRight className="h-4 w-4" />
                 </span>
               </Link>
