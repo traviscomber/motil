@@ -68,15 +68,36 @@ export async function GET(request: NextRequest) {
     if (workOrdersError) throw workOrdersError;
 
     const assetIds = [...new Set((rows || []).map((row: any) => row.canonical_asset_id).filter(Boolean).map(String))];
-    const { data: assets, error: assetsError } = assetIds.length > 0
-      ? await context.supabase
-          .from('maintenance_canonical_assets_v1')
-          .select('id,name')
-          .eq('organization_id', context.organizationId)
-          .in('id', assetIds)
-      : { data: [], error: null };
-    if (assetsError) throw assetsError;
-    const assetNameById = new Map((assets || []).map((asset: any) => [String(asset.id), String(asset.name || '')]));
+    const workOrderIds = (rows || []).map((row: any) => String(row.id));
+    const [assetResult, pauseResult] = await Promise.all([
+      assetIds.length > 0
+        ? context.supabase
+            .from('maintenance_canonical_assets_v1')
+            .select('id,name')
+            .eq('organization_id', context.organizationId)
+            .in('id', assetIds)
+        : Promise.resolve({ data: [], error: null }),
+      workOrderIds.length > 0
+        ? context.supabase
+            .from('work_order_events')
+            .select('work_order_id,event_at,payload')
+            .eq('organization_id', context.organizationId)
+            .eq('event_type', 'timer_pause')
+            .in('work_order_id', workOrderIds)
+            .order('event_at', { ascending: false })
+            .limit(200)
+        : Promise.resolve({ data: [], error: null }),
+    ]);
+    if (assetResult.error || pauseResult.error) throw assetResult.error || pauseResult.error;
+
+    const assetNameById = new Map((assetResult.data || []).map((asset: any) => [String(asset.id), String(asset.name || '')]));
+    const lastPauseByWorkOrder = new Map<string, string>();
+    for (const event of pauseResult.data || []) {
+      const workOrderId = String((event as any).work_order_id);
+      if (lastPauseByWorkOrder.has(workOrderId)) continue;
+      const note = String((event as any).payload?.notes || '').trim();
+      if (note) lastPauseByWorkOrder.set(workOrderId, note);
+    }
 
     const actions = (rows || [])
       .filter((row: any) => !terminalStatuses.has(String(row.status || '').toLowerCase()))
@@ -109,6 +130,7 @@ export async function GET(request: NextRequest) {
           workOrderNumber,
           title: row.title || 'Orden de trabajo asignada',
           assetName: row.canonical_asset_id ? assetNameById.get(String(row.canonical_asset_id)) || null : null,
+          pauseReason: timerStatus === 'paused' ? lastPauseByWorkOrder.get(String(row.id)) || null : null,
           evidence: `${scheduledEvidence}${priorityEvidence}`,
           href: `/dashboard/mantenimiento/ordenes-trabajo/${encodeURIComponent(String(row.id))}`,
           actionLabel: isActive ? 'Reanudar' : 'Iniciar',
@@ -126,7 +148,7 @@ export async function GET(request: NextRequest) {
       actions,
       canEdit: access.canWrite,
       canCreateWorkOrder: creationCapability.canCreate,
-      sources: ['profiles', 'cargos', 'people', 'maintenance_work_orders', 'maintenance_canonical_assets_v1'],
+      sources: ['profiles', 'cargos', 'people', 'maintenance_work_orders', 'maintenance_canonical_assets_v1', 'work_order_events'],
     });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'No se pudo cargar tu trabajo asignado' }, { status: 500 });
