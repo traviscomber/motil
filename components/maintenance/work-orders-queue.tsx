@@ -249,7 +249,7 @@ export function WorkOrdersQueue({ locale, dictionary }: { locale: Locale; dictio
 
       {!missingAssetOnly && scheduleItems.length > 0 ? (
         <details className="rounded-lg border bg-card">
-          <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium">Ver agenda próxima · {scheduleItems.length}</summary>
+          <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium">{t.schedule.title} · {scheduleItems.length}</summary>
           <div className="border-t p-4"><MaintenanceSchedule schedules={scheduleItems} /></div>
         </details>
       ) : null}
