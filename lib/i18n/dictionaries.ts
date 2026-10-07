@@ -478,17 +478,17 @@ export const dictionaries = {
             ],
           },
           maintenance: {
-            eyebrow: 'Mantención · disponibilidad y trabajo',
-            title: 'Mi Mantención',
+            eyebrow: 'Mantenimiento · disponibilidad y trabajo',
+            title: 'Mi Mantenimiento',
             description: 'Disponibilidad de activos, órdenes en ejecución y bloqueos que requieren intervención.',
             metrics: [
-              { label: 'OT activas', detail: '{n} en ejecución', unavailable: 'Fuente de Mantención no disponible' },
+              { label: 'OT activas', detail: '{n} en ejecución', unavailable: 'Fuente de Mantenimiento no disponible' },
               { label: 'Esperando repuestos', detail: 'Compra o abastecimiento pendiente' },
               { label: 'OT sin equipo', detail: 'Requieren completar activo' },
               { label: 'Acciones críticas', detail: '{n} vencidas para tu cargo' },
             ],
             shortcuts: [
-              { key: 'maintenanceIntel', label: 'Inteligencia Mantención', detail: 'Backlog, recurrencia y abastecimiento' },
+              { key: 'maintenanceIntel', label: 'Inteligencia de Mantenimiento', detail: 'Backlog, recurrencia y abastecimiento' },
               { key: 'availability', label: 'Disponibilidad', detail: 'Estado y disponibilidad por equipo' },
               { key: 'workOrders', label: 'Órdenes de trabajo', detail: 'Planificar, ejecutar y cerrar OT' },
               { key: 'actions', label: 'Mis acciones', detail: 'Incluye Data Health y escalaciones del cargo' },
@@ -569,7 +569,7 @@ export const dictionaries = {
             shortcuts: [
               { key: 'actions', label: 'Mis acciones', detail: 'Tareas visibles para tu cargo' },
               { key: 'production', label: 'Producción', detail: 'Operación y cobertura canónica' },
-              { key: 'maintenance', label: 'Mantención', detail: 'OT y activos' },
+              { key: 'maintenance', label: 'Mantenimiento', detail: 'OT y activos' },
               { key: 'warehouse', label: 'Bodega', detail: 'Stock y trazabilidad' },
             ],
           },
@@ -588,7 +588,7 @@ export const dictionaries = {
           changesTitle: 'Cambió desde ayer',
           changesFootnote: 'Derivado sólo del lifecycle explícito de Decision Cases; no implica impacto, causalidad ni prioridad adicional.',
           domains: {
-            maintenance: 'Mantención',
+            maintenance: 'Mantenimiento',
             geology: 'Geología',
             inventory: 'Inventario',
             procurement: 'Compras',
