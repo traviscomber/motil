@@ -3,7 +3,6 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const manifest = await readFile(new URL('../app/manifest.ts', import.meta.url), 'utf8');
-const staticManifest = await readFile(new URL('../public/motil-v2.webmanifest', import.meta.url), 'utf8');
 const layout = await readFile(new URL('../app/layout.tsx', import.meta.url), 'utf8');
 const installer = await readFile(new URL('../components/pwa/install-motil-button.tsx', import.meta.url), 'utf8');
 const sidebar = await readFile(new URL('../components/layout/sidebar.tsx', import.meta.url), 'utf8');
