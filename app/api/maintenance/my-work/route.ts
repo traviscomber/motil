@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getOrganizationContext } from '@/lib/api/organization-context';
 import { MODULE_KEYS, requireModuleAccess } from '@/lib/api/module-access';
 import { resolveMaintenanceViewerMode } from '@/lib/maintenance/viewer-mode';
+import { getMaintenanceWorkOrderCreationCapability } from '@/lib/maintenance/work-order-create-access';
 
 const terminalStatuses = new Set(['completed', 'closed', 'cancelled']);
 const activeTimerStatuses = new Set(['running', 'paused']);
@@ -47,11 +48,14 @@ export async function GET(request: NextRequest) {
       .maybeSingle();
     if (personError) throw personError;
 
+    const creationCapability = await getMaintenanceWorkOrderCreationCapability(context);
+
     if (!person?.id) {
       return NextResponse.json({
         identityLinked: false,
         actions: [],
         canEdit: access.canWrite,
+        canCreateWorkOrder: creationCapability.canCreate,
         sources: ['profiles', 'cargos', 'people'],
       });
     }
@@ -109,6 +113,7 @@ export async function GET(request: NextRequest) {
       identityLinked: true,
       actions,
       canEdit: access.canWrite,
+      canCreateWorkOrder: creationCapability.canCreate,
       sources: ['profiles', 'cargos', 'people', 'maintenance_work_orders'],
     });
   } catch (error) {
