@@ -64,6 +64,10 @@ const ACTION_KEYS: Record<string, keyof CloseQueueT['actionTitles']> = {
   close_work_order: 'closeWorkOrder',
 };
 
+function fill(template: string, vars: Record<string, string | number>) {
+  return template.replace(/\{(\w+)\}/g, (_, key: string) => String(vars[key] ?? ''));
+}
+
 const fetcher = async (url: string) => {
   const response = await fetch(url, { credentials: 'include' });
   const payload = await response.json().catch(() => null);
@@ -77,8 +81,9 @@ function localDateTimeValue() {
   return local.toISOString().slice(0, 16);
 }
 
-export function ProgressiveWorkOrderCloseQueue({ dictionary }: { locale: Locale; dictionary: Dictionary }) {
+export function ProgressiveWorkOrderCloseQueue({ locale, dictionary }: { locale: Locale; dictionary: Dictionary }) {
   const t = dictionary.app.workOrderCloseQueue;
+  const numberLocale = locale === 'en' ? 'en-US' : 'es-CL';
   const searchParams = useSearchParams();
   const selectedWorkOrderId = searchParams.get('workOrderId');
   const { data, error, isLoading, mutate } = useSWR<QueueResponse>(
@@ -282,8 +287,15 @@ export function ProgressiveWorkOrderCloseQueue({ dictionary }: { locale: Locale;
   return (
     <div className="mx-auto max-w-3xl space-y-4">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground">{queue.length} OT{queue.length === 1 ? '' : 's'} pendiente{queue.length === 1 ? '' : 's'}</p>
-        <Badge variant="outline">{current.work_order_number || 'OT'}</Badge>
+        <p className="text-sm text-muted-foreground">{queue.length.toLocaleString(numberLocale)} OT{queue.length === 1 ? '' : 's'} pendiente{queue.length === 1 ? '' : 's'}</p>
+        <div className="flex items-center gap-2">
+          {Number(current.standard_plan_steps_total || 0) > 0 ? (
+            <Badge variant="secondary">
+              {fill(t.planBadgeTemplate, { completed: current.standard_plan_steps_completed || 0, total: current.standard_plan_steps_total || 0 })}
+            </Badge>
+          ) : null}
+          <Badge variant="outline">{current.work_order_number || 'OT'}</Badge>
+        </div>
       </div>
 
       <Card className="shadow-none">
