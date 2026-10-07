@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import useSWR from 'swr';
-import { AlertCircle, Eye, Plus, RefreshCw, Search } from 'lucide-react';
+import { AlertCircle, Eye, Plus, Search } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MaintenanceSchedule } from '@/components/maintenance/maintenance-schedule';
 import type { Dictionary, Locale } from '@/lib/i18n/dictionaries';
+import { formatWorkOrderNumber } from '@/lib/maintenance/work-order-display';
 
 type WorkOrderItem = {
   id: string;
@@ -120,12 +121,12 @@ export function WorkOrdersQueue({ locale, dictionary }: { locale: Locale; dictio
         ? order.record_scope !== 'historical'
         : scopeFilter === 'all' || order.record_scope === scopeFilter;
       const matchesDataHealth = !missingAssetOnly || !order.asset_name;
-      const matchesSearch = !query || [order.work_order_number, order.title, order.asset_name, order.assigned_to_name].some((value) => normalizeText(value).includes(query));
+      const matchesSearch = !query || [order.work_order_number, formatWorkOrderNumber(order.work_order_number, locale), order.title, order.asset_name, order.assigned_to_name].some((value) => normalizeText(value).includes(query));
       const matchesStatus = statusFilter === 'all' || normalizeText(order.status) === statusFilter;
       const matchesPriority = priorityFilter === 'all' || normalizeText(order.priority) === priorityFilter;
       return matchesScope && matchesDataHealth && matchesSearch && matchesStatus && matchesPriority;
     });
-  }, [missingAssetOnly, priorityFilter, scopeFilter, search, statusFilter, workOrders]);
+  }, [locale, missingAssetOnly, priorityFilter, scopeFilter, search, statusFilter, workOrders]);
 
   const scheduleItems = useMemo(() => operationalWorkOrders
     .filter((order) => order.scheduled_date && !['completed', 'completado'].includes(normalizeText(order.status)))
@@ -138,14 +139,14 @@ export function WorkOrdersQueue({ locale, dictionary }: { locale: Locale; dictio
       return {
         id: order.id,
         assetName: order.asset_name || t.noAsset,
-        taskName: `${order.work_order_number || 'OT'} · ${order.title || t.untitled}`,
+        taskName: `${formatWorkOrderNumber(order.work_order_number, locale)} · ${order.title || t.untitled}`,
         nextScheduledDate: order.scheduled_date || '',
         priority: priority === 'critical' || priority === 'high' ? 'high' : priority === 'low' ? 'low' : 'medium',
         daysUntil: Math.ceil((scheduledDate.getTime() - today.getTime()) / 86400000),
       };
     })
     .sort((a, b) => a.daysUntil - b.daysUntil)
-    .slice(0, 7), [operationalWorkOrders, t]);
+    .slice(0, 7), [locale, operationalWorkOrders, t]);
 
   const markScheduleComplete = async (scheduleId: string) => {
     setUpdatingScheduleId(scheduleId);
@@ -177,7 +178,6 @@ export function WorkOrdersQueue({ locale, dictionary }: { locale: Locale; dictio
         <div className="flex flex-wrap gap-2">
           {missingAssetOnly ? <Button asChild variant="outline"><Link href="/dashboard/mantenimiento/ordenes-trabajo">{t.viewAll}</Link></Button> : null}
           {!missingAssetOnly ? <Button asChild variant="outline"><Link href="/dashboard/mantenimiento/ordenes-trabajo/cierre">{t.progressiveClose}</Link></Button> : null}
-          <Button variant="outline" onClick={() => void mutate()} disabled={isLoading}><RefreshCw className="mr-2 h-4 w-4" />{t.refresh}</Button>
           <Button asChild><Link href="/dashboard/mantenimiento/ordenes-trabajo/create"><Plus className="mr-2 h-4 w-4" />{t.newOrder}</Link></Button>
         </div>
       </section>
@@ -192,9 +192,8 @@ export function WorkOrdersQueue({ locale, dictionary }: { locale: Locale; dictio
 
       {!missingAssetOnly && historicalWorkOrders.length > 0 ? <Card className="shadow-none"><CardContent className="flex flex-col gap-2 p-4 text-sm sm:flex-row sm:items-center sm:justify-between"><div><p className="font-medium">{t.historicalBanner.title}</p><p className="text-muted-foreground">{fill(t.historicalBanner.description, { n: historicalWorkOrders.length })}</p></div><Button variant="outline" size="sm" onClick={() => setScopeFilter('historical')}>{t.historicalBanner.cta}</Button></CardContent></Card> : null}
 
-      <Card className="shadow-none"><CardContent className="p-4"><div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(240px,1fr)_170px_170px_170px_auto]">
+      <Card className="shadow-none"><CardContent className="p-4"><div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(260px,1fr)_180px_180px_auto]">
         <div className="relative"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t.filters.searchPlaceholder} className="pl-9" /></div>
-        <Select value={missingAssetOnly ? 'operational' : scopeFilter} onValueChange={setScopeFilter} disabled={missingAssetOnly}><SelectTrigger><SelectValue placeholder={t.filters.origin} /></SelectTrigger><SelectContent><SelectItem value="operational">{t.filters.scope.operational}</SelectItem><SelectItem value="historical">{t.filters.scope.historical}</SelectItem><SelectItem value="all">{t.filters.scope.all}</SelectItem></SelectContent></Select>
         <Select value={statusFilter} onValueChange={setStatusFilter}><SelectTrigger><SelectValue placeholder={t.filters.status} /></SelectTrigger><SelectContent><SelectItem value="all">{t.filters.statuses.all}</SelectItem><SelectItem value="open">{t.filters.statuses.open}</SelectItem><SelectItem value="in_progress">{t.filters.statuses.inProgress}</SelectItem><SelectItem value="completed">{t.filters.statuses.completed}</SelectItem></SelectContent></Select>
         <Select value={priorityFilter} onValueChange={setPriorityFilter}><SelectTrigger><SelectValue placeholder={t.filters.priority} /></SelectTrigger><SelectContent><SelectItem value="all">{t.filters.priorities.all}</SelectItem><SelectItem value="critical">{t.filters.priorities.critical}</SelectItem><SelectItem value="high">{t.filters.priorities.high}</SelectItem><SelectItem value="medium">{t.filters.priorities.medium}</SelectItem><SelectItem value="low">{t.filters.priorities.low}</SelectItem></SelectContent></Select>
         <Button variant="ghost" onClick={() => { setSearch(''); setStatusFilter('all'); setPriorityFilter('all'); setScopeFilter('operational'); }}>{t.filters.clear}</Button>
@@ -208,7 +207,7 @@ export function WorkOrdersQueue({ locale, dictionary }: { locale: Locale; dictio
           return <div key={order.id} className="grid gap-4 p-4 transition-colors hover:bg-muted/30 lg:grid-cols-[minmax(0,1.5fr)_minmax(160px,.8fr)_minmax(150px,.7fr)_auto] lg:items-center">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="font-mono text-xs text-muted-foreground">{order.work_order_number || t.noFolio}</span>
+                <span className="font-mono text-xs text-muted-foreground">{order.work_order_number ? formatWorkOrderNumber(order.work_order_number, locale) : t.noFolio}</span>
                 <Badge variant="outline" className={getStatusClass(order.status)}>{getStatusLabel(order.status, t)}</Badge>
                 {historical ? <Badge variant="secondary">{t.historicalBadge}</Badge> : null}
                 {!historical && isOverdue(order) ? <Badge variant="destructive">{t.overdueBadge}</Badge> : null}
