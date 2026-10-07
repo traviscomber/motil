@@ -128,6 +128,24 @@ const SHORTCUT_HREFS: Record<string, string> = {
 
 const fill = (template: string, value: string | number) => template.replace('{n}', String(value));
 
+function displayTaskTitle(task: RoleTask, locale: Locale) {
+  if (locale === 'en') return task.title;
+  if (task.task_key.startsWith('drilling_maintenance:')) return 'Mantenimiento: equipo fuera de servicio';
+  return task.title
+    .replace(/Maintenance/gi, 'Mantenimiento')
+    .replace(/out of service/gi, 'equipo fuera de servicio');
+}
+
+function displayTaskEvidence(task: RoleTask, locale: Locale) {
+  const raw = String(task.evidence_summary || task.urgency_label || '').trim();
+  if (locale === 'en') return raw || task.domain;
+  if (task.task_key.startsWith('drilling_maintenance:')) return 'Sondaje · revisión del equipo';
+  if (!raw) return task.domain === 'maintenance' ? 'Mantenimiento · revisión pendiente' : 'Revisión pendiente';
+  if (/asset|[0-9a-f]{8}-[0-9a-f-]{27,}/i.test(raw)) return 'Equipo asociado';
+  return raw.replace(/drilling/gi, 'Sondaje').replace(/maintenance/gi, 'Mantenimiento');
+}
+
+
 function configFor(
   mode: HomeMode,
   production: ProductionOverview | null | undefined,
@@ -292,7 +310,7 @@ export function DashboardHome({ locale, dictionary }: { locale: Locale; dictiona
         {loading ? <StatePanel tone="loading" title={t.loadingTitle} />
           : inboxUnavailable ? <StatePanel tone="warning" title={t.workUnavailableTitle} description={t.workUnavailableDescription} />
           : tasks.length === 0 ? <div className="flex items-center gap-3 rounded-lg border px-4 py-4"><CheckCircle2 className="h-5 w-5 text-muted-foreground" /><div><p className="text-sm font-medium">{t.emptyTitle}</p><p className="text-xs text-muted-foreground">{t.emptyDescription}</p></div></div>
-          : <div className="overflow-hidden rounded-lg border bg-card">{tasks.map((task) => <Link key={task.task_key} href={task.module_route || '/dashboard/acciones'} className="group flex items-center gap-4 border-b px-4 py-3 last:border-0 hover:bg-muted/30"><AlertTriangle className="h-4 w-4 shrink-0 text-muted-foreground" /><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><p className="truncate text-sm font-medium">{task.title}</p>{task.severity === 'critical' ? <Badge variant="destructive">{t.criticalBadge}</Badge> : null}</div><p className="truncate text-xs text-muted-foreground">{task.evidence_summary || task.urgency_label || task.domain}</p></div><ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1" /></Link>)}</div>}
+          : <div className="overflow-hidden rounded-lg border bg-card">{tasks.map((task) => <Link key={task.task_key} href={task.module_route || '/dashboard/acciones'} className="group flex items-center gap-4 border-b px-4 py-3 last:border-0 hover:bg-muted/30"><AlertTriangle className="h-4 w-4 shrink-0 text-muted-foreground" /><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><p className="truncate text-sm font-medium">{displayTaskTitle(task, locale)}</p>{task.severity === 'critical' ? <Badge variant="destructive">{t.criticalBadge}</Badge> : null}</div><p className="truncate text-xs text-muted-foreground">{displayTaskEvidence(task, locale)}</p></div><ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1" /></Link>)}</div>}
       </section>
 
       <section className="space-y-3">
