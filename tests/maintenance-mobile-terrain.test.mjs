@@ -26,8 +26,8 @@ test('terrain surface exposes the full assigned active queue without global main
   assert.match(terrain, /action\.assetName/);
   assert.doesNotMatch(terrain, /Primera prioridad/);
   assert.doesNotMatch(terrain, /Puedes tener varias OTs asignadas/);
-  assert.match(terrain, /Perfil aún no vinculado/);
-  assert.match(terrain, /No tienes trabajo asignado/);
+  assert.match(terrain, /Usuario sin vínculo operativo/);
+  assert.match(terrain, /Sin OT asignadas/);
   assert.doesNotMatch(terrain, /Ver todas las órdenes/);
   assert.doesNotMatch(terrain, /mobile-quick-complete/);
   assert.doesNotMatch(terrain, /MARCAR COMPLETADO/);
