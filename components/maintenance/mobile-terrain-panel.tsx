@@ -3,16 +3,19 @@
 import Link from 'next/link';
 import useSWR from 'swr';
 import { ArrowRight, ClipboardList, RefreshCw } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { StatePanel } from '@/components/ui/state-panel';
 
 type TerrainAction = {
   id: string;
+  workOrderNumber: string;
   title: string;
-  description: string;
   evidence: string;
   href: string;
+  actionLabel: 'Iniciar' | 'Reanudar';
+  stateLabel: string;
+  priority?: string | null;
 };
 
 type TerrainResponse = { actions?: TerrainAction[]; identityLinked?: boolean };
@@ -28,17 +31,22 @@ export function MobileTerrainPanel() {
   const { data, error, isLoading, mutate } = useSWR<TerrainResponse>(
     '/api/maintenance/my-work',
     fetcher,
-    { revalidateOnFocus: false },
+    { revalidateOnFocus: true },
   );
-  const nextAction = data?.actions?.[0] || null;
+  const actions = data?.actions || [];
   const identityLinked = data?.identityLinked !== false;
 
   return (
-    <section className="mx-auto w-full max-w-md space-y-4 py-1" aria-label="Trabajo en terreno">
+    <section className="mx-auto w-full max-w-2xl space-y-4 py-1" aria-label="Trabajo en terreno">
       <header className="flex items-center justify-between gap-3 px-1">
         <div>
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Mantenimiento</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight">Trabajo de hoy</h1>
+          {!isLoading && !error && identityLinked ? (
+            <p className="mt-1 text-sm text-muted-foreground">
+              {actions.length} OT{actions.length === 1 ? '' : 's'} activa{actions.length === 1 ? '' : 's'} asignada{actions.length === 1 ? '' : 's'}
+            </p>
+          ) : null}
         </div>
         <Button
           type="button"
@@ -55,26 +63,42 @@ export function MobileTerrainPanel() {
       {isLoading ? <StatePanel tone="loading" title="Buscando tu trabajo asignado" className="min-h-48" /> : null}
       {error ? <StatePanel tone="error" title="No se pudo cargar el trabajo" description={error.message} actions={<Button variant="outline" onClick={() => void mutate()}>Reintentar</Button>} /> : null}
       {!isLoading && !error && !identityLinked ? <StatePanel tone="warning" title="Perfil aún no vinculado" description="Tu usuario todavía no está asociado a una persona operativa canónica. Jefatura o planificación debe completar esa asignación antes de entregarte una OT." className="min-h-48" /> : null}
-      {!isLoading && !error && identityLinked && !nextAction ? <StatePanel tone="neutral" title="No tienes trabajo asignado" description="Cuando te asignen una OT activa, aparecerá aquí." className="min-h-48" /> : null}
+      {!isLoading && !error && identityLinked && actions.length === 0 ? <StatePanel tone="neutral" title="No tienes trabajo asignado" description="Cuando te asignen una OT activa, aparecerá aquí." className="min-h-48" /> : null}
 
-      {!isLoading && !error && identityLinked && nextAction ? <Card className="overflow-hidden border-2 shadow-none">
-        <CardContent className="space-y-5 p-5">
-          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary">
-            <ClipboardList className="h-5 w-5" />
-          </div>
-          <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Siguiente trabajo</p>
-            <h2 className="mt-2 text-xl font-semibold leading-tight">{nextAction.title}</h2>
-            <p className="mt-3 text-sm leading-6 text-muted-foreground">{nextAction.description}</p>
-          </div>
-          <p className="border-l-2 pl-3 text-xs leading-5 text-muted-foreground">Evidencia: {nextAction.evidence}</p>
-          <Button asChild size="lg" className="h-14 w-full text-base">
-            <Link href={nextAction.href}>Abrir trabajo <ArrowRight className="h-5 w-5" /></Link>
-          </Button>
-        </CardContent>
-      </Card> : null}
+      {!isLoading && !error && identityLinked && actions.length > 0 ? (
+        <div className="overflow-hidden rounded-lg border bg-card">
+          {actions.map((action, index) => (
+            <Link
+              key={action.id}
+              href={action.href}
+              className="grid gap-3 border-b p-4 outline-none transition-colors last:border-b-0 hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:grid-cols-[44px_1fr_auto] sm:items-center"
+            >
+              <div className="flex h-10 w-10 items-center justify-center rounded-md border bg-background">
+                <ClipboardList className="h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-mono text-xs text-muted-foreground">{action.workOrderNumber}</span>
+                  <Badge variant={action.stateLabel === 'En curso' ? 'default' : action.stateLabel === 'Pausada' ? 'secondary' : 'outline'}>
+                    {action.stateLabel}
+                  </Badge>
+                  {index === 0 ? <span className="text-xs text-muted-foreground">Primera prioridad</span> : null}
+                </div>
+                <p className="mt-1 font-medium">{action.title}</p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">{action.evidence}</p>
+              </div>
+              <span className="inline-flex items-center justify-end gap-2 text-sm font-medium">
+                {action.actionLabel}
+                <ArrowRight className="h-4 w-4" />
+              </span>
+            </Link>
+          ))}
+        </div>
+      ) : null}
 
-      <p className="px-2 text-center text-xs leading-5 text-muted-foreground">Sólo ves trabajo asignado a tu identidad operativa. El cierre requiere evidencia y validación del responsable.</p>
+      <p className="px-2 text-center text-xs leading-5 text-muted-foreground">
+        Puedes tener varias OTs asignadas. Las que están en curso o pausadas aparecen primero y puedes retomarlas desde esta lista.
+      </p>
     </section>
   );
 }
