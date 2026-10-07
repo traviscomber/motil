@@ -8,7 +8,8 @@ const installer = await readFile(new URL('../components/pwa/install-motil-button
 const sidebar = await readFile(new URL('../components/layout/sidebar.tsx', import.meta.url), 'utf8');
 const iconRoute = await readFile(new URL('../app/api/pwa/icon-192/route.tsx', import.meta.url), 'utf8');
 const registrar = await readFile(new URL('../components/pwa/service-worker-registrar.tsx', import.meta.url), 'utf8');
-const serviceWorker = await readFile(new URL('../public/sw.js', import.meta.url), 'utf8');
+const serviceWorker = await readFile(new URL('../public/motil-sw-v2.js', import.meta.url), 'utf8');
+const nextConfig = await readFile(new URL('../next.config.js', import.meta.url), 'utf8');
 
 test('MOTIL exposes an installable standalone web app manifest', () => {
   assert.match(manifest, /name: 'MOTIL Mining OS'/);
@@ -41,7 +42,7 @@ test('MOTIL provides the required 192px install icon alongside the existing 512p
 test('MOTIL registers a root-scoped service worker required by Chrome Android installability', () => {
   assert.match(layout, /PwaServiceWorkerRegistrar/);
   assert.match(layout, /mobile-web-app-capable/);
-  assert.match(registrar, /navigator\.serviceWorker\.register\('\/sw\.js'/);
+  assert.match(registrar, /navigator\.serviceWorker\.register\('\/motil-sw-v2\.js'/);
   assert.match(registrar, /scope: '\/'/);
   assert.match(registrar, /updateViaCache: 'none'/);
 });
@@ -55,4 +56,29 @@ test('MOTIL service worker stays network-authoritative and removes only legacy s
   assert.match(serviceWorker, /sostenibilidad-api-v2/);
   assert.doesNotMatch(serviceWorker, /cache\.put/);
   assert.doesNotMatch(serviceWorker, /caches\.open/);
+});
+
+
+test('PWA control files are never cached as immutable at the edge', () => {
+  assert.match(nextConfig, /source: '\/motil-sw-v2\.js'/);
+  assert.match(nextConfig, /Service-Worker-Allowed/);
+  assert.match(nextConfig, /source: '\/manifest\.webmanifest'/);
+  assert.match(nextConfig, /no-store, no-cache, must-revalidate/);
+  assert.doesNotMatch(nextConfig, /source: '\/:path\*'[\s\S]{0,1500}max-age=31536000, immutable/);
+});
+
+test('Android install prompt is captured globally before the sidebar button mounts', () => {
+  assert.match(registrar, /__motilInstallPrompt/);
+  assert.match(registrar, /motil-install-prompt-ready/);
+  assert.match(installer, /__motilInstallPrompt/);
+  assert.match(installer, /motil-install-prompt-ready/);
+});
+
+
+test('Android migrates away from stale legacy service worker registrations', () => {
+  assert.match(registrar, /getRegistrations\(\)/);
+  assert.match(registrar, /endsWith\('\/sw\.js'\)/);
+  assert.match(registrar, /registration\.unregister\(\)/);
+  assert.match(registrar, /motil-sw-v2\.js/);
+  assert.match(serviceWorker, /MOTIL_SW_VERSION = 'motil-pwa-v2'/);
 });

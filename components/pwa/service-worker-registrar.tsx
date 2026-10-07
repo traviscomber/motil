@@ -2,23 +2,65 @@
 
 import { useEffect } from 'react';
 
+type BeforeInstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
+};
+
+type MotilInstallWindow = Window & {
+  __motilInstallPrompt?: BeforeInstallPromptEvent | null;
+};
+
 export function PwaServiceWorkerRegistrar() {
   useEffect(() => {
-    if (!('serviceWorker' in navigator)) return;
+    const motilWindow = window as MotilInstallWindow;
+
+    const onBeforeInstall = (event: Event) => {
+      event.preventDefault();
+      motilWindow.__motilInstallPrompt = event as BeforeInstallPromptEvent;
+      window.dispatchEvent(new Event('motil-install-prompt-ready'));
+    };
+
+    const onInstalled = () => {
+      motilWindow.__motilInstallPrompt = null;
+      window.dispatchEvent(new Event('motil-app-installed'));
+    };
+
+    window.addEventListener('beforeinstallprompt', onBeforeInstall);
+    window.addEventListener('appinstalled', onInstalled);
+
+    if (!('serviceWorker' in navigator)) {
+      return () => {
+        window.removeEventListener('beforeinstallprompt', onBeforeInstall);
+        window.removeEventListener('appinstalled', onInstalled);
+      };
+    }
 
     let cancelled = false;
 
     const register = async () => {
       try {
-        const registration = await navigator.serviceWorker.register('/sw.js', {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(
+          registrations
+            .filter((registration) => {
+              const urls = [
+                registration.active?.scriptURL,
+                registration.waiting?.scriptURL,
+                registration.installing?.scriptURL,
+              ].filter(Boolean);
+              return urls.some((url) => url?.endsWith('/sw.js'));
+            })
+            .map((registration) => registration.unregister()),
+        );
+
+        const registration = await navigator.serviceWorker.register('/motil-sw-v2.js', {
           scope: '/',
           updateViaCache: 'none',
         });
 
         if (cancelled) return;
 
-        // Pick up a newly deployed worker without requiring the user to
-        // manually clear Chrome data or reinstall the app.
         await registration.update().catch(() => undefined);
 
         if (registration.waiting) {
@@ -33,6 +75,8 @@ export function PwaServiceWorkerRegistrar() {
 
     return () => {
       cancelled = true;
+      window.removeEventListener('beforeinstallprompt', onBeforeInstall);
+      window.removeEventListener('appinstalled', onInstalled);
     };
   }, []);
 
