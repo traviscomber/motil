@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
-import { CirclePause, CirclePlay, Clock3, ShieldCheck, SquareStop, Wrench } from 'lucide-react';
+import { CirclePause, CirclePlay, Clock3, SquareStop, Wrench } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -184,9 +184,9 @@ export function MobileWorkOrderFlow({
     }
   }
 
-  if (!canEdit) return <StatePanel tone="neutral" title="Orden de solo lectura" description="Este registro no admite ejecución desde terreno." />;
-  if (status === 'completed') return <StatePanel tone="neutral" title="Trabajo terminado" description="La OT ya fue cerrada y permanece disponible como trazabilidad." />;
-  if (!hasCanonicalAssignee) return <StatePanel tone="warning" title="Falta asignar responsable" description="Esta OT aún no está vinculada a una persona operativa. Pide a tu jefatura o planificación que asigne el responsable antes de iniciar." />;
+  if (!canEdit) return <StatePanel tone="neutral" title="Solo lectura" description="No puedes ejecutar esta OT." />;
+  if (status === 'completed') return <StatePanel tone="neutral" title="OT cerrada" />;
+  if (!hasCanonicalAssignee) return <StatePanel tone="warning" title="Falta responsable" description="Asigna una persona antes de iniciar." />;
   if (isLoading) return <StatePanel tone="loading" title="Cargando trabajo" />;
   if (error) return <StatePanel tone="error" title="No se pudo cargar el trabajo" description={error.message} />;
 
@@ -218,10 +218,12 @@ export function MobileWorkOrderFlow({
                 <p className="font-medium">{assetName || 'Equipo no informado'}</p>
               </div>
             </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Qué hacer</p>
-              <p className="mt-1 text-sm leading-6">{description || 'Sigue la instrucción de la orden y registra evidencia al terminar.'}</p>
-            </div>
+            {description ? (
+              <div>
+                <p className="text-xs text-muted-foreground">Trabajo</p>
+                <p className="mt-1 text-sm leading-6">{description}</p>
+              </div>
+            ) : null}
           </div>
 
           <div className="flex items-center gap-3">
@@ -303,10 +305,6 @@ export function MobileWorkOrderFlow({
         </CardContent>
       </Card>
 
-      <p className="flex gap-2 px-2 text-xs leading-5 text-muted-foreground">
-        <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
-        El cierre requiere causa, acción preventiva, horas reales y evidencia de horómetro cuando corresponda.
-      </p>
       {message ? <StatePanel tone="error" title="No se pudo guardar" description={message} /> : null}
     </section>
   );
