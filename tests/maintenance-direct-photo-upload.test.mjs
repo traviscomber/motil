@@ -12,15 +12,13 @@ test('OT evidence route supports signed direct uploads without weakening authori
   assert.match(route, /requireOperationalMaintenanceWorkOrder/);
   assert.match(route, /storagePath\.startsWith\(expectedPrefix\)/);
   assert.match(route, /execution_evidence_added/);
-  assert.match(route, /evidence_tag/);
-  assert.match(route, /EVIDENCE_TAGS/);
+  assert.doesNotMatch(route, /EVIDENCE_TAGS/);
 });
 
 test('close queue uploads photo directly to Supabase Storage', () => {
   assert.match(queue, /uploadToSignedUrl/);
   assert.match(queue, /action: 'create_upload'/);
   assert.match(queue, /action: 'complete_upload'/);
-  assert.match(queue, /evidenceTag: 'completed'/);
   assert.match(queue, /multiple/);
   assert.match(queue, /await Promise\.all\(\[mutateEvidence\(\), mutate\(\)\]\)/);
 });

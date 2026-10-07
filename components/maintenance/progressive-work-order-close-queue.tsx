@@ -42,7 +42,6 @@ type QueueResponse = {
 type EvidenceResponse = {
   evidence?: Array<{
     id: string;
-    evidence_tag?: 'before' | 'during' | 'completed' | 'general' | null;
     file_name: string;
     created_at: string;
     signed_url?: string | null;
@@ -111,7 +110,6 @@ export function ProgressiveWorkOrderCloseQueue({ locale, dictionary }: { locale:
   );
   const evidence = evidenceData?.evidence || [];
   const evidenceCount = evidence.length;
-  const completionEvidenceCount = evidence.filter((photo) => photo.evidence_tag === 'completed').length;
 
   const [textValue, setTextValue] = useState('');
   const [hoursValue, setHoursValue] = useState('');
@@ -221,7 +219,6 @@ export function ProgressiveWorkOrderCloseQueue({ locale, dictionary }: { locale:
           fileName: upload.fileName || file.name || 'foto.jpg',
           mimeType: upload.mimeType || file.type || '',
           sizeBytes: upload.sizeBytes || file.size,
-          evidenceTag: 'completed',
         }),
       });
       const completed = await completeResponse.json().catch(() => null);
@@ -282,7 +279,7 @@ export function ProgressiveWorkOrderCloseQueue({ locale, dictionary }: { locale:
     }
 
     if (current.next_action === 'close_work_order') {
-      if (completionEvidenceCount < 1) return setActionError('Agrega al menos una foto con tag Trabajo terminado antes de cerrar.');
+      if (evidenceCount < 1) return setActionError('Agrega al menos una foto antes de cerrar.');
       return request(`/api/maintenance/work-orders/${current.work_order_id}/close`, {
         actual_duration_hours: Number(current.actual_duration_hours || 0),
         root_cause: current.root_cause,
@@ -426,7 +423,7 @@ export function ProgressiveWorkOrderCloseQueue({ locale, dictionary }: { locale:
                 <div>
                   <p className="font-medium">Evidencia</p>
                   <p className="text-sm text-muted-foreground">
-                    {completionEvidenceCount > 0 ? `${completionEvidenceCount} foto${completionEvidenceCount === 1 ? '' : 's'} de trabajo terminado` : 'Agrega una foto de trabajo terminado para cerrar.'}
+                    {evidenceCount > 0 ? `${evidenceCount} foto${evidenceCount === 1 ? '' : 's'}` : 'Agrega una foto para cerrar.'}
                   </p>
                 </div>
                 <label className="inline-flex h-10 cursor-pointer items-center rounded-md border border-input bg-background px-4 text-sm font-medium hover:bg-accent">
@@ -465,9 +462,6 @@ export function ProgressiveWorkOrderCloseQueue({ locale, dictionary }: { locale:
                         </div>
                       )}
                       </div>
-                      <p className="mt-1 truncate text-[10px] text-muted-foreground">
-                        {photo.evidence_tag === 'completed' ? 'Trabajo terminado' : photo.evidence_tag === 'before' ? 'Antes / daño' : photo.evidence_tag === 'during' ? 'Durante trabajo' : 'General'}
-                      </p>
                     </a>
                   ))}
                 </div>

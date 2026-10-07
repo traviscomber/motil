@@ -19,7 +19,8 @@ test('closure evidence stays compact and visual', () => {
   assert.match(closeQueue, /photo\.signed_url/);
   assert.match(closeQueue, /h-16/);
   assert.match(closeQueue, /w-20/);
-  assert.match(closeQueue, /Trabajo terminado/);
+  assert.match(closeQueue, /multiple/);
+  assert.doesNotMatch(closeQueue, /Trabajo terminado/);
 });
 
 test('closure page uses a narrow operational column without descriptive chrome', () => {
