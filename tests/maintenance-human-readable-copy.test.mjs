@@ -28,11 +28,8 @@ test('maintenance planning copy prefers human asset names and translated review 
   assert.doesNotMatch(controlCenter, /row\.machine_observations \|\| row\.review_reason/);
 });
 
-test('planning decisions stay above the long canonical reference overview', () => {
-  const queueIndex = maintenanceHome.indexOf('<Card className="shadow-none">');
-  const overviewIndex = maintenanceHome.indexOf('<CanonicalMaintenanceOverview />');
-  assert.ok(queueIndex >= 0);
-  assert.ok(overviewIndex > queueIndex);
+test('planner and leadership homes keep the long canonical overview out of the primary workflow', () => {
+  assert.match(maintenanceHome, /mode === 'general' \|\| mode === 'oversight' \? <CanonicalMaintenanceOverview \/>/);
 });
 
 test('Spanish maintenance naming and assisted-decision labels are consistent', () => {
