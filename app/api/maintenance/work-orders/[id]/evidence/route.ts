@@ -250,7 +250,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         captured_at: new Date().toISOString(),
         created_by: context.userId,
       })
-      .select('id,evidence_type,evidence_tag,file_name,mime_type,size_bytes,notes,captured_at,created_at')
+      .select('id,evidence_type,file_name,mime_type,size_bytes,notes,captured_at,created_at')
       .single();
 
     if (error) {
