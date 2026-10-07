@@ -104,7 +104,7 @@ function isSupportActive(pathname: string, href: string) {
 
 export default function MaintenanceLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const { data: viewer, isLoading: viewerLoading } = useSWR<ViewerContext>(
+  const { data: viewer, error: viewerError, isLoading: viewerLoading } = useSWR<ViewerContext>(
     '/api/maintenance/viewer-context',
     (url) => fetcher<ViewerContext>(url),
     { revalidateOnFocus: false },
@@ -114,7 +114,7 @@ export default function MaintenanceLayout({ children }: { children: ReactNode })
   const visibleFlowItems = flowItems.filter((item) => allowed.flow.includes(item.label));
   const visibleSupportItems = supportItems.filter((item) => allowed.support.includes(item.label));
 
-  if (viewerLoading || mode === 'execution') {
+  if (viewerLoading || viewerError || mode === 'execution') {
     return <>{children}</>;
   }
 
