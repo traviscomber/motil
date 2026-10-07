@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
 
     const { data: rows, error: workOrdersError } = await context.supabase
       .from('maintenance_work_orders')
-      .select('id,work_order_number,title,status,priority,scheduled_date,start_date,created_at,timer_status,total_timer_minutes,canonical_asset_id')
+      .select('id,work_order_number,title,status,priority,scheduled_date,start_date,created_at,timer_status,total_timer_minutes,total_timer_seconds,canonical_asset_id')
       .eq('organization_id', context.organizationId)
       .eq('assigned_person_id', person.id);
     if (workOrdersError) throw workOrdersError;
@@ -75,17 +75,33 @@ export async function GET(request: NextRequest) {
         return Date.parse(String(a.created_at || '')) - Date.parse(String(b.created_at || ''));
       })
       .map((row: any) => {
-        const number = row.work_order_number || 'OT';
-        const timerState = String(row.timer_status || '').toLowerCase();
-        const isActive = activeTimerStatuses.has(timerState) || String(row.status || '').toLowerCase() === 'in_progress';
+        const workOrderNumber = row.work_order_number || 'OT';
+        const workOrderStatus = String(row.status || '').toLowerCase();
+        const timerStatus = String(row.timer_status || '').toLowerCase();
+        const isActive = activeTimerStatuses.has(timerStatus) || workOrderStatus === 'in_progress';
+        const stateLabel = timerStatus === 'running'
+          ? 'En curso'
+          : timerStatus === 'paused'
+            ? 'Pausada'
+            : workOrderStatus === 'in_progress'
+              ? 'Por reanudar'
+              : 'Pendiente';
         const scheduledEvidence = row.scheduled_date ? `Programada ${row.scheduled_date}` : 'Sin fecha programada';
         const priorityEvidence = row.priority ? ` · Prioridad ${row.priority}` : '';
+
         return {
           id: String(row.id),
-          title: `${isActive ? 'Continuar' : 'Iniciar'} · ${number}`,
-          description: row.title || 'Orden de trabajo asignada',
+          workOrderNumber,
+          title: row.title || 'Orden de trabajo asignada',
           evidence: `${scheduledEvidence}${priorityEvidence}`,
           href: `/dashboard/mantenimiento/ordenes-trabajo/${encodeURIComponent(String(row.id))}`,
+          actionLabel: isActive ? 'Reanudar' : 'Iniciar',
+          stateLabel,
+          status: workOrderStatus,
+          timerStatus,
+          priority: row.priority || null,
+          scheduledDate: row.scheduled_date || null,
+          totalTimerSeconds: Number(row.total_timer_seconds || 0),
         };
       });
 
