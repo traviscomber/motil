@@ -221,7 +221,7 @@ export function MaintenanceHome({ locale, dictionary }: { locale: Locale; dictio
       </CardContent>
     </Card>
 
-    <CanonicalMaintenanceOverview />
+    {mode === 'general' || mode === 'oversight' ? <CanonicalMaintenanceOverview /> : null}
 
     <div className="flex flex-wrap gap-x-5 gap-y-2 border-t pt-4 text-sm text-muted-foreground" aria-label={t.relatedAria}>
       {mode === 'planning' ? <>
