@@ -227,6 +227,62 @@ export function WorkOrderDetail({ locale, dictionary }: { locale: Locale; dictio
     </div>;
   }
 
+  if (viewer?.mode === 'leadership' && !isHistorical) {
+    return (
+      <div className="mx-auto max-w-5xl space-y-5">
+        <section className="flex flex-col gap-4 border-b border-border/70 pb-5 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-mono text-sm text-muted-foreground">{formatWorkOrderNumber(workOrder.work_order_number, locale)}</span>
+              <Badge variant="outline">{statusLabel(workOrder.status, t)}</Badge>
+            </div>
+            <h1 className="mt-2 text-2xl font-semibold tracking-tight">{workOrder.title || t.untitled}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">{formatAssetIdentity(workOrder.asset_name, workOrder.asset_code) || t.noAsset}</p>
+          </div>
+        </section>
+
+        <WorkOrderEvidenceAndApproval workOrderId={id} status={workOrder.status} />
+
+        <details className="group rounded-lg border bg-card">
+          <summary className="flex cursor-pointer list-none items-center justify-between px-5 py-4 text-sm font-medium">
+            Ver información de la OT
+            <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
+          </summary>
+          <div className="space-y-5 border-t p-5">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {workOrder.assigned_to_name ? <div><p className="text-xs text-muted-foreground">{t.summary.assignee}</p><p className="mt-1 font-medium">{workOrder.assigned_to_name}</p></div> : null}
+              {workOrder.scheduled_date ? <div><p className="text-xs text-muted-foreground">{t.summary.scheduled}</p><p className="mt-1 font-medium">{new Date(workOrder.scheduled_date).toLocaleDateString(dateLocale)}</p></div> : null}
+              {workOrder.priority ? <div><p className="text-xs text-muted-foreground">{t.summary.priority}</p><p className="mt-1 font-medium">{priorityLabel(workOrder.priority, t)}</p></div> : null}
+              {workOrder.work_type ? <div><p className="text-xs text-muted-foreground">{t.summary.type}</p><p className="mt-1 font-medium">{typeLabel(workOrder.work_type, t)}</p></div> : null}
+            </div>
+
+            {workOrder.description ? <div><p className="text-xs text-muted-foreground">Trabajo solicitado</p><p className="mt-1 text-sm leading-6">{workOrder.description}</p></div> : null}
+
+            {(workOrder.root_cause || workOrder.preventive_actions) ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {workOrder.root_cause ? <div><p className="text-xs text-muted-foreground">{t.intervention.rootCause}</p><p className="mt-1 text-sm font-medium">{workOrder.root_cause}</p></div> : null}
+                {workOrder.preventive_actions ? <div><p className="text-xs text-muted-foreground">{t.intervention.preventiveAction}</p><p className="mt-1 text-sm font-medium">{workOrder.preventive_actions}</p></div> : null}
+              </div>
+            ) : null}
+          </div>
+        </details>
+
+        <details className="group rounded-lg border bg-card">
+          <summary className="flex cursor-pointer list-none items-center justify-between px-5 py-4 text-sm font-medium">
+            Ver plan, materiales e historial
+            <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
+          </summary>
+          <div className="space-y-5 border-t p-5">
+            <WorkOrderStandardPlanPanel workOrderId={id} />
+            <WorkOrderMaterialCoverage workOrderId={id} />
+            <WorkOrderPurchasingFlow workOrderId={id} />
+            <EntityTimeline entity="work_order" id={id} limit={50} />
+          </div>
+        </details>
+      </div>
+    );
+  }
+
   return <div className="space-y-6">
     <section className="flex flex-col gap-4 border-b border-border/70 pb-6 lg:flex-row lg:items-start lg:justify-between">
       <div><div className="flex flex-wrap items-center gap-2"><span className="font-mono text-sm text-muted-foreground">{formatWorkOrderNumber(workOrder.work_order_number, locale)}</span><Badge variant="outline">{statusLabel(workOrder.status, t)}</Badge>{isHistorical ? <Badge variant="secondary">{t.historicalBadge}</Badge> : <Badge variant="outline">{t.operationalBadge}</Badge>}</div><h1 className="mt-2 text-3xl font-semibold tracking-tight">{workOrder.title || t.untitled}</h1><p className="mt-2 text-sm text-muted-foreground">{formatAssetIdentity(workOrder.asset_name, workOrder.asset_code) || t.noAsset}</p></div>
