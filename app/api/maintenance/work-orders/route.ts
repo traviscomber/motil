@@ -26,11 +26,14 @@ type WorkOrderRow = {
   preventive_actions: string | null;
   meter_reading: number | string | null;
   meter_unit: string | null;
+  creation_request_id: string | null;
   created_by: string | null;
   created_at: string;
 };
 
 type CanonicalAssetRow = { id: string; asset_code: string; name: string; asset_type: string | null; is_active: boolean };
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 type SupervisorReviewRow = {
   work_order_id: string;
   status: string | null;
@@ -166,6 +169,18 @@ async function recordRequestedMaterials(
   const note = requestedMaterials?.trim();
   if (!note) return;
 
+  const { data: existingEvent, error: existingEventError } = await context.supabase
+    .from('work_order_events')
+    .select('id')
+    .eq('organization_id', context.organizationId)
+    .eq('work_order_id', workOrder.id)
+    .eq('event_type', 'material_request_recorded')
+    .eq('source_record_id', workOrder.id)
+    .limit(1)
+    .maybeSingle();
+  if (existingEventError) throw existingEventError;
+  if (existingEvent) return;
+
   const { error } = await context.supabase.from('work_order_events').insert({
     organization_id: context.organizationId,
     work_order_id: workOrder.id,
@@ -268,6 +283,7 @@ export async function POST(request: NextRequest) {
     const assignedPersonId = body.assignedPersonId || body.assigned_person_id || null;
     const requestedMaterials = body.requestedMaterials || body.requested_materials || null;
     const materials = body.materials || [];
+    const creationRequestId = request.headers.get('idempotency-key')?.trim() || null;
     if (!canonicalAssetId) return NextResponse.json({ error: 'Selecciona un activo canónico' }, { status: 400 });
     if (!body.title?.trim()) return NextResponse.json({ error: 'Describe brevemente el trabajo a realizar' }, { status: 400 });
     if (!context.authUserId) {
@@ -375,6 +391,35 @@ export async function POST(request: NextRequest) {
       }, { status: review.linked_work_order_id ? 200 : 201 });
     }
 
+    if (!creationRequestId || !UUID_PATTERN.test(creationRequestId)) {
+      return NextResponse.json(
+        { error: 'La solicitud de creación de OT no tiene una clave de idempotencia válida.' },
+        { status: 400 },
+      );
+    }
+
+    const { data: existingRequestOrder, error: existingRequestError } = await context.supabase
+      .from('maintenance_work_orders')
+      .select('*')
+      .eq('organization_id', context.organizationId)
+      .eq('created_by', context.authUserId)
+      .eq('creation_request_id', creationRequestId)
+      .maybeSingle();
+    if (existingRequestError) throw existingRequestError;
+
+    if (existingRequestOrder) {
+      const replayedOrder = existingRequestOrder as WorkOrderRow;
+      await recordRequestedMaterials(context, replayedOrder, requestedMaterials);
+      await recordStructuredMaterials(context, replayedOrder.id, materials);
+      return NextResponse.json(
+        {
+          data: mapWorkOrder(replayedOrder, asset as CanonicalAssetRow),
+          idempotentReplay: true,
+        },
+        { status: 200 },
+      );
+    }
+
     const assignedPersonName = assignedPerson.full_name;
 
     const year = new Date().getFullYear();
@@ -395,6 +440,7 @@ export async function POST(request: NextRequest) {
     const latestSequence = Number.parseInt(String(latestOrder?.work_order_number || '').slice(prefix.length), 10);
     let nextSequence = Number.isFinite(latestSequence) ? latestSequence + 1 : 1;
     let createdOrder: WorkOrderRow | null = null;
+    let idempotentReplay = false;
 
     for (let attempt = 0; attempt < 3 && !createdOrder; attempt += 1) {
       const workOrderNumber = `${prefix}${String(nextSequence).padStart(4, '0')}`;
@@ -417,6 +463,7 @@ export async function POST(request: NextRequest) {
           meter_reading: meterReading === null || meterReading === '' ? null : Number(meterReading),
           meter_unit: body.meterUnit || body.meter_unit || null,
           cost_center_id: body.costCenterId || body.cost_center_id || null,
+          creation_request_id: creationRequestId,
           created_by: context.authUserId,
           updated_at: new Date().toISOString(),
         })
@@ -429,6 +476,21 @@ export async function POST(request: NextRequest) {
       }
 
       if (insertError.code !== '23505') throw insertError;
+
+      const { data: concurrentOrder, error: concurrentOrderError } = await context.supabase
+        .from('maintenance_work_orders')
+        .select('*')
+        .eq('organization_id', context.organizationId)
+        .eq('created_by', context.authUserId)
+        .eq('creation_request_id', creationRequestId)
+        .maybeSingle();
+      if (concurrentOrderError) throw concurrentOrderError;
+      if (concurrentOrder) {
+        createdOrder = concurrentOrder as WorkOrderRow;
+        idempotentReplay = true;
+        break;
+      }
+
       nextSequence += 1;
     }
 
@@ -438,7 +500,13 @@ export async function POST(request: NextRequest) {
 
     await recordRequestedMaterials(context, createdOrder, requestedMaterials);
     await recordStructuredMaterials(context, createdOrder.id, materials);
-    return NextResponse.json({ data: mapWorkOrder(createdOrder, asset as CanonicalAssetRow) }, { status: 201 });
+    return NextResponse.json(
+      {
+        data: mapWorkOrder(createdOrder, asset as CanonicalAssetRow),
+        idempotentReplay,
+      },
+      { status: idempotentReplay ? 200 : 201 },
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : 'No se pudo crear la orden de trabajo';
     console.error('[maintenance/work-orders:post]', error);
