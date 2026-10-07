@@ -199,7 +199,7 @@ export function OperationalWorkOrderBoard({ locale }: { locale: Locale }) {
                   </div>
                   <p className="mt-1 truncate font-medium">{row.title || 'Orden de trabajo'}</p>
                   <p className="mt-1 truncate text-xs text-muted-foreground">
-                    {row.asset?.code || copy.noCode} · {row.asset?.name || copy.noAsset}
+                    {row.asset?.name || copy.noAsset}
                   </p>
                   {pauseText ? <p className="mt-2 text-sm font-medium">{copy.pausePrefix}: {pauseText}</p> : null}
                   {commentText ? <p className="mt-2 text-sm text-muted-foreground">{copy.commentPrefix}: {commentText}</p> : null}
