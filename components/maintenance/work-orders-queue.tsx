@@ -146,7 +146,7 @@ export function WorkOrdersQueue({ locale, dictionary }: { locale: Locale; dictio
       };
     })
     .sort((a, b) => a.daysUntil - b.daysUntil)
-    .slice(0, 7), [operationalWorkOrders, t]);
+    .slice(0, 7), [locale, operationalWorkOrders, t]);
 
   const markScheduleComplete = async (scheduleId: string) => {
     setUpdatingScheduleId(scheduleId);
