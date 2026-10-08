@@ -68,7 +68,8 @@ type MaintenanceOverview = {
 
 type HomeMode = 'mine' | 'engineering' | 'plant' | 'maintenance' | 'drilling' | 'inventory' | 'sustainability' | 'finance' | 'management' | 'general';
 type Metric = { label: string; value: string | number; detail?: string };
-type Shortcut = { label: string; href: string; detail: string };
+type Shortcut = { label: string; href: string; detail: string; moduleKey?: string };
+type ModuleAccessPayload = { hasCargo: boolean; allModules: boolean; access: Record<string, 'ED' | 'LEC' | 'SR'> };
 
 const fetcher = async (url: string) => {
   const response = await fetch(url, { credentials: 'include', cache: 'no-store' });
@@ -158,8 +159,8 @@ function configFor(
       description: 'Revisa el avance, las restricciones y las decisiones pendientes. Los datos sin verificar no se presentan como cumplimiento.',
       metrics: [],
       shortcuts: [
-        { label: 'Plan y ejecución', href: '/dashboard/produccion', detail: 'Consulta la operación y sus fuentes.' },
-        { label: 'Inteligencia de producción', href: '/dashboard/produccion/inteligencia', detail: 'Identifica desviaciones con evidencia.' },
+        { label: 'Plan y ejecución', href: '/dashboard/produccion', detail: 'Consulta la operación y sus fuentes.', moduleKey: 'prod_operaciones' },
+        { label: 'Topografía', href: '/dashboard/produccion', detail: 'Consulta antecedentes técnicos autorizados.', moduleKey: 'prod_topografia' },
         { label: 'Tareas pendientes', href: '/dashboard/acciones', detail: 'Revisa responsabilidades y escalaciones.' },
       ],
     };
@@ -172,10 +173,10 @@ function configFor(
       description: 'Prioriza novedades, equipos y órdenes de trabajo. Las acciones se validan según tus permisos.',
       metrics: [],
       shortcuts: [
-        { label: 'Órdenes de trabajo', href: '/dashboard/mantenimiento/ordenes-trabajo', detail: 'Crea o da seguimiento a solicitudes autorizadas.' },
-        { label: 'Equipos', href: '/dashboard/mantenimiento/equipos', detail: 'Consulta equipos y condiciones registradas.' },
+        { label: 'Órdenes de trabajo', href: '/dashboard/mantenimiento/ordenes-trabajo', detail: 'Crea o da seguimiento a solicitudes autorizadas.', moduleKey: 'mant_operaciones' },
+        { label: 'Equipos', href: '/dashboard/mantenimiento/equipos', detail: 'Consulta equipos y condiciones registradas.', moduleKey: 'mant_operaciones' },
         { label: 'Tareas y novedades', href: '/dashboard/acciones', detail: 'Atiende lo que requiere tu decisión.' },
-        { label: 'Producción', href: '/dashboard/produccion', detail: 'Consulta el avance operacional disponible.' },
+        { label: 'Producción', href: '/dashboard/produccion', detail: 'Consulta el avance operacional disponible.', moduleKey: 'prod_operaciones' },
       ],
     };
   }
@@ -275,11 +276,14 @@ function configFor(
 export function DashboardHome({ locale, dictionary }: { locale: Locale; dictionary: Dictionary }) {
   const t = dictionary.app.home;
   const inbox = useSWR<InboxPayload>('/api/actions/inbox', fetcher, { refreshInterval: 60000, revalidateOnFocus: false });
+  const moduleAccess = useSWR<ModuleAccessPayload>('/api/dashboard/module-access', fetcher, { revalidateOnFocus: false });
   const production = useSWR<ProductionOverview | null>('/api/produccion/canonical-overview', optionalFetcher, { revalidateOnFocus: false });
   const maintenance = useSWR<MaintenanceOverview | null>('/api/maintenance/work-order-flow?limit=200', optionalFetcher, { revalidateOnFocus: false });
 
   const mode = resolveMode(inbox.data?.profile?.cargoName);
   const config = configFor(mode, production.data, maintenance.data, inbox.data, t, locale);
+  const scopedRole = mode === 'mine' || mode === 'engineering';
+  const permittedShortcuts = scopedRole ? config.shortcuts.filter((item) => !item.moduleKey || moduleAccess.data?.allModules || ['LEC', 'ED'].includes(moduleAccess.data?.access[item.moduleKey] || 'SR')) : config.shortcuts;
   const tasks = (inbox.data?.tasks || []).slice(0, 5);
   const loading = inbox.isLoading;
   const inboxUnavailable = Boolean(inbox.error) || (!loading && !inbox.data);
@@ -297,6 +301,7 @@ export function DashboardHome({ locale, dictionary }: { locale: Locale; dictiona
         </PageHeaderActions>
       </PageHeader>
 
+      {scopedRole && moduleAccess.error ? <StatePanel tone="warning" title="Permisos no disponibles" description="No se pueden mostrar accesos a otras áreas hasta verificar tu cargo." /> : null}
       {inboxUnavailable ? <StatePanel tone="warning" title={t.roleUnresolvedTitle} description={t.roleUnresolvedDescription} /> : null}
 
       {config.metrics.length > 0 ? <section aria-label={t.indicatorsLabel} className="grid gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-2 xl:grid-cols-4">
@@ -326,7 +331,7 @@ export function DashboardHome({ locale, dictionary }: { locale: Locale; dictiona
       <section className="space-y-3">
         <div><h2 className="text-lg font-semibold">{t.shortcutsTitle}</h2><p className="text-sm text-muted-foreground">{t.shortcutsSubtitle}</p></div>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {config.shortcuts.map((item) => {
+          {permittedShortcuts.map((item) => {
             const Icon = item.href.includes('mantenimiento') ? Wrench : item.href.includes('sondaje') ? Drill : item.href.includes('produccion') ? Factory : Gauge;
             return <Link key={item.href} href={item.href} className="group rounded-lg border bg-card p-4 hover:bg-muted/30"><div className="flex items-start gap-3"><div className="flex size-9 shrink-0 items-center justify-center rounded-md border bg-background"><Icon className="h-4 w-4" /></div><div className="min-w-0 flex-1"><p className="text-sm font-medium">{item.label}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{item.detail}</p></div><ArrowRight className="mt-1 h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1" /></div></Link>;
           })}
