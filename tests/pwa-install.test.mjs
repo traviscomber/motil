@@ -35,7 +35,8 @@ test('MOTIL install control supports Chromium prompts and Apple home-screen guid
 test('MOTIL provides the required 192px install icon alongside the existing 512px icon', () => {
   assert.match(iconRoute, /width: 192/);
   assert.match(iconRoute, /height: 192/);
-  assert.match(iconRoute, /icon-512\.png/);
+  assert.match(iconRoute, /<path/);
+  assert.doesNotMatch(iconRoute, /icon-512\.png/);
 });
 
 
