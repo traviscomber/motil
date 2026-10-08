@@ -36,13 +36,13 @@ test('MOTIL install control supports Chromium prompts and Apple home-screen guid
 });
 
 test('MOTIL install icons render the canonical MOTIL wordmark at 192px and 512px', () => {
-  assert.match(iconRoute, /brand\/motil-wordmark\.png/);
-  assert.match(iconRoute, /arrayBuffer\(\)/);
+  assert.match(iconRoute, /MOTIL_WORDMARK/);
+  assert.doesNotMatch(iconRoute, /arrayBuffer\(\)/);
   assert.match(iconRoute, /data:image\/png;base64/);
   assert.match(iconRoute, /width: 192/);
   assert.match(iconRoute, /height: 192/);
-  assert.match(icon512Route, /brand\/motil-wordmark\.png/);
-  assert.match(icon512Route, /arrayBuffer\(\)/);
+  assert.match(icon512Route, /MOTIL_WORDMARK/);
+  assert.doesNotMatch(icon512Route, /arrayBuffer\(\)/);
   assert.match(icon512Route, /data:image\/png;base64/);
   assert.match(icon512Route, /width: 512/);
   assert.match(icon512Route, /height: 512/);
@@ -97,14 +97,14 @@ test('Android migrates away from stale legacy service worker registrations', () 
 
 
 test('all install manifests and metadata point to versioned MOTIL brand icons, not the legacy v0 icon', () => {
-  assert.match(manifest, /icon-192\?brand=motil-6/);
-  assert.match(manifest, /icon-512\?brand=motil-6/);
-  assert.match(staticManifest, /icon-192\?brand=motil-6/);
-  assert.match(staticManifest, /icon-512\?brand=motil-6/);
-  assert.match(legacyManifest, /icon-192\?brand=motil-6/);
-  assert.match(legacyManifest, /icon-512\?brand=motil-6/);
-  assert.match(layout, /icon-192\?brand=motil-6/);
-  assert.match(layout, /icon-512\?brand=motil-6/);
+  assert.match(manifest, /icon-192\?brand=motil-7/);
+  assert.match(manifest, /icon-512\?brand=motil-7/);
+  assert.match(staticManifest, /icon-192\?brand=motil-7/);
+  assert.match(staticManifest, /icon-512\?brand=motil-7/);
+  assert.match(legacyManifest, /icon-192\?brand=motil-7/);
+  assert.match(legacyManifest, /icon-512\?brand=motil-7/);
+  assert.match(layout, /icon-192\?brand=motil-7/);
+  assert.match(layout, /icon-512\?brand=motil-7/);
   assert.doesNotMatch(staticManifest, /"\/icon-512\.png"/);
   assert.doesNotMatch(legacyManifest, /"\/icon-512\.png"/);
 });
