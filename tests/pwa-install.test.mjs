@@ -104,6 +104,6 @@ test('MOTIL favicon and install metadata use the proven original brand assets', 
   assert.match(manifest, /icon-512\.png\?brand=motil-original/);
   assert.match(staticManifest, /icon-512\.png\?brand=motil-original/);
   assert.match(legacyManifest, /icon-512\.png\?brand=motil-original/);
-  assert.doesNotMatch(nextConfig, /source: '\/icon-512\.png'/);
-  assert.doesNotMatch(nextConfig, /source: '\/apple-icon\.png'/);
+  assert.match(nextConfig, /source: '\/icon-512\.png'[\s\S]*?no-store, no-cache, must-revalidate/);
+  assert.match(nextConfig, /source: '\/apple-icon\.png'[\s\S]*?no-store, no-cache, must-revalidate/);
 });
