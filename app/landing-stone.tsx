@@ -23,6 +23,7 @@ export default function LandingStone() {
     let cleanup: (() => void) | undefined;
 
     async function init() {
+      if (!stage || !mount) return;
       const THREE = await import('three');
       const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
       if (cancelled) return;
