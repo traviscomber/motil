@@ -66,7 +66,7 @@ type MaintenanceOverview = {
   };
 };
 
-type HomeMode = 'plant' | 'maintenance' | 'drilling' | 'inventory' | 'sustainability' | 'finance' | 'management' | 'general';
+type HomeMode = 'mine' | 'engineering' | 'plant' | 'maintenance' | 'drilling' | 'inventory' | 'sustainability' | 'finance' | 'management' | 'general';
 type Metric = { label: string; value: string | number; detail?: string };
 type Shortcut = { label: string; href: string; detail: string };
 
@@ -91,6 +91,8 @@ function normalize(value: string | null | undefined) {
 
 function resolveMode(cargoName: string | null | undefined): HomeMode {
   const cargo = normalize(cargoName);
+  if (/jefe ing.*pla mina|jefe.*ingenier.*planific/.test(cargo)) return 'engineering';
+  if (/jefe mina peumo|jefe mina don jaime/.test(cargo)) return 'mine';
   if (/todos los cargos|gerenc|director|administrador|admin|jefatura general/.test(cargo)) return 'management';
   if (/sostenibilidad|prevencion|hse|medio ambiente/.test(cargo)) return 'sustainability';
   if (/jefe adm|administracion|finanzas|financiero/.test(cargo)) return 'finance';
@@ -148,6 +150,35 @@ function configFor(
 
   const shortcutsFor = (modeCfg: { shortcuts: readonly { key: string; label: string; detail: string }[] }) =>
     modeCfg.shortcuts.map((item) => ({ label: item.label, href: SHORTCUT_HREFS[item.key] ?? '/dashboard', detail: item.detail }));
+
+  if (mode === 'engineering') {
+    return {
+      eyebrow: 'INGENIERÍA Y PLANIFICACIÓN',
+      title: 'Planificación minera',
+      description: 'Revisa el avance, las restricciones y las decisiones pendientes. Los datos sin verificar no se presentan como cumplimiento.',
+      metrics: [],
+      shortcuts: [
+        { label: 'Plan y ejecución', href: '/dashboard/produccion', detail: 'Consulta la operación y sus fuentes.' },
+        { label: 'Inteligencia de producción', href: '/dashboard/produccion/inteligencia', detail: 'Identifica desviaciones con evidencia.' },
+        { label: 'Tareas pendientes', href: '/dashboard/acciones', detail: 'Revisa responsabilidades y escalaciones.' },
+      ],
+    };
+  }
+
+  if (mode === 'mine') {
+    return {
+      eyebrow: 'JEFATURA DE MINA',
+      title: inbox?.profile?.cargoName?.toUpperCase().includes('PEUMO') ? 'Operación · Peumo' : 'Operación · Don Jaime',
+      description: 'Prioriza novedades, equipos y órdenes de trabajo. Las acciones se validan según tus permisos.',
+      metrics: [],
+      shortcuts: [
+        { label: 'Órdenes de trabajo', href: '/dashboard/mantenimiento/ordenes-trabajo', detail: 'Crea o da seguimiento a solicitudes autorizadas.' },
+        { label: 'Equipos', href: '/dashboard/mantenimiento/equipos', detail: 'Consulta equipos y condiciones registradas.' },
+        { label: 'Tareas y novedades', href: '/dashboard/acciones', detail: 'Atiende lo que requiere tu decisión.' },
+        { label: 'Producción', href: '/dashboard/produccion', detail: 'Consulta el avance operacional disponible.' },
+      ],
+    };
+  }
 
   if (mode === 'plant') {
     const cfg = t.modes.plant;
@@ -268,7 +299,7 @@ export function DashboardHome({ locale, dictionary }: { locale: Locale; dictiona
 
       {inboxUnavailable ? <StatePanel tone="warning" title={t.roleUnresolvedTitle} description={t.roleUnresolvedDescription} /> : null}
 
-      <section aria-label={t.indicatorsLabel} className="grid gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-2 xl:grid-cols-4">
+      {config.metrics.length > 0 ? <section aria-label={t.indicatorsLabel} className="grid gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-2 xl:grid-cols-4">
         {config.metrics.map((metric) => (
           <div key={metric.label} className="bg-card px-5 py-4">
             <p className="text-xs text-muted-foreground">{metric.label}</p>
@@ -276,7 +307,7 @@ export function DashboardHome({ locale, dictionary }: { locale: Locale; dictiona
             {metric.detail ? <p className="mt-1 text-xs text-muted-foreground">{metric.detail}</p> : null}
           </div>
         ))}
-      </section>
+      </section> : null}
 
       {mode === 'management' ? <HomeDecisionPriorities dictionary={dictionary} locale={locale} /> : null}
 
