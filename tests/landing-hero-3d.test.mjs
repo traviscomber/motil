@@ -45,3 +45,9 @@ test('MOTIL hero stage retains premium responsive layout', () => {
   assert.match(css, /width: min\(34vw, 310px\)/);
   assert.match(css, /width: min\(78vw, 390px\)/);
 });
+
+test('MOTIL hero defaults to the approved mineral artwork while 3D quality is under review', () => {
+  assert.match(hero, /const HERO_3D_ENABLED = process\.env\.NEXT_PUBLIC_MOTIL_HERO_3D === 'enabled'/);
+  assert.match(hero, /useState\(!HERO_3D_ENABLED\)/);
+  assert.match(hero, /if \(!HERO_3D_ENABLED\) return/);
+});
