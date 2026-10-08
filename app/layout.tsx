@@ -86,10 +86,11 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     icons: {
       icon: [
-        { url: '/api/pwa/icon-192?brand=motil-7', type: 'image/png', sizes: '192x192' },
-        { url: '/api/pwa/icon-512?brand=motil-7', type: 'image/png', sizes: '512x512' },
+        { url: '/motil-launcher.svg?brand=motil-8', type: 'image/svg+xml', sizes: 'any' },
+        { url: '/api/pwa/icon-192?brand=motil-8', type: 'image/png', sizes: '192x192' },
+        { url: '/api/pwa/icon-512?brand=motil-8', type: 'image/png', sizes: '512x512' },
       ],
-      apple: '/api/pwa/icon-192?brand=motil-7',
+      apple: '/motil-launcher.svg?brand=motil-8',
     },
   };
 }
