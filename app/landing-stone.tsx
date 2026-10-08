@@ -32,26 +32,25 @@ function makeJaggedSlab(
   height: number,
   depth: number,
   seed: number,
-  detail = 4
+  detail = 2
 ) {
-  const geometry = new THREE_NS.BoxGeometry(width, height, depth, detail, Math.max(2, detail - 1), detail);
+  const geometry = new THREE_NS.DodecahedronGeometry(1, detail);
   const position = geometry.getAttribute('position');
   const v = new THREE_NS.Vector3();
 
   for (let index = 0; index < position.count; index += 1) {
     v.fromBufferAttribute(position, index);
 
-    const nx = width > 0 ? v.x / width : 0;
-    const ny = height > 0 ? v.y / height : 0;
-    const nz = depth > 0 ? v.z / depth : 0;
-    const ridge = seededWave(nx * 1.8 + ny * 2.4 + nz * 1.2, seed);
-    const chip = seededWave(nx * 4.7 - ny * 3.1 + nz * 5.2, seed + 17);
+    const ridge = seededWave(v.x * 1.8 + v.y * 2.4 + v.z * 1.2, seed);
+    const chip = seededWave(v.x * 4.7 - v.y * 3.1 + v.z * 5.2, seed + 17);
+    const scale = 1 + ridge * 0.055 + chip * 0.022;
 
-    const xScale = 1 + ridge * 0.045 + chip * 0.016;
-    const yScale = 1 + ridge * 0.035 + chip * 0.014;
-    const zScale = 1 + ridge * 0.050 + chip * 0.018;
-
-    position.setXYZ(index, v.x * xScale, v.y * yScale, v.z * zScale);
+    position.setXYZ(
+      index,
+      v.x * width * 0.5 * scale,
+      v.y * height * 0.5 * scale,
+      v.z * depth * 0.5 * scale
+    );
   }
 
   geometry.computeVertexNormals();
@@ -121,18 +120,18 @@ export default function LandingStone() {
       renderer.setClearColor(0x000000, 0);
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = lowPower ? 1.02 : 1.10;
+      renderer.toneMappingExposure = lowPower ? 1.16 : 1.24;
       renderer.domElement.setAttribute('aria-hidden', 'true');
       mount.appendChild(renderer.domElement);
 
       const scene = new THREE.Scene();
       const camera = new THREE.PerspectiveCamera(27, 1, 0.1, 50);
-      camera.position.set(0.08, 0.10, 6.25);
+      camera.position.set(0.08, 0.10, 6.65);
 
       const graphite = new THREE.MeshPhysicalMaterial({
-        color: 0x24231f,
-        roughness: 0.78,
-        metalness: 0.20,
+        color: 0x3b3933,
+        roughness: 0.70,
+        metalness: 0.16,
         clearcoat: 0.035,
         clearcoatRoughness: 0.76,
         flatShading: true,
@@ -140,11 +139,11 @@ export default function LandingStone() {
       graphite.envMapIntensity = lowPower ? 0.58 : 0.76;
 
       const graphiteDeep = graphite.clone();
-      graphiteDeep.color.setHex(0x111210);
-      graphiteDeep.roughness = 0.84;
+      graphiteDeep.color.setHex(0x1c1c19);
+      graphiteDeep.roughness = 0.78;
 
       const chalcopyrite = new THREE.MeshPhysicalMaterial({
-        color: 0x8f6328,
+        color: 0xa8732f,
         roughness: 0.23,
         metalness: 0.94,
         clearcoat: 0.07,
@@ -154,7 +153,7 @@ export default function LandingStone() {
       chalcopyrite.envMapIntensity = lowPower ? 0.82 : 1.04;
 
       const bornite = new THREE.MeshPhysicalMaterial({
-        color: 0x433648,
+        color: 0x55435c,
         roughness: 0.27,
         metalness: 0.90,
         clearcoat: 0.08,
@@ -166,7 +165,7 @@ export default function LandingStone() {
       bornite.envMapIntensity = lowPower ? 0.78 : 0.98;
 
       const veinMaterial = new THREE.MeshPhysicalMaterial({
-        color: 0x6f431f,
+        color: 0x885326,
         roughness: 0.28,
         metalness: 0.93,
         clearcoat: 0.04,
@@ -179,7 +178,7 @@ export default function LandingStone() {
         roughness: 0.42,
         metalness: 0.68,
         emissive: 0x6d2610,
-        emissiveIntensity: lowPower ? 0.22 : 0.32,
+        emissiveIntensity: lowPower ? 0.30 : 0.44,
         flatShading: true,
       });
       coreMaterial.envMapIntensity = 0.40;
@@ -210,7 +209,7 @@ export default function LandingStone() {
 
       slabData.forEach((item, index) => {
         const [x,y,z,w,h,d,rx,ry,rz,seed] = item;
-        const geometry = makeJaggedSlab(THREE, w, h, d, seed, lowPower ? 3 : 4);
+        const geometry = makeJaggedSlab(THREE, w, h, d, seed, lowPower ? 1 : 2);
         disposableGeometries.push(geometry);
         const mesh = new THREE.Mesh(geometry, index % 3 === 0 ? graphiteDeep : graphite);
         mesh.position.set(x, y, z);
@@ -277,24 +276,22 @@ export default function LandingStone() {
       tiltGroup.add(assembly);
       scene.add(tiltGroup);
 
-      scene.add(new THREE.HemisphereLight(0xcac5b8, 0x090909, 0.23));
+      scene.add(new THREE.HemisphereLight(0xe4ded0, 0x11100e, lowPower ? 0.58 : 0.72));
 
-      const key = new THREE.SpotLight(0xffe6c7, lowPower ? 33 : 46, 18, Math.PI / 4.8, 0.62, 1.45);
-      key.position.set(4.6, 5.8, 6.4);
-      key.target.position.set(0, 0, 0);
-      scene.add(key, key.target);
+      const key = new THREE.DirectionalLight(0xffe6c7, lowPower ? 2.7 : 3.6);
+      key.position.set(4.8, 5.8, 6.8);
+      scene.add(key);
 
-      const rim = new THREE.SpotLight(0x9ab7c4, lowPower ? 12 : 17, 17, Math.PI / 4.4, 0.72, 1.5);
-      rim.position.set(-4.8, 2.2, -4.4);
-      rim.target.position.set(0, 0, 0);
-      scene.add(rim, rim.target);
+      const rim = new THREE.DirectionalLight(0x9fc5d8, lowPower ? 1.15 : 1.65);
+      rim.position.set(-5.0, 2.4, -4.8);
+      scene.add(rim);
 
-      const fill = new THREE.DirectionalLight(0x7a7268, 0.20);
-      fill.position.set(-2.3, 1.8, 4.8);
+      const fill = new THREE.DirectionalLight(0x8f8578, lowPower ? 0.55 : 0.78);
+      fill.position.set(-2.4, 1.6, 5.0);
       scene.add(fill);
 
-      const coreKick = new THREE.PointLight(0xa4532c, lowPower ? 1.3 : 1.8, 5.5, 2);
-      coreKick.position.set(0.3, -0.8, 2.2);
+      const coreKick = new THREE.PointLight(0xc56835, lowPower ? 3.4 : 4.8, 6.5, 2);
+      coreKick.position.set(0.4, -0.6, 2.6);
       scene.add(coreKick);
 
       const envScene = new THREE.Scene();
