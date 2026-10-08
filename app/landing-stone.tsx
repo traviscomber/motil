@@ -44,7 +44,7 @@ export default function LandingStone() {
       renderer.setClearColor(0x171715, 0);
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = 1;
+      renderer.toneMappingExposure = 0.74;
       renderer.domElement.setAttribute('aria-hidden', 'true');
 
       const scene = new THREE.Scene();
@@ -52,14 +52,14 @@ export default function LandingStone() {
       const orbit = new THREE.Group();
       scene.add(orbit);
 
-      scene.add(new THREE.HemisphereLight(0xe8e3d6, 0x171715, 1.0));
-      const key = new THREE.DirectionalLight(0xe8e3d6, 2.1);
+      scene.add(new THREE.HemisphereLight(0xb8a38d, 0x090807, 0.26));
+      const key = new THREE.DirectionalLight(0xe8d3bb, 1.25);
       key.position.set(3, 5, 6);
       scene.add(key);
-      const terracotta = new THREE.PointLight(0x9e4e3e, 26, 10, 2);
+      const terracotta = new THREE.PointLight(0xb45b2a, 5.2, 9, 2);
       terracotta.position.set(-3, 0.8, 3);
       scene.add(terracotta);
-      const edge = new THREE.DirectionalLight(0xb0aba3, 0.85);
+      const edge = new THREE.DirectionalLight(0x70635f, 0.36);
       edge.position.set(-2.5, 1.5, -3);
       scene.add(edge);
 
@@ -71,6 +71,52 @@ export default function LandingStone() {
           return;
         }
         model = gltf.scene;
+        // Reference target: black fractured basalt with sparse copper/amber veins.
+        // Apply deterministic display-grade correction without modifying the source GLB.
+        model.traverse((object) => {
+          if (!(object instanceof THREE.Mesh)) return;
+          const source = Array.isArray(object.material) ? object.material : [object.material];
+          const tuned = source.map((base) => {
+            if (!(base instanceof THREE.MeshStandardMaterial)) return base;
+            const material = base.clone();
+            const name = material.name.toLowerCase();
+            if (name.includes('basalt')) {
+              material.color.setRGB(0.10, 0.078, 0.068);
+              material.metalness = 0.25;
+              material.roughness = 0.94;
+              material.emissive.setRGB(0.006, 0.002, 0.001);
+              material.emissiveIntensity = 0.18;
+            } else if (name.includes('copper')) {
+              material.color.setRGB(0.46, 0.24, 0.13);
+              material.metalness = 0.78;
+              material.roughness = 0.46;
+              material.emissive.setRGB(0.13, 0.04, 0.012);
+              material.emissiveIntensity = 0.28;
+            } else if (name.includes('gold')) {
+              material.color.setRGB(0.48, 0.35, 0.19);
+              material.metalness = 0.88;
+              material.roughness = 0.33;
+              material.emissive.setRGB(0.095, 0.037, 0.009);
+              material.emissiveIntensity = 0.24;
+            } else if (name.includes('amber')) {
+              material.color.setRGB(0.55, 0.29, 0.12);
+              material.metalness = 0.38;
+              material.roughness = 0.4;
+              material.emissive.setRGB(0.76, 0.26, 0.055);
+              material.emissiveIntensity = 0.65;
+            } else if (name.includes('bornite')) {
+              material.color.setRGB(0.23, 0.24, 0.39);
+              material.metalness = 0.73;
+              material.roughness = 0.47;
+              material.emissive.setRGB(0.014, 0.012, 0.03);
+              material.emissiveIntensity = 0.14;
+            }
+            // Protect dark minerals from blown highlights.
+            material.needsUpdate = true;
+            return material;
+          });
+          object.material = Array.isArray(object.material) ? tuned : tuned[0];
+        });
       } catch {
         renderer.dispose();
         if (!cancelled) setFallback(true);
