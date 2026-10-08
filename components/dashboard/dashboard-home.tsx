@@ -283,7 +283,6 @@ export function DashboardHome({ locale, dictionary }: { locale: Locale; dictiona
   const mode = resolveMode(inbox.data?.profile?.cargoName);
   const config = configFor(mode, production.data, maintenance.data, inbox.data, t, locale);
   const scopedRole = mode === 'mine' || mode === 'engineering';
-  const permittedShortcuts = scopedRole ? config.shortcuts.filter((item) => !item.moduleKey || moduleAccess.data?.allModules || ['LEC', 'ED'].includes(moduleAccess.data?.access[item.moduleKey] || 'SR')) : config.shortcuts;
   const tasks = (inbox.data?.tasks || []).slice(0, 5);
   const loading = inbox.isLoading;
   const inboxUnavailable = Boolean(inbox.error) || (!loading && !inbox.data);
@@ -331,7 +330,8 @@ export function DashboardHome({ locale, dictionary }: { locale: Locale; dictiona
       <section className="space-y-3">
         <div><h2 className="text-lg font-semibold">{t.shortcutsTitle}</h2><p className="text-sm text-muted-foreground">{t.shortcutsSubtitle}</p></div>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {permittedShortcuts.map((item) => {
+          {config.shortcuts.map((item) => {
+            if (scopedRole && item.moduleKey && !moduleAccess.data?.allModules && !['LEC', 'ED'].includes(moduleAccess.data?.access[item.moduleKey] || 'SR')) return null;
             const Icon = item.href.includes('mantenimiento') ? Wrench : item.href.includes('sondaje') ? Drill : item.href.includes('produccion') ? Factory : Gauge;
             return <Link key={item.href} href={item.href} className="group rounded-lg border bg-card p-4 hover:bg-muted/30"><div className="flex items-start gap-3"><div className="flex size-9 shrink-0 items-center justify-center rounded-md border bg-background"><Icon className="h-4 w-4" /></div><div className="min-w-0 flex-1"><p className="text-sm font-medium">{item.label}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{item.detail}</p></div><ArrowRight className="mt-1 h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1" /></div></Link>;
           })}
