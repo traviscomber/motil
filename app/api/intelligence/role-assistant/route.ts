@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
   let engineering: {
     plans: Array<{ id: string; plan_code: string; status: string; period_start: string; period_end: string; planned_advance_m: number | null; planned_drilling_m: number | null }>;
     planLines: Array<{ plan_id: string; mine_name_raw: string | null; sector_raw: string | null; planned_advance_m: number | null; planned_drilling_m: number | null; planned_tons: number | null }>;
-    decisionChecks: { activePlans: number; missingActivePlan: boolean; sampledPlanLines: number; unknownMineLines: number; sampledTopographyGaps: number; executionVerified: false };
+    decisionChecks: { activePlans: number; missingActivePlan: boolean; planWithinPeriod: boolean; sampledPlanLines: number; unknownMineLines: number; sampledTopographyGaps: number; executionVerified: false; comparisonBlocker: string; evaluatedDate: string };
     topographySourceGaps: Array<{ hole_code: string | null; source_gap_class: string | null; required_source_action: string | null }>;
   } | null = null;
   if (cargoName === 'JEFE ING. PLA MINA') {
@@ -107,6 +107,9 @@ export async function POST(request: NextRequest) {
       decisionChecks: {
         activePlans: plans.filter((plan) => plan.status === 'active').length,
         missingActivePlan: !plans.some((plan) => plan.status === 'active'),
+        planWithinPeriod: plans.some((plan) => plan.status === 'active' && plan.period_start <= new Date().toISOString().slice(0, 10) && plan.period_end >= new Date().toISOString().slice(0, 10)),
+        evaluatedDate: new Date().toISOString().slice(0, 10),
+        comparisonBlocker: 'El flujo diario disponible no identifica mina y sector de forma compatible con las líneas del plan. No se puede atribuir ejecución a cada meta.',
         sampledPlanLines: lines.length,
         unknownMineLines: lines.filter((line) => !line.mine_name_raw?.trim()).length,
         sampledTopographyGaps: (gapsResult.data || []).length,
@@ -124,7 +127,8 @@ export async function POST(request: NextRequest) {
     'En Ingeniería estructura la respuesta como diagnóstico, máximo tres prioridades, evidencia, incertidumbre y siguiente validación.',
     'Usa decisionChecks como controles determinísticos; estos resultados son muestras acotadas, no totales auditados.',
     'No generes scores numéricos sin umbrales calibrados con datos reales.',
-    'Si executionVerified es false, di que no se puede establecer plan versus ejecución y solicita evidencia real del mismo período, mina y sector.',
+    'Si executionVerified es false, explica comparisonBlocker y solicita una fuente real con fecha, mina, sector y unidad de medida. No uses datos agregados de planta como avance de mina.',
+    'Si planWithinPeriod es false, informa que no hay plan activo acreditado que cubra la fecha evaluada; evita atribuir vigencia a un plan anterior.',
     'En Ingeniería separa plan vigente, meta por sector, brecha de fuente topográfica y seguimiento de tareas. Nunca presentes avance real si sólo existe plan.',
     'Distingue hecho, hipótesis y dato faltante. La falta de tareas no demuestra que no existan problemas.',
     'Las OT sin centro de costo no están incluidas: el conteo vinculado no equivale al total de la mina.',
