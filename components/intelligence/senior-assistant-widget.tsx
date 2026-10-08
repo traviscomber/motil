@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ArrowUpRight, X } from 'lucide-react';
 import { resolveAssistantContext } from '@/lib/intelligence/assistant-context';
+import { useAuth } from '@/hooks/use-auth';
 import { SpecialistAssistantBody } from '@/components/intelligence/specialist-assistant-body';
 import { ControlledMemoryPopover } from '@/components/intelligence/controlled-memory-popover';
 
@@ -184,12 +185,33 @@ export function SeniorAssistantMark({ className = '' }: { className?: string }) 
 
 export function SeniorAssistantWidget() {
   const pathname = usePathname();
+  const { user } = useAuth();
+  const cargo = String(user?.cargo || '').trim().toUpperCase();
+  const isRoleAssistant = pathname === '/dashboard' && ['JEFE ING. PLA MINA', 'JEFE MINA PEUMO', 'JEFE MINA DON JAIME'].includes(cargo);
+  const roleAssistant = isRoleAssistant ? {
+    endpoint: '/api/intelligence/role-assistant',
+    loadingCopy: 'Consultando tareas y evidencia de tu cargo…',
+    emptyCopy: 'Solo usaré tus tareas autorizadas y, para jefaturas de mina, OT asociadas al centro de costo de tu mina. No ejecutaré acciones.',
+    placeholder: '¿Qué debo priorizar hoy?',
+    toolCopy: {},
+  } : null;
+  const rolePrompts = cargo === 'JEFE ING. PLA MINA' ? [
+    '¿Qué restricciones requieren coordinación con operaciones?',
+    '¿Cuáles son mis tres prioridades de planificación?',
+    '¿Qué evidencia falta para validar el avance del plan?',
+  ] : [
+    '¿Qué debo atender primero en mi mina?',
+    '¿Qué OT de mi mina están acreditadas y cuáles requieren revisión?',
+    '¿Qué asunto debo escalar a mantenimiento o prevención?',
+  ];
   const [open, setOpen] = useState(false);
   const context = useMemo(() => resolveAssistantContext(pathname), [pathname]);
-  const specialist = Object.prototype.hasOwnProperty.call(specialistConfig, context.domain)
+  const regularSpecialist = Object.prototype.hasOwnProperty.call(specialistConfig, context.domain)
     ? specialistConfig[context.domain as SpecialistDomain]
     : null;
-  const showsControlledMemory = controlledMemoryDomains.has(context.domain);
+  const specialist = roleAssistant || regularSpecialist;
+  const displayTitle = roleAssistant ? 'Asistente de ' + (cargo === 'JEFE ING. PLA MINA' ? 'Planificación Minera' : cargo === 'JEFE MINA PEUMO' ? 'Mina Peumo' : 'Mina Don Jaime') : context.title;
+  const showsControlledMemory = !roleAssistant && controlledMemoryDomains.has(context.domain);
 
   useEffect(() => {
     if (!open) return;
@@ -204,7 +226,7 @@ export function SeniorAssistantWidget() {
     <>
       {open ? (
         <section
-          aria-label={context.title}
+          aria-label={displayTitle}
           className={specialist
             ? 'fixed bottom-24 right-4 z-50 flex h-[min(700px,calc(100vh-7rem))] w-[min(460px,calc(100vw-2rem))] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-xl md:right-6'
             : 'fixed bottom-24 right-4 z-50 w-[min(23rem,calc(100vw-2rem))] overflow-hidden rounded-lg border border-border bg-card shadow-xl md:right-6'}
@@ -214,7 +236,7 @@ export function SeniorAssistantWidget() {
               <SeniorAssistantMark className="size-10" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="font-heading text-sm font-semibold text-foreground">{context.title}</p>
+              <p className="font-heading text-sm font-semibold text-foreground">{displayTitle}</p>
               <p className="mt-0.5 truncate text-xs text-muted-foreground">Contexto: {context.label}</p>
             </div>
             {showsControlledMemory ? <ControlledMemoryPopover /> : null}
@@ -226,7 +248,7 @@ export function SeniorAssistantWidget() {
           {specialist ? (
             <SpecialistAssistantBody
               endpoint={specialist.endpoint}
-              starters={context.suggestedPrompts}
+              starters={roleAssistant ? rolePrompts : context.suggestedPrompts}
               emptyCopy={specialist.emptyCopy}
               loadingCopy={specialist.loadingCopy}
               placeholder={specialist.placeholder}
