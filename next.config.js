@@ -153,7 +153,38 @@ const nextConfig = {
   },
 
   async redirects() {
-    return [];
+    return [
+      {
+        source: '/favicon.ico',
+        destination: '/api/pwa/icon-192?brand=motil-7',
+        permanent: false,
+      },
+      {
+        source: '/icon.svg',
+        destination: '/api/pwa/icon-192?brand=motil-7',
+        permanent: false,
+      },
+      {
+        source: '/icon-512.png',
+        destination: '/api/pwa/icon-512?brand=motil-7',
+        permanent: false,
+      },
+      {
+        source: '/apple-icon.png',
+        destination: '/api/pwa/icon-192?brand=motil-7',
+        permanent: false,
+      },
+      {
+        source: '/icon-light-32x32.png',
+        destination: '/api/pwa/icon-192?brand=motil-7',
+        permanent: false,
+      },
+      {
+        source: '/icon-dark-32x32.png',
+        destination: '/api/pwa/icon-192?brand=motil-7',
+        permanent: false,
+      },
+    ];
   },
 
   async rewrites() {
