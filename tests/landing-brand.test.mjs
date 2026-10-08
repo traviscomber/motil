@@ -110,7 +110,7 @@ test('hero stone is a real 3d webgl scene with graceful fallback', () => {
   assert.match(css, /aspect-ratio: 1 \/ 1/);
   assert.doesNotMatch(stone, /\bclick\b/); // rotation only, no click gimmick
   assert.doesNotMatch(stone, /setInterval/);
-  assert.doesNotMatch(stone, /\bthree\/examples/); // no examples/ addons
+  assert.match(stone, /GLTFLoader/); // official Three.js loader for the supplied GLB
   assert.doesNotMatch(stone, /addEventListener\('click'/); // rotation only, no click gimmick
 });
 
