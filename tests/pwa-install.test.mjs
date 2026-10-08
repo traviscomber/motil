@@ -19,7 +19,7 @@ test('MOTIL exposes an installable standalone web app manifest', () => {
   assert.match(manifest, /short_name: 'MOTIL'/);
   assert.match(manifest, /start_url: '\/dashboard'/);
   assert.match(manifest, /display: 'standalone'/);
-  assert.match(manifest, /sizes: '192x192'/);
+  assert.match(manifest, /sizes: '512x512'/);
   assert.match(manifest, /sizes: '512x512'/);
   assert.match(layout, /manifest: '\/manifest\.webmanifest'/);
   assert.match(layout, /appleWebApp/);
