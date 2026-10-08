@@ -377,7 +377,7 @@ export function ProgressiveWorkOrderCloseQueue({ locale, dictionary }: { locale:
             </div>
           ) : null}
 
-          {current.next_action === 'record_root_cause' || current.next_action === 'record_preventive_actions' && !blockedByLegacyCause ? (
+          {(current.next_action === 'record_root_cause' || current.next_action === 'record_preventive_actions') && !blockedByLegacyCause ? (
             <textarea
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               rows={3}
