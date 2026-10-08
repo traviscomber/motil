@@ -222,7 +222,7 @@
 .motil-landing .ld-stone-stage {
   position: relative;
   justify-self: end;
-  width: min(34vw, 520px);
+  width: min(36vw, 560px);
   aspect-ratio: 1 / 1;
   display: grid;
   place-items: center;
@@ -451,14 +451,17 @@
     min-height: auto;
     padding-block: 96px;
   }
-  .motil-landing .ld-split,
   .motil-landing .ld-mining-grid {
     grid-template-columns: 1fr;
     gap: 56px;
   }
+  .motil-landing [data-landing-section='hero'] .ld-split {
+    grid-template-columns: minmax(0, 1.16fr) minmax(220px, 0.84fr);
+    gap: clamp(22px, 4vw, 40px);
+  }
   .motil-landing .ld-stone-stage {
-    justify-self: center;
-    width: min(78vw, 390px);
+    justify-self: end;
+    width: min(34vw, 310px);
   }
   .motil-landing .ld-stone-tilt,
   .motil-landing .ld-map {
@@ -507,15 +510,33 @@
   }
   .motil-landing .ld-ctas {
     width: 100%;
+    gap: 12px;
   }
-  .motil-landing .ld-ctas .ld-btn {
-    width: 100%;
-    justify-content: center;
+  .motil-landing [data-landing-section='hero'] .ld-ctas .ld-btn {
+    width: auto;
+    padding-inline: 20px;
   }
   .motil-landing .ld-footer-strip {
     position: static;
     flex-direction: column;
     align-items: flex-start;
     margin-top: 64px;
+  }
+}
+
+@media (max-width: 720px) {
+  .motil-landing [data-landing-section='hero'] .ld-split,
+  .motil-landing .ld-split {
+    grid-template-columns: 1fr;
+    gap: 42px;
+  }
+  .motil-landing .ld-stone-stage {
+    justify-self: center;
+    width: min(78vw, 390px);
+  }
+  .motil-landing .ld-ctas .ld-btn,
+  .motil-landing [data-landing-section='hero'] .ld-ctas .ld-btn {
+    width: 100%;
+    justify-content: center;
   }
 }
