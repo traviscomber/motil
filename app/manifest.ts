@@ -15,25 +15,31 @@ export default function manifest(): MetadataRoute.Manifest {
     categories: ['business', 'productivity'],
     icons: [
       {
-        src: '/api/pwa/icon-192?brand=motil-7',
+        src: '/motil-launcher.svg?brand=motil-8',
+        sizes: 'any',
+        type: 'image/svg+xml',
+        purpose: 'any maskable',
+      },
+      {
+        src: '/api/pwa/icon-192?brand=motil-8',
         sizes: '192x192',
         type: 'image/png',
         purpose: 'any',
       },
       {
-        src: '/api/pwa/icon-192?brand=motil-7',
+        src: '/api/pwa/icon-192?brand=motil-8',
         sizes: '192x192',
         type: 'image/png',
         purpose: 'maskable',
       },
       {
-        src: '/api/pwa/icon-512?brand=motil-7',
+        src: '/api/pwa/icon-512?brand=motil-8',
         sizes: '512x512',
         type: 'image/png',
         purpose: 'any',
       },
       {
-        src: '/api/pwa/icon-512?brand=motil-7',
+        src: '/api/pwa/icon-512?brand=motil-8',
         sizes: '512x512',
         type: 'image/png',
         purpose: 'maskable',
