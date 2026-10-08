@@ -88,9 +88,9 @@ export async function generateMetadata(): Promise<Metadata> {
       icon: [
         { url: '/icon-light-32x32.png', media: '(prefers-color-scheme: light)' },
         { url: '/icon-dark-32x32.png', media: '(prefers-color-scheme: dark)' },
-        { url: '/icon-512.png', type: 'image/png', sizes: '512x512' },
+        { url: '/api/pwa/motil-icon-512?v=motil-2', type: 'image/png', sizes: '512x512' },
       ],
-      apple: '/apple-icon.png',
+      apple: '/api/pwa/motil-icon-512?v=motil-2',
     },
   };
 }
