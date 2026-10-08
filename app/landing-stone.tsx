@@ -18,7 +18,7 @@ import type * as THREE from 'three';
  * The canonical PNG remains the no-WebGL fallback.
  */
 
-const POINTER_TILT_RAD = 0.28;
+const POINTER_TILT_RAD = 0.14;
 
 function hash3(ix: number, iy: number, iz: number, seed: number) {
   const s = Math.sin(ix * 127.1 + iy * 311.7 + iz * 74.7 + seed * 269.5) * 43758.5453;
@@ -69,12 +69,29 @@ function fbm3(x: number, y: number, z: number, seed: number, octaves = 4) {
 }
 
 function rockRadius(dx: number, dy: number, dz: number) {
-  const macro = fbm3(dx * 1.35 + 4, dy * 1.35 + 4, dz * 1.35 + 4, 1);
-  const shelves = fbm3(dx * 2.7 + 8, dy * 2.7 + 8, dz * 2.7 + 8, 2, 3);
-  const chips = fbm3(dx * 6.5 + 15, dy * 6.5 + 15, dz * 6.5 + 15, 3, 2);
-  const fracture = 1 - Math.abs(2 * fbm3(dx * 3.4 + 2, dy * 3.4 + 2, dz * 3.4 + 2, 4, 3) - 1);
+  const macro = fbm3(dx * 1.15 + 4, dy * 1.15 + 4, dz * 1.15 + 4, 1);
+  const shelves = fbm3(dx * 2.35 + 8, dy * 2.35 + 8, dz * 2.35 + 8, 2, 3);
+  const fracture = 1 - Math.abs(2 * fbm3(dx * 3.1 + 2, dy * 3.1 + 2, dz * 3.1 + 2, 4, 3) - 1);
 
-  return 0.94 * (0.74 + macro * 0.29 + shelves * 0.12 + chips * 0.055 + fracture * 0.12);
+  /* Large directional cuts create geological cleavage planes and a unique
+     silhouette before any shader detail is applied. */
+  const crownCut = Math.max(0, dy - 0.48) * 0.22;
+  const shoulderCut = Math.max(0, dx * 0.78 + dz * 0.34 - 0.54) * 0.30;
+  const rearCut = Math.max(0, -dx * 0.42 + dz * 0.84 - 0.66) * 0.20;
+  const baseCut = Math.max(0, -dy - 0.69) * 0.16;
+  const diagonalRidge = Math.max(0, 0.17 - Math.abs(dx * 0.62 - dy * 0.26 + dz * 0.58)) * 0.40;
+
+  return (
+    0.79 +
+    macro * 0.19 +
+    shelves * 0.09 +
+    fracture * 0.055 +
+    diagonalRidge -
+    crownCut -
+    shoulderCut -
+    rearCut -
+    baseCut
+  );
 }
 
 const STONE_GLSL = /* glsl */ `
@@ -182,9 +199,9 @@ export default function LandingStone() {
       for (let index = 0; index < position.count; index += 1) {
         vertex.fromBufferAttribute(position, index).normalize();
         const radius = rockRadius(vertex.x, vertex.y, vertex.z);
-        const x = vertex.x * radius * (1 + vertex.y * 0.035);
-        const y = vertex.y * radius * 0.94;
-        const z = vertex.z * radius * 0.985;
+        const x = vertex.x * radius * 1.08;
+        const y = vertex.y * radius * 0.92;
+        const z = vertex.z * radius * 0.88;
         position.setXYZ(index, x, y, z);
       }
 
@@ -192,16 +209,16 @@ export default function LandingStone() {
 
       const material = new THREE.MeshPhysicalMaterial({
         color: 0xffffff,
-        roughness: 0.76,
-        metalness: 0.12,
+        roughness: 0.78,
+        metalness: 0.16,
         flatShading: true,
-        clearcoat: 0.12,
-        clearcoatRoughness: 0.55,
-        sheen: 0.08,
-        sheenColor: new THREE.Color(0x6f3928),
+        clearcoat: 0.08,
+        clearcoatRoughness: 0.62,
+        sheen: 0.04,
+        sheenColor: new THREE.Color(0x4f3828),
       });
-      material.envMapIntensity = lowPower ? 0.72 : 0.94;
-      material.customProgramCacheKey = () => 'motil-mineral-sulfide-v4';
+      material.envMapIntensity = lowPower ? 0.66 : 0.86;
+      material.customProgramCacheKey = () => 'motil-mineral-sulfide-v5';
 
       material.onBeforeCompile = (shader) => {
         shader.vertexShader = shader.vertexShader
@@ -252,105 +269,103 @@ vec3 fdyV = dFdy(-vViewPosition);
 vec3 facetNv = normalize(cross(fdxV, fdyV));
 float faceLight = clamp(dot(facetNv, normalize(vec3(0.38, 0.54, 0.75))), 0.0, 1.0);
 
-float copperSurface = clamp(broadOre * 0.62 + copperVein * 1.02, 0.0, 1.0);
-float hotVein = pow(clamp(copperVein * (0.44 + faceLight * 0.72), 0.0, 1.0), 1.85);
+float copperSurface = clamp(broadOre * 0.56 + copperVein * 0.92, 0.0, 1.0);
+float hotVein = pow(clamp(copperVein * (0.38 + faceLight * 0.62), 0.0, 1.0), 2.05);
 
-float graphiteNoise = stoneFbm(vStoneDir * 3.8 + vec3(61.0, 31.0, 43.0));
+float graphiteNoise = stoneFbm(vStoneDir * 3.2 + vec3(61.0, 31.0, 43.0));
 vec3 graphite = mix(
-  vec3(0.018, 0.017, 0.016),
-  vec3(0.090, 0.080, 0.070),
+  vec3(0.014, 0.014, 0.013),
+  vec3(0.070, 0.066, 0.058),
   graphiteNoise
 );
 
-vec3 oxidizedCopper = vec3(0.30, 0.105, 0.040);
-vec3 polishedCopper = vec3(0.88, 0.39, 0.115);
-vec3 copper = mix(oxidizedCopper, polishedCopper, clamp(faceLight * 0.78 + facetId * 0.35, 0.0, 1.0));
+/* Chalcopyrite / bornite palette: brass-gold sulfide with restrained
+   peacock-blue and wine-purple oxidation, never orange paint. */
+float borniteField = stoneFbm(vStoneDir * 4.4 + vec3(13.0, 37.0, 21.0));
+vec3 deepBrass = vec3(0.22, 0.135, 0.050);
+vec3 chalcopyrite = vec3(0.66, 0.43, 0.155);
+vec3 bornitePurple = vec3(0.19, 0.075, 0.135);
+vec3 borniteBlue = vec3(0.055, 0.105, 0.145);
+vec3 bornite = mix(bornitePurple, borniteBlue, smoothstep(0.44, 0.68, borniteField));
 
-/* Copper exists in bodies and veins, but the brightest energy stays inside
-   the fissures so the object reads as ore rather than lava. */
-diffuseColor.rgb *= mix(graphite, copper, copperSurface);
+float oxidation = smoothstep(0.58, 0.78, borniteField) * copperSurface * 0.42;
+vec3 sulfide = mix(deepBrass, chalcopyrite, clamp(faceLight * 0.72 + facetId * 0.28, 0.0, 1.0));
+sulfide = mix(sulfide, bornite, oxidation);
+
+/* Metallic sulfide bodies carry the visual interest; internal energy remains
+   a subtle accent visible mainly through the fissures. */
+diffuseColor.rgb *= mix(graphite, sulfide, copperSurface);
 `
           )
           .replace(
             '#include <roughnessmap_fragment>',
             `#include <roughnessmap_fragment>
-roughnessFactor = mix(0.82, 0.19, copperSurface);
-roughnessFactor = mix(roughnessFactor, 0.11, hotVein * 0.55);
+roughnessFactor = mix(0.86, 0.24, copperSurface);
+roughnessFactor = mix(roughnessFactor, 0.16, hotVein * 0.38);
 `
           )
           .replace(
             '#include <metalnessmap_fragment>',
             `#include <metalnessmap_fragment>
-metalnessFactor = mix(0.08, 0.94, copperSurface);
+metalnessFactor = mix(0.06, 0.90, copperSurface);
 `
           )
           .replace(
             '#include <emissivemap_fragment>',
             `#include <emissivemap_fragment>
-totalEmissiveRadiance += vec3(1.15, 0.31, 0.055) * hotVein * 1.10;
-totalEmissiveRadiance += vec3(0.32, 0.075, 0.018) * broadOre * faceLight * 0.16;
+totalEmissiveRadiance += vec3(0.62, 0.16, 0.035) * hotVein * 0.58;
+totalEmissiveRadiance += vec3(0.18, 0.050, 0.015) * broadOre * faceLight * 0.07;
 `
           );
       };
 
       const coreMaterial = new THREE.MeshStandardMaterial({
-        color: 0x4b1b0c,
-        roughness: 0.34,
-        metalness: 0.68,
-        emissive: 0xff5b1a,
-        emissiveIntensity: lowPower ? 1.25 : 1.65,
+        color: 0x3a2417,
+        roughness: 0.40,
+        metalness: 0.72,
+        emissive: 0x7a2810,
+        emissiveIntensity: lowPower ? 0.42 : 0.58,
       });
-      coreMaterial.envMapIntensity = 0.48;
+      coreMaterial.envMapIntensity = 0.42;
 
       const rockAssembly = new THREE.Group();
 
       const innerCore = new THREE.Mesh(geometry, coreMaterial);
-      innerCore.scale.set(0.865, 0.835, 0.85);
-      innerCore.rotation.set(0.05, -0.16, -0.03);
+      innerCore.scale.set(0.875, 0.855, 0.86);
+      innerCore.rotation.set(0.03, -0.10, -0.02);
       rockAssembly.add(innerCore);
 
+      /* One continuous shell: silhouette quality now comes from geological
+         cleavage in the geometry itself, not from attached satellite blobs. */
       const rock = new THREE.Mesh(geometry, material);
       rockAssembly.add(rock);
 
-      /* Two asymmetrical satellite masses break the sphere-like silhouette
-         into large mineral slabs, closer to a museum specimen than a game rock. */
-      const upperShard = new THREE.Mesh(geometry, material);
-      upperShard.scale.set(0.50, 0.34, 0.42);
-      upperShard.position.set(-0.48, 0.53, -0.12);
-      upperShard.rotation.set(0.42, -0.30, 0.28);
-      rockAssembly.add(upperShard);
-
-      const lowerShard = new THREE.Mesh(geometry, material);
-      lowerShard.scale.set(0.38, 0.46, 0.34);
-      lowerShard.position.set(0.54, -0.44, 0.10);
-      lowerShard.rotation.set(-0.36, 0.44, -0.22);
-      rockAssembly.add(lowerShard);
-
-      rockAssembly.rotation.set(-0.08, 0.88, 0.05);
+      rockAssembly.rotation.set(-0.11, 0.72, 0.04);
 
       const tiltGroup = new THREE.Group();
       tiltGroup.add(rockAssembly);
       tiltGroup.rotation.x = 0.10;
       scene.add(tiltGroup);
 
-      /* Quiet studio rig: bone key, copper rim, neutral fill. */
-      scene.add(new THREE.HemisphereLight(0xe8e3d6, 0x111110, 0.34));
+      /* Editorial studio rig: one dominant warm key, restrained cool rim and
+         very low fill preserve deep blacks and deliberate metallic highlights. */
+      scene.add(new THREE.HemisphereLight(0xd8d4c8, 0x0c0c0b, 0.22));
 
-      const key = new THREE.DirectionalLight(0xffead5, lowPower ? 1.65 : 2.0);
-      key.position.set(3.8, 4.6, 5.2);
+      const key = new THREE.DirectionalLight(0xffead8, lowPower ? 1.72 : 2.08);
+      key.position.set(4.4, 5.0, 5.8);
       scene.add(key);
 
-      const rim = new THREE.DirectionalLight(0xd76532, lowPower ? 1.15 : 1.55);
-      rim.position.set(-4.6, 0.5, -3.8);
+      const rim = new THREE.DirectionalLight(0xaeb8bd, lowPower ? 0.62 : 0.82);
+      rim.position.set(-4.9, 1.1, -4.4);
       scene.add(rim);
 
-      const fill = new THREE.DirectionalLight(0x8f8a80, 0.42);
-      fill.position.set(-2.4, 2.2, 4.6);
+      const fill = new THREE.DirectionalLight(0x766f64, 0.24);
+      fill.position.set(-2.1, 1.8, 4.2);
       scene.add(fill);
 
-      const copperKick = new THREE.PointLight(0xff7a28, lowPower ? 1.0 : 1.6, 6, 2);
-      copperKick.position.set(2.2, -1.3, 2.7);
-      scene.add(copperKick);
+      const mineralKick = new THREE.PointLight(0xb56a32, lowPower ? 0.38 : 0.52, 5, 2);
+      mineralKick.position.set(2.5, -1.1, 2.4);
+      scene.add(mineralKick);
 
       /*
        * Tiny procedural studio environment. Metallic faces need something to
@@ -373,7 +388,7 @@ totalEmissiveRadiance += vec3(0.32, 0.075, 0.018) * broadOre * faceLight * 0.16;
 
       const copperCard = new THREE.Mesh(
         new THREE.PlaneGeometry(4.2, 2.6),
-        new THREE.MeshBasicMaterial({ color: 0xb95732 })
+        new THREE.MeshBasicMaterial({ color: 0x8a5a2c })
       );
       copperCard.position.set(-5.9, 1.0, -2.7);
       copperCard.rotation.y = Math.PI / 2;
@@ -434,10 +449,10 @@ totalEmissiveRadiance += vec3(0.32, 0.075, 0.018) * broadOre * faceLight * 0.16;
         const dt = Math.min((now - last) / 1000, 0.05);
         last = now;
         elapsed += dt;
-        autoRotation += dt * 0.105;
+        autoRotation += dt * 0.036;
 
-        rockAssembly.position.y = Math.sin(elapsed * 0.72) * 0.045;
-        rockAssembly.rotation.y = 0.88 + autoRotation;
+        rockAssembly.position.y = Math.sin(elapsed * 0.48) * 0.018;
+        rockAssembly.rotation.y = 0.72 + autoRotation;
 
         const ease = 1 - Math.pow(1 - 0.075, dt * 60);
         tiltX += (targetTiltX - tiltX) * ease;
