@@ -5,7 +5,7 @@ import { getOrganizationContext } from '@/lib/api/organization-context';
 import { getModuleAccessLevel, MODULE_KEYS } from '@/lib/api/module-access';
 
 function mineCodeFromCargo(name: string | null | undefined): 'PEUMO' | 'DON_JAIME' | null {
-  const normalized = String(name || '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase().trim();
+  const normalized = String(name || '').toLowerCase().trim();
   if (normalized === 'jefe mina peumo') return 'PEUMO';
   if (normalized === 'jefe mina don jaime') return 'DON_JAIME';
   return null;
