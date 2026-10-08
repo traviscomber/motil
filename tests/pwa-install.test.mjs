@@ -13,6 +13,7 @@ const legacyManifest = await readFile(new URL('../public/manifest.json', import.
 const registrar = await readFile(new URL('../components/pwa/service-worker-registrar.tsx', import.meta.url), 'utf8');
 const serviceWorker = await readFile(new URL('../public/motil-sw-v2.js', import.meta.url), 'utf8');
 const nextConfig = await readFile(new URL('../next.config.js', import.meta.url), 'utf8');
+const launcher = await readFile(new URL('../public/motil-launcher.svg', import.meta.url), 'utf8');
 
 test('MOTIL exposes an installable standalone web app manifest', () => {
   assert.match(manifest, /name: 'MOTIL Mining OS'/);
@@ -96,15 +97,25 @@ test('Android migrates away from stale legacy service worker registrations', () 
 });
 
 
+test('Windows and PWA install use the landing MOTIL logo, not a black or legacy v0 icon', () => {
+  assert.match(launcher, /motil-cream/);
+  assert.match(launcher, /data:image\/png;base64/);
+  assert.match(manifest, /motil-launcher\.svg\?brand=motil-8/);
+  assert.match(staticManifest, /motil-launcher\.svg\?brand=motil-8/);
+  assert.match(legacyManifest, /motil-launcher\.svg\?brand=motil-8/);
+  assert.match(layout, /motil-launcher\.svg\?brand=motil-8/);
+  assert.match(nextConfig, /motil-launcher\.svg\?brand=motil-8/);
+});
+
 test('all install manifests and metadata point to versioned MOTIL brand icons, not the legacy v0 icon', () => {
-  assert.match(manifest, /icon-192\?brand=motil-7/);
-  assert.match(manifest, /icon-512\?brand=motil-7/);
-  assert.match(staticManifest, /icon-192\?brand=motil-7/);
-  assert.match(staticManifest, /icon-512\?brand=motil-7/);
-  assert.match(legacyManifest, /icon-192\?brand=motil-7/);
-  assert.match(legacyManifest, /icon-512\?brand=motil-7/);
-  assert.match(layout, /icon-192\?brand=motil-7/);
-  assert.match(layout, /icon-512\?brand=motil-7/);
+  assert.match(manifest, /icon-192\?brand=motil-8/);
+  assert.match(manifest, /icon-512\?brand=motil-8/);
+  assert.match(staticManifest, /icon-192\?brand=motil-8/);
+  assert.match(staticManifest, /icon-512\?brand=motil-8/);
+  assert.match(legacyManifest, /icon-192\?brand=motil-8/);
+  assert.match(legacyManifest, /icon-512\?brand=motil-8/);
+  assert.match(layout, /icon-192\?brand=motil-8/);
+  assert.match(layout, /icon-512\?brand=motil-8/);
   assert.doesNotMatch(staticManifest, /"\/icon-512\.png"/);
   assert.doesNotMatch(legacyManifest, /"\/icon-512\.png"/);
 });
