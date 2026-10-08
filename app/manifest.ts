@@ -15,13 +15,13 @@ export default function manifest(): MetadataRoute.Manifest {
     categories: ['business', 'productivity'],
     icons: [
       {
-        src: '/api/pwa/icon-192',
+        src: '/api/pwa/icon-192?v=motil-2',
         sizes: '192x192',
         type: 'image/png',
         purpose: 'any',
       },
       {
-        src: '/icon-512.png',
+        src: '/api/pwa/motil-icon-512?v=motil-2',
         sizes: '512x512',
         type: 'image/png',
         purpose: 'any',
