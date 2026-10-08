@@ -6,7 +6,7 @@ const hero = await readFile(new URL('../app/landing-stone.tsx', import.meta.url)
 const css = await readFile(new URL('../app/landing.css', import.meta.url), 'utf8');
 
 test('MOTIL hero keeps a bounded adaptive geometry budget', () => {
-  assert.match(hero, /const geometryDetail = lowPower \? 3 : 4/);
+  assert.match(hero, /const geometryDetail = lowPower \? 4 : 5/);
   assert.doesNotMatch(hero, /IcosahedronGeometry\(1,\s*24\)/);
 });
 
@@ -19,9 +19,11 @@ test('MOTIL hero uses high-fidelity physical rendering without brute-force subdi
   assert.match(hero, /float cavity/);
   assert.match(hero, /discard/);
   assert.match(hero, /coreMaterial/);
-  assert.match(hero, /crownCut/);
-  assert.match(hero, /shoulderCut/);
-  assert.match(hero, /diagonalRidge/);
+  assert.match(hero, /radialPlaneLimit/);
+  assert.match(hero, /crownPlane/);
+  assert.match(hero, /rightPlane/);
+  assert.match(hero, /frontPlane/);
+  assert.match(hero, /basePlane/);
   assert.match(hero, /chalcopyrite/);
   assert.match(hero, /bornitePurple/);
   assert.match(hero, /borniteBlue/);
