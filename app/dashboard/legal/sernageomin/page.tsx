@@ -83,7 +83,7 @@ export default function MiningLegalObligationsPage() {
         <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Legal · Control regulatorio</p>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight">Obligaciones y acciones</h1>
         <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-          Legal valida qué aplica y controla la trazabilidad. El área dueña ejecuta la acción y entrega la evidencia. SERNAGEOMIN aparece como autoridad y fuente, no como un silo de trabajo.
+          Revisa la próxima acción y su responsable. Despliega el contexto sólo cuando lo necesites. La evidencia candidata no acredita por sí sola cumplimiento.
         </p>
       </header>
 
@@ -135,7 +135,11 @@ export default function MiningLegalObligationsPage() {
               </div>
             </div>
 
-            <div className="mt-4 grid gap-4 border-t pt-4 lg:grid-cols-2">
+            <div className="mt-3 border-t pt-3"><p className="text-xs text-muted-foreground">Próxima acción</p><p className="mt-1 text-sm font-medium">{item.nextAction}</p><p className="mt-2 text-xs text-muted-foreground">Responsable: {item.businessOwner} · Evidencias candidatas: {item.evidenceCount}</p></div>
+
+            <details className="mt-3 border-t pt-3">
+              <summary className="cursor-pointer text-sm font-medium">Responsables, plazos y contexto</summary>
+              <div className="mt-3 grid gap-4 lg:grid-cols-2">
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Próxima acción</p>
                 <p className="mt-1 text-sm font-medium leading-relaxed">{item.nextAction}</p>
@@ -164,6 +168,8 @@ export default function MiningLegalObligationsPage() {
                 </div>
               </div>
             </div>
+
+            </details>
 
             <details className="mt-4 border-t pt-3">
               <summary className="cursor-pointer text-sm font-medium">Evidencia y aplicabilidad</summary>
