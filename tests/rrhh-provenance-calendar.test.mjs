@@ -32,13 +32,15 @@ test('organization calendar is ready for real credential expiry dates only', asy
   assert.match(source, /\.eq\('organization_id', context\.organizationId\)/);
 });
 
-test('calendar UI and RRHH navigation expose Personas provenance and dates', async () => {
-  const [calendar, layout] = await Promise.all([
+test('calendar remains visible while provenance stays available outside primary RRHH navigation', async () => {
+  const [calendar, layout, sources] = await Promise.all([
     readFile(calendarUi, 'utf8'),
     readFile(layoutUrl, 'utf8'),
+    readFile(sourcesPage, 'utf8'),
   ]);
   assert.match(calendar, /label: 'Personas'/);
   assert.match(calendar, /summary\.by_source\.people/);
-  assert.match(layout, /\/dashboard\/rrhh\/fuentes/);
   assert.match(layout, /\/dashboard\/tareas/);
+  assert.doesNotMatch(layout, /\/dashboard\/rrhh\/fuentes/);
+  assert.match(sources, /Origen de las fichas laborales canónicas/);
 });
