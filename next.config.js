@@ -106,6 +106,22 @@ const nextConfig = {
         ],
       },
       {
+        source: '/icon-light-32x32.png',
+        headers: [{ key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate, max-age=0' }],
+      },
+      {
+        source: '/icon-dark-32x32.png',
+        headers: [{ key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate, max-age=0' }],
+      },
+      {
+        source: '/icon-512.png',
+        headers: [{ key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate, max-age=0' }],
+      },
+      {
+        source: '/apple-icon.png',
+        headers: [{ key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate, max-age=0' }],
+      },
+      {
         source: '/sitemap.xml',
         headers: [
           {
