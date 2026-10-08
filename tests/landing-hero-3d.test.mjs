@@ -19,8 +19,14 @@ test('MOTIL hero uses high-fidelity physical rendering without brute-force subdi
   assert.match(hero, /float cavity/);
   assert.match(hero, /discard/);
   assert.match(hero, /coreMaterial/);
-  assert.match(hero, /upperShard/);
-  assert.match(hero, /lowerShard/);
+  assert.match(hero, /crownCut/);
+  assert.match(hero, /shoulderCut/);
+  assert.match(hero, /diagonalRidge/);
+  assert.match(hero, /chalcopyrite/);
+  assert.match(hero, /bornitePurple/);
+  assert.match(hero, /borniteBlue/);
+  assert.doesNotMatch(hero, /upperShard/);
+  assert.doesNotMatch(hero, /lowerShard/);
   assert.match(hero, /totalEmissiveRadiance/);
 });
 
@@ -30,6 +36,8 @@ test('MOTIL hero adapts quality and pauses work when not visible', () => {
   assert.match(hero, /IntersectionObserver/);
   assert.match(hero, /visibilitychange/);
   assert.match(hero, /powerPreference: 'high-performance'/);
+  assert.match(hero, /autoRotation \+= dt \* 0\.036/);
+  assert.match(hero, /Math\.sin\(elapsed \* 0\.48\) \* 0\.018/);
 });
 
 test('MOTIL hero retains an accessible static fallback', () => {
