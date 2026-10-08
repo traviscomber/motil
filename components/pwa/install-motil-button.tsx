@@ -39,7 +39,7 @@ function detectPlatform(): InstallPlatform {
   return 'other';
 }
 
-export function InstallMotilButton({ locale }: { locale: Locale }) {
+export function InstallMotilButton({ locale, placement = 'sidebar' }: { locale: Locale; placement?: 'sidebar' | 'landing' }) {
   const es = locale !== 'en';
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [installed, setInstalled] = useState(false);
@@ -109,15 +109,26 @@ export function InstallMotilButton({ locale }: { locale: Locale }) {
 
   return (
     <>
-      <Button
-        type="button"
-        variant="ghost"
-        className="w-full justify-start gap-2.5 text-sidebar-foreground/80"
-        onClick={() => void install()}
-      >
-        <Download className="h-4 w-4" />
-        {title}
-      </Button>
+      {placement === 'landing' ? (
+        <button
+          type="button"
+          className="ld-btn ld-btn-ghost"
+          onClick={() => void install()}
+        >
+          <Download size={16} strokeWidth={1.5} />
+          {title}
+        </button>
+      ) : (
+        <Button
+          type="button"
+          variant="ghost"
+          className="w-full justify-start gap-2.5 text-sidebar-foreground/80"
+          onClick={() => void install()}
+        >
+          <Download className="h-4 w-4" />
+          {title}
+        </Button>
+      )}
 
       <Dialog open={instructionsOpen} onOpenChange={setInstructionsOpen}>
         <DialogContent className="sm:max-w-md">
