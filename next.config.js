@@ -156,32 +156,32 @@ const nextConfig = {
     return [
       {
         source: '/favicon.ico',
-        destination: '/api/pwa/icon-192?brand=motil-7',
+        destination: '/motil-launcher.svg?brand=motil-8',
         permanent: false,
       },
       {
         source: '/icon.svg',
-        destination: '/api/pwa/icon-192?brand=motil-7',
+        destination: '/motil-launcher.svg?brand=motil-8',
         permanent: false,
       },
       {
         source: '/icon-512.png',
-        destination: '/api/pwa/icon-512?brand=motil-7',
+        destination: '/motil-launcher.svg?brand=motil-8',
         permanent: false,
       },
       {
         source: '/apple-icon.png',
-        destination: '/api/pwa/icon-192?brand=motil-7',
+        destination: '/motil-launcher.svg?brand=motil-8',
         permanent: false,
       },
       {
         source: '/icon-light-32x32.png',
-        destination: '/api/pwa/icon-192?brand=motil-7',
+        destination: '/motil-launcher.svg?brand=motil-8',
         permanent: false,
       },
       {
         source: '/icon-dark-32x32.png',
-        destination: '/api/pwa/icon-192?brand=motil-7',
+        destination: '/motil-launcher.svg?brand=motil-8',
         permanent: false,
       },
     ];
