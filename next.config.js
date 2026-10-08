@@ -153,38 +153,7 @@ const nextConfig = {
   },
 
   async redirects() {
-    return [
-      {
-        source: '/favicon.ico',
-        destination: '/motil-launcher.svg?brand=motil-8',
-        permanent: false,
-      },
-      {
-        source: '/icon.svg',
-        destination: '/motil-launcher.svg?brand=motil-8',
-        permanent: false,
-      },
-      {
-        source: '/icon-512.png',
-        destination: '/motil-launcher.svg?brand=motil-8',
-        permanent: false,
-      },
-      {
-        source: '/apple-icon.png',
-        destination: '/motil-launcher.svg?brand=motil-8',
-        permanent: false,
-      },
-      {
-        source: '/icon-light-32x32.png',
-        destination: '/motil-launcher.svg?brand=motil-8',
-        permanent: false,
-      },
-      {
-        source: '/icon-dark-32x32.png',
-        destination: '/motil-launcher.svg?brand=motil-8',
-        permanent: false,
-      },
-    ];
+    return [];
   },
 
   async rewrites() {
