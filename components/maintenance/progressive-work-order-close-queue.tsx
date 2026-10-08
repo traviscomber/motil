@@ -102,6 +102,8 @@ export function ProgressiveWorkOrderCloseQueue({ locale, dictionary }: { locale:
     [rawQueue, selectedWorkOrderId],
   );
   const current = queue[0] || null;
+  const isPreventive = current ? ['preventive', 'preventivo'].includes(String(current.work_type || '').toLowerCase()) : false;
+  const blockedByLegacyCause = isPreventive && ['record_root_cause', 'record_preventive_actions'].includes(current?.next_action || '');
 
   const { data: evidenceData, mutate: mutateEvidence } = useSWR<EvidenceResponse>(
     current ? `/api/maintenance/work-orders/${current.work_order_id}/evidence` : null,
@@ -369,7 +371,13 @@ export function ProgressiveWorkOrderCloseQueue({ locale, dictionary }: { locale:
             </div>
           ) : null}
 
-          {current.next_action === 'record_root_cause' || current.next_action === 'record_preventive_actions' ? (
+          {blockedByLegacyCause ? (
+            <div role="alert" className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-sm">
+              Esta mantención programada no requiere una causa raíz. El cierre está pendiente de corregir en el sistema; no registres una causa ficticia.
+            </div>
+          ) : null}
+
+          {current.next_action === 'record_root_cause' || current.next_action === 'record_preventive_actions' && !blockedByLegacyCause ? (
             <textarea
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               rows={3}
@@ -477,7 +485,7 @@ export function ProgressiveWorkOrderCloseQueue({ locale, dictionary }: { locale:
           ) : null}
 
           <div className="flex flex-col gap-2 sm:flex-row">
-            {inline && data?.canEdit ? (
+            {inline && data?.canEdit && !blockedByLegacyCause ? (
               <Button className="sm:min-w-48" onClick={() => void performNextAction()} disabled={saving}>
                 {saving
                   ? t.actions.saving
