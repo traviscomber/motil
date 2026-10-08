@@ -82,3 +82,13 @@ test('Android migrates away from stale legacy service worker registrations', () 
   assert.match(registrar, /motil-sw-v2\.js/);
   assert.match(serviceWorker, /MOTIL_SW_VERSION = 'motil-pwa-v2'/);
 });
+
+
+test('PWA icons use canonical MOTIL artwork instead of legacy v0 assets', () => {
+  assert.match(manifest, /\/api\/pwa\/icon-192\?v=motil-2/);
+  assert.match(manifest, /\/api\/pwa\/motil-icon-512\?v=motil-2/);
+  assert.doesNotMatch(manifest, /src: '\/icon-512\.png'/);
+  assert.match(layout, /motil-icon-512\?v=motil-2/);
+  assert.match(iconRoute, /<path/);
+  assert.doesNotMatch(iconRoute, /icon-512\.png/);
+});
