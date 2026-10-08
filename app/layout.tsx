@@ -86,11 +86,11 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     icons: {
       icon: [
-        { url: '/icon-light-32x32.png', media: '(prefers-color-scheme: light)' },
-        { url: '/icon-dark-32x32.png', media: '(prefers-color-scheme: dark)' },
-        { url: '/icon-512.png', type: 'image/png', sizes: '512x512' },
+        { url: '/icon-light-32x32.png?brand=motil-canonical-1', media: '(prefers-color-scheme: light)' },
+        { url: '/icon-dark-32x32.png?brand=motil-canonical-1', media: '(prefers-color-scheme: dark)' },
+        { url: '/icon-512.png?brand=motil-canonical-1', type: 'image/png', sizes: '512x512' },
       ],
-      apple: '/apple-icon.png',
+      apple: '/apple-icon.png?brand=motil-canonical-1',
     },
   };
 }
