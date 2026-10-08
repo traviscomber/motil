@@ -12,8 +12,8 @@ import type * as THREE from 'three';
  * copper-sulfide veining, ACES tone mapping and studio lighting rather than
  * brute-force subdivision.
  *
- * Desktop: ~20k triangles, DPR <= 2.
- * Mobile / lower-power devices: ~5k triangles, DPR <= 1.5.
+ * Desktop: three sculptural shells totaling ~15k faces, DPR <= 2.
+ * Mobile / lower-power devices: ~4k faces total, DPR <= 1.5.
  * Motion pauses offscreen and respects prefers-reduced-motion.
  * The canonical PNG remains the no-WebGL fallback.
  */
@@ -137,7 +137,7 @@ export default function LandingStone() {
 
       const compactViewport = window.matchMedia('(max-width: 900px)').matches;
       const lowPower = compactViewport || navigator.hardwareConcurrency <= 4;
-      const geometryDetail = lowPower ? 4 : 5;
+      const geometryDetail = lowPower ? 3 : 4;
       const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
       let renderer: THREE.WebGLRenderer;
@@ -171,8 +171,9 @@ export default function LandingStone() {
       camera.position.set(0.05, 0.08, 5.25);
 
       /*
-       * Keep geometry bounded. Detail 5 is ~20k faces instead of an explosive
-       * detail-24 subdivision; surface richness is procedural in the shader.
+       * Keep geometry bounded. Detail 4 preserves large mineral planes;
+       * surface richness comes from the shader and layered silhouette rather
+       * than micro-triangles that make the stone look procedurally tessellated.
        */
       const geometry = new THREE.IcosahedronGeometry(1, geometryDetail);
       const position = geometry.getAttribute('position');
@@ -200,7 +201,7 @@ export default function LandingStone() {
         sheenColor: new THREE.Color(0x6f3928),
       });
       material.envMapIntensity = lowPower ? 0.72 : 0.94;
-      material.customProgramCacheKey = () => 'motil-mineral-sulfide-v3';
+      material.customProgramCacheKey = () => 'motil-mineral-sulfide-v4';
 
       material.onBeforeCompile = (shader) => {
         shader.vertexShader = shader.vertexShader
@@ -241,13 +242,18 @@ float fissure = 1.0 - smoothstep(0.018, 0.11, abs(fissureField - 0.50));
 float fissureCluster = smoothstep(0.38, 0.66, clusterField);
 float copperVein = fissure * fissureCluster;
 
+/* A very small subset of the mineral fissures becomes real negative space.
+   A warm inner core behind the shell is visible through these openings. */
+float cavity = smoothstep(0.88, 1.06, copperVein * (0.68 + fissureCluster * 0.52));
+if (cavity > 0.72) discard;
+
 vec3 fdxV = dFdx(-vViewPosition);
 vec3 fdyV = dFdy(-vViewPosition);
 vec3 facetNv = normalize(cross(fdxV, fdyV));
 float faceLight = clamp(dot(facetNv, normalize(vec3(0.38, 0.54, 0.75))), 0.0, 1.0);
 
-float copperSurface = clamp(broadOre * 0.70 + copperVein * 1.15, 0.0, 1.0);
-float hotVein = pow(clamp(copperVein * (0.48 + faceLight * 0.75), 0.0, 1.0), 1.7);
+float copperSurface = clamp(broadOre * 0.62 + copperVein * 1.02, 0.0, 1.0);
+float hotVein = pow(clamp(copperVein * (0.44 + faceLight * 0.72), 0.0, 1.0), 1.85);
 
 float graphiteNoise = stoneFbm(vStoneDir * 3.8 + vec3(61.0, 31.0, 43.0));
 vec3 graphite = mix(
@@ -287,11 +293,43 @@ totalEmissiveRadiance += vec3(0.32, 0.075, 0.018) * broadOre * faceLight * 0.16;
           );
       };
 
+      const coreMaterial = new THREE.MeshStandardMaterial({
+        color: 0x4b1b0c,
+        roughness: 0.34,
+        metalness: 0.68,
+        emissive: 0xff5b1a,
+        emissiveIntensity: lowPower ? 1.25 : 1.65,
+      });
+      coreMaterial.envMapIntensity = 0.48;
+
+      const rockAssembly = new THREE.Group();
+
+      const innerCore = new THREE.Mesh(geometry, coreMaterial);
+      innerCore.scale.set(0.865, 0.835, 0.85);
+      innerCore.rotation.set(0.05, -0.16, -0.03);
+      rockAssembly.add(innerCore);
+
       const rock = new THREE.Mesh(geometry, material);
-      rock.rotation.set(-0.08, 0.88, 0.05);
+      rockAssembly.add(rock);
+
+      /* Two asymmetrical satellite masses break the sphere-like silhouette
+         into large mineral slabs, closer to a museum specimen than a game rock. */
+      const upperShard = new THREE.Mesh(geometry, material);
+      upperShard.scale.set(0.50, 0.34, 0.42);
+      upperShard.position.set(-0.48, 0.53, -0.12);
+      upperShard.rotation.set(0.42, -0.30, 0.28);
+      rockAssembly.add(upperShard);
+
+      const lowerShard = new THREE.Mesh(geometry, material);
+      lowerShard.scale.set(0.38, 0.46, 0.34);
+      lowerShard.position.set(0.54, -0.44, 0.10);
+      lowerShard.rotation.set(-0.36, 0.44, -0.22);
+      rockAssembly.add(lowerShard);
+
+      rockAssembly.rotation.set(-0.08, 0.88, 0.05);
 
       const tiltGroup = new THREE.Group();
-      tiltGroup.add(rock);
+      tiltGroup.add(rockAssembly);
       tiltGroup.rotation.x = 0.10;
       scene.add(tiltGroup);
 
@@ -398,8 +436,8 @@ totalEmissiveRadiance += vec3(0.32, 0.075, 0.018) * broadOre * faceLight * 0.16;
         elapsed += dt;
         autoRotation += dt * 0.105;
 
-        rock.position.y = Math.sin(elapsed * 0.72) * 0.045;
-        rock.rotation.y = 0.88 + autoRotation;
+        rockAssembly.position.y = Math.sin(elapsed * 0.72) * 0.045;
+        rockAssembly.rotation.y = 0.88 + autoRotation;
 
         const ease = 1 - Math.pow(1 - 0.075, dt * 60);
         tiltX += (targetTiltX - tiltX) * ease;
@@ -462,6 +500,7 @@ totalEmissiveRadiance += vec3(0.32, 0.075, 0.018) * broadOre * faceLight * 0.16;
         stage.removeEventListener('pointerleave', onLeave);
         geometry.dispose();
         material.dispose();
+        coreMaterial.dispose();
         envRT.texture.dispose();
         envRT.dispose();
         renderer.dispose();
