@@ -3,6 +3,7 @@ import Image from 'next/image';
 import { ArrowDown, ArrowRight } from 'lucide-react';
 import { getDictionaryForRequest } from '@/lib/i18n/server';
 import { LanguageSwitch } from '@/components/landing/language-switch';
+import { InstallMotilButton } from '@/components/pwa/install-motil-button';
 import LandingStone from './landing-stone';
 import './landing.css';
 
@@ -84,6 +85,7 @@ export default async function HomePage() {
             </p>
             <div className="ld-ctas">
               <Link href="/auth/login" className="ld-btn ld-btn-solid">{dict.landing.ctaLogin} <ArrowRight size={16} strokeWidth={1.5} /></Link>
+              <InstallMotilButton locale={locale} placement="landing" />
               <Link href="#contexto" className="ld-btn ld-btn-ghost">{dict.landing.ctaExplore} <ArrowDown size={16} strokeWidth={1.5} /></Link>
             </div>
           </div>
