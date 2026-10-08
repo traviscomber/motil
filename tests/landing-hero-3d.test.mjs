@@ -35,7 +35,8 @@ test('MOTIL hero retains an accessible static fallback', () => {
 
 test('MOTIL hero stage keeps premium depth without layout noise', () => {
   assert.match(css, /width: min\(34vw, 520px\)/);
-  assert.match(css, /radial-gradient/);
+  assert.match(css, /background: rgba\(185, 87, 50, 0\.13\)/);
+  assert.match(css, /filter: blur\(76px\)/);
   assert.match(css, /drop-shadow\(0 34px 38px/);
   assert.match(css, /width: min\(78vw, 390px\)/);
 });
