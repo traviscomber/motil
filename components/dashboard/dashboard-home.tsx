@@ -277,9 +277,9 @@ function configFor(
 export function DashboardHome({ locale, dictionary }: { locale: Locale; dictionary: Dictionary }) {
   const t = dictionary.app.home;
   const inbox = useSWR<InboxPayload>('/api/actions/inbox', fetcher, { refreshInterval: 60000, revalidateOnFocus: false });
+  const mode = resolveMode(inbox.data?.profile?.cargoName);
   const mineScope = useSWR<MineScopePayload>(mode === 'mine' ? '/api/dashboard/mine-scope' : null, fetcher, { revalidateOnFocus: false });
   const moduleAccess = useSWR<ModuleAccessPayload>('/api/dashboard/module-access', fetcher, { revalidateOnFocus: false });
-  const mode = resolveMode(inbox.data?.profile?.cargoName);
   // These cross-area aggregate endpoints are unnecessary for mine and engineering
   // homes; never load organization-wide data merely to render a role shortcut.
   const needsProductionSummary = ['plant', 'drilling', 'management'].includes(mode);
