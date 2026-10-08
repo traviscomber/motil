@@ -18,7 +18,7 @@ import type * as THREE from 'three';
  * The canonical PNG remains the no-WebGL fallback.
  */
 
-const POINTER_TILT_RAD = 0.14;
+const POINTER_TILT_RAD = 0.10;
 
 function hash3(ix: number, iy: number, iz: number, seed: number) {
   const s = Math.sin(ix * 127.1 + iy * 311.7 + iz * 74.7 + seed * 269.5) * 43758.5453;
@@ -68,29 +68,43 @@ function fbm3(x: number, y: number, z: number, seed: number, octaves = 4) {
   return sum / norm;
 }
 
+function radialPlaneLimit(
+  dx: number,
+  dy: number,
+  dz: number,
+  nx: number,
+  ny: number,
+  nz: number,
+  distance: number
+) {
+  const facing = dx * nx + dy * ny + dz * nz;
+  return facing > 0.001 ? distance / facing : Number.POSITIVE_INFINITY;
+}
+
 function rockRadius(dx: number, dy: number, dz: number) {
-  const macro = fbm3(dx * 1.15 + 4, dy * 1.15 + 4, dz * 1.15 + 4, 1);
-  const shelves = fbm3(dx * 2.35 + 8, dy * 2.35 + 8, dz * 2.35 + 8, 2, 3);
-  const fracture = 1 - Math.abs(2 * fbm3(dx * 3.1 + 2, dy * 3.1 + 2, dz * 3.1 + 2, 4, 3) - 1);
+  const macro = fbm3(dx * 1.12 + 4, dy * 1.12 + 4, dz * 1.12 + 4, 1);
+  const shelves = fbm3(dx * 2.25 + 8, dy * 2.25 + 8, dz * 2.25 + 8, 2, 3);
+  const fracture = 1 - Math.abs(2 * fbm3(dx * 3.0 + 2, dy * 3.0 + 2, dz * 3.0 + 2, 4, 3) - 1);
 
-  /* Large directional cuts create geological cleavage planes and a unique
-     silhouette before any shader detail is applied. */
-  const crownCut = Math.max(0, dy - 0.48) * 0.22;
-  const shoulderCut = Math.max(0, dx * 0.78 + dz * 0.34 - 0.54) * 0.30;
-  const rearCut = Math.max(0, -dx * 0.42 + dz * 0.84 - 0.66) * 0.20;
-  const baseCut = Math.max(0, -dy - 0.69) * 0.16;
-  const diagonalRidge = Math.max(0, 0.17 - Math.abs(dx * 0.62 - dy * 0.26 + dz * 0.58)) * 0.40;
+  const organic = 0.82 + macro * 0.16 + shelves * 0.065 + fracture * 0.04;
 
-  return (
-    0.79 +
-    macro * 0.19 +
-    shelves * 0.09 +
-    fracture * 0.055 +
-    diagonalRidge -
-    crownCut -
-    shoulderCut -
-    rearCut -
-    baseCut
+  /* True half-space limits create broad cleavage faces in the silhouette.
+     These are geological cuts, not extra meshes glued to a sphere. */
+  const crownPlane = radialPlaneLimit(dx, dy, dz, 0.08, 0.98, 0.17, 0.72);
+  const rightPlane = radialPlaneLimit(dx, dy, dz, 0.91, 0.10, 0.40, 0.76);
+  const leftPlane = radialPlaneLimit(dx, dy, dz, -0.86, 0.22, 0.46, 0.81);
+  const frontPlane = radialPlaneLimit(dx, dy, dz, 0.22, 0.08, 0.97, 0.84);
+  const rearPlane = radialPlaneLimit(dx, dy, dz, -0.36, 0.28, -0.89, 0.82);
+  const basePlane = radialPlaneLimit(dx, dy, dz, 0.04, -0.99, 0.10, 0.76);
+
+  return Math.min(
+    organic,
+    crownPlane,
+    rightPlane,
+    leftPlane,
+    frontPlane,
+    rearPlane,
+    basePlane
   );
 }
 
@@ -154,7 +168,7 @@ export default function LandingStone() {
 
       const compactViewport = window.matchMedia('(max-width: 900px)').matches;
       const lowPower = compactViewport || navigator.hardwareConcurrency <= 4;
-      const geometryDetail = lowPower ? 3 : 4;
+      const geometryDetail = lowPower ? 4 : 5;
       const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
       let renderer: THREE.WebGLRenderer;
@@ -179,7 +193,7 @@ export default function LandingStone() {
       renderer.setClearColor(0x000000, 0);
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = lowPower ? 1.08 : 1.16;
+      renderer.toneMappingExposure = lowPower ? 1.02 : 1.08;
       renderer.domElement.setAttribute('aria-hidden', 'true');
       mount.appendChild(renderer.domElement);
 
@@ -188,9 +202,8 @@ export default function LandingStone() {
       camera.position.set(0.05, 0.08, 5.25);
 
       /*
-       * Keep geometry bounded. Detail 4 preserves large mineral planes;
-       * surface richness comes from the shader and layered silhouette rather
-       * than micro-triangles that make the stone look procedurally tessellated.
+       * Keep geometry bounded while retaining high-resolution mineral facets.
+       * Desktop detail 5 stays around ~20k faces; mobile uses detail 4.
        */
       const geometry = new THREE.IcosahedronGeometry(1, geometryDetail);
       const position = geometry.getAttribute('position');
@@ -218,7 +231,7 @@ export default function LandingStone() {
         sheenColor: new THREE.Color(0x4f3828),
       });
       material.envMapIntensity = lowPower ? 0.66 : 0.86;
-      material.customProgramCacheKey = () => 'motil-mineral-sulfide-v5';
+      material.customProgramCacheKey = () => 'motil-mineral-sulfide-v6';
 
       material.onBeforeCompile = (shader) => {
         shader.vertexShader = shader.vertexShader
@@ -252,7 +265,7 @@ float facetId = stoneHash(floor(facetN * 9.0 + 4.5));
 /* Broad sulfide bodies plus thin mineral fissures. */
 float oreField = stoneFbm(vStoneDir * 2.15 + vec3(19.0, 7.0, 13.0));
 float clusterField = stoneFbm(vStoneDir * 1.35 + vec3(3.0, 17.0, 5.0));
-float broadOre = smoothstep(0.52, 0.68, oreField + clusterField * 0.14 + facetId * 0.035);
+float broadOre = smoothstep(0.595, 0.735, oreField + clusterField * 0.11 + facetId * 0.025);
 
 float fissureField = stoneFbm(vStoneDir * 5.9 + vec3(41.0, 11.0, 27.0));
 float fissure = 1.0 - smoothstep(0.018, 0.11, abs(fissureField - 0.50));
@@ -269,21 +282,21 @@ vec3 fdyV = dFdy(-vViewPosition);
 vec3 facetNv = normalize(cross(fdxV, fdyV));
 float faceLight = clamp(dot(facetNv, normalize(vec3(0.38, 0.54, 0.75))), 0.0, 1.0);
 
-float copperSurface = clamp(broadOre * 0.56 + copperVein * 0.92, 0.0, 1.0);
+float copperSurface = clamp(broadOre * 0.40 + copperVein * 0.82, 0.0, 1.0);
 float hotVein = pow(clamp(copperVein * (0.38 + faceLight * 0.62), 0.0, 1.0), 2.05);
 
 float graphiteNoise = stoneFbm(vStoneDir * 3.2 + vec3(61.0, 31.0, 43.0));
 vec3 graphite = mix(
   vec3(0.014, 0.014, 0.013),
-  vec3(0.070, 0.066, 0.058),
+  vec3(0.052, 0.050, 0.045),
   graphiteNoise
 );
 
 /* Chalcopyrite / bornite palette: brass-gold sulfide with restrained
    peacock-blue and wine-purple oxidation, never orange paint. */
 float borniteField = stoneFbm(vStoneDir * 4.4 + vec3(13.0, 37.0, 21.0));
-vec3 deepBrass = vec3(0.22, 0.135, 0.050);
-vec3 chalcopyrite = vec3(0.66, 0.43, 0.155);
+vec3 deepBrass = vec3(0.16, 0.105, 0.042);
+vec3 chalcopyrite = vec3(0.55, 0.36, 0.125);
 vec3 bornitePurple = vec3(0.19, 0.075, 0.135);
 vec3 borniteBlue = vec3(0.055, 0.105, 0.145);
 vec3 bornite = mix(bornitePurple, borniteBlue, smoothstep(0.44, 0.68, borniteField));
@@ -351,7 +364,7 @@ totalEmissiveRadiance += vec3(0.18, 0.050, 0.015) * broadOre * faceLight * 0.07;
          very low fill preserve deep blacks and deliberate metallic highlights. */
       scene.add(new THREE.HemisphereLight(0xd8d4c8, 0x0c0c0b, 0.22));
 
-      const key = new THREE.DirectionalLight(0xffead8, lowPower ? 1.72 : 2.08);
+      const key = new THREE.DirectionalLight(0xfff0df, lowPower ? 1.50 : 1.82);
       key.position.set(4.4, 5.0, 5.8);
       scene.add(key);
 
@@ -379,7 +392,7 @@ totalEmissiveRadiance += vec3(0.18, 0.050, 0.015) * broadOre * faceLight * 0.07;
       envScene.add(envRoom);
 
       const softbox = new THREE.Mesh(
-        new THREE.PlaneGeometry(5.2, 3.1),
+        new THREE.PlaneGeometry(4.1, 2.35),
         new THREE.MeshBasicMaterial({ color: 0xffead5 })
       );
       softbox.position.set(1.5, 5.9, 2.7);
@@ -387,7 +400,7 @@ totalEmissiveRadiance += vec3(0.18, 0.050, 0.015) * broadOre * faceLight * 0.07;
       envScene.add(softbox);
 
       const copperCard = new THREE.Mesh(
-        new THREE.PlaneGeometry(4.2, 2.6),
+        new THREE.PlaneGeometry(3.0, 1.8),
         new THREE.MeshBasicMaterial({ color: 0x8a5a2c })
       );
       copperCard.position.set(-5.9, 1.0, -2.7);
