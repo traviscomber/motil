@@ -6,7 +6,7 @@ const hero = await readFile(new URL('../app/landing-stone.tsx', import.meta.url)
 const css = await readFile(new URL('../app/landing.css', import.meta.url), 'utf8');
 
 test('MOTIL hero keeps a bounded adaptive geometry budget', () => {
-  assert.match(hero, /const geometryDetail = lowPower \? 4 : 5/);
+  assert.match(hero, /const geometryDetail = lowPower \? 3 : 4/);
   assert.doesNotMatch(hero, /IcosahedronGeometry\(1,\s*24\)/);
 });
 
@@ -16,6 +16,11 @@ test('MOTIL hero uses high-fidelity physical rendering without brute-force subdi
   assert.match(hero, /SRGBColorSpace/);
   assert.match(hero, /hotVein/);
   assert.match(hero, /copperSurface/);
+  assert.match(hero, /float cavity/);
+  assert.match(hero, /discard/);
+  assert.match(hero, /coreMaterial/);
+  assert.match(hero, /upperShard/);
+  assert.match(hero, /lowerShard/);
   assert.match(hero, /totalEmissiveRadiance/);
 });
 
@@ -34,9 +39,11 @@ test('MOTIL hero retains an accessible static fallback', () => {
 });
 
 test('MOTIL hero stage keeps premium depth without layout noise', () => {
-  assert.match(css, /width: min\(34vw, 520px\)/);
+  assert.match(css, /width: min\(36vw, 560px\)/);
   assert.match(css, /background: rgba\(185, 87, 50, 0\.13\)/);
   assert.match(css, /filter: blur\(76px\)/);
   assert.match(css, /drop-shadow\(0 34px 38px/);
+  assert.match(css, /grid-template-columns: minmax\(0, 1\.16fr\) minmax\(220px, 0\.84fr\)/);
+  assert.match(css, /width: min\(34vw, 310px\)/);
   assert.match(css, /width: min\(78vw, 390px\)/);
 });
