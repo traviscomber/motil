@@ -5,6 +5,8 @@ import { useEffect, useRef, useState } from 'react';
 import type * as THREEType from 'three';
 
 const GLB_URL = '/motil-rock.glb';
+// Keep the detailed brand artwork visible until a photorealistic 3D asset passes visual QA.
+const HERO_3D_ENABLED = process.env.NEXT_PUBLIC_MOTIL_HERO_3D === 'enabled';
 
 /**
  * The mineral's geometry and PBR materials come only from the supplied GLB.
@@ -13,9 +15,10 @@ const GLB_URL = '/motil-rock.glb';
 export default function LandingStone() {
   const stageRef = useRef<HTMLDivElement>(null);
   const mountRef = useRef<HTMLSpanElement>(null);
-  const [fallback, setFallback] = useState(false);
+  const [fallback, setFallback] = useState(!HERO_3D_ENABLED);
 
   useEffect(() => {
+    if (!HERO_3D_ENABLED) return;
     const stage = stageRef.current;
     const mount = mountRef.current;
     if (!stage || !mount) return;
