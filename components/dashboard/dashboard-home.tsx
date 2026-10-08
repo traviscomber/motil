@@ -69,6 +69,7 @@ type MaintenanceOverview = {
 type HomeMode = 'mine' | 'engineering' | 'plant' | 'maintenance' | 'drilling' | 'inventory' | 'sustainability' | 'finance' | 'management' | 'general';
 type Metric = { label: string; value: string | number; detail?: string };
 type Shortcut = { label: string; href: string; detail: string; moduleKey?: string };
+type MineScopePayload = { mine: { name: string }; workOrdersLinkedToMine: number; completenessVerified: boolean; note: string };
 type ModuleAccessPayload = { hasCargo: boolean; allModules: boolean; access: Record<string, 'ED' | 'LEC' | 'SR'> };
 
 const fetcher = async (url: string) => {
@@ -276,6 +277,7 @@ function configFor(
 export function DashboardHome({ locale, dictionary }: { locale: Locale; dictionary: Dictionary }) {
   const t = dictionary.app.home;
   const inbox = useSWR<InboxPayload>('/api/actions/inbox', fetcher, { refreshInterval: 60000, revalidateOnFocus: false });
+  const mineScope = useSWR<MineScopePayload>(mode === 'mine' ? '/api/dashboard/mine-scope' : null, fetcher, { revalidateOnFocus: false });
   const moduleAccess = useSWR<ModuleAccessPayload>('/api/dashboard/module-access', fetcher, { revalidateOnFocus: false });
   const mode = resolveMode(inbox.data?.profile?.cargoName);
   // These cross-area aggregate endpoints are unnecessary for mine and engineering
@@ -303,6 +305,8 @@ export function DashboardHome({ locale, dictionary }: { locale: Locale; dictiona
         </PageHeaderActions>
       </PageHeader>
 
+      {mode === 'mine' && mineScope.data ? <section className="rounded-md border p-4"><p className="text-sm font-semibold">{mineScope.data.mine.name}</p><p className="mt-1 text-sm">OT vinculadas: {mineScope.data.workOrdersLinkedToMine}</p><p className="mt-1 text-xs text-muted-foreground">{mineScope.data.note}</p></section> : null}
+      {mode === 'mine' && mineScope.error ? <StatePanel tone="warning" title="Alcance de mina sin verificar" description="No se muestran totales generales como si pertenecieran a esta mina." /> : null}
       {scopedRole && moduleAccess.error ? <StatePanel tone="warning" title="Permisos no disponibles" description="No se pueden mostrar accesos a otras áreas hasta verificar tu cargo." /> : null}
       {inboxUnavailable ? <StatePanel tone="warning" title={t.roleUnresolvedTitle} description={t.roleUnresolvedDescription} /> : null}
 
