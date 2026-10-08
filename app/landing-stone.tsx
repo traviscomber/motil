@@ -5,149 +5,78 @@ import { useEffect, useRef, useState } from 'react';
 import type * as THREE from 'three';
 
 /*
- * MOTIL mineral hero
- * ------------------
- * Real-time WebGL specimen with a deliberately bounded geometry budget.
- * Perceived fidelity comes from procedural surface breakup, PBR response,
- * copper-sulfide veining, ACES tone mapping and studio lighting rather than
- * brute-force subdivision.
+ * MOTIL layered mineral hero
+ * --------------------------
+ * The object is built like a mineral specimen, not like a deformed sphere:
+ * - 10 graphite slabs define the silhouette and cavities.
+ * - 7 sulfide clusters create selective chalcopyrite/bornite highlights.
+ * - 5 inner-core bodies add depth through the openings.
+ * - 6 thin metallic plates act as veins between the larger masses.
  *
- * Desktop: three sculptural shells totaling ~15k faces, DPR <= 2.
- * Mobile / lower-power devices: ~4k faces total, DPR <= 1.5.
- * Motion pauses offscreen and respects prefers-reduced-motion.
- * The canonical PNG remains the no-WebGL fallback.
+ * Each layer keeps its own transform so the whole specimen has subtle
+ * parallax, similar to a product object assembled from parts.
  */
 
-const POINTER_TILT_RAD = 0.10;
+const POINTER_TILT_RAD = 0.085;
 
-function hash3(ix: number, iy: number, iz: number, seed: number) {
-  const s = Math.sin(ix * 127.1 + iy * 311.7 + iz * 74.7 + seed * 269.5) * 43758.5453;
-  return s - Math.floor(s);
-}
-
-const fade = (t: number) => t * t * (3 - 2 * t);
-
-function valueNoise3(x: number, y: number, z: number, seed: number) {
-  const ix = Math.floor(x);
-  const iy = Math.floor(y);
-  const iz = Math.floor(z);
-  const fx = fade(x - ix);
-  const fy = fade(y - iy);
-  const fz = fade(z - iz);
-  const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
-
-  const c000 = hash3(ix, iy, iz, seed);
-  const c100 = hash3(ix + 1, iy, iz, seed);
-  const c010 = hash3(ix, iy + 1, iz, seed);
-  const c110 = hash3(ix + 1, iy + 1, iz, seed);
-  const c001 = hash3(ix, iy, iz + 1, seed);
-  const c101 = hash3(ix + 1, iy, iz + 1, seed);
-  const c011 = hash3(ix, iy + 1, iz + 1, seed);
-  const c111 = hash3(ix + 1, iy + 1, iz + 1, seed);
-
-  return lerp(
-    lerp(lerp(c000, c100, fx), lerp(c010, c110, fx), fy),
-    lerp(lerp(c001, c101, fx), lerp(c011, c111, fx), fy),
-    fz
+function seededWave(value: number, seed: number) {
+  return (
+    Math.sin(value * 11.73 + seed * 1.91) * 0.55 +
+    Math.cos(value * 7.37 + seed * 2.63) * 0.45
   );
 }
 
-function fbm3(x: number, y: number, z: number, seed: number, octaves = 4) {
-  let amp = 0.5;
-  let freq = 1;
-  let sum = 0;
-  let norm = 0;
-
-  for (let octave = 0; octave < octaves; octave += 1) {
-    sum += amp * valueNoise3(x * freq, y * freq, z * freq, seed + octave * 7.13);
-    norm += amp;
-    amp *= 0.5;
-    freq *= 2.08;
-  }
-
-  return sum / norm;
-}
-
-function radialPlaneLimit(
-  dx: number,
-  dy: number,
-  dz: number,
-  nx: number,
-  ny: number,
-  nz: number,
-  distance: number
+function makeJaggedSlab(
+  THREE_NS: typeof import('three'),
+  width: number,
+  height: number,
+  depth: number,
+  seed: number,
+  detail = 4
 ) {
-  const facing = dx * nx + dy * ny + dz * nz;
-  return facing > 0.001 ? distance / facing : Number.POSITIVE_INFINITY;
-}
+  const geometry = new THREE_NS.BoxGeometry(width, height, depth, detail, Math.max(2, detail - 1), detail);
+  const position = geometry.getAttribute('position');
+  const v = new THREE_NS.Vector3();
 
-function rockRadius(dx: number, dy: number, dz: number) {
-  const macro = fbm3(dx * 1.12 + 4, dy * 1.12 + 4, dz * 1.12 + 4, 1);
-  const shelves = fbm3(dx * 2.25 + 8, dy * 2.25 + 8, dz * 2.25 + 8, 2, 3);
-  const fracture = 1 - Math.abs(2 * fbm3(dx * 3.0 + 2, dy * 3.0 + 2, dz * 3.0 + 2, 4, 3) - 1);
+  for (let index = 0; index < position.count; index += 1) {
+    v.fromBufferAttribute(position, index);
 
-  const organic = 0.82 + macro * 0.16 + shelves * 0.065 + fracture * 0.04;
+    const nx = width > 0 ? v.x / width : 0;
+    const ny = height > 0 ? v.y / height : 0;
+    const nz = depth > 0 ? v.z / depth : 0;
+    const ridge = seededWave(nx * 1.8 + ny * 2.4 + nz * 1.2, seed);
+    const chip = seededWave(nx * 4.7 - ny * 3.1 + nz * 5.2, seed + 17);
 
-  /* True half-space limits create broad cleavage faces in the silhouette.
-     These are geological cuts, not extra meshes glued to a sphere. */
-  const crownPlane = radialPlaneLimit(dx, dy, dz, 0.08, 0.98, 0.17, 0.72);
-  const rightPlane = radialPlaneLimit(dx, dy, dz, 0.91, 0.10, 0.40, 0.76);
-  const leftPlane = radialPlaneLimit(dx, dy, dz, -0.86, 0.22, 0.46, 0.81);
-  const frontPlane = radialPlaneLimit(dx, dy, dz, 0.22, 0.08, 0.97, 0.84);
-  const rearPlane = radialPlaneLimit(dx, dy, dz, -0.36, 0.28, -0.89, 0.82);
-  const basePlane = radialPlaneLimit(dx, dy, dz, 0.04, -0.99, 0.10, 0.76);
+    const xScale = 1 + ridge * 0.045 + chip * 0.016;
+    const yScale = 1 + ridge * 0.035 + chip * 0.014;
+    const zScale = 1 + ridge * 0.050 + chip * 0.018;
 
-  return Math.min(
-    organic,
-    crownPlane,
-    rightPlane,
-    leftPlane,
-    frontPlane,
-    rearPlane,
-    basePlane
-  );
-}
-
-const STONE_GLSL = /* glsl */ `
-float stoneHash(vec3 p) {
-  p = fract(p * 0.3183099 + 0.1);
-  p *= 17.0;
-  return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
-}
-
-float stoneNoise(vec3 x) {
-  vec3 i = floor(x);
-  vec3 f = fract(x);
-  f = f * f * (3.0 - 2.0 * f);
-
-  return mix(
-    mix(
-      mix(stoneHash(i + vec3(0.0, 0.0, 0.0)), stoneHash(i + vec3(1.0, 0.0, 0.0)), f.x),
-      mix(stoneHash(i + vec3(0.0, 1.0, 0.0)), stoneHash(i + vec3(1.0, 1.0, 0.0)), f.x),
-      f.y
-    ),
-    mix(
-      mix(stoneHash(i + vec3(0.0, 0.0, 1.0)), stoneHash(i + vec3(1.0, 0.0, 1.0)), f.x),
-      mix(stoneHash(i + vec3(0.0, 1.0, 1.0)), stoneHash(i + vec3(1.0, 1.0, 1.0)), f.x),
-      f.y
-    ),
-    f.z
-  );
-}
-
-float stoneFbm(vec3 p) {
-  float s = 0.0;
-  float a = 0.5;
-
-  for (int o = 0; o < 4; o++) {
-    s += a * stoneNoise(p);
-    p *= 2.08;
-    a *= 0.5;
+    position.setXYZ(index, v.x * xScale, v.y * yScale, v.z * zScale);
   }
 
-  return s / 0.9375;
+  geometry.computeVertexNormals();
+  return geometry;
 }
-`;
+
+function makeCrystal(
+  THREE_NS: typeof import('three'),
+  radius: number,
+  seed: number
+) {
+  const geometry = new THREE_NS.DodecahedronGeometry(radius, 1);
+  const position = geometry.getAttribute('position');
+  const v = new THREE_NS.Vector3();
+
+  for (let index = 0; index < position.count; index += 1) {
+    v.fromBufferAttribute(position, index);
+    const n = seededWave(v.x * 3.7 + v.y * 5.1 + v.z * 4.4, seed);
+    const scale = 1 + n * 0.055;
+    position.setXYZ(index, v.x * scale, v.y * scale, v.z * scale);
+  }
+
+  geometry.computeVertexNormals();
+  return geometry;
+}
 
 export default function LandingStone() {
   const stageRef = useRef<HTMLDivElement>(null);
@@ -168,7 +97,6 @@ export default function LandingStone() {
 
       const compactViewport = window.matchMedia('(max-width: 900px)').matches;
       const lowPower = compactViewport || navigator.hardwareConcurrency <= 4;
-      const geometryDetail = lowPower ? 4 : 5;
       const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
       let renderer: THREE.WebGLRenderer;
@@ -193,244 +121,229 @@ export default function LandingStone() {
       renderer.setClearColor(0x000000, 0);
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = lowPower ? 1.02 : 1.08;
+      renderer.toneMappingExposure = lowPower ? 1.02 : 1.10;
       renderer.domElement.setAttribute('aria-hidden', 'true');
       mount.appendChild(renderer.domElement);
 
       const scene = new THREE.Scene();
-      const camera = new THREE.PerspectiveCamera(28, 1, 0.1, 50);
-      camera.position.set(0.05, 0.08, 5.25);
+      const camera = new THREE.PerspectiveCamera(27, 1, 0.1, 50);
+      camera.position.set(0.08, 0.10, 6.25);
 
-      /*
-       * Keep geometry bounded while retaining high-resolution mineral facets.
-       * Desktop detail 5 stays around ~20k faces; mobile uses detail 4.
-       */
-      const geometry = new THREE.IcosahedronGeometry(1, geometryDetail);
-      const position = geometry.getAttribute('position');
-      const vertex = new THREE.Vector3();
-
-      for (let index = 0; index < position.count; index += 1) {
-        vertex.fromBufferAttribute(position, index).normalize();
-        const radius = rockRadius(vertex.x, vertex.y, vertex.z);
-        const x = vertex.x * radius * 1.08;
-        const y = vertex.y * radius * 0.92;
-        const z = vertex.z * radius * 0.88;
-        position.setXYZ(index, x, y, z);
-      }
-
-      geometry.computeVertexNormals();
-
-      const material = new THREE.MeshPhysicalMaterial({
-        color: 0xffffff,
+      const graphite = new THREE.MeshPhysicalMaterial({
+        color: 0x24231f,
         roughness: 0.78,
-        metalness: 0.16,
+        metalness: 0.20,
+        clearcoat: 0.035,
+        clearcoatRoughness: 0.76,
         flatShading: true,
-        clearcoat: 0.08,
-        clearcoatRoughness: 0.62,
-        sheen: 0.04,
-        sheenColor: new THREE.Color(0x4f3828),
       });
-      material.envMapIntensity = lowPower ? 0.66 : 0.86;
-      material.customProgramCacheKey = () => 'motil-mineral-sulfide-v6';
+      graphite.envMapIntensity = lowPower ? 0.58 : 0.76;
 
-      material.onBeforeCompile = (shader) => {
-        shader.vertexShader = shader.vertexShader
-          .replace(
-            '#include <common>',
-            '#include <common>\nvarying vec3 vStoneDir;\nvarying vec3 vObjPos;'
-          )
-          .replace(
-            '#include <begin_vertex>',
-            '#include <begin_vertex>\nvStoneDir = normalize(position);\nvObjPos = position;'
-          );
+      const graphiteDeep = graphite.clone();
+      graphiteDeep.color.setHex(0x111210);
+      graphiteDeep.roughness = 0.84;
 
-        shader.fragmentShader = shader.fragmentShader
-          .replace(
-            '#include <common>',
-            `#include <common>
-varying vec3 vStoneDir;
-varying vec3 vObjPos;
-${STONE_GLSL}`
-          )
-          .replace(
-            '#include <color_fragment>',
-            `#include <color_fragment>
+      const chalcopyrite = new THREE.MeshPhysicalMaterial({
+        color: 0x8f6328,
+        roughness: 0.23,
+        metalness: 0.94,
+        clearcoat: 0.07,
+        clearcoatRoughness: 0.38,
+        flatShading: true,
+      });
+      chalcopyrite.envMapIntensity = lowPower ? 0.82 : 1.04;
 
-/* Stable object-space crystal face. */
-vec3 fdxO = dFdx(vObjPos);
-vec3 fdyO = dFdy(vObjPos);
-vec3 facetN = normalize(cross(fdxO, fdyO));
-float facetId = stoneHash(floor(facetN * 9.0 + 4.5));
+      const bornite = new THREE.MeshPhysicalMaterial({
+        color: 0x433648,
+        roughness: 0.27,
+        metalness: 0.90,
+        clearcoat: 0.08,
+        clearcoatRoughness: 0.33,
+        sheen: 0.18,
+        sheenColor: new THREE.Color(0x29445a),
+        flatShading: true,
+      });
+      bornite.envMapIntensity = lowPower ? 0.78 : 0.98;
 
-/* Broad sulfide bodies plus thin mineral fissures. */
-float oreField = stoneFbm(vStoneDir * 2.15 + vec3(19.0, 7.0, 13.0));
-float clusterField = stoneFbm(vStoneDir * 1.35 + vec3(3.0, 17.0, 5.0));
-float broadOre = smoothstep(0.595, 0.735, oreField + clusterField * 0.11 + facetId * 0.025);
-
-float fissureField = stoneFbm(vStoneDir * 5.9 + vec3(41.0, 11.0, 27.0));
-float fissure = 1.0 - smoothstep(0.018, 0.11, abs(fissureField - 0.50));
-float fissureCluster = smoothstep(0.38, 0.66, clusterField);
-float copperVein = fissure * fissureCluster;
-
-/* A very small subset of the mineral fissures becomes real negative space.
-   A warm inner core behind the shell is visible through these openings. */
-float cavity = smoothstep(0.88, 1.06, copperVein * (0.68 + fissureCluster * 0.52));
-if (cavity > 0.72) discard;
-
-vec3 fdxV = dFdx(-vViewPosition);
-vec3 fdyV = dFdy(-vViewPosition);
-vec3 facetNv = normalize(cross(fdxV, fdyV));
-float faceLight = clamp(dot(facetNv, normalize(vec3(0.38, 0.54, 0.75))), 0.0, 1.0);
-
-float copperSurface = clamp(broadOre * 0.40 + copperVein * 0.82, 0.0, 1.0);
-float hotVein = pow(clamp(copperVein * (0.38 + faceLight * 0.62), 0.0, 1.0), 2.05);
-
-float graphiteNoise = stoneFbm(vStoneDir * 3.2 + vec3(61.0, 31.0, 43.0));
-vec3 graphite = mix(
-  vec3(0.014, 0.014, 0.013),
-  vec3(0.052, 0.050, 0.045),
-  graphiteNoise
-);
-
-/* Chalcopyrite / bornite palette: brass-gold sulfide with restrained
-   peacock-blue and wine-purple oxidation, never orange paint. */
-float borniteField = stoneFbm(vStoneDir * 4.4 + vec3(13.0, 37.0, 21.0));
-vec3 deepBrass = vec3(0.16, 0.105, 0.042);
-vec3 chalcopyrite = vec3(0.55, 0.36, 0.125);
-vec3 bornitePurple = vec3(0.19, 0.075, 0.135);
-vec3 borniteBlue = vec3(0.055, 0.105, 0.145);
-vec3 bornite = mix(bornitePurple, borniteBlue, smoothstep(0.44, 0.68, borniteField));
-
-float oxidation = smoothstep(0.58, 0.78, borniteField) * copperSurface * 0.42;
-vec3 sulfide = mix(deepBrass, chalcopyrite, clamp(faceLight * 0.72 + facetId * 0.28, 0.0, 1.0));
-sulfide = mix(sulfide, bornite, oxidation);
-
-/* Metallic sulfide bodies carry the visual interest; internal energy remains
-   a subtle accent visible mainly through the fissures. */
-diffuseColor.rgb *= mix(graphite, sulfide, copperSurface);
-`
-          )
-          .replace(
-            '#include <roughnessmap_fragment>',
-            `#include <roughnessmap_fragment>
-roughnessFactor = mix(0.86, 0.24, copperSurface);
-roughnessFactor = mix(roughnessFactor, 0.16, hotVein * 0.38);
-`
-          )
-          .replace(
-            '#include <metalnessmap_fragment>',
-            `#include <metalnessmap_fragment>
-metalnessFactor = mix(0.06, 0.90, copperSurface);
-`
-          )
-          .replace(
-            '#include <emissivemap_fragment>',
-            `#include <emissivemap_fragment>
-totalEmissiveRadiance += vec3(0.62, 0.16, 0.035) * hotVein * 0.58;
-totalEmissiveRadiance += vec3(0.18, 0.050, 0.015) * broadOre * faceLight * 0.07;
-`
-          );
-      };
+      const veinMaterial = new THREE.MeshPhysicalMaterial({
+        color: 0x6f431f,
+        roughness: 0.28,
+        metalness: 0.93,
+        clearcoat: 0.04,
+        flatShading: true,
+      });
+      veinMaterial.envMapIntensity = 0.88;
 
       const coreMaterial = new THREE.MeshStandardMaterial({
-        color: 0x3a2417,
-        roughness: 0.40,
-        metalness: 0.72,
-        emissive: 0x7a2810,
-        emissiveIntensity: lowPower ? 0.42 : 0.58,
+        color: 0x41281a,
+        roughness: 0.42,
+        metalness: 0.68,
+        emissive: 0x6d2610,
+        emissiveIntensity: lowPower ? 0.22 : 0.32,
+        flatShading: true,
       });
-      coreMaterial.envMapIntensity = 0.42;
+      coreMaterial.envMapIntensity = 0.40;
 
-      const rockAssembly = new THREE.Group();
+      const assembly = new THREE.Group();
+      const stoneLayer = new THREE.Group();
+      const sulfideLayer = new THREE.Group();
+      const veinLayer = new THREE.Group();
+      const coreLayer = new THREE.Group();
 
-      const innerCore = new THREE.Mesh(geometry, coreMaterial);
-      innerCore.scale.set(0.875, 0.855, 0.86);
-      innerCore.rotation.set(0.03, -0.10, -0.02);
-      rockAssembly.add(innerCore);
+      assembly.add(coreLayer, veinLayer, stoneLayer, sulfideLayer);
+      assembly.rotation.set(-0.12, 0.58, 0.035);
 
-      /* One continuous shell: silhouette quality now comes from geological
-         cleavage in the geometry itself, not from attached satellite blobs. */
-      const rock = new THREE.Mesh(geometry, material);
-      rockAssembly.add(rock);
+      const slabData = [
+        [-0.98, 0.78, 0.00, 2.35, 0.54, 1.26, -0.16, 0.18, 0.16, 1],
+        [ 0.72, 0.92,-0.10, 2.08, 0.62, 1.32,  0.14,-0.28,-0.13, 2],
+        [-0.76, 0.12, 0.38, 2.58, 0.58, 1.04,  0.20, 0.08,-0.09, 3],
+        [ 0.84, 0.08, 0.02, 2.30, 0.62, 1.20, -0.14,-0.24, 0.11, 4],
+        [-0.88,-0.58, 0.02, 2.18, 0.56, 1.28, -0.10, 0.20,-0.12, 5],
+        [ 0.78,-0.72, 0.16, 1.90, 0.52, 1.12,  0.16,-0.20, 0.17, 6],
+        [-1.48,-0.10,-0.36, 1.08, 1.52, 0.70,  0.12, 0.22, 0.30, 7],
+        [ 1.44, 0.18,-0.30, 1.00, 1.48, 0.74, -0.10,-0.24,-0.26, 8],
+        [-0.18, 1.34,-0.26, 1.56, 0.46, 0.92,  0.18, 0.10,-0.17, 9],
+        [ 0.12,-1.22,-0.10, 1.62, 0.44, 0.96, -0.14,-0.06, 0.12,10],
+      ] as const;
 
-      rockAssembly.rotation.set(-0.11, 0.72, 0.04);
+      const disposableGeometries: THREE.BufferGeometry[] = [];
+
+      slabData.forEach((item, index) => {
+        const [x,y,z,w,h,d,rx,ry,rz,seed] = item;
+        const geometry = makeJaggedSlab(THREE, w, h, d, seed, lowPower ? 3 : 4);
+        disposableGeometries.push(geometry);
+        const mesh = new THREE.Mesh(geometry, index % 3 === 0 ? graphiteDeep : graphite);
+        mesh.position.set(x, y, z);
+        mesh.rotation.set(rx, ry, rz);
+        stoneLayer.add(mesh);
+      });
+
+      const veinData = [
+        [-0.32, 0.48, 0.70, 1.62, 0.13, 0.30,  0.02, 0.26, 0.20, 31],
+        [ 0.66, 0.46, 0.54, 1.28, 0.12, 0.26, -0.18,-0.20,-0.10, 32],
+        [-0.58,-0.08, 0.72, 1.44, 0.12, 0.28,  0.08, 0.18,-0.22, 33],
+        [ 0.54,-0.22, 0.68, 1.38, 0.11, 0.30, -0.10,-0.10, 0.19, 34],
+        [-0.36,-0.70, 0.52, 1.16, 0.11, 0.25,  0.12, 0.28,-0.09, 35],
+        [ 0.74,-0.74, 0.40, 0.98, 0.10, 0.24, -0.08,-0.24, 0.15, 36],
+      ] as const;
+
+      veinData.forEach((item) => {
+        const [x,y,z,w,h,d,rx,ry,rz,seed] = item;
+        const geometry = makeJaggedSlab(THREE, w, h, d, seed, 3);
+        disposableGeometries.push(geometry);
+        const mesh = new THREE.Mesh(geometry, veinMaterial);
+        mesh.position.set(x, y, z);
+        mesh.rotation.set(rx, ry, rz);
+        veinLayer.add(mesh);
+      });
+
+      const sulfideData = [
+        [-0.54, 0.36, 0.88, 0.42, 0.34, 0.38, chalcopyrite, 41],
+        [ 0.22, 0.52, 0.82, 0.38, 0.46, 0.34, bornite,      42],
+        [ 0.78, 0.14, 0.74, 0.38, 0.32, 0.36, chalcopyrite, 43],
+        [-0.82,-0.28, 0.82, 0.36, 0.42, 0.32, bornite,      44],
+        [ 0.02,-0.44, 0.96, 0.34, 0.28, 0.30, chalcopyrite, 45],
+        [ 1.08, 0.58, 0.28, 0.28, 0.32, 0.30, bornite,      46],
+        [-1.10, 0.72, 0.30, 0.30, 0.25, 0.32, chalcopyrite, 47],
+      ] as const;
+
+      sulfideData.forEach((item, index) => {
+        const [x,y,z,sx,sy,sz,material,seed] = item;
+        const geometry = makeCrystal(THREE, 0.72, seed);
+        disposableGeometries.push(geometry);
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.position.set(x, y, z);
+        mesh.scale.set(sx, sy, sz);
+        mesh.rotation.set(index * 0.27, index * 0.41, index * 0.17);
+        sulfideLayer.add(mesh);
+      });
+
+      for (let index = 0; index < 5; index += 1) {
+        const geometry = new THREE.DodecahedronGeometry(0.48 - index * 0.025, 1);
+        disposableGeometries.push(geometry);
+        const mesh = new THREE.Mesh(geometry, coreMaterial);
+        const angle = (index / 5) * Math.PI * 2;
+        mesh.position.set(
+          Math.cos(angle) * 0.58,
+          (index - 2) * 0.18,
+          Math.sin(angle) * 0.42 - 0.18
+        );
+        mesh.scale.set(1.08, 0.78, 0.88);
+        mesh.rotation.set(index * 0.19, index * 0.31, -index * 0.12);
+        coreLayer.add(mesh);
+      }
 
       const tiltGroup = new THREE.Group();
-      tiltGroup.add(rockAssembly);
-      tiltGroup.rotation.x = 0.10;
+      tiltGroup.add(assembly);
       scene.add(tiltGroup);
 
-      /* Editorial studio rig: one dominant warm key, restrained cool rim and
-         very low fill preserve deep blacks and deliberate metallic highlights. */
-      scene.add(new THREE.HemisphereLight(0xd8d4c8, 0x0c0c0b, 0.22));
+      scene.add(new THREE.HemisphereLight(0xcac5b8, 0x090909, 0.23));
 
-      const key = new THREE.DirectionalLight(0xfff0df, lowPower ? 1.50 : 1.82);
-      key.position.set(4.4, 5.0, 5.8);
-      scene.add(key);
+      const key = new THREE.SpotLight(0xffe6c7, lowPower ? 33 : 46, 18, Math.PI / 4.8, 0.62, 1.45);
+      key.position.set(4.6, 5.8, 6.4);
+      key.target.position.set(0, 0, 0);
+      scene.add(key, key.target);
 
-      const rim = new THREE.DirectionalLight(0xaeb8bd, lowPower ? 0.62 : 0.82);
-      rim.position.set(-4.9, 1.1, -4.4);
-      scene.add(rim);
+      const rim = new THREE.SpotLight(0x9ab7c4, lowPower ? 12 : 17, 17, Math.PI / 4.4, 0.72, 1.5);
+      rim.position.set(-4.8, 2.2, -4.4);
+      rim.target.position.set(0, 0, 0);
+      scene.add(rim, rim.target);
 
-      const fill = new THREE.DirectionalLight(0x766f64, 0.24);
-      fill.position.set(-2.1, 1.8, 4.2);
+      const fill = new THREE.DirectionalLight(0x7a7268, 0.20);
+      fill.position.set(-2.3, 1.8, 4.8);
       scene.add(fill);
 
-      const mineralKick = new THREE.PointLight(0xb56a32, lowPower ? 0.38 : 0.52, 5, 2);
-      mineralKick.position.set(2.5, -1.1, 2.4);
-      scene.add(mineralKick);
+      const coreKick = new THREE.PointLight(0xa4532c, lowPower ? 1.3 : 1.8, 5.5, 2);
+      coreKick.position.set(0.3, -0.8, 2.2);
+      scene.add(coreKick);
 
-      /*
-       * Tiny procedural studio environment. Metallic faces need something to
-       * reflect; otherwise a physically correct copper surface reads black.
-       */
       const envScene = new THREE.Scene();
-      const envRoom = new THREE.Mesh(
-        new THREE.BoxGeometry(12, 12, 12),
-        new THREE.MeshBasicMaterial({ color: 0x141413, side: THREE.BackSide })
+      const room = new THREE.Mesh(
+        new THREE.BoxGeometry(13, 13, 13),
+        new THREE.MeshBasicMaterial({ color: 0x11110f, side: THREE.BackSide })
       );
-      envScene.add(envRoom);
+      envScene.add(room);
 
-      const softbox = new THREE.Mesh(
-        new THREE.PlaneGeometry(4.1, 2.35),
-        new THREE.MeshBasicMaterial({ color: 0xffead5 })
+      const warmCard = new THREE.Mesh(
+        new THREE.PlaneGeometry(4.4, 2.5),
+        new THREE.MeshBasicMaterial({ color: 0xffe6cf })
       );
-      softbox.position.set(1.5, 5.9, 2.7);
-      softbox.rotation.x = Math.PI / 2;
-      envScene.add(softbox);
+      warmCard.position.set(1.4, 6.0, 2.8);
+      warmCard.rotation.x = Math.PI / 2;
+      envScene.add(warmCard);
 
-      const copperCard = new THREE.Mesh(
-        new THREE.PlaneGeometry(3.0, 1.8),
-        new THREE.MeshBasicMaterial({ color: 0x8a5a2c })
+      const bronzeCard = new THREE.Mesh(
+        new THREE.PlaneGeometry(3.1, 1.9),
+        new THREE.MeshBasicMaterial({ color: 0x6f4825 })
       );
-      copperCard.position.set(-5.9, 1.0, -2.7);
-      copperCard.rotation.y = Math.PI / 2;
-      envScene.add(copperCard);
+      bronzeCard.position.set(-5.9, 0.8, -2.6);
+      bronzeCard.rotation.y = Math.PI / 2;
+      envScene.add(bronzeCard);
 
-      const neutralCard = new THREE.Mesh(
-        new THREE.PlaneGeometry(3.4, 2.2),
-        new THREE.MeshBasicMaterial({ color: 0x4b4842 })
+      const coolCard = new THREE.Mesh(
+        new THREE.PlaneGeometry(3.3, 2.0),
+        new THREE.MeshBasicMaterial({ color: 0x37434a })
       );
-      neutralCard.position.set(5.9, -0.6, 3.0);
-      neutralCard.rotation.y = -Math.PI / 2;
-      envScene.add(neutralCard);
+      coolCard.position.set(5.9, 0.4, -2.0);
+      coolCard.rotation.y = -Math.PI / 2;
+      envScene.add(coolCard);
 
       const pmrem = new THREE.PMREMGenerator(renderer);
       const envRT = pmrem.fromScene(envScene, 0.08);
       scene.environment = envRT.texture;
 
       pmrem.dispose();
-      envRoom.geometry.dispose();
-      (envRoom.material as THREE.Material).dispose();
-      softbox.geometry.dispose();
-      (softbox.material as THREE.Material).dispose();
-      copperCard.geometry.dispose();
-      (copperCard.material as THREE.Material).dispose();
-      neutralCard.geometry.dispose();
-      (neutralCard.material as THREE.Material).dispose();
+      room.geometry.dispose();
+      (room.material as THREE.Material).dispose();
+      warmCard.geometry.dispose();
+      (warmCard.material as THREE.Material).dispose();
+      bronzeCard.geometry.dispose();
+      (bronzeCard.material as THREE.Material).dispose();
+      coolCard.geometry.dispose();
+      (coolCard.material as THREE.Material).dispose();
 
       const resize = () => {
-        const size = mount.clientWidth || 520;
+        const size = mount.clientWidth || 560;
         renderer.setSize(size, size, false);
         renderer.domElement.style.width = '100%';
         renderer.domElement.style.height = '100%';
@@ -448,26 +361,33 @@ totalEmissiveRadiance += vec3(0.18, 0.050, 0.015) * broadOre * faceLight * 0.07;
       let last = performance.now();
       let elapsed = 0;
       let autoRotation = 0;
-      let targetTiltX = 0.10;
+      let targetTiltX = 0.08;
       let targetTiltY = 0;
-      let tiltX = 0.10;
+      let tiltX = 0.08;
       let tiltY = 0;
 
       const frame = (now: number) => {
         if (!visible || !pageVisible || reduceMotion) {
           running = false;
+          renderer.render(scene, camera);
           return;
         }
 
         const dt = Math.min((now - last) / 1000, 0.05);
         last = now;
         elapsed += dt;
-        autoRotation += dt * 0.036;
+        autoRotation += dt * 0.027;
 
-        rockAssembly.position.y = Math.sin(elapsed * 0.48) * 0.018;
-        rockAssembly.rotation.y = 0.72 + autoRotation;
+        assembly.position.y = Math.sin(elapsed * 0.46) * 0.015;
+        assembly.rotation.y = 0.58 + autoRotation;
 
-        const ease = 1 - Math.pow(1 - 0.075, dt * 60);
+        const parallax = Math.sin(elapsed * 0.34) * 0.006;
+        stoneLayer.rotation.z = parallax * 0.45;
+        sulfideLayer.rotation.z = -parallax * 0.72;
+        veinLayer.rotation.y = parallax * 0.52;
+        coreLayer.rotation.x = -parallax * 0.38;
+
+        const ease = 1 - Math.pow(1 - 0.065, dt * 60);
         tiltX += (targetTiltX - tiltX) * ease;
         tiltY += (targetTiltY - tiltY) * ease;
         tiltGroup.rotation.x = tiltX;
@@ -478,9 +398,16 @@ totalEmissiveRadiance += vec3(0.18, 0.050, 0.015) * broadOre * faceLight * 0.07;
       };
 
       const startLoop = () => {
-        if (reduceMotion || running || !visible || !pageVisible) return;
+        if (running || !visible || !pageVisible) return;
         running = true;
         last = performance.now();
+
+        if (reduceMotion) {
+          renderer.render(scene, camera);
+          running = false;
+          return;
+        }
+
         raf = requestAnimationFrame(frame);
       };
 
@@ -489,11 +416,11 @@ totalEmissiveRadiance += vec3(0.18, 0.050, 0.015) * broadOre * faceLight * 0.07;
         const nx = ((event.clientX - rect.left) / rect.width) * 2 - 1;
         const ny = ((event.clientY - rect.top) / rect.height) * 2 - 1;
         targetTiltY = nx * POINTER_TILT_RAD;
-        targetTiltX = 0.10 - ny * POINTER_TILT_RAD;
+        targetTiltX = 0.08 - ny * POINTER_TILT_RAD;
       };
 
       const onLeave = () => {
-        targetTiltX = 0.10;
+        targetTiltX = 0.08;
         targetTiltY = 0;
       };
 
@@ -515,8 +442,8 @@ totalEmissiveRadiance += vec3(0.18, 0.050, 0.015) * broadOre * faceLight * 0.07;
       if (!reduceMotion) {
         stage.addEventListener('pointermove', onMove, { passive: true });
         stage.addEventListener('pointerleave', onLeave, { passive: true });
-        startLoop();
       }
+      startLoop();
 
       cleanup = () => {
         running = false;
@@ -526,8 +453,13 @@ totalEmissiveRadiance += vec3(0.18, 0.050, 0.015) * broadOre * faceLight * 0.07;
         document.removeEventListener('visibilitychange', onVisibilityChange);
         stage.removeEventListener('pointermove', onMove);
         stage.removeEventListener('pointerleave', onLeave);
-        geometry.dispose();
-        material.dispose();
+
+        disposableGeometries.forEach((geometry) => geometry.dispose());
+        graphite.dispose();
+        graphiteDeep.dispose();
+        chalcopyrite.dispose();
+        bornite.dispose();
+        veinMaterial.dispose();
         coreMaterial.dispose();
         envRT.texture.dispose();
         envRT.dispose();
@@ -548,7 +480,7 @@ totalEmissiveRadiance += vec3(0.18, 0.050, 0.015) * broadOre * faceLight * 0.07;
     <div
       ref={stageRef}
       role="img"
-      aria-label="Mineral oscuro de sulfuros de cobre con vetas metálicas"
+      aria-label="Mineral de sulfuros de cobre construido por capas de roca, vetas y cristales"
       className="ld-stone-stage"
     >
       <span ref={mountRef} className="ld-stone-tilt">
