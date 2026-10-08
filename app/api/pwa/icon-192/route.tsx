@@ -2,31 +2,24 @@ import { ImageResponse } from 'next/og';
 
 export const runtime = 'edge';
 
-export async function GET() {
-  return new ImageResponse(
-    (
-      <div
-        style={{
-          width: '100%',
-          height: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: '#0a0a0a',
-        }}
-      >
-        <img
-          src="https://www.motil.app/icon-512.png"
-          alt=""
-          width="192"
-          height="192"
-          style={{ width: '192px', height: '192px' }}
-        />
-      </div>
-    ),
-    {
-      width: 192,
-      height: 192,
-    },
+function MotilIcon() {
+  return (
+    <svg width="192" height="192" viewBox="0 0 512 512">
+      <rect width="512" height="512" rx="96" fill="#0a0a0a" />
+      <path
+        fill="#f5f0e6"
+        d="M122 110h86l48 118 48-118h86v292h-72V240l-37 92h-50l-37-92v162h-72V110z"
+      />
+    </svg>
   );
+}
+
+export async function GET() {
+  return new ImageResponse(<MotilIcon />, {
+    width: 192,
+    height: 192,
+    headers: {
+      'Cache-Control': 'public, max-age=31536000, immutable',
+    },
+  });
 }
