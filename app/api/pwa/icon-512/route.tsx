@@ -2,44 +2,16 @@ import { ImageResponse } from 'next/og';
 
 export const runtime = 'edge';
 
-function toDataUri(bytes: Uint8Array) {
-  let binary = '';
-  for (let index = 0; index < bytes.length; index += 1) {
-    binary += String.fromCharCode(bytes[index]);
-  }
-  return `data:image/png;base64,${btoa(binary)}`;
-}
-
-export async function GET(request: Request) {
-  const logoUrl = new URL('/brand/motil-wordmark.png', request.url);
-  const logoResponse = await fetch(logoUrl, { cache: 'no-store' });
-  if (!logoResponse.ok) {
-    return new Response('MOTIL logo unavailable', { status: 502 });
-  }
-
-  const logoDataUri = toDataUri(new Uint8Array(await logoResponse.arrayBuffer()));
-
+export async function GET() {
   return new ImageResponse(
     (
-      <div
-        style={{
-          width: '100%',
-          height: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: '#0a0a0a',
-          borderRadius: '22%',
-        }}
-      >
-        <img
-          src={logoDataUri}
-          alt=""
-          width="394"
-          height="115"
-          style={{ objectFit: 'contain' }}
+      <svg width="512" height="512" viewBox="0 0 512 512">
+        <rect width="512" height="512" rx="96" fill="#0a0a0a" />
+        <path
+          fill="#f5f0e6"
+          d="M122 110h86l48 118 48-118h86v292h-72V240l-37 92h-50l-37-92v162h-72V110z"
         />
-      </div>
+      </svg>
     ),
     {
       width: 512,
