@@ -277,10 +277,13 @@ export function DashboardHome({ locale, dictionary }: { locale: Locale; dictiona
   const t = dictionary.app.home;
   const inbox = useSWR<InboxPayload>('/api/actions/inbox', fetcher, { refreshInterval: 60000, revalidateOnFocus: false });
   const moduleAccess = useSWR<ModuleAccessPayload>('/api/dashboard/module-access', fetcher, { revalidateOnFocus: false });
-  const production = useSWR<ProductionOverview | null>('/api/produccion/canonical-overview', optionalFetcher, { revalidateOnFocus: false });
-  const maintenance = useSWR<MaintenanceOverview | null>('/api/maintenance/work-order-flow?limit=200', optionalFetcher, { revalidateOnFocus: false });
-
   const mode = resolveMode(inbox.data?.profile?.cargoName);
+  // These cross-area aggregate endpoints are unnecessary for mine and engineering
+  // homes; never load organization-wide data merely to render a role shortcut.
+  const needsProductionSummary = ['plant', 'drilling', 'management'].includes(mode);
+  const needsMaintenanceSummary = mode === 'maintenance';
+  const production = useSWR<ProductionOverview | null>(needsProductionSummary ? '/api/produccion/canonical-overview' : null, optionalFetcher, { revalidateOnFocus: false });
+  const maintenance = useSWR<MaintenanceOverview | null>(needsMaintenanceSummary ? '/api/maintenance/work-order-flow?limit=200' : null, optionalFetcher, { revalidateOnFocus: false });
   const config = configFor(mode, production.data, maintenance.data, inbox.data, t, locale);
   const scopedRole = mode === 'mine' || mode === 'engineering';
   const tasks = (inbox.data?.tasks || []).slice(0, 5);
