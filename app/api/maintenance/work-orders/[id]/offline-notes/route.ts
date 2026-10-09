@@ -26,17 +26,20 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ error: 'Fecha de captura fuera de rango; requiere revisión.' }, { status: 409 });
   }
 
+  // Capture the narrowed organization context in immutable local bindings.
+  // TypeScript does not preserve discriminated-union narrowing inside callbacks.
+  const { supabase, organizationId, userId } = context;
   async function findExistingNote() {
-    return context.supabase.from('work_order_events')
+    return supabase.from('work_order_events')
       .select('id,work_order_id,actor_id,payload')
-      .eq('organization_id', context.organizationId)
+      .eq('organization_id', organizationId)
       .eq('source_table', 'motil_offline_note')
       .eq('source_record_id', operationId)
       .maybeSingle();
   }
   function duplicateResponse(existing: { id: number; work_order_id: string; actor_id: string | null; payload: unknown }) {
     const stored = existing.payload && typeof existing.payload === 'object' ? existing.payload as Record<string, unknown> : {};
-    if (existing.work_order_id !== id || existing.actor_id !== context.userId
+    if (existing.work_order_id !== id || existing.actor_id !== userId
         || stored.notes !== notes || stored.captured_at !== capturedAt) {
       return NextResponse.json({ error: 'Operación offline en conflicto; requiere revisión.' }, { status: 409 });
     }
