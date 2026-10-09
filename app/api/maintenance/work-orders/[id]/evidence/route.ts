@@ -124,7 +124,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           return NextResponse.json({ error: 'La foto debe pesar menos de 20 MB.' }, { status: 400 });
         }
 
-        const evidenceId = crypto.randomUUID();
+        const clientId = typeof body?.evidenceId === 'string' ? body.evidenceId : '';
+        if (clientId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clientId)) return NextResponse.json({ error: 'ID de evidencia inválido' }, { status: 400 });
+        const evidenceId = clientId || crypto.randomUUID();
+        const { data: alreadySaved, error: existingError } = await context.supabase.from('work_order_evidence_files').select('id').eq('id', evidenceId).eq('organization_id', context.organizationId).eq('work_order_id', id).maybeSingle();
+        if (existingError) throw existingError;
+        if (alreadySaved) return NextResponse.json({ alreadyCompleted: true, evidenceId });
         const storagePath = `${context.organizationId}/${id}/${evidenceId}.${extension}`;
         const { data: signed, error: signedError } = await context.supabase.storage
           .from(BUCKET)
@@ -170,6 +175,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           return NextResponse.json({ error: 'La foto no terminó de subir. Intenta nuevamente.' }, { status: 409 });
         }
 
+        const { data: recorded } = await context.supabase.from('work_order_evidence_files').select('id').eq('id', evidenceId).eq('organization_id', context.organizationId).eq('work_order_id', id).maybeSingle();
+        if (recorded) return NextResponse.json({ evidence: recorded, duplicate: true });
         const { data, error } = await context.supabase
           .from('work_order_evidence_files')
           .insert({
@@ -190,7 +197,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           .single();
 
         if (error) {
-          await context.supabase.storage.from(BUCKET).remove([storagePath]);
+          if (error.code === '23505') return NextResponse.json({ evidence: { id: evidenceId }, duplicate: true });
           throw error;
         }
 
