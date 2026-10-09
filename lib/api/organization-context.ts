@@ -171,7 +171,7 @@ export async function getOrganizationContext(
   // Workshop heads must never inherit organization-wide OT access from their ED module grant.
   // Apply to EVERY detail endpoint (read, timer, photos, close, supplies, review, etc.).
   const workOrderPath = request.nextUrl.pathname.match(
-    /^\\/api\\/maintenance\\/work-orders\\/([0-9a-f-]{36})(?:\\/|$)/i,
+    /^\/api\/maintenance\/work-orders\/([0-9a-f-]{36})(?:\/|$)/i,
   );
   if (workOrderPath) {
     try {
