@@ -40,3 +40,11 @@ Hasta recibir plan del mes vigente y levantamientos originales (fecha, mina, sec
 - Umbrales de proyectos de SERNAGEOMIN: dependen de capacidad autorizada, no se deducen del plan MINE-2026-08.
 - Pendientes de pedir a la faena: resolución del método de explotación, plano maestro/versiones, profesional firmante, jefe de mina designado, estudios/registro topográfico y capacidad autorizada.
 - QA antes de main: confirmar build SHA exacto, pruebas, navegación con cargo JEFE ING. PLA MINA, UI móvil y desktop, ninguna expansión de la matriz RBAC.
+
+## Expediente técnico y derivación de Ingeniería a Legal (2026-10-09)
+- Consulta restringida al permiso `prod_topografia`; documentos de los módulos Ingeniería/Topografía/Producción y fuentes plan/drilling/mine_report bajo `organization_id`. No expone documentos Legal/HSE, URLs ni rutas de storage.
+- Las fuentes operativas tienen procedencia y tipo, pero **no** se consideran evidencia de aprobación normativa. Pueden existir otros repositorios no consultados.
+- La API `/api/intelligence/engineering-evidence-dossier` permite lectura ED/LEC y presentación de solicitud a Legal únicamente con ED, por un ID válido del catálogo regulatorio.
+- Envío manual con restricción UNIQUE ya existente (org, source_type, source_id), `ignoreDuplicates:true` y sin sobrescribir estados, plazos o cierres. Sin DDL ni migraciones.
+- Estado acotado del caso visible en Ingeniería; Legal conserva su bandeja original, validaciones y cierre.
+- Los casos solo se generan por interacción explícita del usuario autorizado. Ningún archivo, cumplimiento o vencimiento se inventa por falta de evidencia.

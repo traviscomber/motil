@@ -7,6 +7,7 @@ const api=await readFile(new URL('../app/api/produccion/topografia/route.ts',imp
 const screen=await readFile(new URL('../components/production/topografia-dashboard.tsx',import.meta.url),'utf8');
 const assistant=await readFile(new URL('../app/api/intelligence/engineering-assistant/route.ts',import.meta.url),'utf8');
 const legal=await readFile(new URL('../app/api/legal/sernageomin/route.ts',import.meta.url),'utf8');
+const dossier=await readFile(new URL('../components/production/engineering-regulatory-dossier.tsx',import.meta.url),'utf8');
 
 test('engineering regulatory subset reuses authoritative canonical catalogue rather than building another silo',()=>{
   assert.match(catalogue,/sernageomin-qualified-project-engineer-and-mine-chief/);
@@ -21,8 +22,8 @@ test('Topography reference is compact, gives official sources and avoids false l
   assert.match(screen,/Criterios técnicos SERNAGEOMIN/);
   assert.match(screen,/no equivale automáticamente a Jefe de Mina/);
   assert.match(screen,/El seguimiento y cierre de obligaciones permanece en Legal/);
-  assert.match(screen,/item\.sourceUrl/);
-  assert.match(screen,/rel="noopener noreferrer"/);
+  assert.match(dossier,/item\.sourceUrl/);
+  assert.match(dossier,/rel="noopener noreferrer"/);
   assert.doesNotMatch(screen,/marcar cumplido|Aprobar norma|Cumplimiento certificado/i);
 });
 test('role assistant uses DS 132 article references without granting Legal access',()=>{

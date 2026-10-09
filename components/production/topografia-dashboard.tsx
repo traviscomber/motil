@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { PageHeader, PageHeaderContent, PageHeaderDescription, PageHeaderEyebrow, PageHeaderTitle } from '@/components/ui/page-header';
 import { StatePanel } from '@/components/ui/state-panel';
 import { TopographyEvidenceQueue } from '@/components/production/topografia-evidence-queue';
+import { EngineeringRegulatoryDossier } from '@/components/production/engineering-regulatory-dossier';
 
 type TopografiaData = {
   plan: null | { plan_code:string; period_start:string; period_end:string };
@@ -116,20 +117,7 @@ export function TopografiaDashboard(){
       <p className="max-w-3xl text-sm text-muted-foreground">
         Referencias para preparar antecedentes. El cargo interno de Ingeniería no equivale automáticamente a Jefe de Mina ni habilita la firma de proyectos. La empresa identifica responsables y Legal valida aplicabilidad.
       </p>
-      <div className="grid gap-3 lg:grid-cols-2">
-        {data.regulatoryGuidance.items.map(item=><article key={item.id} className="min-w-0 rounded-md border px-4 py-3">
-          <p className="text-sm font-semibold">{item.title}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{item.legalBasis.join(' · ')}</p>
-          <p className="mt-3 text-sm leading-relaxed">{item.nextAction}</p>
-          <p className="mt-3 text-xs text-muted-foreground">Responsabilidad por confirmar: {item.businessOwner}</p>
-          <details className="mt-3">
-            <summary className="cursor-pointer text-xs font-medium">Aplicabilidad y evidencia requerida</summary>
-            <p className="mt-2 text-xs text-muted-foreground">{item.applicabilityNote}</p>
-            <p className="mt-2 text-xs text-muted-foreground">Respaldos a solicitar: {item.expectedEvidence.join(' · ')}</p>
-          </details>
-          <a href={item.sourceUrl} className="mt-3 inline-block text-xs underline underline-offset-4" target="_blank" rel="noopener noreferrer">Consultar fuente oficial</a>
-        </article>)}
-      </div>
+      <EngineeringRegulatoryDossier />
       <p className="text-xs text-muted-foreground">Referencia normativa, no dictamen de cumplimiento. No se han acreditado aquí nombramientos, firmas, resoluciones ni vigencias concretas. El seguimiento y cierre de obligaciones permanece en Legal.</p>
     </div>
   </details> : null}
