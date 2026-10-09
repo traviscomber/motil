@@ -31,6 +31,13 @@ const fetcher = async (url: string) => {
   return payload;
 };
 
+function durationLabel(value?: number | null) {
+  if (value == null || !Number.isFinite(Number(value)) || Number(value) < 0) return 'Sin registrar';
+  const minutes = Math.round(Number(value) * 60);
+  const hours = Math.floor(minutes / 60);
+  return hours ? hours + ' h ' + String(minutes % 60).padStart(2, '0') + ' min' : minutes + ' min';
+}
+
 function fill(template: string, vars: Record<string, string | number>) {
   return template.replace(/\{(\w+)\}/g, (_, key: string) => String(vars[key] ?? ''));
 }
@@ -150,9 +157,18 @@ export function WorkOrderDetail({ locale, dictionary }: { locale: Locale; dictio
           <h1 className="mt-2 text-2xl font-semibold tracking-tight">{workOrder.title || t.untitled}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{formatAssetIdentity(workOrder.asset_name, workOrder.asset_code) || t.noAsset}</p>
         </div>
+        <div className="flex flex-wrap items-center gap-4">
+          {isCompleted ? (
+            <div className="min-w-44 rounded-lg border px-5 py-3 text-right">
+              <p className="text-xs text-muted-foreground">Tiempo ejecutado</p>
+              <p className="text-3xl font-semibold tracking-tight tabular-nums">{durationLabel(workOrder.actual_duration_hours)}</p>
+            </div>
+          ) : null}
         <Button asChild variant="outline"><Link href={`/dashboard/mantenimiento/equipos/${workOrder.canonical_asset_id || workOrder.asset_id}`}>Ficha 360</Link></Button>
+        </div>
       </section>
 
+      {!isCompleted ? (
       <Card className="shadow-none">
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Seguimiento simple</CardTitle>
@@ -179,6 +195,7 @@ export function WorkOrderDetail({ locale, dictionary }: { locale: Locale; dictio
         </CardContent>
       </Card>
 
+      ) : null}
       <Card className="shadow-none">
         <CardHeader className="pb-3"><CardTitle className="text-base">Preparación</CardTitle></CardHeader>
         <CardContent className="grid gap-5 lg:grid-cols-2">
