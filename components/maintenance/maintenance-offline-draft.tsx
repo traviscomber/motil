@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/card';
 
 const DB_NAME = 'motil-maintenance-offline-v1';
 const STORE = 'drafts';
-type Draft = { id: string; notes: string; updatedAt: string; queue?: Array<{ operationId: string; notes: string; capturedAt: string }> };
+type Draft = { id: string; notes: string; updatedAt: string; queue?: Array<{ operationId: string; notes: string; capturedAt: string }>; journal?: Array<{ operationId: string; action: 'play' | 'pause' | 'resume' | 'terminate'; capturedAt: string; notes: string }> };
 
 async function draftsDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -52,6 +52,8 @@ export function MaintenanceOfflineDraft({ workOrderId }: { workOrderId: string }
   const [error, setError] = useState('');
   const [queue, setQueue] = useState<NonNullable<Draft['queue']>>([]);
   const [syncing, setSyncing] = useState(false);
+  const [journal, setJournal] = useState<NonNullable<Draft['journal']>>([]);
+  const [pauseReason, setPauseReason] = useState('');
 
   useEffect(() => {
     setOnline(navigator.onLine);
@@ -69,6 +71,7 @@ export function MaintenanceOfflineDraft({ workOrderId }: { workOrderId: string }
       if (!active) return;
       setNotes(draft?.notes || '');
       setQueue(draft?.queue || []);
+      setJournal(draft?.journal || []);
       setSavedAt(draft?.updatedAt || null);
       setLoaded(true);
     }).catch(() => { if (active) { setLoaded(true); setError('El dispositivo no permite guardar borradores locales.'); } });
@@ -79,19 +82,42 @@ export function MaintenanceOfflineDraft({ workOrderId }: { workOrderId: string }
     if (!loaded) return;
     const timeout = window.setTimeout(() => {
       const updatedAt = new Date().toISOString();
-      void writeDraft({ id: workOrderId, notes, updatedAt, queue }).then(() => {
+      void writeDraft({ id: workOrderId, notes, updatedAt, queue, journal }).then(() => {
         setSavedAt(updatedAt);
         setError('');
       }).catch(() => setError('No se pudo guardar el borrador local. Copia el texto antes de salir.'));
     }, 450);
     return () => window.clearTimeout(timeout);
-  }, [loaded, notes, queue, workOrderId]);
+  }, [loaded, notes, queue, journal, workOrderId]);
+
+  const localStatus = journal.length ? journal[journal.length - 1].action : null;
+  const captureTimerEvent = async (action: 'play' | 'pause' | 'resume' | 'terminate') => {
+    if ((action === 'pause' && !pauseReason.trim()) || (action === 'play' && localStatus && localStatus !== 'terminate')) return;
+    const next = [...journal, { operationId: crypto.randomUUID(), action, capturedAt: new Date().toISOString(), notes: action === 'pause' ? pauseReason.trim() : '' }];
+    try {
+      await writeDraft({ id: workOrderId, notes, updatedAt: new Date().toISOString(), queue, journal: next });
+      setJournal(next);
+      setPauseReason('');
+      setError('');
+    } catch { setError('No fue posible guardar el evento del reloj en el dispositivo.'); }
+  };
+  const registerJournal = async () => {
+    if (!journal.length) return;
+    const summary = journal.map((item) => `${new Date(item.capturedAt).toLocaleString('es-CL')} · ${item.action === 'play' ? 'Inicio' : item.action === 'pause' ? 'Pausa' : item.action === 'resume' ? 'Reanudación' : 'Término'}${item.notes ? ` (${item.notes})` : ''}`).join('\\n');
+    const next = [...queue, { operationId: crypto.randomUUID(), capturedAt: journal[0].capturedAt, notes: `Bitácora temporal offline (requiere conciliación del supervisor; NO modifica temporizador oficial):\\n${summary}` }];
+    try {
+      await writeDraft({ id: workOrderId, notes, updatedAt: new Date().toISOString(), queue: next, journal: [] });
+      setQueue(next);
+      setJournal([]);
+      setError('');
+    } catch { setError('No fue posible preparar la bitácora para sincronizar.'); }
+  };
 
   const capture = async () => {
     if (!notes.trim()) return;
     const next = [...queue, { operationId: crypto.randomUUID(), notes: notes.trim(), capturedAt: new Date().toISOString() }];
     try {
-      await writeDraft({ id: workOrderId, notes: '', updatedAt: new Date().toISOString(), queue: next });
+      await writeDraft({ id: workOrderId, notes: '', updatedAt: new Date().toISOString(), queue: next, journal });
       setQueue(next);
       setNotes('');
       setError('');
@@ -114,7 +140,7 @@ export function MaintenanceOfflineDraft({ workOrderId }: { workOrderId: string }
         }
         remaining = remaining.filter((entry) => entry.operationId !== item.operationId);
         // Persist the acknowledged queue before updating the UI.
-        await writeDraft({ id: workOrderId, notes, updatedAt: new Date().toISOString(), queue: remaining });
+        await writeDraft({ id: workOrderId, notes, updatedAt: new Date().toISOString(), queue: remaining, journal });
         setQueue(remaining);
       }
     } catch { setError('Sin conexión con el servidor. Se conservaron las notas pendientes.'); }
@@ -137,6 +163,19 @@ export function MaintenanceOfflineDraft({ workOrderId }: { workOrderId: string }
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs text-muted-foreground">{savedAt ? `Guardado en este dispositivo: ${new Date(savedAt).toLocaleString('es-CL')}` : 'Borrador local pendiente'}</p>
         <Button type="button" variant="outline" size="sm" disabled={!notes || !navigatorClipboardAvailable()} onClick={() => void navigator.clipboard.writeText(notes)}><Copy className="mr-1 h-3 w-3" />Copiar</Button>
+      </div>
+      <div className="rounded-md border p-3 space-y-2">
+        <p className="text-sm font-medium">Bitácora temporal sin conexión</p>
+        <p className="text-xs text-muted-foreground">Registra hora de inicio, pausas y término. No modifica el reloj ni cierra la OT oficial hasta conciliación.</p>
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" type="button" variant="outline" disabled={!loaded || (localStatus !== null && localStatus !== 'terminate')} onClick={() => void captureTimerEvent('play')}>Iniciar local</Button>
+          <Button size="sm" type="button" variant="outline" disabled={!loaded || (localStatus !== 'play' && localStatus !== 'resume')} onClick={() => void captureTimerEvent('pause')}>Pausar local</Button>
+          <Button size="sm" type="button" variant="outline" disabled={!loaded || localStatus !== 'pause'} onClick={() => void captureTimerEvent('resume')}>Reanudar local</Button>
+          <Button size="sm" type="button" variant="outline" disabled={!loaded || !localStatus || localStatus === 'terminate'} onClick={() => void captureTimerEvent('terminate')}>Terminar local</Button>
+        </div>
+        <input value={pauseReason} onChange={(event) => setPauseReason(event.target.value)} maxLength={500} placeholder="Motivo obligatorio de pausa" aria-label="Motivo de pausa local" className="w-full rounded-md border bg-background px-3 py-2 text-sm" />
+        <p className="text-xs text-muted-foreground">{journal.length} evento(s) conservado(s) localmente</p>
+        <Button size="sm" type="button" disabled={!journal.length || !loaded} onClick={() => void registerJournal()}>Preparar bitácora para sincronizar</Button>
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <Button type="button" size="sm" disabled={!notes.trim() || !loaded} onClick={() => void capture()}>Guardar nota para sincronizar</Button>
