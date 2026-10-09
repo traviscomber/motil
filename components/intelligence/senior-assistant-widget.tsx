@@ -201,15 +201,54 @@ export function SeniorAssistantWidget() {
     '¿Qué fuentes topográficas impiden comparar el avance?',
     '¿Qué debo verificar primero con Operaciones?',
   ];
+  const normalizedRole = String(user?.cargo || '').trim().toLowerCase();
+  const mineProfiles = {
+    'jefe mina peumo': {
+      title: 'Asistente de Jaime · Mina Peumo',
+      context: 'Jefatura de Mina Peumo',
+      starters: [
+        '¿Cuáles son las prioridades verificadas de Peumo?',
+        'Genera un informe semanal de la mina Peumo.',
+        '¿Qué indica el plan disponible y qué información sigue faltando?',
+      ],
+    },
+    'jefe mina don jaime': {
+      title: 'Asistente de Cristian · Mina Don Jaime',
+      context: 'Jefatura de Mina Don Jaime',
+      starters: [
+        '¿Qué requiere atención en Don Jaime?',
+        'Dame el avance verificable del plan de Don Jaime.',
+        'Prepara el reporte semanal de producción y mantenimiento.',
+      ],
+    },
+    'jefe de taller mina don jaime': {
+      title: 'Asistente de Joaquín · Taller Don Jaime',
+      context: 'Taller Don Jaime',
+      starters: [
+        '¿Qué OT debo priorizar y cuáles puedo cerrar?',
+        'Muéstrame pendientes de repuestos, fotos y aprobación.',
+        'Genera un informe semanal del taller.',
+      ],
+    },
+  } as const;
+  const roleProfile = mineProfiles[normalizedRole as keyof typeof mineProfiles] || null;
+  // Only the server-validated assistant may access the data. This cookie is UI context alone.
+  const mineAssistant = roleProfile ? {
+    endpoint: '/api/intelligence/mine-role-assistant',
+    loadingCopy: 'Leyendo evidencia de tu mina y cargo…',
+    emptyCopy: 'Consulta tus OT, equipos, avance, seguridad y prioridades. Los informes indican fecha de fuente; las solicitudes quedan pendientes de revisión.',
+    placeholder: 'Pregunta a tu asistente operacional…',
+    toolCopy: {},
+  } : null;
   const [open, setOpen] = useState(false);
   const context = useMemo(() => resolveAssistantContext(pathname), [pathname]);
   const regularSpecialist = Object.prototype.hasOwnProperty.call(specialistConfig, context.domain)
     ? specialistConfig[context.domain as SpecialistDomain]
     : null;
-  const specialist = engineeringAssistant || regularSpecialist;
-  const displayTitle = engineeringAssistant ? 'Asistente de Ingeniería Minera' : context.title;
-  const displayContext = engineeringAssistant ? 'Ingeniería / Topografía' : context.label;
-  const showsControlledMemory = !engineeringAssistant && controlledMemoryDomains.has(context.domain);
+  const specialist = mineAssistant || engineeringAssistant || regularSpecialist;
+  const displayTitle = roleProfile?.title || (engineeringAssistant ? 'Asistente de Ingeniería Minera' : context.title);
+  const displayContext = roleProfile?.context || (engineeringAssistant ? 'Ingeniería / Topografía' : context.label);
+  const showsControlledMemory = !mineAssistant && !engineeringAssistant && controlledMemoryDomains.has(context.domain);
 
   useEffect(() => {
     if (!open) return;
@@ -246,7 +285,7 @@ export function SeniorAssistantWidget() {
           {specialist ? (
             <SpecialistAssistantBody
               endpoint={specialist.endpoint}
-              starters={engineeringAssistant ? engineeringPrompts : context.suggestedPrompts}
+              starters={roleProfile?.starters ? [...roleProfile.starters] : engineeringAssistant ? engineeringPrompts : context.suggestedPrompts}
               emptyCopy={specialist.emptyCopy}
               loadingCopy={specialist.loadingCopy}
               placeholder={specialist.placeholder}
