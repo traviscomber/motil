@@ -44,7 +44,9 @@ async function writeDraft(draft: Draft): Promise<void> {
 }
 
 /** Phase 1: local capture only. Never replay timer/closure mutations without server idempotency. */
-export function MaintenanceOfflineDraft({ workOrderId }: { workOrderId: string }) {
+export function MaintenanceOfflineDraft({ workOrderId, offlineScope }: { workOrderId: string; offlineScope: string }) {
+  // Never show a different signed-in user's offline notes on a shared device.
+  const draftId = `${offlineScope}:${workOrderId}`;
   const [online, setOnline] = useState(true);
   const [notes, setNotes] = useState('');
   const [loaded, setLoaded] = useState(false);
@@ -67,7 +69,7 @@ export function MaintenanceOfflineDraft({ workOrderId }: { workOrderId: string }
   useEffect(() => {
     let active = true;
     setLoaded(false);
-    void readDraft(workOrderId).then((draft) => {
+    void readDraft(draftId).then((draft) => {
       if (!active) return;
       setNotes(draft?.notes || '');
       setQueue(draft?.queue || []);
@@ -76,26 +78,26 @@ export function MaintenanceOfflineDraft({ workOrderId }: { workOrderId: string }
       setLoaded(true);
     }).catch(() => { if (active) { setLoaded(true); setError('El dispositivo no permite guardar borradores locales.'); } });
     return () => { active = false; };
-  }, [workOrderId]);
+  }, [draftId]);
 
   useEffect(() => {
     if (!loaded) return;
     const timeout = window.setTimeout(() => {
       const updatedAt = new Date().toISOString();
-      void writeDraft({ id: workOrderId, notes, updatedAt, queue, journal }).then(() => {
+      void writeDraft({ id: draftId, notes, updatedAt, queue, journal }).then(() => {
         setSavedAt(updatedAt);
         setError('');
       }).catch(() => setError('No se pudo guardar el borrador local. Copia el texto antes de salir.'));
     }, 450);
     return () => window.clearTimeout(timeout);
-  }, [loaded, notes, queue, journal, workOrderId]);
+  }, [loaded, notes, queue, journal, draftId]);
 
   const localStatus = journal.length ? journal[journal.length - 1].action : null;
   const captureTimerEvent = async (action: 'play' | 'pause' | 'resume' | 'terminate') => {
     if ((action === 'pause' && !pauseReason.trim()) || (action === 'play' && localStatus && localStatus !== 'terminate')) return;
     const next = [...journal, { operationId: crypto.randomUUID(), action, capturedAt: new Date().toISOString(), notes: action === 'pause' ? pauseReason.trim() : '' }];
     try {
-      await writeDraft({ id: workOrderId, notes, updatedAt: new Date().toISOString(), queue, journal: next });
+      await writeDraft({ id: draftId, notes, updatedAt: new Date().toISOString(), queue, journal: next });
       setJournal(next);
       setPauseReason('');
       setError('');
@@ -106,7 +108,7 @@ export function MaintenanceOfflineDraft({ workOrderId }: { workOrderId: string }
     const summary = journal.map((item) => `${new Date(item.capturedAt).toLocaleString('es-CL')} · ${item.action === 'play' ? 'Inicio' : item.action === 'pause' ? 'Pausa' : item.action === 'resume' ? 'Reanudación' : 'Término'}${item.notes ? ` (${item.notes})` : ''}`).join('\\n');
     const next = [...queue, { operationId: crypto.randomUUID(), capturedAt: journal[0].capturedAt, notes: `Bitácora temporal offline (requiere conciliación del supervisor; NO modifica temporizador oficial):\\n${summary}` }];
     try {
-      await writeDraft({ id: workOrderId, notes, updatedAt: new Date().toISOString(), queue: next, journal: [] });
+      await writeDraft({ id: draftId, notes, updatedAt: new Date().toISOString(), queue: next, journal: [] });
       setQueue(next);
       setJournal([]);
       setError('');
@@ -117,7 +119,7 @@ export function MaintenanceOfflineDraft({ workOrderId }: { workOrderId: string }
     if (!notes.trim()) return;
     const next = [...queue, { operationId: crypto.randomUUID(), notes: notes.trim(), capturedAt: new Date().toISOString() }];
     try {
-      await writeDraft({ id: workOrderId, notes: '', updatedAt: new Date().toISOString(), queue: next, journal });
+      await writeDraft({ id: draftId, notes: '', updatedAt: new Date().toISOString(), queue: next, journal });
       setQueue(next);
       setNotes('');
       setError('');
@@ -140,7 +142,7 @@ export function MaintenanceOfflineDraft({ workOrderId }: { workOrderId: string }
         }
         remaining = remaining.filter((entry) => entry.operationId !== item.operationId);
         // Persist the acknowledged queue before updating the UI.
-        await writeDraft({ id: workOrderId, notes, updatedAt: new Date().toISOString(), queue: remaining, journal });
+        await writeDraft({ id: draftId, notes, updatedAt: new Date().toISOString(), queue: remaining, journal });
         setQueue(remaining);
       }
     } catch { setError('Sin conexión con el servidor. Se conservaron las notas pendientes.'); }

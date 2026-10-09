@@ -131,8 +131,8 @@ export function WorkOrderDetail({ locale, dictionary }: { locale: Locale; dictio
   if (isExecution) {
     return (
       <div className="space-y-4 py-2 sm:py-6">
-        <MaintenanceOfflineDraft workOrderId={id} />
-        <MaintenanceOfflinePhotos workOrderId={id} />
+        {viewer?.offlineScope ? <MaintenanceOfflineDraft workOrderId={id} offlineScope={viewer.offlineScope} /> : null}
+        {viewer?.offlineScope ? <MaintenanceOfflinePhotos workOrderId={id} offlineScope={viewer.offlineScope} /> : null}
         <MobileWorkOrderFlow
           workOrderId={id}
           workOrderNumber={workOrder.work_order_number}

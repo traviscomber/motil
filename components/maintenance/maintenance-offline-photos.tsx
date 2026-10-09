@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { createClient } from '@/lib/supabase/client';
 
-type LocalPhoto = { id: string; workOrderId: string; file: Blob; fileName: string; mimeType: string; capturedAt: string };
+type LocalPhoto = { id: string; workOrderId: string; scope: string; file: Blob; fileName: string; mimeType: string; capturedAt: string };
 const DB = 'motil-maintenance-photos-v1';
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -30,7 +30,7 @@ const list = () => transact<LocalPhoto[]>('readonly', (store) => store.getAll())
 const save = (photo: LocalPhoto) => transact('readwrite', (store) => store.put(photo));
 const remove = (id: string) => transact('readwrite', (store) => store.delete(id));
 
-export function MaintenanceOfflinePhotos({ workOrderId }: { workOrderId: string }) {
+export function MaintenanceOfflinePhotos({ workOrderId, offlineScope }: { workOrderId: string; offlineScope: string }) {
   const [photos, setPhotos] = useState<LocalPhoto[]>([]);
   const [online, setOnline] = useState(true);
   const [working, setWorking] = useState(false);
@@ -44,9 +44,9 @@ export function MaintenanceOfflinePhotos({ workOrderId }: { workOrderId: string 
   }, []);
   useEffect(() => {
     let active = true;
-    void list().then((all) => { if (active) setPhotos(all.filter((p) => p.workOrderId === workOrderId)); }).catch(() => setMessage('El dispositivo no permite almacenar fotos offline.'));
+    void list().then((all) => { if (active) setPhotos(all.filter((p) => p.workOrderId === workOrderId && p.scope === offlineScope)); }).catch(() => setMessage('El dispositivo no permite almacenar fotos offline.'));
     return () => { active = false; };
-  }, [workOrderId]);
+  }, [workOrderId, offlineScope]);
 
   async function capture(files: FileList | null) {
     if (!files?.length) return;
@@ -54,7 +54,7 @@ export function MaintenanceOfflinePhotos({ workOrderId }: { workOrderId: string 
     try {
       for (const file of Array.from(files)) {
         if (!['image/jpeg','image/png','image/webp','image/heic','image/heif'].includes(file.type) || file.size > 20 * 1024 * 1024 || !file.size) throw new Error('Fotografía no válida. Máximo 20 MB por imagen.');
-        const photo: LocalPhoto = { id: crypto.randomUUID(), workOrderId, file, fileName: file.name, mimeType: file.type, capturedAt: new Date().toISOString() };
+        const photo: LocalPhoto = { id: crypto.randomUUID(), workOrderId, scope: offlineScope, file, fileName: file.name, mimeType: file.type, capturedAt: new Date().toISOString() };
         await save(photo);
         setPhotos((previous) => [...previous, photo]);
       }

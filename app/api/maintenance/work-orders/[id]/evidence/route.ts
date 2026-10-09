@@ -156,6 +156,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         const extension = safeExtension(fileName);
         const mimeType = normalizeMimeType(String(body?.mimeType || ''), extension);
         const notes = String(body?.notes || '').trim() || null;
+        const capturedAt = typeof body?.capturedAt === 'string' ? body.capturedAt : null;
+        const capturedMs = capturedAt ? Date.parse(capturedAt) : NaN;
+        if (capturedAt && (!Number.isFinite(capturedMs) || capturedMs > Date.now() + 5 * 60000 || capturedMs < Date.now() - 30 * 86400000)) {
+          return NextResponse.json({ error: 'Fecha de fotografía fuera de rango; requiere revisión.' }, { status: 409 });
+        }
         const expectedPrefix = `${context.organizationId}/${id}/`;
 
         if (!/^[0-9a-f-]{36}$/i.test(evidenceId) || !storagePath.startsWith(expectedPrefix) || !storagePath.includes(evidenceId)) {
@@ -190,7 +195,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
             mime_type: mimeType,
             size_bytes: sizeBytes,
             notes,
-            captured_at: new Date().toISOString(),
+            captured_at: capturedAt || new Date().toISOString(),
             created_by: context.userId,
           })
           .select('id,evidence_type,file_name,mime_type,size_bytes,notes,captured_at,created_at')
