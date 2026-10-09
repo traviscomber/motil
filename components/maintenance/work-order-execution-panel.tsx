@@ -24,6 +24,14 @@ const money = (value: number | string | null | undefined) =>
 const dateLabel = (value?: string | null) =>
   value ? new Date(value).toLocaleDateString('es-CL') : 'Sin fecha';
 
+const durationLabel = (hours?: number | null) => {
+  if (hours == null || !Number.isFinite(Number(hours)) || Number(hours) < 0) return 'Sin registrar';
+  const minutes = Math.round(Number(hours) * 60);
+  const wholeHours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  return wholeHours > 0 ? `${wholeHours} h ${String(remainingMinutes).padStart(2, '0')} min` : `${remainingMinutes} min`;
+};
+
 type WorkOrderPart = {
   id: string;
   quantity_issued: number;
@@ -177,6 +185,44 @@ export function WorkOrderExecutionPanel({ workOrderId }: { workOrderId: string }
 
   return (
     <div className="space-y-6">
+      <Card className="shadow-none print:shadow-none" id="work-order-final-report">
+        <CardHeader className="flex flex-row items-center justify-between gap-4">
+          <CardTitle className="flex items-center gap-2 text-base"><FileText className="h-4 w-4" />Informe final de la orden</CardTitle>
+          <Button variant="outline" size="sm" onClick={() => window.print()} className="print:hidden"><Printer className="mr-2 h-4 w-4" />Imprimir</Button>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="rounded-xl border bg-muted/30 px-5 py-6 sm:px-7">
+            <p className="text-sm font-medium text-muted-foreground">Tiempo total ejecutado</p>
+            <p className="mt-2 text-4xl font-semibold tracking-tight tabular-nums sm:text-5xl">{durationLabel(workOrder.actual_duration_hours)}</p>
+            <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
+              <span>Tiempo detenido: <strong className="font-medium text-foreground">{durationLabel(workOrder.down_time_hours)}</strong></span>
+              <span>Responsable: <strong className="font-medium text-foreground">{workOrder.assigned_to_name || 'Sin asignar'}</strong></span>
+              <span>Estado: <strong className="font-medium text-foreground">{workOrder.status === 'completed' ? 'Cerrada' : 'En proceso'}</strong></span>
+            </div>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div><p className="text-xs text-muted-foreground">Orden</p><p className="mt-1 font-medium">{workOrder.work_order_number ? formatWorkOrderNumber(workOrder.work_order_number, 'es') : 'Sin número'}</p></div>
+            <div><p className="text-xs text-muted-foreground">Responsable</p><p className="mt-1 font-medium">{workOrder.assigned_to_name || 'Sin asignar'}</p></div>
+            <div><p className="text-xs text-muted-foreground">Fecha programada</p><p className="mt-1 font-medium">{dateLabel(workOrder.scheduled_date)}</p></div>
+            <div><p className="text-xs text-muted-foreground">Fecha de cierre</p><p className="mt-1 font-medium">{dateLabel(workOrder.completion_date)}</p></div>
+          </div>
+          <div><p className="text-xs text-muted-foreground">Trabajo solicitado</p><p className="mt-1 text-sm">{workOrder.title || 'Sin título'}{workOrder.description ? ` · ${workOrder.description}` : ''}</p></div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div><p className="text-xs text-muted-foreground">Causa principal</p><p className="mt-1 text-sm">{workOrder.root_cause || 'No registrada'}</p></div>
+            <div><p className="text-xs text-muted-foreground">Acción aplicada</p><p className="mt-1 text-sm">{workOrder.preventive_actions || 'No registrada'}</p></div>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div><p className="text-xs text-muted-foreground">Técnicos</p><p className="mt-1 font-medium">{labor.length}</p></div>
+            <div><p className="text-xs text-muted-foreground">Costo total</p><p className="mt-1 font-medium">{money(costs.total_cost)}</p></div>
+          </div>
+          <div className="grid gap-5 lg:grid-cols-3">
+            <div><p className="text-sm font-medium">Repuestos instalados</p><ul className="mt-2 space-y-1 text-sm text-muted-foreground">{parts.filter((part) => Number(part.quantity_installed || 0) > 0).map((part) => <li key={part.id}>{part.stock?.part_name || 'Repuesto'} · {part.quantity_installed}</li>)}{parts.every((part) => Number(part.quantity_installed || 0) <= 0) ? <li>Sin repuestos instalados</li> : null}</ul></div>
+            <div><p className="text-sm font-medium">Mano de obra</p><ul className="mt-2 space-y-1 text-sm text-muted-foreground">{labor.map((entry) => <li key={entry.id}>{entry.technician_name} · {entry.hours} h</li>)}{labor.length === 0 ? <li>Sin mano de obra registrada</li> : null}</ul></div>
+            <div><p className="text-sm font-medium">Servicios externos</p><ul className="mt-2 space-y-1 text-sm text-muted-foreground">{services.map((service) => <li key={service.id}>{service.provider_name} · {money(service.amount)}</li>)}{services.length === 0 ? <li>Sin servicios externos</li> : null}</ul></div>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card className="shadow-none">
         <CardHeader><CardTitle className="text-base">Costo real de la orden</CardTitle></CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -264,37 +310,6 @@ export function WorkOrderExecutionPanel({ workOrderId }: { workOrderId: string }
               <div className="flex items-center gap-3"><Badge variant="outline">{service.status === 'pending' ? 'Pendiente' : 'Aprobado'}</Badge><p className="font-medium">{money(service.amount)}</p></div>
             </div>
           ))}</div> : <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">No hay servicios externos registrados.</p>}
-        </CardContent>
-      </Card>
-
-      <Card className="shadow-none print:shadow-none" id="work-order-final-report">
-        <CardHeader className="flex flex-row items-center justify-between gap-4">
-          <CardTitle className="flex items-center gap-2 text-base"><FileText className="h-4 w-4" />Informe final de la orden</CardTitle>
-          <Button variant="outline" size="sm" onClick={() => window.print()} className="print:hidden"><Printer className="mr-2 h-4 w-4" />Imprimir</Button>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div><p className="text-xs text-muted-foreground">Orden</p><p className="mt-1 font-medium">{workOrder.work_order_number ? formatWorkOrderNumber(workOrder.work_order_number, 'es') : 'Sin número'}</p></div>
-            <div><p className="text-xs text-muted-foreground">Responsable</p><p className="mt-1 font-medium">{workOrder.assigned_to_name || 'Sin asignar'}</p></div>
-            <div><p className="text-xs text-muted-foreground">Fecha programada</p><p className="mt-1 font-medium">{dateLabel(workOrder.scheduled_date)}</p></div>
-            <div><p className="text-xs text-muted-foreground">Fecha de cierre</p><p className="mt-1 font-medium">{dateLabel(workOrder.completion_date)}</p></div>
-          </div>
-          <div><p className="text-xs text-muted-foreground">Trabajo solicitado</p><p className="mt-1 text-sm">{workOrder.title || 'Sin título'}{workOrder.description ? ` · ${workOrder.description}` : ''}</p></div>
-          <div className="grid gap-4 md:grid-cols-2">
-            <div><p className="text-xs text-muted-foreground">Causa principal</p><p className="mt-1 text-sm">{workOrder.root_cause || 'No registrada'}</p></div>
-            <div><p className="text-xs text-muted-foreground">Acción aplicada</p><p className="mt-1 text-sm">{workOrder.preventive_actions || 'No registrada'}</p></div>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div><p className="text-xs text-muted-foreground">Horas reales</p><p className="mt-1 font-medium">{Number(workOrder.actual_duration_hours || 0)} h</p></div>
-            <div><p className="text-xs text-muted-foreground">Tiempo detenido</p><p className="mt-1 font-medium">{Number(workOrder.down_time_hours || 0)} h</p></div>
-            <div><p className="text-xs text-muted-foreground">Técnicos</p><p className="mt-1 font-medium">{labor.length}</p></div>
-            <div><p className="text-xs text-muted-foreground">Costo total</p><p className="mt-1 font-medium">{money(costs.total_cost)}</p></div>
-          </div>
-          <div className="grid gap-5 lg:grid-cols-3">
-            <div><p className="text-sm font-medium">Repuestos instalados</p><ul className="mt-2 space-y-1 text-sm text-muted-foreground">{parts.filter((part) => Number(part.quantity_installed || 0) > 0).map((part) => <li key={part.id}>{part.stock?.part_name || 'Repuesto'} · {part.quantity_installed}</li>)}{parts.every((part) => Number(part.quantity_installed || 0) <= 0) ? <li>Sin repuestos instalados</li> : null}</ul></div>
-            <div><p className="text-sm font-medium">Mano de obra</p><ul className="mt-2 space-y-1 text-sm text-muted-foreground">{labor.map((entry) => <li key={entry.id}>{entry.technician_name} · {entry.hours} h</li>)}{labor.length === 0 ? <li>Sin mano de obra registrada</li> : null}</ul></div>
-            <div><p className="text-sm font-medium">Servicios externos</p><ul className="mt-2 space-y-1 text-sm text-muted-foreground">{services.map((service) => <li key={service.id}>{service.provider_name} · {money(service.amount)}</li>)}{services.length === 0 ? <li>Sin servicios externos</li> : null}</ul></div>
-          </div>
         </CardContent>
       </Card>
 
