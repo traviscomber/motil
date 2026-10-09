@@ -92,6 +92,7 @@ type WorkOrderSummary = {
 };
 
 export function WorkOrderExecutionPanel({ workOrderId }: { workOrderId: string }) {
+  const { data: photoData } = useSWR(workOrderId ? `/api/maintenance/work-orders/${workOrderId}/evidence` : null, fetcher);
   const { data, error, isLoading, mutate } = useSWR(
     workOrderId ? `/api/maintenance/work-orders/${workOrderId}/execution` : null,
     fetcher,
@@ -117,6 +118,7 @@ export function WorkOrderExecutionPanel({ workOrderId }: { workOrderId: string }
   const services = (Array.isArray(data?.externalServices) ? data.externalServices : []) as ExternalService[];
   const events = (Array.isArray(data?.events) ? data.events : []) as WorkOrderEvent[];
   const costs = data?.costs || {};
+  const reportPhotos = (Array.isArray(photoData?.evidence) ? photoData.evidence : []).filter((photo: { signed_url?: string | null }) => Boolean(photo.signed_url)).slice(0, 2) as Array<{ id: string; signed_url: string; file_name?: string | null }>;
 
   const execute = async (payload: Record<string, unknown>, key: string) => {
     setBusyKey(key);
@@ -185,10 +187,18 @@ export function WorkOrderExecutionPanel({ workOrderId }: { workOrderId: string }
 
   return (
     <div className="space-y-6">
+      <style>{`@media print {
+        @page { size: A4; margin: 15mm; }
+        body * { visibility: hidden !important; }
+        #work-order-final-report, #work-order-final-report * { visibility: visible !important; }
+        #work-order-final-report { position: absolute !important; top: 0 !important; left: 0 !important; width: 100% !important; border: none !important; box-shadow: none !important; background: white !important; color: black !important; }
+        #work-order-final-report button { display: none !important; }
+        #work-order-final-report img { max-height: 185px !important; object-fit: contain !important; }
+      }`}</style>
       <Card className="shadow-none print:shadow-none" id="work-order-final-report">
         <CardHeader className="flex flex-row items-center justify-between gap-4">
           <CardTitle className="flex items-center gap-2 text-base"><FileText className="h-4 w-4" />Informe final de la orden</CardTitle>
-          <Button variant="outline" size="sm" onClick={() => window.print()} className="print:hidden"><Printer className="mr-2 h-4 w-4" />Imprimir</Button>
+          <Button variant="outline" size="sm" onClick={() => window.print()} className="print:hidden"><Printer className="mr-2 h-4 w-4" />Imprimir / Guardar PDF</Button>
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="rounded-xl border bg-muted/30 px-5 py-6 sm:px-7">
@@ -215,6 +225,18 @@ export function WorkOrderExecutionPanel({ workOrderId }: { workOrderId: string }
             <div><p className="text-xs text-muted-foreground">Técnicos</p><p className="mt-1 font-medium">{labor.length}</p></div>
             <div><p className="text-xs text-muted-foreground">Costo total</p><p className="mt-1 font-medium">{money(costs.total_cost)}</p></div>
           </div>
+          {reportPhotos.length > 0 ? (
+            <section className="hidden print:block">
+              <p className="mb-2 text-sm font-semibold">Evidencia fotográfica</p>
+              <div className="grid grid-cols-2 gap-3">
+                {reportPhotos.map((photo) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img key={photo.id} src={photo.signed_url} alt={photo.file_name || 'Evidencia de OT'} className="h-44 w-full rounded border object-contain" />
+                ))}
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">Hasta dos fotografías. Las demás permanecen en la ficha digital.</p>
+            </section>
+          ) : null}
           <div className="grid gap-5 lg:grid-cols-3">
             <div><p className="text-sm font-medium">Repuestos instalados</p><ul className="mt-2 space-y-1 text-sm text-muted-foreground">{parts.filter((part) => Number(part.quantity_installed || 0) > 0).map((part) => <li key={part.id}>{part.stock?.part_name || 'Repuesto'} · {part.quantity_installed}</li>)}{parts.every((part) => Number(part.quantity_installed || 0) <= 0) ? <li>Sin repuestos instalados</li> : null}</ul></div>
             <div><p className="text-sm font-medium">Mano de obra</p><ul className="mt-2 space-y-1 text-sm text-muted-foreground">{labor.map((entry) => <li key={entry.id}>{entry.technician_name} · {entry.hours} h</li>)}{labor.length === 0 ? <li>Sin mano de obra registrada</li> : null}</ul></div>
