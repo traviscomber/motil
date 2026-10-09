@@ -239,12 +239,18 @@ export async function loadMineEvidence(
         .eq('organization_id',org).in('id',planIds).order('period_start',{ascending:false}).limit(20)
         : Promise.resolve({data:[],error:null}),
       'Vigencia explícita: si la fecha actual queda fuera del periodo, es plan histórico.',20);
-    await checked('incidents','canonical_hse_incidents_v1',
-      () => db.from('canonical_hse_incidents_v1')
-        .select('id,incident_number,date_occurred,location,incident_type,severity,status,investigation_status')
-        .eq('organization_id',org).ilike('location','%'+mine+'%')
-        .order('date_occurred',{ascending:false}).limit(45),
-      'Sólo incidentes explícitamente ubicados en la mina; ubicaciones sin normalizar no se atribuyen ni cuentan como ausencia de incidentes.',45);
+    // HSE is controlled by the live module matrix, not the user's historical job title.
+    const hseAccess = await getModuleAccessLevel(context.userId, context.role, MODULE_KEYS.HSE_INCIDENTE);
+    if (hseAccess === 'ED' || hseAccess === 'LEC') {
+      await checked('incidents','canonical_hse_incidents_v1',
+        () => db.from('canonical_hse_incidents_v1')
+          .select('id,incident_number,date_occurred,location,incident_type,severity,status,investigation_status')
+          .eq('organization_id',org).ilike('location','%'+mine+'%')
+          .order('date_occurred',{ascending:false}).limit(45),
+        'Sólo incidentes explícitamente ubicados en la mina; ubicaciones sin normalizar no se atribuyen ni cuentan como ausencia de incidentes.',45);
+    } else {
+      data.incidents = { source:'not_authorized', rows:[], completeness:'El cargo no tiene acceso HSE vigente.' };
+    }
   } else {
     for (const key of ['drilling','planLines','plans','incidents'] as const) {
       data[key] = { source:'not_authorized', rows:[], completeness:'No incluido en el asistente de Taller; sin acceso de producción ni HSE por este endpoint.' };
