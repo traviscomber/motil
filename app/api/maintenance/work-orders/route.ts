@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getOrganizationContext } from '@/lib/api/organization-context';
 import { getMaintenanceWorkOrderCreationCapability } from '@/lib/maintenance/work-order-create-access';
 import { resolveMaintenanceViewerMode } from '@/lib/maintenance/viewer-mode';
+import { resolveWorkshopHeadScope, workshopHeadOrderFilter, workshopSiteFromKnownLocation, workshopSiteFromRoleTitle } from '@/lib/maintenance/workshop-site-scope';
 
 type WorkOrderRow = {
   id: string;
@@ -234,7 +235,8 @@ export async function GET(request: NextRequest) {
   if (!context.ok) return context.response;
   try {
     const executionScope = await resolveExecutionPersonId(context);
-    const executionWithoutPerson = executionScope.execution && !executionScope.personId;
+    const workshopScope = await resolveWorkshopHeadScope(context);
+    const executionWithoutPerson = executionScope.execution && !(workshopScope.isWorkshopHead ? workshopScope.personId : executionScope.personId);
     if (executionWithoutPerson) {
       return NextResponse.json({ workOrders: [], canonical: true, assignedOnly: true });
     }
@@ -244,7 +246,11 @@ export async function GET(request: NextRequest) {
     const scope = request.nextUrl.searchParams.get('scope')?.trim();
     const limit = Number(request.nextUrl.searchParams.get('limit') || '0');
     let query = context.supabase.from('maintenance_work_orders').select('*').eq('organization_id', context.organizationId).order('created_at', { ascending: false });
-    if (executionScope.execution && executionScope.personId) query = query.eq('assigned_person_id', executionScope.personId);
+    if (workshopScope.isWorkshopHead) {
+      query = query.or(workshopHeadOrderFilter(workshopScope));
+    } else if (executionScope.execution && executionScope.personId) {
+      query = query.eq('assigned_person_id', executionScope.personId);
+    }
     if (status) query = query.eq('status', status);
     if (priority) query = query.eq('priority', priority);
     if (scope === 'operational') query = query.not('created_by', 'is', null);
@@ -264,7 +270,8 @@ export async function GET(request: NextRequest) {
         reviewMap.get(row.id) || null,
       )),
       canonical: true,
-      assignedOnly: executionScope.execution,
+      assignedOnly: executionScope.execution && !workshopScope.isWorkshopHead,
+      workshopSite: workshopScope.isWorkshopHead ? workshopScope.site : null,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'No se pudieron obtener las órdenes de trabajo';
@@ -294,6 +301,10 @@ export async function POST(request: NextRequest) {
     }
 
     const creationCapability = await getMaintenanceWorkOrderCreationCapability(context);
+    const workshopScope = await resolveWorkshopHeadScope(context);
+    if (workshopScope.isWorkshopHead && !workshopScope.personId) {
+      return NextResponse.json({ error: 'Tu cargo debe estar vinculado a una persona activa para crear OT.' }, { status: 403 });
+    }
     if (!creationCapability.canCreate) {
       return NextResponse.json(
         { error: 'Tu cargo no tiene autorización para crear órdenes de trabajo de mantenimiento.' },
@@ -307,7 +318,7 @@ export async function POST(request: NextRequest) {
 
     const { data: assignedPerson, error: assignedPersonError } = await context.supabase
       .from('people')
-      .select('id,full_name')
+      .select('id,full_name,role_title')
       .eq('organization_id', context.organizationId)
       .eq('id', assignedPersonId)
       .eq('employment_status', 'active')
@@ -316,6 +327,12 @@ export async function POST(request: NextRequest) {
     if (assignedPersonError) throw assignedPersonError;
     if (!assignedPerson) {
       return NextResponse.json({ error: 'La persona seleccionada no está disponible como responsable' }, { status: 400 });
+    }
+    if (workshopScope.isWorkshopHead) {
+      const assigneeSite = workshopSiteFromRoleTitle(assignedPerson.role_title);
+      if (assigneeSite && assigneeSite !== workshopScope.site) {
+        return NextResponse.json({ error: 'El ejecutor pertenece a otra mina.' }, { status: 403 });
+      }
     }
 
     const { data: asset, error: assetError } = await context.supabase
@@ -327,6 +344,17 @@ export async function POST(request: NextRequest) {
       .maybeSingle();
     if (assetError) throw assetError;
     if (!asset) return NextResponse.json({ error: 'Activo canónico no encontrado o inactivo' }, { status: 404 });
+    if (workshopScope.isWorkshopHead) {
+      const { data: canonicalAsset, error: siteError } = await context.supabase.schema('canonical')
+        .from('assets').select('location')
+        .eq('organization_id', context.organizationId)
+        .eq('id', canonicalAssetId).maybeSingle();
+      if (siteError) throw siteError;
+      const assetSite = workshopSiteFromKnownLocation(canonicalAsset?.location);
+      if (assetSite && assetSite !== workshopScope.site) {
+        return NextResponse.json({ error: 'El equipo está registrado en otra mina.' }, { status: 403 });
+      }
+    }
 
     if (reviewId) {
       const { data: review, error: reviewError } = await context.supabase
@@ -370,6 +398,7 @@ export async function POST(request: NextRequest) {
         .update({
           assigned_person_id: assignedPerson.id,
           assigned_to_name: assignedPerson.full_name,
+          ...(workshopScope.isWorkshopHead ? { workshop_site: workshopScope.site } : {}),
           updated_at: new Date().toISOString(),
         })
         .eq('organization_id', context.organizationId)
@@ -452,6 +481,7 @@ export async function POST(request: NextRequest) {
           canonical_asset_id: canonicalAssetId,
           asset_id: null,
           assigned_person_id: assignedPersonId,
+          ...(workshopScope.isWorkshopHead ? { workshop_site: workshopScope.site } : {}),
           title: body.title.trim(),
           description: body.description?.trim() || null,
           work_type: body.workType || body.work_type || 'preventive',
