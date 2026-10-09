@@ -124,7 +124,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           return NextResponse.json({ error: 'La foto debe pesar menos de 20 MB.' }, { status: 400 });
         }
 
-        const evidenceId = crypto.randomUUID();
+        const clientId = typeof body?.evidenceId === 'string' ? body.evidenceId : '';
+        if (clientId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clientId)) return NextResponse.json({ error: 'ID de evidencia inválido' }, { status: 400 });
+        const evidenceId = clientId || crypto.randomUUID();
+        const { data: alreadySaved, error: existingError } = await context.supabase.from('work_order_evidence_files').select('id').eq('id', evidenceId).eq('organization_id', context.organizationId).eq('work_order_id', id).maybeSingle();
+        if (existingError) throw existingError;
+        if (alreadySaved) return NextResponse.json({ alreadyCompleted: true, evidenceId });
         const storagePath = `${context.organizationId}/${id}/${evidenceId}.${extension}`;
         const { data: signed, error: signedError } = await context.supabase.storage
           .from(BUCKET)
@@ -151,6 +156,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         const extension = safeExtension(fileName);
         const mimeType = normalizeMimeType(String(body?.mimeType || ''), extension);
         const notes = String(body?.notes || '').trim() || null;
+        const capturedAt = typeof body?.capturedAt === 'string' ? body.capturedAt : null;
+        const capturedMs = capturedAt ? Date.parse(capturedAt) : NaN;
+        if (capturedAt && (!Number.isFinite(capturedMs) || capturedMs > Date.now() + 5 * 60000 || capturedMs < Date.now() - 30 * 86400000)) {
+          return NextResponse.json({ error: 'Fecha de fotografía fuera de rango; requiere revisión.' }, { status: 409 });
+        }
         const expectedPrefix = `${context.organizationId}/${id}/`;
 
         if (!/^[0-9a-f-]{36}$/i.test(evidenceId) || !storagePath.startsWith(expectedPrefix) || !storagePath.includes(evidenceId)) {
@@ -170,6 +180,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           return NextResponse.json({ error: 'La foto no terminó de subir. Intenta nuevamente.' }, { status: 409 });
         }
 
+        const { data: recorded } = await context.supabase.from('work_order_evidence_files').select('id').eq('id', evidenceId).eq('organization_id', context.organizationId).eq('work_order_id', id).maybeSingle();
+        if (recorded) return NextResponse.json({ evidence: recorded, duplicate: true });
         const { data, error } = await context.supabase
           .from('work_order_evidence_files')
           .insert({
@@ -183,14 +195,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
             mime_type: mimeType,
             size_bytes: sizeBytes,
             notes,
-            captured_at: new Date().toISOString(),
+            captured_at: capturedAt || new Date().toISOString(),
             created_by: context.userId,
           })
           .select('id,evidence_type,file_name,mime_type,size_bytes,notes,captured_at,created_at')
           .single();
 
         if (error) {
-          await context.supabase.storage.from(BUCKET).remove([storagePath]);
+          if (error.code === '23505') return NextResponse.json({ evidence: { id: evidenceId }, duplicate: true });
           throw error;
         }
 

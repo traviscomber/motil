@@ -63,6 +63,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       mode,
+      // Used only to namespace local IndexedDB drafts on shared devices.
+      offlineScope: `${context.organizationId}:${context.userId}`,
       cargoName,
       canEdit: accessLevel === 'ED' || hasAssignedOperationalWork,
       canCreateWorkOrder,
