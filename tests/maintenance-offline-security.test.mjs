@@ -11,7 +11,7 @@ test('the coarse maintenance role guard delegates offline note POSTs to scoped e
   assert.match(route, /requireAssignedMaintenanceExecution/);
   assert.match(route, /requireOperationalMaintenanceWorkOrder/);
   assert.match(route, /getModuleAccessLevel/);
-  assert.match(route, /\.eq\('organization_id', context.organizationId\)/);
+  assert.match(route, /\.eq\('organization_id', organizationId\)/);
 });
 
 test('shared device offline drafts and photos are isolated by organization plus signed-in profile', () => {
