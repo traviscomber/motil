@@ -91,6 +91,9 @@ export type MineEvidence = {
   data: {
     workOrders: EvidenceSet;
     closureReadiness: EvidenceSet;
+    evidencePhotos: EvidenceSet;
+    supervisorReviews: EvidenceSet;
+    confirmedInstallations: EvidenceSet;
     assets: EvidenceSet;
     drilling: EvidenceSet;
     planLines: EvidenceSet;
@@ -145,7 +148,7 @@ export async function loadMineEvidence(
 
   const orders = await checked('workOrders','maintenance_work_orders',
     () => db.from('maintenance_work_orders')
-      .select('id,work_order_number,title,work_type,status,priority,assigned_person_id,assigned_to_name,canonical_asset_id,scheduled_date,actual_duration_hours,root_cause,preventive_actions,created_at,completion_date,workshop_site')
+      .select('id,work_order_number,title,work_type,status,priority,assigned_person_id,assigned_to_name,canonical_asset_id,scheduled_date,actual_duration_hours,down_time_hours,root_cause,preventive_actions,created_at,completion_date,workshop_site')
       .eq('organization_id',org).eq('workshop_site',mine)
       .order('created_at',{ascending:false}).limit(80),
     'OT operativas marcadas explícitamente para esta mina; las OT históricas sin faena no se atribuyen.',80);
@@ -157,6 +160,28 @@ export async function loadMineEvidence(
       .eq('organization_id',org).in('work_order_id',orderIds).limit(80)
       : Promise.resolve({ data: [],error:null }),
     'Requisitos efectivos de cierre de OT visible. Material instalado y retiro de bodega son conceptos distintos.',80);
+
+  await checked('evidencePhotos','work_order_evidence_files',
+    () => orderIds.length ? db.from('work_order_evidence_files')
+      .select('id,work_order_id,evidence_tag,created_at').eq('organization_id',org)
+      .in('work_order_id',orderIds).eq('evidence_type','photo')
+      .order('created_at',{ascending:false}).limit(150)
+      : Promise.resolve({data:[],error:null}),
+    'Fotografías registradas para OT de esta faena; los archivos son evidencia, no aprobación automática.',150);
+
+  await checked('supervisorReviews','work_order_supervisor_reviews',
+    () => orderIds.length ? db.from('work_order_supervisor_reviews')
+      .select('id,work_order_id,status,reviewed_by_name,reviewed_at,decision_note')
+      .eq('organization_id',org).in('work_order_id',orderIds).limit(80)
+      : Promise.resolve({data:[],error:null}),
+    'Aprobaciones verificadas para las OT recuperadas; el cierre técnico no equivale a aprobación.',80);
+
+  await checked('confirmedInstallations','work_order_material_approval_installations',
+    () => orderIds.length ? db.from('work_order_material_approval_installations')
+      .select('work_order_id,installed_quantity,confirmed_by_name,confirmed_at,warehouse_reconciliation_status')
+      .eq('organization_id',org).in('work_order_id',orderIds).limit(100)
+      : Promise.resolve({data:[],error:null}),
+    'Instalaciones confirmadas por supervisión, separadas de retiros físicos de bodega.',100);
 
   await checked('assets','canonical.assets',
     () => db.schema('canonical').from('assets')
@@ -241,15 +266,26 @@ export function renderMineReport(evidence: MineEvidence): string {
     '## Restricciones de cierre',
     ...data.closureReadiness.rows.filter(r => r.ready_to_close !== true).slice(0,18).map(r => '- '+value(r,'work_order_number')+': '+value(r,'next_action')+'; materiales pendientes '+value(r,'unmet_material_requirements')+' (no conciliados)'),
     '',
+    '## Evidencias, aprobaciones y materiales',
+    ...data.workOrders.rows.slice(0,16).map(row => {
+      const n = data.evidencePhotos.rows.filter(photo => photo.work_order_id === row.id).length;
+      const review = data.supervisorReviews.rows.find(r => r.work_order_id === row.id);
+      const installed = data.confirmedInstallations.rows.filter(r => r.work_order_id === row.id);
+      return '- '+value(row,'work_order_number')+': '+n+' fotos consultadas · supervisión '+(review ? value(review,'status') : 'sin revisión registrada')+' · líneas de instalación confirmadas '+installed.length+' · bodega independiente de la instalación.';
+    }),
+    '',
     '## Equipos identificados en la mina',
     ...data.assets.rows.slice(0,18).map(r => '- '+value(r,'asset_code')+': '+value(r,'name')+' · '+value(r,'operational_status')+' · '+value(r,'location')),
   ];
   if (user.role === 'mine_manager') {
+    const inPeriod = data.drilling.rows.filter(r => String(r.operation_date || '') >= periodStart && String(r.operation_date || '') <= periodEnd);
+    const latestDrilling = String(data.drilling.rows[0]?.operation_date || 'sin fecha verificable');
     lines.push('','## Perforación — registros disponibles, no producción en tiempo real',
-      ...data.drilling.rows.slice(0,15).map(r => '- '+value(r,'operation_date')+' · '+value(r,'rig_name_raw')+' · metros '+value(r,'drilled_meters')+' · estado '+value(r,'equipment_status_raw')+' · origen '+value(r,'source_file')),
-      ...(data.drilling.rows.length===0 ? ['Sin registros canónicos de perforación atribuibles a esta mina.'] : []),
+      'Última fecha de origen consultada: '+latestDrilling+'; registros en ventana: '+inPeriod.length+'. La muestra está limitada y puede no cubrir todos los reportes del periodo.',
+      ...inPeriod.slice(0,15).map(r => '- '+value(r,'operation_date')+' · '+value(r,'rig_name_raw')+' · metros '+value(r,'drilled_meters')+' · estado '+value(r,'equipment_status_raw')+' · origen '+value(r,'source_file')),
+      ...(inPeriod.length===0 ? ['Sin evidencia de perforación en la ventana consultada; no implica ausencia de operación.'] : []),
       '','## Planificación minera',
-      ...data.plans.rows.map(r => '- '+value(r,'plan_code')+' · '+value(r,'period_start')+' a '+value(r,'period_end')+' · '+value(r,'status')),
+      ...data.plans.rows.map(r => '- '+value(r,'plan_code')+' · '+value(r,'period_start')+' a '+value(r,'period_end')+' · '+(String(r.period_end || '') < periodEnd ? 'histórico, no plan actual verificado' : value(r,'status'))),
       ...data.planLines.rows.slice(0,16).map(r => '- Línea: '+value(r,'mine_name_raw')+' / '+value(r,'sector_raw')+' · toneladas previstas '+value(r,'planned_tons')+' · avance '+value(r,'planned_advance_m')+' m'),
       '','## Seguridad — evidencia con ubicación identificable',
       ...data.incidents.rows.slice(0,12).map(r => '- '+value(r,'incident_number')+' · '+value(r,'date_occurred')+' · '+value(r,'severity')+' · '+value(r,'status')));
