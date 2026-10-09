@@ -23,7 +23,7 @@ test('approval is explicitly limited to Ariel or Mauricio', () => {
   assert.match(reviewRoute, /p_confirm_materials_installed/);
 });
 
-test('approval is separate from execution truth and is audited', () => {
+test('approval is separate from execution truth and is audited', async () => {
   assert.match(migration, /work_order_supervisor_reviews/);
   assert.match(migration, /unique \(organization_id, work_order_id\)/);
   const approvalMigration = await readFile(new URL('../supabase/migrations/20261009141000_defer_material_reconciliation_until_supervisor_approval.sql', import.meta.url), 'utf8');
