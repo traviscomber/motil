@@ -1,6 +1,6 @@
 # MOTIL Rock Master v1 — 360 asset-first
 
-Estado: candidato en revisión visual, no aprobado para producción.
+Estado: vista 360 aprobada visualmente por el responsable y habilitada por defecto en el hero. Publicación sujeta a QA y merge.
 
 ## Fuente única
 
@@ -24,7 +24,8 @@ Estado: candidato en revisión visual, no aprobado para producción.
 - Ángulos directos: `?angle=0`, `?angle=90`, `?angle=180`, `?angle=270`.
 - Arrastrar horizontalmente sobre el modelo permite una vuelta completa; soporta preferencia de movimiento reducido.
 - Comparar cuatro siluetas, balance negro / cobre, continuidad de vetas, grosor, profundidad y encuadre.
-- No habilitar `NEXT_PUBLIC_MOTIL_HERO_3D=enabled` hasta pasar captura de escritorio y móvil, consola y QA visual.
+- La landing usa el GLB por defecto y mantiene la imagen estática hasta renderizar el primer frame. Para rollback, configurar `NEXT_PUBLIC_MOTIL_HERO_3D=disabled` y redesplegar.
+- Verificar capturas de escritorio y móvil, navegación, carga de GLB y consola antes de merge.
 
 ## Fuera de alcance
 
