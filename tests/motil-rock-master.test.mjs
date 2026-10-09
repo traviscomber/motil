@@ -67,3 +67,36 @@ test('Rock Master v1 has authored vertex color and watertight 360-degree triangl
   for (const count of sectors) assert.ok(count >= 200, 'full 360-degree normals must be represented');
   for (const used of edgeUsage.values()) assert.equal(used, 2, 'surface must be closed and manifold');
 });
+
+test('Copper sulfide lab palette is encoded in the GLB and preserves dark fissures', async () => {
+  const data = await readFile(path);
+  const jsonLength = data.readUInt32LE(12);
+  const gltf = JSON.parse(data.toString('utf8', 20, 20 + jsonLength));
+  const material = gltf.materials[0].pbrMetallicRoughness;
+  assert.equal(gltf.asset.extras?.palette, 'bornite-chalcopyrite-copper-orange-v1');
+  assert.equal(gltf.asset.extras?.geometry, 'unchanged');
+  assert.equal(material.roughnessFactor, 0.42);
+  assert.equal(material.metallicFactor, 0.88);
+  const primitive = gltf.meshes[0].primitives[0];
+  const accessor = gltf.accessors[primitive.attributes.COLOR_0];
+  const offset = 20 + jsonLength + 8 + gltf.bufferViews[accessor.bufferView].byteOffset;
+  const stride = gltf.bufferViews[accessor.bufferView].byteStride ?? 16;
+  let dark = 0;
+  let warmCopper = 0;
+  const channelSums = [0, 0, 0];
+  for (let i = 0; i < accessor.count; i++) {
+    const p = offset + i * stride;
+    const color = [data.readFloatLE(p), data.readFloatLE(p + 4), data.readFloatLE(p + 8)];
+    const alpha = data.readFloatLE(p + 12);
+    for (const c of color) assert.ok(Number.isFinite(c) && c >= 0 && c <= 1);
+    assert.equal(alpha, 1);
+    for (let c = 0; c < 3; c++) channelSums[c] += color[c];
+    const luminance = color[0] * 0.2126 + color[1] * 0.7152 + color[2] * 0.0722;
+    if (luminance < 0.075) dark++;
+    if (color[0] > 1.8 * color[1] && luminance > 0.13) warmCopper++;
+  }
+  assert.ok(dark >= 4000, 'retain dark sulfide matrix');
+  assert.ok(warmCopper >= 3000, 'copper-orange remains visible across the model');
+  assert.ok(channelSums[0] / channelSums[1] > 1.7, 'orange-copper must outweigh flat bronze');
+  assert.ok(channelSums[2] / channelSums[0] < 0.40, 'avoid blue-biased highlights');
+});

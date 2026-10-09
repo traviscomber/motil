@@ -22,9 +22,9 @@ export default async function RockMaster360({
         <p className="mb-5 text-[11px] tracking-[0.32em] uppercase text-[#aaa69c]">MOTIL / Brand laboratory / Preview only</p>
         <h1 className="font-light text-3xl md:text-4xl">Rock Master v1</h1>
         <p className="mt-4 max-w-2xl text-sm leading-7 text-[#aaa69c]">
-          Revisión 360° del modelo original con sus colores por vértice y material PBR.
+          Estudio mineral de sulfuros de cobre: bornita, calcopirita y calcosina oscura. Los tonos cobre-anaranjados, latón y pátina discreta viven dentro del GLB.
           Arrastra la roca para rotarla libremente o inspecciona los cuatro ángulos fijos.
-          La iluminación es neutra y no modifica el color del archivo.
+          La iluminación es neutra y permite revisar el color real del archivo.
         </p>
         <nav className="mt-8 flex flex-wrap gap-2" aria-label="Vista de la roca">
           {angles.map((angle) => (
@@ -40,12 +40,12 @@ export default async function RockMaster360({
             </a>
           ))}
         </nav>
-        <div className="mt-10 flex min-h-[360px] items-center justify-center border border-[#292925] bg-[#20201d] p-4 md:min-h-[600px]">
+        <div className="ld-rock-lab-view mt-10 flex min-h-[360px] items-center justify-center border border-[#292925] bg-[#20201d] p-4 md:min-h-[600px]">
           <LandingStone force3D initialYaw={selected} />
         </div>
         <p className="mt-7 text-xs leading-6 text-[#aaa69c]">
           Modelo: /motil-rock-master-v1.glb · Fallback visual: /brand/hero-stone.png.
-          No se activa el 3D del hero en producción hasta aprobar los cuatro lados.
+          Revisión exclusiva en preview. La versión de producción y los datos operacionales permanecen intactos.
         </p>
       </div>
     </main>
