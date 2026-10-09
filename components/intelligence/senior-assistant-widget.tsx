@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useAuth } from '@/hooks/use-auth';
 import { ArrowUpRight, X } from 'lucide-react';
 import { resolveAssistantContext } from '@/lib/intelligence/assistant-context';
 import { SpecialistAssistantBody } from '@/components/intelligence/specialist-assistant-body';
@@ -184,12 +185,31 @@ export function SeniorAssistantMark({ className = '' }: { className?: string }) 
 
 export function SeniorAssistantWidget() {
   const pathname = usePathname();
+  const { user } = useAuth();
+  // The cookie only controls visibility; the endpoint verifies cargo and permissions on the server.
+  const engineeringCargo = String(user?.cargo || '').trim().toUpperCase() === 'JEFE ING. PLA MINA';
+  const isEngineeringContext = pathname === '/dashboard' || pathname.startsWith('/dashboard/produccion/topografia');
+  const engineeringAssistant = engineeringCargo && isEngineeringContext ? {
+    endpoint: '/api/intelligence/engineering-assistant',
+    loadingCopy: 'Verificando el plan, tus tareas y las brechas de fuente…',
+    emptyCopy: 'Las respuestas usan evidencia vigente del cargo. No se modifican datos ni se guarda historial.',
+    placeholder: 'Consulta sobre planificación minera…',
+    toolCopy: {},
+  } : null;
+  const engineeringPrompts = [
+    '¿Cuál es el estado real del plan minero?',
+    '¿Qué fuentes topográficas impiden comparar el avance?',
+    '¿Qué debo verificar primero con Operaciones?',
+  ];
   const [open, setOpen] = useState(false);
   const context = useMemo(() => resolveAssistantContext(pathname), [pathname]);
-  const specialist = Object.prototype.hasOwnProperty.call(specialistConfig, context.domain)
+  const regularSpecialist = Object.prototype.hasOwnProperty.call(specialistConfig, context.domain)
     ? specialistConfig[context.domain as SpecialistDomain]
     : null;
-  const showsControlledMemory = controlledMemoryDomains.has(context.domain);
+  const specialist = engineeringAssistant || regularSpecialist;
+  const displayTitle = engineeringAssistant ? 'Asistente de Ingeniería Minera' : context.title;
+  const displayContext = engineeringAssistant ? 'Ingeniería / Topografía' : context.label;
+  const showsControlledMemory = !engineeringAssistant && controlledMemoryDomains.has(context.domain);
 
   useEffect(() => {
     if (!open) return;
@@ -204,7 +224,7 @@ export function SeniorAssistantWidget() {
     <>
       {open ? (
         <section
-          aria-label={context.title}
+          aria-label={displayTitle}
           className={specialist
             ? 'fixed bottom-24 right-4 z-50 flex h-[min(700px,calc(100vh-7rem))] w-[min(460px,calc(100vw-2rem))] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-xl md:right-6'
             : 'fixed bottom-24 right-4 z-50 w-[min(23rem,calc(100vw-2rem))] overflow-hidden rounded-lg border border-border bg-card shadow-xl md:right-6'}
@@ -214,8 +234,8 @@ export function SeniorAssistantWidget() {
               <SeniorAssistantMark className="size-10" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="font-heading text-sm font-semibold text-foreground">{context.title}</p>
-              <p className="mt-0.5 truncate text-xs text-muted-foreground">Contexto: {context.label}</p>
+              <p className="font-heading text-sm font-semibold text-foreground">{displayTitle}</p>
+              <p className="mt-0.5 truncate text-xs text-muted-foreground">Contexto: {displayContext}</p>
             </div>
             {showsControlledMemory ? <ControlledMemoryPopover /> : null}
             <button type="button" onClick={() => setOpen(false)} className="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" aria-label={`Cerrar ${context.title}`}>
@@ -226,7 +246,7 @@ export function SeniorAssistantWidget() {
           {specialist ? (
             <SpecialistAssistantBody
               endpoint={specialist.endpoint}
-              starters={context.suggestedPrompts}
+              starters={engineeringAssistant ? engineeringPrompts : context.suggestedPrompts}
               emptyCopy={specialist.emptyCopy}
               loadingCopy={specialist.loadingCopy}
               placeholder={specialist.placeholder}
