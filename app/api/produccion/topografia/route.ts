@@ -5,6 +5,7 @@ import { getOrganizationContext } from '@/lib/api/organization-context';
 import { MODULE_KEYS, requireModuleAccess } from '@/lib/api/module-access';
 import { assessPlanPeriod, currentChileDate } from '@/lib/production/engineering-plan-period.mjs';
 import { summarizeCanonicalMonthlyPlan } from '@/lib/production/engineering-plan-metrics.mjs';
+import { summarizeEngineeringSourceReadiness } from '@/lib/production/engineering-source-readiness.mjs';
 
 export async function GET(request: NextRequest) {
   const access = await requireModuleAccess(request, MODULE_KEYS.PROD_TOPOGRAFIA);
@@ -38,6 +39,22 @@ export async function GET(request: NextRequest) {
       headers: { 'Cache-Control':'private, no-store' } });
   const planLines = planLineResult.data || [];
   const metrics = summarizeCanonicalMonthlyPlan(activePlan,planLines,planLineResult.count);
+  // Historical drilling reports are evidence of source availability only.
+  // They are not accepted topographic measurements or validated production.
+  const reportsResult = activePlan
+    ? await context.supabase.from('production_drilling_source_reports')
+        .select('operation_date,reconciliation_status,canonical_mine_source_id,canonical_mine_sector_id,drilled_meters,mine_raw,sector_raw',{count:'exact'})
+        .eq('organization_id',context.organizationId)
+        .gte('operation_date',activePlan.period_start)
+        .lte('operation_date',activePlan.period_end)
+        .order('operation_date',{ascending:false}).limit(1200)
+    : { data: [], count: null, error: null };
+  if(reportsResult.error)return NextResponse.json(
+    {error:'No se pudo verificar la integridad de las fuentes de perforación.'},
+    {status:503,headers:{'Cache-Control':'private, no-store'}});
+  const readiness=summarizeEngineeringSourceReadiness(
+    planPeriod,reportsResult.data||[],reportsResult.count);
+
 
   return NextResponse.json({
     plan: activePlan,
@@ -54,6 +71,7 @@ export async function GET(request: NextRequest) {
       actualAdvanceM: null,
     },
     breakdown: metrics.breakdown,
+    readiness,
     lines: planLines,
     intelligenceStatus: {
       surveyCanonical: false,

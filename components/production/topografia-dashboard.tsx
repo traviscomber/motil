@@ -12,6 +12,12 @@ type TopografiaData = {
   planPeriod: { status:'current'|'expired'|'upcoming'|'missing'|'invalid'; evaluatedDate:string; canUseAsCurrent:boolean };
   summary: { canonicalSectors:number; planLines:number; plannedAdvanceM:number|null; plannedDrillingM:number|null; plannedTons:number|null; wasteTons:number|null; totalMovementTons:number|null; actualSurveyPoints:number|null; actualAdvanceM:number|null };
   breakdown: { loadedLines:number; totalLines:number|null; complete:boolean; mineTotalTons:number|null; radialDrillingM:number|null; detailedAdvanceM:number|null; movementHeaderConsistent:boolean|null; overlapsByDesign:true; note:string };
+  readiness: {
+    evaluatedDate:string; planPeriod:string; comparisonReady:boolean;
+    checks:Array<{code:string;passed:boolean;label:string}>;
+    reports:{total:number|null;loaded:number;complete:boolean;statusCounts:{review:number;matched:number;approved:number;other:number};resolvedMine:number;resolvedSector:number;bothResolved:number;withReportedMeters:number;invalidRawMine:number;unregisteredRawSector:number;firstDate:string|null;lastDate:string|null;notVerifiedExecution:true};
+    note:string;
+  };
   lines: Array<{ id:string; line_type:string; mine_name_raw:string|null; sector_raw:string|null; level_raw:string|null; section_raw:string|null; planned_tons:number|null; planned_grade_pct:number|null; planned_advance_m:number|null; planned_drilling_m:number|null; priority:number|null; source_reference:string|null }>;
   intelligenceStatus: { surveyCanonical:boolean; coordinatesCanonical:boolean; actualAdvanceCanonical:boolean; note:string };
 };
@@ -67,6 +73,31 @@ export function TopografiaDashboard(){
       <p className="text-xs text-muted-foreground">La perforación radial detallada puede representar solo una parte del objetivo total de perforación: no es ejecución ni una diferencia de avance pendiente.</p>
       {!data.breakdown.complete ? <p className="text-sm text-destructive">Detalle parcial: {data.breakdown.loadedLines} de {data.breakdown.totalLines ?? 'total no conocido'} líneas; no se certifica cobertura.</p> : null}
       {data.breakdown.movementHeaderConsistent===false ? <p className="text-sm text-destructive">Las toneladas de movimiento no coinciden con mineral a planta más estéril en la cabecera; se requiere validación documental.</p> : null}
+    </div>
+  </section> : null}
+
+
+  {data?.plan ? <section className="rounded-lg border bg-card px-5 py-5" aria-label="Preparación de conciliación plan y ejecución">
+    <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Integridad operacional</p>
+    <h2 className="mt-1 text-lg font-semibold">¿Podemos comparar lo planificado con lo ejecutado?</h2>
+    <p className="mt-2 text-sm font-medium">{data.readiness.comparisonReady?'Fuentes verificadas':'Todavía no: faltan verificaciones de origen'}</p>
+    <p className="mt-2 text-sm text-muted-foreground">{data.readiness.note}</p>
+    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+      {data.readiness.checks.map(item=><div key={item.code} className="rounded-md border px-3 py-3">
+        <p className="text-xs text-muted-foreground">{item.passed?'Verificado':'Pendiente de validar'}</p>
+        <p className="mt-1 text-sm font-medium">{item.label}</p>
+      </div>)}
+    </div>
+    <div className="mt-4 border-t pt-4 text-sm">
+      <p className="font-medium">Fuente de perforación del período del plan</p>
+      <p className="mt-1 text-muted-foreground">{data.readiness.reports.total==null?'Total no verificable':data.readiness.reports.complete?String(data.readiness.reports.total)+' registros fuente':String(data.readiness.reports.loaded)+' de '+String(data.readiness.reports.total)+' registros (muestra parcial)'}; no representan avance topográfico validado.</p>
+      <div className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
+        <p>Con sector canónico: <strong>{data.readiness.reports.bothResolved} de {data.readiness.reports.complete?data.readiness.reports.total ?? 0:data.readiness.reports.loaded}</strong></p>
+        <p>Pendientes de revisión: <strong>{data.readiness.reports.statusCounts.review}{data.readiness.reports.complete?'':' en muestra'}</strong></p>
+        <p>Conciliados documentalmente: <strong>{data.readiness.reports.statusCounts.matched}{data.readiness.reports.complete?'':' en muestra'}</strong></p>
+        <p>Último registro disponible: <strong>{data.readiness.reports.lastDate || 'Sin fecha disponible'}</strong></p>
+      </div>
+      <p className="mt-3 text-xs text-muted-foreground">La validación requiere un plan del mes, identificación de mina y sector, conciliación de los registros y evidencia topográfica original. No se calculan porcentajes de cumplimiento sin estas fuentes.</p>
     </div>
   </section> : null}
 
