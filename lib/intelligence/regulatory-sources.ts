@@ -48,9 +48,9 @@ export const REGULATORY_SOURCES: readonly RegulatorySource[] = [
   },
   {
     id: 'sernageomin-ds-132', authority: 'SERNAGEOMIN', title: 'Reglamento de Seguridad Minera — DS 132',
-    sourceType: 'regulation', evidenceClass: 'regulatory_knowledge', canonicalUrl: 'https://www.sernageomin.cl/seguridad-minera/',
-    versionOrResolution: 'DS 132', effectiveDate: null, lastReviewedAt: '2026-09-13',
-    domains: ['hse', 'operations', 'assets', 'maintenance', 'inspections'], status: 'active_reference',
+    sourceType: 'regulation', evidenceClass: 'regulatory_knowledge', canonicalUrl: 'https://www.bcn.cl/leychile/navegar?idNorma=221064',
+    versionOrResolution: 'DS 132, texto consolidado en Ley Chile', effectiveDate: null, lastReviewedAt: '2026-10-09',
+    domains: ['engineering', 'projects', 'hse', 'operations', 'assets', 'maintenance', 'inspections'], status: 'active_reference',
     notes: 'General mining-safety regulatory context. Applicability and current text must be checked against the authoritative source/version.',
   },
   {
