@@ -540,3 +540,9 @@
     justify-content: center;
   }
 }
+
+/* Rock Master preview: inspect mineral colors at true display scale. */
+.motil-landing .ld-rock-lab-view .ld-stone-stage {
+  width: min(100%, 660px);
+  justify-self: center;
+}
