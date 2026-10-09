@@ -20,6 +20,10 @@ type TopografiaData = {
   };
   lines: Array<{ id:string; line_type:string; mine_name_raw:string|null; sector_raw:string|null; level_raw:string|null; section_raw:string|null; planned_tons:number|null; planned_grade_pct:number|null; planned_advance_m:number|null; planned_drilling_m:number|null; priority:number|null; source_reference:string|null }>;
   intelligenceStatus: { surveyCanonical:boolean; coordinatesCanonical:boolean; actualAdvanceCanonical:boolean; note:string };
+  regulatoryGuidance: { authority:'SERNAGEOMIN'; source:'canonical_sernageomin_obligations';
+    items:Array<{id:string;title:string;legalBasis:string[];sourceUrl:string;businessOwner:string;nextAction:string;applicabilityNote:string;expectedEvidence:string[]}>;
+    humanValidationRequired:true; complianceVerdictCalculated:false; roleAssignmentVerified:false;
+  };
 };
 
 const fetcher=async(url:string):Promise<TopografiaData>=>{const r=await fetch(url,{credentials:'include'});const d=await r.json();if(!r.ok)throw new Error(d.error||'No fue posible cargar Topografía');return d;};
@@ -106,6 +110,30 @@ export function TopografiaDashboard(){
   {data&&hasActualTopography?<section className="rounded-lg border bg-card p-5" aria-label="Actual topográfico"><div className="flex items-start justify-between gap-4"><div><p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Actual topográfico</p><p className="mt-1 font-medium">Levantamiento canónico disponible</p><p className="mt-1 text-sm text-muted-foreground">Sólo se muestran valores provenientes de la fuente topográfica canónica.</p></div><Map className="h-5 w-5 text-muted-foreground"/></div><div className="mt-4 grid gap-4 sm:grid-cols-2"><div><p className="text-xs text-muted-foreground">Puntos de levantamiento</p><p className="mt-1 text-xl font-semibold tabular-nums">{s?.actualSurveyPoints==null?'—':n(s.actualSurveyPoints)}</p></div><div><p className="text-xs text-muted-foreground">Avance real</p><p className="mt-1 text-xl font-semibold tabular-nums">{s?.actualAdvanceM==null?'—':`${n(s.actualAdvanceM,1)} m`}</p></div></div></section>:null}
 
   {data?.plan?<section className="overflow-hidden rounded-lg border bg-card"><div className="border-b px-4 py-3"><div className="flex items-start justify-between gap-4"><div><p className="font-medium">Plan de labores</p><p className="mt-1 text-sm text-muted-foreground">Detalle planificado. La futura reconciliación con avance, coordenadas y cotas reales ocurrirá sólo cuando exista evidencia topográfica canónica.</p></div><div className="flex gap-2 text-muted-foreground"><Ruler className="h-4 w-4"/><Target className="h-4 w-4"/></div></div></div><div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-muted/30 text-left text-xs text-muted-foreground"><tr><th className="px-4 py-3">Tipo</th><th className="px-4 py-3">Mina / sector</th><th className="px-4 py-3">Nivel / sección</th><th className="px-4 py-3 text-right">Toneladas</th><th className="px-4 py-3 text-right">Avance</th><th className="px-4 py-3 text-right">Perforación</th></tr></thead><tbody className="divide-y">{data.lines.map(l=><tr key={l.id}><td className="px-4 py-3">{l.line_type}</td><td className="px-4 py-3"><p>{l.mine_name_raw||'—'}</p><p className="text-xs text-muted-foreground">{l.sector_raw||'Sin sector'}</p></td><td className="px-4 py-3"><p>{l.level_raw||'—'}</p><p className="text-xs text-muted-foreground">{l.section_raw||'—'}</p></td><td className="px-4 py-3 text-right tabular-nums">{l.planned_tons==null?'—':n(Number(l.planned_tons),1)}</td><td className="px-4 py-3 text-right tabular-nums">{l.planned_advance_m==null?'—':`${n(Number(l.planned_advance_m),1)} m`}</td><td className="px-4 py-3 text-right tabular-nums">{l.planned_drilling_m==null?'—':`${n(Number(l.planned_drilling_m),1)} m`}</td></tr>)}</tbody></table></div></section>:data&&!isLoading?<StatePanel title="Sin plan topográfico activo" description="No hay un plan mensual activo para mostrar. Esto no se reemplaza por valores estimados." className="min-h-0 py-5"/>:null}
+  {data?.regulatoryGuidance?.items?.length ? <details className="overflow-hidden rounded-lg border bg-card" aria-label="Criterios normativos para Ingeniería">
+    <summary className="cursor-pointer px-5 py-4 text-sm font-medium">Criterios técnicos SERNAGEOMIN · responsabilidades y documentos</summary>
+    <div className="space-y-4 border-t px-5 py-4">
+      <p className="max-w-3xl text-sm text-muted-foreground">
+        Referencias para preparar antecedentes. El cargo interno de Ingeniería no equivale automáticamente a Jefe de Mina ni habilita la firma de proyectos. La empresa identifica responsables y Legal valida aplicabilidad.
+      </p>
+      <div className="grid gap-3 lg:grid-cols-2">
+        {data.regulatoryGuidance.items.map(item=><article key={item.id} className="min-w-0 rounded-md border px-4 py-3">
+          <p className="text-sm font-semibold">{item.title}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{item.legalBasis.join(' · ')}</p>
+          <p className="mt-3 text-sm leading-relaxed">{item.nextAction}</p>
+          <p className="mt-3 text-xs text-muted-foreground">Responsabilidad por confirmar: {item.businessOwner}</p>
+          <details className="mt-3">
+            <summary className="cursor-pointer text-xs font-medium">Aplicabilidad y evidencia requerida</summary>
+            <p className="mt-2 text-xs text-muted-foreground">{item.applicabilityNote}</p>
+            <p className="mt-2 text-xs text-muted-foreground">Respaldos a solicitar: {item.expectedEvidence.join(' · ')}</p>
+          </details>
+          <a href={item.sourceUrl} className="mt-3 inline-block text-xs underline underline-offset-4" target="_blank" rel="noopener noreferrer">Consultar fuente oficial</a>
+        </article>)}
+      </div>
+      <p className="text-xs text-muted-foreground">Referencia normativa, no dictamen de cumplimiento. No se han acreditado aquí nombramientos, firmas, resoluciones ni vigencias concretas. El seguimiento y cierre de obligaciones permanece en Legal.</p>
+    </div>
+  </details> : null}
+
   <TopographyEvidenceQueue />
  </div>;
 }
