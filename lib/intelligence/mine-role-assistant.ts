@@ -91,6 +91,7 @@ export type MineEvidence = {
   data: {
     workOrders: EvidenceSet;
     closureReadiness: EvidenceSet;
+    workOrderAssets: EvidenceSet;
     evidencePhotos: EvidenceSet;
     supervisorReviews: EvidenceSet;
     confirmedInstallations: EvidenceSet;
@@ -160,6 +161,14 @@ export async function loadMineEvidence(
       .eq('organization_id',org).in('work_order_id',orderIds).limit(80)
       : Promise.resolve({ data: [],error:null }),
     'Requisitos efectivos de cierre de OT visible. Material instalado y retiro de bodega son conceptos distintos.',80);
+
+  const assetIds = [...new Set(orders.map(row => String(row.canonical_asset_id || '')).filter(Boolean))];
+  await checked('workOrderAssets','maintenance_canonical_assets_v1',
+    () => assetIds.length ? db.from('maintenance_canonical_assets_v1')
+      .select('id,asset_code,name,asset_type,is_active').eq('organization_id',org)
+      .in('id',assetIds).limit(80)
+      : Promise.resolve({data:[],error:null}),
+    'Identidad de activos vinculados a OT autorizadas aunque la ubicación en el maestro esté pendiente.',80);
 
   await checked('evidencePhotos','work_order_evidence_files',
     () => orderIds.length ? db.from('work_order_evidence_files')
@@ -260,7 +269,10 @@ export function renderMineReport(evidence: MineEvidence): string {
     ...Object.values(data).filter(v => v.source !== 'not_authorized').map(v => '- '+v.source+': '+(v.error ? 'NO DISPONIBLE: '+v.error : v.rows.length+' filas consultadas'+(v.truncated?' (límite de muestra)':'')+'. '+v.completeness)),
     '',
     '## Órdenes de trabajo de la faena',
-    ...data.workOrders.rows.slice(0,20).map(row => '- '+value(row,'work_order_number')+': '+value(row,'title')+' · '+value(row,'status')+' · '+value(row,'assigned_to_name')+' · '+value(row,'created_at')),
+    ...data.workOrders.rows.slice(0,20).map(row => {
+      const equipment = data.workOrderAssets.rows.find(a => a.id === row.canonical_asset_id);
+      return '- '+value(row,'work_order_number')+': '+value(row,'title')+' · '+(equipment ? value(equipment,'asset_code') : 'equipo sin nombre verificado')+' · '+value(row,'status')+' · '+value(row,'assigned_to_name')+' · '+value(row,'created_at');
+    }),
     ...(data.workOrders.rows.length===0 ? ['No hay OT etiquetadas para esta faena en la fuente consultada.'] : []),
     '',
     '## Restricciones de cierre',
