@@ -28,6 +28,7 @@ export function TopografiaDashboard(){
  const currentPlan=data?.planPeriod.status === 'current';
  const referencePlan=Boolean(data?.plan && !currentPlan);
  const planStatusTitle=data?.planPeriod.status === 'expired' ? 'Plan vencido' : data?.planPeriod.status === 'upcoming' ? 'Plan aún no vigente' : 'Período del plan sin vigencia acreditada';
+ const referenceKind=data?.planPeriod.status === 'expired' ? 'histórica' : data?.planPeriod.status === 'upcoming' ? 'futura' : 'con período no verificable';
 
  return <div className="space-y-6">
   <PageHeader><PageHeaderContent><PageHeaderEyebrow>Producción · Control espacial</PageHeaderEyebrow><PageHeaderTitle>Topografía</PageHeaderTitle><PageHeaderDescription>Plan espacial y evidencia topográfica real se mantienen separados. Un dato planificado nunca se presenta como levantamiento ejecutado.</PageHeaderDescription></PageHeaderContent></PageHeader>
@@ -36,12 +37,12 @@ export function TopografiaDashboard(){
   {referencePlan ? <StatePanel
     tone="warning"
     title={planStatusTitle}
-    description={`El plan ${data?.plan?.plan_code} corresponde al período ${data?.plan?.period_start} a ${data?.plan?.period_end}. A fecha ${data?.planPeriod.evaluatedDate} sólo puede consultarse como referencia histórica; no demuestra objetivos vigentes ni cumplimiento. Solicita un nuevo plan aprobado a Ingeniería.`}
+    description={`El plan ${data?.plan?.plan_code} corresponde al período ${data?.plan?.period_start} a ${data?.plan?.period_end}. A fecha ${data?.planPeriod.evaluatedDate} sólo puede consultarse como referencia ${referenceKind}; no demuestra objetivos vigentes ni cumplimiento. Solicita un nuevo plan aprobado a Ingeniería.`}
     className="min-h-0 py-5"
   /> : null}
 
   <section className="overflow-hidden rounded-lg border" aria-label="Plan topográfico y período de referencia">
-   <div className="border-b bg-card px-5 py-4"><p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">{currentPlan ? 'Plan vigente' : data?.plan ? 'Plan de referencia · no vigente' : 'Sin plan vigente'}</p><p className="mt-1 font-medium">{data?.plan?.plan_code||'Sin plan activo identificado'}</p>{data?.plan ? <p className="mt-1 text-xs text-muted-foreground">Período: {data.plan.period_start} a {data.plan.period_end}</p> : null}<p className="mt-1 text-sm text-muted-foreground">{currentPlan ? 'Objetivos vigentes cargados desde planificación. No representan medición topográfica ejecutada.' : 'Objetivos históricos: no utilizarlos como metas vigentes. Ningún dato del plan representa ejecución real.'}</p></div>
+   <div className="border-b bg-card px-5 py-4"><p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">{currentPlan ? 'Plan vigente' : data?.plan ? 'Plan de referencia · no vigente' : 'Sin plan vigente'}</p><p className="mt-1 font-medium">{data?.plan?.plan_code||'Sin plan activo identificado'}</p>{data?.plan ? <p className="mt-1 text-xs text-muted-foreground">Período: {data.plan.period_start} a {data.plan.period_end}</p> : null}<p className="mt-1 text-sm text-muted-foreground">{currentPlan ? 'Objetivos vigentes cargados desde planificación. No representan medición topográfica ejecutada.' : 'Objetivos no vigentes: no utilizarlos como metas actuales. Ningún dato del plan representa ejecución real.'}</p></div>
    <div className="grid gap-px bg-border sm:grid-cols-2 xl:grid-cols-4">
     <PlanMetric label="Sectores canónicos" value={isLoading?'—':s?n(s.canonicalSectors):'—'} detail="Maestro operacional"/>
     <PlanMetric label="Avance planificado" value={isLoading?'—':s?`${n(s.plannedAdvanceM)} m`:'—'} detail="Objetivo de avance"/>
