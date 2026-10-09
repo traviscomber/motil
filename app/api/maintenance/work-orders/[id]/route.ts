@@ -5,6 +5,7 @@ import { getOrganizationContext } from '@/lib/api/organization-context';
 import { getModuleAccessLevel, MODULE_KEYS, requireModuleAccess } from '@/lib/api/module-access';
 import { requireOperationalMaintenanceWorkOrder } from '@/lib/maintenance/work-order-scope';
 import { requireAssignedMaintenanceExecution } from '@/lib/maintenance/work-order-execution-access';
+import { resolveWorkshopHeadScope, workshopSiteFromRoleTitle } from '@/lib/maintenance/workshop-site-scope';
 
 type WorkOrderPatchPayload = {
   status?: string;
@@ -179,6 +180,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (!hasModuleWrite && !executionAccess.ok) return executionAccess.response;
 
     const body = (await request.json()) as WorkOrderPatchPayload;
+    const workshopScope = await resolveWorkshopHeadScope(context);
     if (!hasModuleWrite) {
       const mutationKeys = Object.entries(body)
         .filter(([, value]) => value !== undefined)
@@ -232,6 +234,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (body.assigned_person_id !== undefined) {
       if (body.assigned_person_id) {
         const assignee = await resolveAssignee(context, body.assigned_person_id);
+        const assigneeSite = workshopSiteFromRoleTitle(assignee.role_title);
+        if (workshopScope.isWorkshopHead && assigneeSite && assigneeSite !== workshopScope.site) {
+          return NextResponse.json({ error: 'No puedes asignar una OT a otra mina.' }, { status: 403 });
+        }
         updateData.assigned_person_id = assignee.id;
         updateData.assigned_to_name = assignee.full_name;
       } else {
