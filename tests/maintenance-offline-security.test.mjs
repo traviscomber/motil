@@ -31,7 +31,7 @@ test('shared device offline drafts and photos are isolated by organization plus 
 test('idempotent offline notes reject cross-user and cross-OT reuse or changed payloads', () => {
   const route = read('app/api/maintenance/work-orders/[id]/offline-notes/route.ts');
   assert.match(route, /existing.work_order_id !== id/);
-  assert.match(route, /existing.actor_id !== context.userId/);
+  assert.match(route, /existing.actor_id !== userId/);
   assert.match(route, /stored.notes !== notes/);
   assert.match(route, /stored.captured_at !== capturedAt/);
   assert.match(route, /error\?\.code === '23505'/);
