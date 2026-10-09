@@ -10,6 +10,7 @@ const closeQueue = await readFile(new URL('../app/api/maintenance/work-order-clo
 const createView = await readFile(new URL('../components/maintenance/create-work-order.tsx', import.meta.url), 'utf8');
 const workOrdersView = await readFile(new URL('../components/maintenance/work-orders-queue.tsx', import.meta.url), 'utf8');
 const viewerContext = await readFile(new URL('../app/api/maintenance/viewer-context/route.ts', import.meta.url), 'utf8');
+const runtimeEvidence = await readFile(new URL('../app/api/maintenance/work-order-runtime-evidence/route.ts', import.meta.url), 'utf8');
 const migration = await readFile(new URL('../supabase/migrations/20261009163000_scope_workshop_heads_to_mine.sql', import.meta.url), 'utf8');
 
 test('three workshop heads are mapped to exact canonical mines, without affecting mine general managers', () => {
@@ -25,6 +26,7 @@ test('workshop head authorization never inherits organization-wide OT edit permi
   assert.match(org, /resolveWorkshopHeadScope\(workshopContext\)/);
   assert.match(org, /workshopHeadCanAccessOrder\(workshop, order\)/);
   assert.match(org, /OT fuera de tu faena/);
+  assert.match(runtimeEvidence, /workshopHeadCanAccessOrder/);
   assert.match(scope, /if \(!scope\.personId\) return false/);
   assert.match(scope, /if \(order\.workshop_site\) return order\.workshop_site === scope\.site/);
   assert.match(scope, /return order\.assigned_person_id === scope\.personId/);
