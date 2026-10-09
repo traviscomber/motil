@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/api/guard';
 import { getSupabaseServerClient } from '@/lib/supabase-server';
+import { resolveWorkshopHeadScope, workshopHeadCanAccessOrder } from '@/lib/maintenance/workshop-site-scope';
 
 const maintenanceWriteRoles = new Set([
   'superadmin',
@@ -165,6 +166,46 @@ export async function getOrganizationContext(
     if (profileName) userName = profileName;
   } catch {
     // Keep APIs usable even when profile enrichment fails.
+  }
+
+  // Workshop heads must never inherit organization-wide OT access from their ED module grant.
+  // Apply to EVERY detail endpoint (read, timer, photos, close, supplies, review, etc.).
+  const workOrderPath = request.nextUrl.pathname.match(
+    /^\\/api\\/maintenance\\/work-orders\\/([0-9a-f-]{36})(?:\\/|$)/i,
+  );
+  if (workOrderPath) {
+    try {
+      const workshopContext: OrganizationSuccessContext = {
+        ok: true,
+        organizationId: auth.organizationId,
+        userId: auth.user.id,
+        authUserId: auth.user.auth_user_id,
+        role: auth.role || undefined,
+        userEmail: auth.user.email,
+        userName,
+        supabase,
+      };
+      const workshop = await resolveWorkshopHeadScope(workshopContext);
+      if (workshop.isWorkshopHead) {
+        const { data: order, error: scopeError } = await supabase
+          .from('maintenance_work_orders')
+          .select('workshop_site,assigned_person_id')
+          .eq('organization_id', auth.organizationId)
+          .eq('id', workOrderPath[1])
+          .maybeSingle();
+        if (scopeError) throw scopeError;
+        if (!order || !workshopHeadCanAccessOrder(workshop, order)) {
+          return { ok: false, response: NextResponse.json({ error: 'OT fuera de tu faena' }, { status: 403 }) };
+        }
+      }
+    } catch (error) {
+      return {
+        ok: false,
+        response: NextResponse.json({
+          error: error instanceof Error ? error.message : 'No se pudo verificar el acceso por faena',
+        }, { status: 500 }),
+      };
+    }
   }
 
   return {
