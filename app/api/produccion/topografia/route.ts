@@ -6,6 +6,7 @@ import { MODULE_KEYS, requireModuleAccess } from '@/lib/api/module-access';
 import { assessPlanPeriod, currentChileDate } from '@/lib/production/engineering-plan-period.mjs';
 import { summarizeCanonicalMonthlyPlan } from '@/lib/production/engineering-plan-metrics.mjs';
 import { summarizeEngineeringSourceReadiness } from '@/lib/production/engineering-source-readiness.mjs';
+import { listSernageominObligations } from '@/lib/intelligence/sernageomin-obligations';
 
 export async function GET(request: NextRequest) {
   const access = await requireModuleAccess(request, MODULE_KEYS.PROD_TOPOGRAFIA);
@@ -72,6 +73,19 @@ export async function GET(request: NextRequest) {
     },
     breakdown: metrics.breakdown,
     readiness,
+    regulatoryGuidance: {
+      authority: 'SERNAGEOMIN',
+      source: 'canonical_sernageomin_obligations',
+      items: listSernageominObligations('engineering').map(item => ({
+        id: item.id, title: item.title, legalBasis: item.legalBasis,
+        sourceUrl: item.sourceUrl, businessOwner: item.businessOwner,
+        nextAction: item.nextAction, applicabilityNote: item.applicabilityNote,
+        expectedEvidence: item.expectedEvidence,
+      })),
+      humanValidationRequired: true,
+      complianceVerdictCalculated: false,
+      roleAssignmentVerified: false,
+    },
     lines: planLines,
     intelligenceStatus: {
       surveyCanonical: false,
