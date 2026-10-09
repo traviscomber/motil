@@ -78,7 +78,7 @@ export function MaintenanceOfflinePhotos({ workOrderId }: { workOrderId: string 
         if (!prepared.alreadyCompleted) {
           const upload = prepared.upload;
           if (!upload?.storagePath || !upload?.token) throw new Error('Respuesta de subida incompleta.');
-          const { error } = await supabase.storage.from('maintenance-work-order-evidence').uploadToSignedUrl(upload.storagePath, upload.token, photo.file, { contentType: photo.mimeType, upsert: true });
+          const { error } = await supabase.storage.from('maintenance-work-order-evidence').uploadToSignedUrl(upload.storagePath, upload.token, photo.file, { contentType: photo.mimeType });
           if (error && !/already exists|duplicate/i.test(error.message)) throw error;
           const result = await fetch(`/api/maintenance/work-orders/${workOrderId}/evidence`, {
             method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
