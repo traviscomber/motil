@@ -88,40 +88,31 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ error: 'La OT debe estar terminada antes de ser aprobada.' }, { status: 409 });
   }
 
-  const body = (await request.json().catch(() => null)) as { note?: string | null } | null;
+  const body = (await request.json().catch(() => null)) as { note?: string | null; confirmMaterialsInstalled?: boolean } | null;
   const note = body?.note?.trim() || null;
-  const now = new Date().toISOString();
+  const { data: reviewId, error: approvalError } = await context.supabase.rpc(
+    'approve_work_order_with_material_confirmation_v1',
+    {
+      p_organization_id: context.organizationId,
+      p_work_order_id: id,
+      p_reviewer_profile_id: context.userId,
+      p_confirm_materials_installed: body?.confirmMaterialsInstalled === true,
+      p_decision_note: note,
+    },
+  );
+  if (approvalError) {
+    const code = approvalError.code;
+    const status = code === '55000' ? 409 : code === '42501' ? 403 : 500;
+    return NextResponse.json({ error: approvalError.message }, { status });
+  }
 
-  const { data: review, error: reviewError } = await context.supabase
+  const { data: review, error: readError } = await context.supabase
     .from('work_order_supervisor_reviews')
-    .upsert({
-      organization_id: context.organizationId,
-      work_order_id: id,
-      status: 'approved',
-      decision_note: note,
-      reviewed_by_profile_id: context.userId,
-      reviewed_by_person_id: reviewer.id,
-      reviewed_by_name: reviewer.full_name,
-      reviewed_at: now,
-      updated_at: now,
-    }, { onConflict: 'organization_id,work_order_id' })
     .select('id,status,decision_note,reviewed_by_name,reviewed_at')
+    .eq('organization_id', context.organizationId)
+    .eq('work_order_id', id)
+    .eq('id', reviewId)
     .single();
-  if (reviewError) return NextResponse.json({ error: reviewError.message }, { status: 500 });
-
-  await context.supabase.from('work_order_events').insert({
-    organization_id: context.organizationId,
-    work_order_id: id,
-    canonical_asset_id: workOrder.canonical_asset_id,
-    event_type: 'supervisor_approved',
-    event_at: now,
-    actor_id: context.userId,
-    actor_name: reviewer.full_name,
-    source_table: 'public.work_order_supervisor_reviews',
-    source_record_id: review.id,
-    summary: 'OT aprobada por supervisión',
-    payload: { status: 'approved', note },
-  });
-
+  if (readError) return NextResponse.json({ error: readError.message }, { status: 500 });
   return NextResponse.json({ review });
 }
