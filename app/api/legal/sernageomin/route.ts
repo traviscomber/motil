@@ -20,6 +20,7 @@ const DOMAIN_MODULES: Record<string, string[]> = {
   assets: ['mant_operaciones', 'bodega_inventario'],
   operations: ['prod_operaciones', 'mant_operaciones'],
   production: ['prod_operaciones'],
+  engineering: ['prod_topografia'],
   contractors: ['legal_eecc', 'legal_contratos'],
   finance: ['fin_compras'],
   documents: ['legal_modulo', 'hse_documentacion'],
@@ -34,6 +35,7 @@ function moduleKeysForDomains(domains: string[]) {
 async function loadModulePeople(
   supabase: ReturnType<typeof import('@/lib/supabase-server').getSupabaseServerClient>,
   moduleKeys: string[],
+  organizationId: string,
 ) {
   if (!moduleKeys.length) return [];
   const { data: matrix } = await supabase
@@ -47,7 +49,7 @@ async function loadModulePeople(
 
   const [{ data: cargos }, { data: profiles }] = await Promise.all([
     supabase.from('cargos').select('id,name').in('id', cargoIds),
-    supabase.from('profiles').select('id,cargo_id,full_name,email').in('cargo_id', cargoIds),
+    supabase.from('profiles').select('id,cargo_id,full_name,email').in('cargo_id', cargoIds).eq('organization_id', organizationId),
   ]);
 
   const cargoById = new Map((cargos || []).map((cargo) => [cargo.id, cargo.name]));
@@ -93,7 +95,7 @@ export async function GET(request: NextRequest) {
 
   const evidence = regulatory.canonicalEvidence.items;
   const allModuleKeys = Array.from(new Set(regulatory.obligations.flatMap((item) => moduleKeysForDomains(item.motilDomains))));
-  const modulePeople = await loadModulePeople(context.supabase, allModuleKeys);
+  const modulePeople = await loadModulePeople(context.supabase, allModuleKeys, context.organizationId);
   const legalPeople = modulePeople.filter((item) => item.moduleKey === 'legal_modulo');
 
   const obligations = regulatory.obligations.map((obligation) => {
