@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getOrganizationContext } from '@/lib/api/organization-context';
 import { MODULE_KEYS, requireModuleAccess } from '@/lib/api/module-access';
+import { assessPlanPeriod, currentChileDate } from '@/lib/production/engineering-plan-period.mjs';
 
 export async function GET(request: NextRequest) {
   const access = await requireModuleAccess(request, MODULE_KEYS.PROD_TOPOGRAFIA);
@@ -21,6 +22,7 @@ export async function GET(request: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const activePlan = plan.data || null;
+  const planPeriod = assessPlanPeriod(activePlan, currentChileDate());
   const planLines = activePlan ? (lines.data || []).filter((l)=>l.plan_id===activePlan.id) : [];
   const plannedAdvanceM = planLines.reduce((sum,l)=>sum+Number(l.planned_advance_m||0),0);
   const plannedDrillingM = planLines.reduce((sum,l)=>sum+Number(l.planned_drilling_m||0),0);
@@ -28,6 +30,7 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     plan: activePlan,
+    planPeriod,
     summary: {
       canonicalSectors: (sectors.data || []).length,
       planLines: planLines.length,

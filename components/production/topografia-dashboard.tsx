@@ -8,6 +8,7 @@ import { StatePanel } from '@/components/ui/state-panel';
 
 type TopografiaData = {
   plan: null | { plan_code:string; period_start:string; period_end:string };
+  planPeriod: { status:'current'|'expired'|'upcoming'|'missing'|'invalid'; evaluatedDate:string; canUseAsCurrent:boolean };
   summary: { canonicalSectors:number; planLines:number; plannedAdvanceM:number; plannedDrillingM:number; plannedTons:number; actualSurveyPoints:number|null; actualAdvanceM:number|null };
   lines: Array<{ id:string; line_type:string; mine_name_raw:string|null; sector_raw:string|null; level_raw:string|null; section_raw:string|null; planned_tons:number|null; planned_grade_pct:number|null; planned_advance_m:number|null; planned_drilling_m:number|null; priority:number|null; source_reference:string|null }>;
   intelligenceStatus: { surveyCanonical:boolean; coordinatesCanonical:boolean; actualAdvanceCanonical:boolean; note:string };
@@ -24,13 +25,23 @@ export function TopografiaDashboard(){
  const {data,error,isLoading,mutate}=useSWR('/api/produccion/topografia',fetcher);
  const s=data?.summary;
  const hasActualTopography=Boolean(data&&(data.intelligenceStatus.surveyCanonical||data.intelligenceStatus.coordinatesCanonical||data.intelligenceStatus.actualAdvanceCanonical));
+ const currentPlan=data?.planPeriod.status === 'current';
+ const referencePlan=Boolean(data?.plan && !currentPlan);
+ const planStatusTitle=data?.planPeriod.status === 'expired' ? 'Plan vencido' : data?.planPeriod.status === 'upcoming' ? 'Plan aún no vigente' : 'Período del plan sin vigencia acreditada';
 
  return <div className="space-y-6">
   <PageHeader><PageHeaderContent><PageHeaderEyebrow>Producción · Control espacial</PageHeaderEyebrow><PageHeaderTitle>Topografía</PageHeaderTitle><PageHeaderDescription>Plan espacial y evidencia topográfica real se mantienen separados. Un dato planificado nunca se presenta como levantamiento ejecutado.</PageHeaderDescription></PageHeaderContent></PageHeader>
   {error?<StatePanel tone="error" title="No fue posible cargar Topografía" description="Reintenta la consulta." actions={<Button variant="outline" onClick={()=>void mutate()}>Reintentar</Button>} className="min-h-0 py-5"/>:null}
 
-  <section className="overflow-hidden rounded-lg border" aria-label="Plan topográfico vigente">
-   <div className="border-b bg-card px-5 py-4"><p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Plan vigente</p><p className="mt-1 font-medium">{data?.plan?.plan_code||'Sin plan activo identificado'}</p><p className="mt-1 text-sm text-muted-foreground">Objetivos de labores cargados desde planificación. No representan medición topográfica ejecutada.</p></div>
+  {referencePlan ? <StatePanel
+    tone="warning"
+    title={planStatusTitle}
+    description={`El plan ${data?.plan?.plan_code} corresponde al período ${data?.plan?.period_start} a ${data?.plan?.period_end}. A fecha ${data?.planPeriod.evaluatedDate} sólo puede consultarse como referencia histórica; no demuestra objetivos vigentes ni cumplimiento. Solicita un nuevo plan aprobado a Ingeniería.`}
+    className="min-h-0 py-5"
+  /> : null}
+
+  <section className="overflow-hidden rounded-lg border" aria-label="Plan topográfico y período de referencia">
+   <div className="border-b bg-card px-5 py-4"><p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">{currentPlan ? 'Plan vigente' : data?.plan ? 'Plan de referencia · no vigente' : 'Sin plan vigente'}</p><p className="mt-1 font-medium">{data?.plan?.plan_code||'Sin plan activo identificado'}</p>{data?.plan ? <p className="mt-1 text-xs text-muted-foreground">Período: {data.plan.period_start} a {data.plan.period_end}</p> : null}<p className="mt-1 text-sm text-muted-foreground">{currentPlan ? 'Objetivos vigentes cargados desde planificación. No representan medición topográfica ejecutada.' : 'Objetivos históricos: no utilizarlos como metas vigentes. Ningún dato del plan representa ejecución real.'}</p></div>
    <div className="grid gap-px bg-border sm:grid-cols-2 xl:grid-cols-4">
     <PlanMetric label="Sectores canónicos" value={isLoading?'—':s?n(s.canonicalSectors):'—'} detail="Maestro operacional"/>
     <PlanMetric label="Avance planificado" value={isLoading?'—':s?`${n(s.plannedAdvanceM)} m`:'—'} detail="Objetivo de avance"/>

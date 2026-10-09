@@ -12,6 +12,9 @@ test('topography keeps planning separate from actual canonical survey evidence',
   ]);
 
   assert.match(dashboard, /Plan vigente/);
+  assert.match(dashboard, /Plan de referencia · no vigente/);
+  assert.match(dashboard, /Plan vencido/);
+  assert.match(dashboard, /Solicita un nuevo plan aprobado a Ingeniería/);
   assert.match(dashboard, /Plan espacial y evidencia topográfica real se mantienen separados/);
   assert.match(dashboard, /Sin fuente topográfica canónica/);
   assert.match(dashboard, /Actual topográfico/);
@@ -21,6 +24,8 @@ test('topography keeps planning separate from actual canonical survey evidence',
   assert.doesNotMatch(dashboard, /Pendiente fuente canónica/);
 
   assert.match(route, /requireModuleAccess\(request, MODULE_KEYS\.PROD_TOPOGRAFIA\)/);
+  assert.match(route, /assessPlanPeriod/);
+  assert.match(route, /planPeriod,/);
   assert.match(route, /actualSurveyPoints: null/);
   assert.match(route, /actualAdvanceM: null/);
   assert.match(route, /surveyCanonical: false/);
