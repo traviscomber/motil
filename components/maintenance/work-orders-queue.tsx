@@ -161,7 +161,7 @@ export function WorkOrdersQueue({ locale, dictionary }: { locale: Locale; dictio
         <div>
           <p className="text-sm font-medium text-muted-foreground">{t.eyebrow}</p>
           <h1 className="mt-1 text-3xl font-semibold tracking-tight">{t.title}</h1>
-          <p className="mt-2 max-w-3xl text-sm text-muted-foreground">{data?.workshopSite ? `Órdenes de trabajo de Mina ${data.workshopSite}` : (missingAssetOnly ? t.descriptionDataHealth : t.descriptionDefault)}</p>
+          <p className="mt-2 max-w-3xl text-sm text-muted-foreground">{data?.workshopSite ? `${t.title} · ${locale === 'en' ? 'Mine' : 'Mina'} ${data.workshopSite}` : (missingAssetOnly ? t.descriptionDataHealth : t.descriptionDefault)}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           {missingAssetOnly ? <Button asChild variant="outline"><Link href="/dashboard/mantenimiento/ordenes-trabajo">{t.viewAll}</Link></Button> : null}
