@@ -29,6 +29,8 @@ test('data retrieval is mine and tenant scoped in every dataset', () => {
   assert.match(persona, /\.eq\('organization_id',org\)\.ilike\('location','%'\+mine\+'%'\)/);
   assert.match(persona, /\.eq\('organization_id',org\)\.eq\('user_id',persona\.profileId\)/);
   assert.match(persona, /persona\.kind === 'mine_manager'/);
+  assert.match(persona, /MODULE_KEYS\.HSE_INCIDENTE/);
+  assert.match(persona, /hseAccess === 'ED' \|\| hseAccess === 'LEC'/);
   assert.match(persona, /source:'not_authorized'/);
   assert.match(persona, /if \(result\.error\) throw new Error/);
 });
