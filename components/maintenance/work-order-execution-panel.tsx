@@ -119,6 +119,14 @@ export function WorkOrderExecutionPanel({ workOrderId, readOnly = false }: { wor
   const events = (Array.isArray(data?.events) ? data.events : []) as WorkOrderEvent[];
   const costs = data?.costs || {};
   const reportPhotos = (Array.isArray(photoData?.evidence) ? photoData.evidence : []).filter((photo: { signed_url?: string | null }) => Boolean(photo.signed_url)).slice(0, 2) as Array<{ id: string; signed_url: string; file_name?: string | null }>;
+  // Una ausencia de registro NO equivale a cero recursos ejecutados.
+  const installedParts = parts.filter((part) => Number(part.quantity_installed || 0) > 0);
+  const laborTracked = labor.length > 0;
+  const partsTracked = installedParts.length > 0;
+  const costsComplete = partsTracked && laborTracked && costs.total_cost != null;
+  const totalCostLabel = costsComplete ? money(costs.total_cost) : 'No determinado';
+  const executionEvidence = (Array.isArray(photoData?.evidence) && photoData.evidence.length > 0) || workOrder.status === 'completed';
+
 
   const execute = async (payload: Record<string, unknown>, key: string) => {
     setBusyKey(key);
@@ -194,13 +202,31 @@ export function WorkOrderExecutionPanel({ workOrderId, readOnly = false }: { wor
         #work-order-final-report { position: absolute !important; top: 0 !important; left: 0 !important; width: 100% !important; border: none !important; box-shadow: none !important; background: white !important; color: black !important; }
         #work-order-final-report button { display: none !important; }
         #work-order-final-report img { max-height: 185px !important; object-fit: contain !important; }
+        #work-order-final-report { font-family: Arial, sans-serif !important; font-size: 10pt !important; }
+        #work-order-final-report * { color: #111827 !important; border-color: #D1D5DB !important; }
+        #work-order-final-report h2 { break-after: avoid; }
+        #work-order-final-report section { break-inside: avoid; }
+        #work-order-final-report .rounded-xl { background: #F9FAFB !important; }
+        #work-order-final-report img[src*="la-patagua"], #work-order-final-report img[src*="motil-wordmark"] { max-height: 65px !important; }
+
       }`}</style>
       <Card className="shadow-none print:shadow-none" id="work-order-final-report">
-        <CardHeader className="flex flex-row items-center justify-between gap-4">
-          <CardTitle className="flex items-center gap-2 text-base"><FileText className="h-4 w-4" />Informe final de la orden</CardTitle>
+        <div className="hidden items-center justify-between gap-8 border-b border-slate-300 pb-4 print:flex">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/brand/la-patagua-official.svg" alt="La Patagua" className="h-16 w-auto max-w-[45%] object-contain object-left" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/brand/motil-wordmark.png" alt="MOTIL" className="h-9 w-auto max-w-[28%] object-contain object-right" />
+          </div>
+          <div className="hidden print:block">
+            <h1 className="text-2xl font-bold">Informe Final de Orden de Trabajo</h1>
+            <p className="mt-1 text-sm text-slate-600">{formatWorkOrderNumber(workOrder.work_order_number || '', 'es')} · {workOrder.status === 'completed' ? 'Completada' : 'En proceso'} · Emisión: {new Date().toLocaleDateString('es-CL')}</p>
+          </div>
+          <CardHeader className="flex flex-row items-center justify-between gap-4">
+          <CardTitle className="flex items-center gap-2 text-base print:hidden"><FileText className="h-4 w-4" />Informe final de la orden</CardTitle>
           <Button variant="outline" size="sm" onClick={() => window.print()} className="print:hidden"><Printer className="mr-2 h-4 w-4" />Imprimir / Guardar PDF</Button>
         </CardHeader>
         <CardContent className="space-y-5">
+          <h2 className="hidden text-sm font-semibold print:block">Resumen de la orden de trabajo</h2>
           <div className="rounded-xl border bg-muted/30 px-5 py-6 sm:px-7">
             <p className="text-sm font-medium text-muted-foreground">Tiempo total ejecutado</p>
             <p className="mt-2 text-4xl font-semibold tracking-tight tabular-nums sm:text-5xl">{durationLabel(workOrder.actual_duration_hours)}</p>
@@ -210,20 +236,23 @@ export function WorkOrderExecutionPanel({ workOrderId, readOnly = false }: { wor
               <span>Estado: <strong className="font-medium text-foreground">{workOrder.status === 'completed' ? 'Cerrada' : 'En proceso'}</strong></span>
             </div>
           </div>
+          <h2 className="hidden border-b pb-1 text-sm font-semibold print:block">Identificación de la orden de trabajo</h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div><p className="text-xs text-muted-foreground">Orden</p><p className="mt-1 font-medium">{workOrder.work_order_number ? formatWorkOrderNumber(workOrder.work_order_number, 'es') : 'Sin número'}</p></div>
             <div><p className="text-xs text-muted-foreground">Responsable</p><p className="mt-1 font-medium">{workOrder.assigned_to_name || 'Sin asignar'}</p></div>
             <div><p className="text-xs text-muted-foreground">Fecha programada</p><p className="mt-1 font-medium">{dateLabel(workOrder.scheduled_date)}</p></div>
             <div><p className="text-xs text-muted-foreground">Fecha de cierre</p><p className="mt-1 font-medium">{dateLabel(workOrder.completion_date)}</p></div>
           </div>
+          <h2 className="hidden border-b pb-1 text-sm font-semibold print:block">Detalle técnico</h2>
           <div><p className="text-xs text-muted-foreground">Trabajo solicitado</p><p className="mt-1 text-sm">{workOrder.title || 'Sin título'}{workOrder.description ? ` · ${workOrder.description}` : ''}</p></div>
           <div className="grid gap-4 md:grid-cols-2">
             <div><p className="text-xs text-muted-foreground">Causa principal</p><p className="mt-1 text-sm">{workOrder.root_cause || 'No registrada'}</p></div>
             <div><p className="text-xs text-muted-foreground">Acción aplicada</p><p className="mt-1 text-sm">{workOrder.preventive_actions || 'No registrada'}</p></div>
           </div>
+          <h2 className="hidden border-b pb-1 text-sm font-semibold print:block">Recursos</h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div><p className="text-xs text-muted-foreground">Técnicos</p><p className="mt-1 font-medium">{labor.length}</p></div>
-            <div><p className="text-xs text-muted-foreground">Costo total</p><p className="mt-1 font-medium">{money(costs.total_cost)}</p></div>
+            <div><p className="text-xs text-muted-foreground">Técnicos</p><p className="mt-1 font-medium">{laborTracked ? String(labor.length) : 'No registrados'}</p></div>
+            <div><p className="text-xs text-muted-foreground">Costo total</p><p className="mt-1 font-medium">{totalCostLabel}</p></div>
           </div>
           {reportPhotos.length > 0 ? (
             <section className="hidden print:block">
@@ -238,10 +267,20 @@ export function WorkOrderExecutionPanel({ workOrderId, readOnly = false }: { wor
             </section>
           ) : null}
           <div className="grid gap-5 lg:grid-cols-3">
-            <div><p className="text-sm font-medium">Repuestos instalados</p><ul className="mt-2 space-y-1 text-sm text-muted-foreground">{parts.filter((part) => Number(part.quantity_installed || 0) > 0).map((part) => <li key={part.id}>{part.stock?.part_name || 'Repuesto'} · {part.quantity_installed}</li>)}{parts.every((part) => Number(part.quantity_installed || 0) <= 0) ? <li>Sin repuestos instalados</li> : null}</ul></div>
-            <div><p className="text-sm font-medium">Mano de obra</p><ul className="mt-2 space-y-1 text-sm text-muted-foreground">{labor.map((entry) => <li key={entry.id}>{entry.technician_name} · {entry.hours} h</li>)}{labor.length === 0 ? <li>Sin mano de obra registrada</li> : null}</ul></div>
-            <div><p className="text-sm font-medium">Servicios externos</p><ul className="mt-2 space-y-1 text-sm text-muted-foreground">{services.map((service) => <li key={service.id}>{service.provider_name} · {money(service.amount)}</li>)}{services.length === 0 ? <li>Sin servicios externos</li> : null}</ul></div>
+            <div><p className="text-sm font-medium">Repuestos instalados</p><ul className="mt-2 space-y-1 text-sm text-muted-foreground">{installedParts.map((part) => <li key={part.id}>{part.stock?.part_name || 'Repuesto'} · {part.quantity_installed}</li>)}{!partsTracked ? <li>{executionEvidence ? 'Sin trazabilidad de repuestos en la OT; existe evidencia de la intervención.' : 'Repuestos no registrados en la OT.'}</li> : null}</ul></div>
+            <div><p className="text-sm font-medium">Mano de obra</p><ul className="mt-2 space-y-1 text-sm text-muted-foreground">{labor.map((entry) => <li key={entry.id}>{entry.technician_name} · {entry.hours} h</li>)}{!laborTracked ? <li>Detalle de mano de obra pendiente de registro; no implica ausencia de trabajo.</li> : null}</ul></div>
+            <div><p className="text-sm font-medium">Servicios externos</p><ul className="mt-2 space-y-1 text-sm text-muted-foreground">{services.map((service) => <li key={service.id}>{service.provider_name} · {money(service.amount)}</li>)}{services.length === 0 ? <li>Servicios externos no registrados en la OT.</li> : null}</ul></div>
           </div>
+          <section className="hidden border-t pt-3 print:block">
+            <h2 className="mb-2 text-sm font-semibold">Trazabilidad de la orden</h2>
+            {events.length ? events.slice(0, 3).map((event) => (
+              <p key={event.id} className="mb-1 text-xs">{new Date(event.event_at).toLocaleString('es-CL')} · {event.summary || event.event_type}{event.actor_name ? ` · ${event.actor_name}` : ''}</p>
+            )) : <p className="text-xs">Sin eventos de trazabilidad registrados.</p>}
+            <div className="mt-4 flex justify-between border-t pt-2 text-[10px] text-slate-600">
+              <span>La Patagua · Documento operacional generado desde registros de MOTIL</span>
+              <span>Generado desde MOTIL</span>
+            </div>
+          </section>
         </CardContent>
       </Card>
 
