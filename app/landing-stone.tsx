@@ -5,8 +5,8 @@ import { useEffect, useRef, useState } from 'react';
 import type * as THREEType from 'three';
 
 const GLB_URL = '/motil-rock-master-v1.glb';
-// Keep the detailed brand artwork visible until a photorealistic 3D asset passes visual QA.
-const HERO_3D_ENABLED = process.env.NEXT_PUBLIC_MOTIL_HERO_3D === 'enabled';
+// MOTIL Rock Master v1 is approved for the landing; explicit 'disabled' remains a fast rollback.
+const HERO_3D_ENABLED = process.env.NEXT_PUBLIC_MOTIL_HERO_3D !== 'disabled';
 
 /**
  * The mineral's geometry and PBR materials come only from the supplied GLB.
@@ -234,7 +234,7 @@ export default function LandingStone({ force3D = false, initialYaw = 0 }: Landin
   }, [enabled, initialYaw]);
 
   return (
-    <div ref={stageRef} role="img" aria-label="Roca mineral tridimensional de MOTIL" className={`ld-stone-stage${force3D ? ' ld-stone-interactive' : ''}`} style={force3D ? { touchAction: 'none', cursor: 'grab' } : undefined}>
+    <div ref={stageRef} role="img" aria-label="Roca mineral tridimensional de MOTIL" className={`ld-stone-stage${enabled ? ' ld-stone-interactive' : ''}`} style={enabled ? { touchAction: 'pan-y', cursor: 'grab' } : undefined}>
       <span ref={mountRef} className="ld-stone-tilt">
         {fallback ? <Image src="/brand/hero-stone.png" alt="" width={1024} height={1024} className="ld-stone" priority /> : null}
       </span>
