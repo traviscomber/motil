@@ -43,6 +43,8 @@ test('Engineering assistant is available at Home and Topography only; user cooki
   assert.match(widget, /pathname\.startsWith\('\/dashboard\/produccion\/topografia'\)/);
   assert.match(widget, /\/api\/intelligence\/engineering-assistant/);
   assert.match(widget, /endpoint=\{specialist\.endpoint\}/);
-  assert.match(body, /stateless \? "Consulta sin historial" : "Memoria " \+ memoryCount/);
+  assert.match(body, /stateless \? <span/);
+  assert.match(body, /Consulta sin historial/);
+  assert.match(body, /Memoria \{memoryCount\}/);
   assert.doesNotMatch(widget, /<SpecialistAssistantBody[^>]*\/api\/intelligence\/role-assistant/);
 });
