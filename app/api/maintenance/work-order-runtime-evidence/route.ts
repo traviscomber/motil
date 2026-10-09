@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getOrganizationContext } from '@/lib/api/organization-context';
 import { getModuleAccessLevel, MODULE_KEYS } from '@/lib/api/module-access';
 import { requireAssignedMaintenanceExecution } from '@/lib/maintenance/work-order-execution-access';
+import { resolveWorkshopHeadScope, workshopHeadCanAccessOrder } from '@/lib/maintenance/workshop-site-scope';
 
 export async function POST(request: NextRequest) {
   const context = await getOrganizationContext(request);
@@ -12,6 +13,17 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const workOrderId = String(body?.workOrderId || '').trim();
+    const workshopScope = await resolveWorkshopHeadScope(context);
+    if (workshopScope.isWorkshopHead) {
+      const { data: scopedOrder, error: scopeError } = await context.supabase
+        .from('maintenance_work_orders').select('workshop_site,assigned_person_id')
+        .eq('organization_id', context.organizationId)
+        .eq('id', workOrderId).maybeSingle();
+      if (scopeError) throw scopeError;
+      if (!scopedOrder || !workshopHeadCanAccessOrder(workshopScope, scopedOrder)) {
+        return NextResponse.json({ error: 'OT fuera de tu faena' }, { status: 403 });
+      }
+    }
     const accessLevel = await getModuleAccessLevel(context.userId, context.role, MODULE_KEYS.MANT_OPERACIONES);
     if (accessLevel !== 'ED') {
       const executionAccess = await requireAssignedMaintenanceExecution(context, workOrderId);

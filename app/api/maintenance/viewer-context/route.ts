@@ -5,6 +5,7 @@ import { getOrganizationContext } from '@/lib/api/organization-context';
 import { getModuleAccessLevel, MODULE_KEYS } from '@/lib/api/module-access';
 import { getMaintenanceWorkOrderCreationCapability } from '@/lib/maintenance/work-order-create-access';
 import { resolveMaintenanceViewerMode } from '@/lib/maintenance/viewer-mode';
+import { resolveWorkshopHeadScope } from '@/lib/maintenance/workshop-site-scope';
 
 export async function GET(request: NextRequest) {
   const context = await getOrganizationContext(request);
@@ -42,6 +43,7 @@ export async function GET(request: NextRequest) {
     if (creatorPersonError) throw creatorPersonError;
 
     const creationCapability = await getMaintenanceWorkOrderCreationCapability(context);
+    const workshopScope = await resolveWorkshopHeadScope(context);
     const canCreateWorkOrder = creationCapability.canCreate;
 
     const accessLevel = await getModuleAccessLevel(context.userId, context.role, MODULE_KEYS.MANT_OPERACIONES);
@@ -65,6 +67,7 @@ export async function GET(request: NextRequest) {
       canEdit: accessLevel === 'ED' || hasAssignedOperationalWork,
       canCreateWorkOrder,
       hasAssignedOperationalWork,
+      workshopSite: workshopScope.isWorkshopHead ? workshopScope.site : null,
     });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'No se pudo resolver el contexto de mantenimiento' }, { status: 500 });

@@ -22,6 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { StatePanel } from '@/components/ui/state-panel';
 import { Textarea } from '@/components/ui/textarea';
 import type { Dictionary, Locale } from '@/lib/i18n/dictionaries';
+import { workshopSiteFromKnownLocation, workshopSiteFromRoleTitle } from '@/lib/maintenance/workshop-site-scope';
 
 type Asset = {
   id: string;
@@ -149,6 +150,8 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
   };
 
   const { data, error, isLoading, mutate } = useSWR('/api/maintenance/equipment', fetcher, { revalidateOnFocus: false });
+  const { data: viewerContext } = useSWR('/api/maintenance/viewer-context', fetcher, { revalidateOnFocus: false });
+  const workshopSite = (viewerContext?.workshopSite || null) as string | null;
   const { data: assigneeData, error: assigneeError, isLoading: assigneesLoading } = useSWR('/api/maintenance/assignees', fetcher, { revalidateOnFocus: false });
   const normalizedMaterialQuery = materialQuery.trim();
   const { data: materialData, isLoading: materialsLoading } = useSWR(
@@ -162,8 +165,10 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
     isLoading: reviewLoading,
   } = useSWR(reviewId ? `/api/maintenance/drilling-reviews/${reviewId}` : null, fetcher, { revalidateOnFocus: false });
 
-  const assets = useMemo(() => (Array.isArray(data?.equipment) ? (data.equipment as Asset[]) : []), [data]);
-  const assignees = useMemo(() => (Array.isArray(assigneeData?.assignees) ? (assigneeData.assignees as Assignee[]) : []), [assigneeData]);
+  const assets = useMemo(() => (Array.isArray(data?.equipment) ? (data.equipment as Asset[]) : [])
+    .filter((asset) => !workshopSite || !workshopSiteFromKnownLocation(asset.specs?.location) || workshopSiteFromKnownLocation(asset.specs?.location) === workshopSite), [data, workshopSite]);
+  const assignees = useMemo(() => (Array.isArray(assigneeData?.assignees) ? (assigneeData.assignees as Assignee[]) : [])
+    .filter((person) => !workshopSite || !workshopSiteFromRoleTitle(person.role_title) || workshopSiteFromRoleTitle(person.role_title) === workshopSite), [assigneeData, workshopSite]);
   const materialRows = useMemo(() => (Array.isArray(materialData?.rows) ? (materialData.rows as MaterialCatalogItem[]) : []), [materialData]);
   const selectedAsset = assets.find((asset) => asset.id === canonicalAssetId) || null;
   const filteredAssets = useMemo(() => {
@@ -291,7 +296,7 @@ export function CreateWorkOrder({ locale, dictionary }: { locale: Locale; dictio
           <PageHeaderEyebrow>{t.eyebrow}</PageHeaderEyebrow>
           <PageHeaderTitle>{t.title}</PageHeaderTitle>
           <PageHeaderDescription>
-            Elige primero al responsable, luego busca el equipo y define el trabajo. Los insumos son opcionales.
+            {workshopSite ? `Mina ${workshopSite}. ` : ''}Elige primero al responsable, luego busca el equipo y define el trabajo. Los insumos son opcionales.
           </PageHeaderDescription>
         </PageHeaderContent>
         <PageHeaderActions>
