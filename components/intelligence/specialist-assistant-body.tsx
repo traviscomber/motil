@@ -1,7 +1,7 @@
 'use client';
 
 import { FormEvent, KeyboardEvent as ReactKeyboardEvent, useEffect, useRef, useState } from 'react';
-import { Database, GitBranch, RotateCcw, Send } from 'lucide-react';
+import { Database, FileDown, GitBranch, RotateCcw, Send, ClipboardList } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 type SourceRef = {
@@ -28,6 +28,7 @@ type ChatState = {
   memoryCount?: number;
   cargo?: string | null;
   persistence?: 'stateless_read_only' | string;
+  assistantRequests?: Array<{id:string;title:string;status:string;created_at:string}>;
 };
 
 type SpecialistAssistantBodyProps = {
@@ -67,6 +68,7 @@ export function SpecialistAssistantBody({
   placeholder,
   toolCopy = {},
 }: SpecialistAssistantBodyProps) {
+  const mineAssistant = endpoint === '/api/intelligence/mine-role-assistant';
   const [loaded, setLoaded] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -79,6 +81,7 @@ export function SpecialistAssistantBody({
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mineRequests, setMineRequests] = useState<Array<{id:string;title:string;status:string;created_at:string}>>([]);
   const [handoffByMessage, setHandoffByMessage] = useState<Record<string, HandoffState>>({});
   const bottomRef = useRef<HTMLDivElement>(null);
   const suppressAutoScrollRef = useRef(false);
@@ -100,6 +103,7 @@ export function SpecialistAssistantBody({
         setCargo(data.cargo || null);
         setStateless(data.persistence === 'stateless_read_only');
         setHandoffByMessage({});
+        setMineRequests(Array.isArray(data.assistantRequests) ? data.assistantRequests : []);
         setLoaded(true);
       })
       .catch((cause) => {
@@ -186,6 +190,72 @@ export function SpecialistAssistantBody({
     }
   }
 
+  const downloadMineReport = (content: string) => {
+    const file = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(file);
+    const element = document.createElement('a');
+    element.href = url;
+    element.download = `MOTIL_informe_mina_${new Date().toISOString().slice(0,10)}.md`;
+    document.body.appendChild(element);
+    element.click();
+    element.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const generateMineReport = async (days: 7 | 30) => {
+    if (!mineAssistant || sending) return;
+    setSending(true);
+    setError(null);
+    const question = `Generar informe operacional de los últimos ${days} días`;
+    setMessages((current) => [...current, { role: 'user', content: question }]);
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'report', periodDays: days, conversationId }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(payload?.error || 'No se pudo generar el informe.');
+      setConversationId(payload?.conversationId || conversationId);
+      if (payload?.message) {
+        setMessages((current) => [...current, payload.message]);
+      } else if (typeof payload?.answer === 'string') {
+        setMessages((current) => [...current, { role: 'assistant', content: payload.answer }]);
+      }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'No se pudo generar el informe.');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const registerMineRequest = async (item: ChatMessage) => {
+    if (!mineAssistant || !item.id || !conversationId) return;
+    const currentState = handoffByMessage[item.id];
+    if (currentState?.state === 'sending' || currentState?.state === 'done') return;
+    setHandoffByMessage((current) => ({ ...current, [item.id!]: { state: 'sending', label: 'Registrando…' } }));
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'create_request', sourceMessageId: item.id }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(payload?.error || 'No fue posible registrar la solicitud.');
+      if (payload?.request?.id) {
+        setMineRequests((current) => current.some((row) => row.id === payload.request.id)
+          ? current : [payload.request, ...current].slice(0, 8));
+      }
+      setHandoffByMessage((current) => ({
+        ...current, [item.id!]: { state: 'done', label: 'Solicitud registrada · pendiente de revisión' },
+      }));
+    } catch (cause) {
+      setHandoffByMessage((current) => ({
+        ...current, [item.id!]: { state: 'error', label: cause instanceof Error ? cause.message : 'No se pudo registrar la solicitud.' },
+      }));
+    }
+  };
+
   const createExecutiveHandoff = async (item: ChatMessage) => {
     if (!conversationId || !item.id || !DIRECT_EXECUTIVE_HANDOFF_ENDPOINTS.has(endpoint)) return;
     const currentState = handoffByMessage[item.id];
@@ -268,6 +338,19 @@ export function SpecialistAssistantBody({
         </Button>
       </div>
 
+      {mineAssistant && mineRequests.length > 0 ? (
+        <details className="border-b border-border bg-background px-4 py-2">
+          <summary className="cursor-pointer text-xs text-muted-foreground">Mis solicitudes · {mineRequests.length} recientes</summary>
+          <div className="mt-2 max-h-32 space-y-1 overflow-y-auto text-xs">
+            {mineRequests.map((req) => (
+              <p key={req.id} className="flex items-center justify-between gap-2 rounded border border-border px-2 py-1">
+                <span className="truncate">{req.title}</span>
+                <span className="shrink-0 text-muted-foreground">{req.status === 'requested' ? 'Por revisar' : req.status}</span>
+              </p>
+            ))}
+          </div>
+        </details>
+      ) : null}
       <div className="min-h-0 flex-1 overflow-y-auto bg-muted/10 px-4 py-4" aria-live="polite">
         {!loaded ? <p className="text-sm text-muted-foreground">{loadingCopy}</p> : null}
         {loaded && hasMore ? (
@@ -310,6 +393,25 @@ export function SpecialistAssistantBody({
                     })}
                   </div>
                 ) : null}
+                {mineAssistant && item.role === 'assistant' ? (
+                  <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-border pt-2">
+                    {item.content.startsWith('# Informe operacional') ? (
+                      <Button size="sm" variant="outline" type="button" onClick={() => downloadMineReport(item.content)}>
+                        <FileDown className="mr-1 size-3.5" /> Descargar informe
+                      </Button>
+                    ) : null}
+                    {item.id && evidenceRefs.length > 0 && !item.content.startsWith('# Informe operacional') ? (
+                      <Button size="sm" variant="ghost" type="button"
+                        disabled={handoff?.state === 'sending' || handoff?.state === 'done'}
+                        onClick={() => void registerMineRequest(item)}
+                        title="Registra una solicitud pendiente de revisión; no ejecuta OT ni compras">
+                        <ClipboardList className="mr-1 size-3.5" />
+                        {handoff?.state === 'sending' ? 'Registrando…' : handoff?.state === 'done' ? handoff.label : 'Registrar solicitud'}
+                      </Button>
+                    ) : null}
+                    {handoff?.state === 'error' ? <p className="text-xs text-destructive">{handoff.label}</p> : null}
+                  </div>
+                ) : null}
                 {canCreateExecutiveHandoff ? (
                   <div className="mt-2 border-t border-border pt-2">
                     <Button
@@ -337,6 +439,11 @@ export function SpecialistAssistantBody({
         {error ? <p className="mt-4 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">{error}</p> : null}
       </div>
 
+      {mineAssistant ? <div className="flex items-center gap-2 border-t border-border px-3 py-2">
+        <span className="text-[10px] text-muted-foreground">Informes:</span>
+        <Button type="button" variant="outline" size="sm" disabled={sending} onClick={() => void generateMineReport(7)}>7 días</Button>
+        <Button type="button" variant="outline" size="sm" disabled={sending} onClick={() => void generateMineReport(30)}>30 días</Button>
+      </div> : null}
       <form onSubmit={submit} className="border-t border-border bg-card p-3">
         <div className="flex items-end gap-2 rounded-lg border border-border bg-background p-2 focus-within:ring-2 focus-within:ring-primary/40">
           <textarea
