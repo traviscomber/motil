@@ -23,7 +23,8 @@ export function WorkOrderEvidenceAndApproval({ workOrderId, status }: { workOrde
   const review = useSWR(status === 'completed' ? `/api/maintenance/work-orders/${workOrderId}/review` : null, fetcher);
 
   const photos = evidence.data?.evidence || [];
-  const primaryPhoto = photos[0];
+  const [selectedPhotoId, setSelectedPhotoId] = useState<string | null>(null);
+  const primaryPhoto = photos.find((photo: { id: string }) => photo.id === selectedPhotoId) || photos[0];
   const currentReview = review.data?.review;
   const canApprove = Boolean(review.data?.canApprove);
   const [confirmMaterialsInstalled, setConfirmMaterialsInstalled] = useState(false);
@@ -72,20 +73,16 @@ export function WorkOrderEvidenceAndApproval({ workOrderId, status }: { workOrde
                 <span>Abrir imagen completa</span>
               </div>
               {photos.length > 1 ? (
-                <details className="rounded-lg border">
-                  <summary className="cursor-pointer px-4 py-3 text-sm font-medium">Ver {photos.length - 1} evidencia{photos.length - 1 === 1 ? '' : 's'} adicional{photos.length - 1 === 1 ? '' : 'es'}</summary>
-                  <div className="grid gap-3 border-t p-3 sm:grid-cols-2">
-                    {photos.filter((photo: { id: string }) => photo.id !== primaryPhoto?.id).map((photo: { id: string; file_name?: string | null; created_at?: string | null; signed_url?: string | null }) => (
-                      <a key={photo.id} href={photo.signed_url || '#'} target="_blank" rel="noreferrer" className="overflow-hidden rounded-md border bg-muted">
-                        {photo.signed_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={photo.signed_url} alt={photo.file_name || 'Evidencia de OT'} className="h-44 w-full object-cover" />
-                        ) : <div className="flex h-44 items-center justify-center"><ImageIcon className="h-5 w-5 text-muted-foreground" /></div>}
-                        <div className="px-3 py-2 text-xs text-muted-foreground">{formatDate(photo.created_at)}</div>
-                      </a>
-                    ))}
-                  </div>
-                </details>
+                <div className="flex gap-2 overflow-x-auto pb-2 print:hidden" aria-label="Miniaturas de evidencia">
+                  {photos.map((photo: { id: string; file_name?: string | null; signed_url?: string | null }, index: number) => (
+                    <button key={photo.id} type="button" onClick={() => setSelectedPhotoId(photo.id)} aria-label={`Ver fotografía ${index + 1}`} aria-pressed={photo.id === primaryPhoto?.id} className={`h-20 w-24 shrink-0 overflow-hidden rounded-md border-2 bg-muted ${photo.id === primaryPhoto?.id ? 'border-primary' : 'border-transparent'}`}>
+                      {photo.signed_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={photo.signed_url} alt={photo.file_name || `Evidencia ${index + 1}`} className="h-full w-full object-cover" />
+                      ) : <ImageIcon className="mx-auto h-6 w-6 text-muted-foreground" />}
+                    </button>
+                  ))}
+                </div>
               ) : null}
             </div>
           ) : null}
