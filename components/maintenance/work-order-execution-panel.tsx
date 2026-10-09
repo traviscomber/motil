@@ -91,7 +91,7 @@ type WorkOrderSummary = {
   preventive_actions?: string | null;
 };
 
-export function WorkOrderExecutionPanel({ workOrderId }: { workOrderId: string }) {
+export function WorkOrderExecutionPanel({ workOrderId, readOnly = false }: { workOrderId: string; readOnly?: boolean }) {
   const { data: photoData } = useSWR(workOrderId ? `/api/maintenance/work-orders/${workOrderId}/evidence` : null, fetcher);
   const { data, error, isLoading, mutate } = useSWR(
     workOrderId ? `/api/maintenance/work-orders/${workOrderId}/execution` : null,
@@ -245,6 +245,8 @@ export function WorkOrderExecutionPanel({ workOrderId }: { workOrderId: string }
         </CardContent>
       </Card>
 
+      {!readOnly ? (
+        <>
       <Card className="shadow-none">
         <CardHeader><CardTitle className="text-base">Costo real de la orden</CardTitle></CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -334,6 +336,9 @@ export function WorkOrderExecutionPanel({ workOrderId }: { workOrderId: string }
           ))}</div> : <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">No hay servicios externos registrados.</p>}
         </CardContent>
       </Card>
+
+        </>
+      ) : null}
 
       <Card className="shadow-none print:hidden">
         <CardHeader><CardTitle className="flex items-center gap-2 text-base"><History className="h-4 w-4" />Historial de la orden</CardTitle></CardHeader>

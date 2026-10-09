@@ -104,6 +104,28 @@ export function WorkOrderDetail({ locale, dictionary }: { locale: Locale; dictio
     return <Card className="shadow-none"><CardContent className="p-10 text-center"><p className="font-medium">{error ? t.loadFailed : t.notAvailable}</p><Button asChild variant="outline" className="mt-4"><Link href="/dashboard/mantenimiento/ordenes-trabajo">{t.backToOrders}</Link></Button></CardContent></Card>;
   }
 
+  if (workOrder.status === 'completed' && !isHistorical) {
+    return (
+      <div className="mx-auto max-w-5xl space-y-5 py-4">
+        <header className="flex flex-wrap items-start justify-between gap-5 border-b pb-5">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-mono text-sm text-muted-foreground">{formatWorkOrderNumber(workOrder.work_order_number, locale)}</span>
+              <Badge variant="outline">Completada</Badge>
+            </div>
+            <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">{workOrder.title || t.untitled}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">{formatAssetIdentity(workOrder.asset_name, workOrder.asset_code) || t.noAsset}</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            {(workOrder.canonical_asset_id || workOrder.asset_id) ? <Button asChild variant="outline"><Link href={`/dashboard/mantenimiento/equipos/${workOrder.canonical_asset_id || workOrder.asset_id}`}>Ficha 360</Link></Button> : null}
+          </div>
+        </header>
+        <WorkOrderExecutionPanel workOrderId={id} readOnly />
+        <WorkOrderEvidenceAndApproval workOrderId={id} status={workOrder.status} />
+      </div>
+    );
+  }
+
   if (isExecution) {
     return (
       <div className="space-y-4 py-2 sm:py-6">
