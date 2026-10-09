@@ -25,3 +25,18 @@ Estado: LAB / PR draft, sin cambios de producción.
 
 ## Limitación
 Hasta recibir plan del mes vigente y levantamientos originales (fecha, mina, sector, coordenadas, azimut, inclinación), el sistema no certifica cumplimiento ni avance real por sector. No inventar esos datos.
+
+
+## SERNAGEOMIN: cruce técnico del cargo de Ingeniería (2026-10-09)
+
+- Fuentes oficiales: https://www.bcn.cl/leychile/navegar?idNorma=221064 (DS 132, arts. 22, 33, 34, 60, 61) y https://www.sernageomin.cl/proyectos-mineros/.
+- Se reutiliza lib/intelligence/sernageomin-obligations.ts, la misma fuente del módulo Legal. No hay segunda bandeja regulatoria ni un criterio de cumplimiento automatizado.
+- Art. 33: diferenciar profesional responsable de proyectos, título reconocido y alcance de obra; no asignarlo por denominación de cargo.
+- Art. 34: jefatura de mina sujeta a requisitos profesionales propios, no equivalente automática a Jefe de Ingeniería.
+- Art. 22: método de explotación y modificación mayor requieren revisión de resoluciones. No inferir autorización desde el plan mensual.
+- Arts. 60-61: planos mineros y registros de avance requieren actualización y custodia; revisar planos con UTM, ventilación donde corresponda, accesos y emergencia.
+- El panel de Topografía exhibe fichas de referencias oficiales y evidencia a solicitar, solo para roles con permiso en Topografía. Legal conserva aplicabilidad y cierre de obligaciones.
+- El asistente usa estas referencias en respuestas, sin afirmar cumplimiento, firma, nombramientos ni permisos existentes.
+- Umbrales de proyectos de SERNAGEOMIN: dependen de capacidad autorizada, no se deducen del plan MINE-2026-08.
+- Pendientes de pedir a la faena: resolución del método de explotación, plano maestro/versiones, profesional firmante, jefe de mina designado, estudios/registro topográfico y capacidad autorizada.
+- QA antes de main: confirmar build SHA exacto, pruebas, navegación con cargo JEFE ING. PLA MINA, UI móvil y desktop, ninguna expansión de la matriz RBAC.
