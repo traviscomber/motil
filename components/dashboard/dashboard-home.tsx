@@ -158,9 +158,8 @@ function configFor(
       description: 'Revisa el avance, las restricciones y las decisiones pendientes. Los datos sin verificar no se presentan como cumplimiento.',
       metrics: [],
       shortcuts: [
-        { label: 'Plan y ejecución', href: '/dashboard/produccion', detail: 'Consulta la operación y sus fuentes.' },
-        { label: 'Inteligencia de producción', href: '/dashboard/produccion/inteligencia', detail: 'Identifica desviaciones con evidencia.' },
-        { label: 'Tareas pendientes', href: '/dashboard/acciones', detail: 'Revisa responsabilidades y escalaciones.' },
+        { label: 'Topografía y plan', href: '/dashboard/produccion/topografia', detail: 'Revisa vigencia del plan, objetivos y evidencia disponible.' },
+        { label: 'Tareas del cargo', href: '/dashboard/acciones', detail: 'Revisa responsabilidades y escalaciones registradas.' },
       ],
     };
   }
@@ -275,10 +274,12 @@ function configFor(
 export function DashboardHome({ locale, dictionary }: { locale: Locale; dictionary: Dictionary }) {
   const t = dictionary.app.home;
   const inbox = useSWR<InboxPayload>('/api/actions/inbox', fetcher, { refreshInterval: 60000, revalidateOnFocus: false });
-  const production = useSWR<ProductionOverview | null>('/api/produccion/canonical-overview', optionalFetcher, { revalidateOnFocus: false });
-  const maintenance = useSWR<MaintenanceOverview | null>('/api/maintenance/work-order-flow?limit=200', optionalFetcher, { revalidateOnFocus: false });
-
   const mode = resolveMode(inbox.data?.profile?.cargoName);
+  // Area-scoped cargos should not read unrelated global operational summaries.
+  const needsBroadData = Boolean(inbox.data) && mode !== 'engineering' && mode !== 'mine';
+  const production = useSWR<ProductionOverview | null>(needsBroadData ? '/api/produccion/canonical-overview' : null, optionalFetcher, { revalidateOnFocus: false });
+  const maintenance = useSWR<MaintenanceOverview | null>(needsBroadData ? '/api/maintenance/work-order-flow?limit=200' : null, optionalFetcher, { revalidateOnFocus: false });
+
   const config = configFor(mode, production.data, maintenance.data, inbox.data, t, locale);
   const tasks = (inbox.data?.tasks || []).slice(0, 5);
   const loading = inbox.isLoading;
@@ -319,7 +320,7 @@ export function DashboardHome({ locale, dictionary }: { locale: Locale; dictiona
 
         {loading ? <StatePanel tone="loading" title={t.loadingTitle} />
           : inboxUnavailable ? <StatePanel tone="warning" title={t.workUnavailableTitle} description={t.workUnavailableDescription} />
-          : tasks.length === 0 ? <div className="flex items-center gap-3 rounded-lg border px-4 py-4"><CheckCircle2 className="h-5 w-5 text-muted-foreground" /><div><p className="text-sm font-medium">{t.emptyTitle}</p><p className="text-xs text-muted-foreground">{t.emptyDescription}</p></div></div>
+          : tasks.length === 0 ? <div className="flex items-center gap-3 rounded-lg border px-4 py-4">{mode==='engineering'?<AlertTriangle className="h-5 w-5 text-muted-foreground" />:<CheckCircle2 className="h-5 w-5 text-muted-foreground" />}<div><p className="text-sm font-medium">{mode==='engineering'?'Sin tareas registradas en Ingeniería':t.emptyTitle}</p><p className="text-xs text-muted-foreground">{mode==='engineering'?'La bandeja vacía no acredita cumplimiento del plan ni ausencia de brechas técnicas. Consulta Topografía.':t.emptyDescription}</p></div></div>
           : <div className="overflow-hidden rounded-lg border bg-card">{tasks.map((task) => <Link key={task.task_key} href={task.module_route || '/dashboard/acciones'} className="group flex items-center gap-4 border-b px-4 py-3 last:border-0 hover:bg-muted/30"><AlertTriangle className="h-4 w-4 shrink-0 text-muted-foreground" /><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><p className="truncate text-sm font-medium">{task.title}</p>{task.severity === 'critical' ? <Badge variant="destructive">{t.criticalBadge}</Badge> : null}</div><p className="truncate text-xs text-muted-foreground">{task.evidence_summary || task.urgency_label || task.domain}</p></div><ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1" /></Link>)}</div>}
       </section>
 
