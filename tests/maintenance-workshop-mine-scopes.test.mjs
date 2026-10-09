@@ -38,7 +38,7 @@ test('all workshop leads see site OTs rather than all-company OTs or only person
   assert.match(closeQueue, /allowedWorkOrderIds = \(siteOrders \|\| \[\]\)\.map/);
   assert.match(closeQueue, /readinessQuery = readinessQuery\.in\('work_order_id', allowedWorkOrderIds\)/);
   assert.match(viewerContext, /workshopSite: workshopScope\.isWorkshopHead/);
-  assert.match(workOrdersView, /data\\.workshopSite/);
+  assert.match(workOrdersView, /workshopSite/);
   assert.match(workOrdersView, /locale === 'en'/);
 });
 
