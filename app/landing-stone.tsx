@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
 import type * as THREEType from 'three';
 
-const GLB_URL = '/motil-rock.glb';
+const GLB_URL = '/motil-rock-master-v1.glb';
 // Keep the detailed brand artwork visible until a photorealistic 3D asset passes visual QA.
 const HERO_3D_ENABLED = process.env.NEXT_PUBLIC_MOTIL_HERO_3D === 'enabled';
 
@@ -12,13 +12,17 @@ const HERO_3D_ENABLED = process.env.NEXT_PUBLIC_MOTIL_HERO_3D === 'enabled';
  * The mineral's geometry and PBR materials come only from the supplied GLB.
  * The motion rig intentionally remains independent of mesh geometry.
  */
-export default function LandingStone() {
+interface LandingStoneProps { force3D?: boolean; initialYaw?: number }
+
+export default function LandingStone({ force3D = false, initialYaw = 0 }: LandingStoneProps) {
   const stageRef = useRef<HTMLDivElement>(null);
   const mountRef = useRef<HTMLSpanElement>(null);
-  const [fallback, setFallback] = useState(!HERO_3D_ENABLED);
+  const enabled = HERO_3D_ENABLED || force3D;
+  // Keep the approved still visible until the first 3D frame has rendered.
+  const [fallback, setFallback] = useState(true);
 
   useEffect(() => {
-    if (!HERO_3D_ENABLED) return;
+    if (!enabled) return;
     const stage = stageRef.current;
     const mount = mountRef.current;
     if (!stage || !mount) return;
@@ -47,7 +51,7 @@ export default function LandingStone() {
       renderer.setClearColor(0x171715, 0);
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = 0.74;
+      renderer.toneMappingExposure = 0.99;
       renderer.domElement.setAttribute('aria-hidden', 'true');
 
       const scene = new THREE.Scene();
@@ -55,16 +59,17 @@ export default function LandingStone() {
       const orbit = new THREE.Group();
       scene.add(orbit);
 
-      scene.add(new THREE.HemisphereLight(0xb8a38d, 0x090807, 0.26));
-      const key = new THREE.DirectionalLight(0xe8d3bb, 1.25);
-      key.position.set(3, 5, 6);
+      // Neutral studio lights reveal the GLB's authored vertex colors; no hue painting in JS.
+      scene.add(new THREE.HemisphereLight(0xd8d3cb, 0x181615, 0.62));
+      const key = new THREE.DirectionalLight(0xf4ebdf, 2.05);
+      key.position.set(3, 4.5, 5);
       scene.add(key);
-      const terracotta = new THREE.PointLight(0xb45b2a, 5.2, 9, 2);
-      terracotta.position.set(-3, 0.8, 3);
-      scene.add(terracotta);
-      const edge = new THREE.DirectionalLight(0x70635f, 0.36);
-      edge.position.set(-2.5, 1.5, -3);
-      scene.add(edge);
+      const fill = new THREE.DirectionalLight(0xc7cbd0, 0.82);
+      fill.position.set(-4, -0.5, 3);
+      scene.add(fill);
+      const rim = new THREE.DirectionalLight(0xe0d2c4, 1.25);
+      rim.position.set(-1.5, 2.5, -4);
+      scene.add(rim);
 
       let model: THREEType.Group;
       try {
@@ -74,52 +79,8 @@ export default function LandingStone() {
           return;
         }
         model = gltf.scene;
-        // Reference target: black fractured basalt with sparse copper/amber veins.
-        // Apply deterministic display-grade correction without modifying the source GLB.
-        model.traverse((object) => {
-          if (!(object instanceof THREE.Mesh)) return;
-          const source = Array.isArray(object.material) ? object.material : [object.material];
-          const tuned = source.map((base) => {
-            if (!(base instanceof THREE.MeshStandardMaterial)) return base;
-            const material = base.clone();
-            const name = material.name.toLowerCase();
-            if (name.includes('basalt')) {
-              material.color.setRGB(0.10, 0.078, 0.068);
-              material.metalness = 0.25;
-              material.roughness = 0.94;
-              material.emissive.setRGB(0.006, 0.002, 0.001);
-              material.emissiveIntensity = 0.18;
-            } else if (name.includes('copper')) {
-              material.color.setRGB(0.46, 0.24, 0.13);
-              material.metalness = 0.78;
-              material.roughness = 0.46;
-              material.emissive.setRGB(0.13, 0.04, 0.012);
-              material.emissiveIntensity = 0.28;
-            } else if (name.includes('gold')) {
-              material.color.setRGB(0.48, 0.35, 0.19);
-              material.metalness = 0.88;
-              material.roughness = 0.33;
-              material.emissive.setRGB(0.095, 0.037, 0.009);
-              material.emissiveIntensity = 0.24;
-            } else if (name.includes('amber')) {
-              material.color.setRGB(0.55, 0.29, 0.12);
-              material.metalness = 0.38;
-              material.roughness = 0.4;
-              material.emissive.setRGB(0.76, 0.26, 0.055);
-              material.emissiveIntensity = 0.65;
-            } else if (name.includes('bornite')) {
-              material.color.setRGB(0.23, 0.24, 0.39);
-              material.metalness = 0.73;
-              material.roughness = 0.47;
-              material.emissive.setRGB(0.014, 0.012, 0.03);
-              material.emissiveIntensity = 0.14;
-            }
-            // Protect dark minerals from blown highlights.
-            material.needsUpdate = true;
-            return material;
-          });
-          object.material = Array.isArray(object.material) ? tuned : tuned[0];
-        });
+        // Asset-first: glTF owns its geometry, vertex colors and PBR materials.
+        // Recoloring individual meshes here would invalidate the 360-degree master.
       } catch {
         renderer.dispose();
         if (!cancelled) setFallback(true);
@@ -128,21 +89,22 @@ export default function LandingStone() {
 
       // Fit arbitrary authoring coordinates to the existing hero composition.
       const bounds = new THREE.Box3().setFromObject(model);
-      const size = bounds.getSize(new THREE.Vector3());
       const center = bounds.getCenter(new THREE.Vector3());
-      const largest = Math.max(size.x, size.y, size.z);
-      if (!Number.isFinite(largest) || largest <= 0) {
+      const sphere = bounds.getBoundingSphere(new THREE.Sphere());
+      if (!Number.isFinite(sphere.radius) || sphere.radius <= 0) {
         renderer.dispose();
         setFallback(true);
         return;
       }
       model.position.sub(center);
       const normalizer = new THREE.Group();
-      normalizer.scale.setScalar(2.45 / largest);
+      // Bound by the enclosing sphere, so quarter-turns never crop the silhouette.
+      normalizer.scale.setScalar(1.16 / sphere.radius);
       normalizer.add(model);
       orbit.add(normalizer);
+      orbit.rotation.y = (initialYaw * Math.PI) / 180;
 
-      camera.position.set(0, 0.05, 4.5);
+      camera.position.set(0, 0.05, 4.8);
       mount.appendChild(renderer.domElement);
 
       const resize = () => {
@@ -154,6 +116,7 @@ export default function LandingStone() {
         renderer.domElement.style.width = '100%';
         renderer.domElement.style.height = '100%';
         renderer.render(scene, camera);
+        if (!cancelled) setFallback(false);
       };
       const resizeObserver = new ResizeObserver(resize);
       resizeObserver.observe(mount);
@@ -168,17 +131,23 @@ export default function LandingStone() {
       let pointerY = 0;
       let rotationX = 0;
       let rotationY = 0;
+      let dragYaw = 0;
+      let dragPitch = 0;
+      let draggingId: number | null = null;
+      let dragX = 0;
+      let dragY = 0;
+      const initialYawRad = (initialYaw * Math.PI) / 180;
 
       const draw = (now: number) => {
         requestId = 0;
         if (!visible || !active || reducedMotion) return;
         const delta = Math.min(0.05, (now - last) / 1000);
         last = now;
-        elapsed += delta;
+        if (draggingId === null) elapsed += delta;
         const ease = 1 - Math.exp(-4.2 * delta);
         rotationX += (pointerY * -0.11 - rotationX) * ease;
         rotationY += (pointerX * 0.16 - rotationY) * ease;
-        orbit.rotation.set(rotationX, rotationY + elapsed * 0.045, 0);
+        orbit.rotation.set(rotationX + dragPitch, initialYawRad + rotationY + dragYaw + elapsed * 0.045, 0);
         orbit.position.y = Math.sin(elapsed * 0.8) * 0.035;
         renderer.render(scene, camera);
         requestId = requestAnimationFrame(draw);
@@ -188,10 +157,35 @@ export default function LandingStone() {
         last = performance.now();
         requestId = requestAnimationFrame(draw);
       };
+      const onDown = (event: PointerEvent) => {
+        if (event.button !== 0 || !event.isPrimary) return;
+        draggingId = event.pointerId;
+        dragX = event.clientX;
+        dragY = event.clientY;
+        stage.setPointerCapture(event.pointerId);
+      };
       const onMove = (event: PointerEvent) => {
         const rect = stage.getBoundingClientRect();
+        if (draggingId === event.pointerId) {
+          // One stage-width of movement corresponds to a complete 360-degree turn.
+          dragYaw += ((event.clientX - dragX) / Math.max(1, rect.width)) * Math.PI * 2;
+          dragPitch = Math.max(-0.35, Math.min(0.35,
+            dragPitch + ((event.clientY - dragY) / Math.max(1, rect.height)) * 0.9));
+          dragX = event.clientX;
+          dragY = event.clientY;
+          if (reducedMotion) {
+            orbit.rotation.set(dragPitch, initialYawRad + dragYaw, 0);
+            renderer.render(scene, camera);
+          }
+          return;
+        }
         pointerX = ((event.clientX - rect.left) / Math.max(1, rect.width)) * 2 - 1;
         pointerY = ((event.clientY - rect.top) / Math.max(1, rect.height)) * 2 - 1;
+      };
+      const onUp = (event: PointerEvent) => {
+        if (draggingId !== event.pointerId) return;
+        draggingId = null;
+        if (stage.hasPointerCapture(event.pointerId)) stage.releasePointerCapture(event.pointerId);
       };
       const onLeave = () => { pointerX = 0; pointerY = 0; };
       const onVisibility = () => {
@@ -206,7 +200,10 @@ export default function LandingStone() {
       }, { rootMargin: '100px' });
       observer.observe(stage);
       document.addEventListener('visibilitychange', onVisibility);
+      stage.addEventListener('pointerdown', onDown);
       stage.addEventListener('pointermove', onMove, { passive: true });
+      stage.addEventListener('pointerup', onUp);
+      stage.addEventListener('pointercancel', onUp);
       stage.addEventListener('pointerleave', onLeave);
       start();
       cleanup = () => {
@@ -214,7 +211,10 @@ export default function LandingStone() {
         resizeObserver.disconnect();
         observer.disconnect();
         document.removeEventListener('visibilitychange', onVisibility);
+        stage.removeEventListener('pointerdown', onDown);
         stage.removeEventListener('pointermove', onMove);
+        stage.removeEventListener('pointerup', onUp);
+        stage.removeEventListener('pointercancel', onUp);
         stage.removeEventListener('pointerleave', onLeave);
         model.traverse((object) => {
           if (object instanceof THREE.Mesh) {
@@ -231,10 +231,10 @@ export default function LandingStone() {
 
     void init().catch(() => { if (!cancelled) setFallback(true); });
     return () => { cancelled = true; cleanup?.(); };
-  }, []);
+  }, [enabled, initialYaw]);
 
   return (
-    <div ref={stageRef} role="img" aria-label="Roca mineral tridimensional de MOTIL" className="ld-stone-stage">
+    <div ref={stageRef} role="img" aria-label="Roca mineral tridimensional de MOTIL" className={`ld-stone-stage${force3D ? ' ld-stone-interactive' : ''}`} style={force3D ? { touchAction: 'none', cursor: 'grab' } : undefined}>
       <span ref={mountRef} className="ld-stone-tilt">
         {fallback ? <Image src="/brand/hero-stone.png" alt="" width={1024} height={1024} className="ld-stone" priority /> : null}
       </span>

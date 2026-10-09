@@ -7,7 +7,7 @@ const css = await readFile(new URL('../app/landing.css', import.meta.url), 'utf8
 
 test('MOTIL hero loads the supplied GLB rather than generating procedural geometry', () => {
   assert.match(hero, /GLTFLoader/);
-  assert.match(hero, /\/motil-rock\.glb/);
+  assert.match(hero, /\/motil-rock-master-v1\.glb/);
   assert.match(hero, /loadAsync\(GLB_URL\)/);
   assert.doesNotMatch(hero, /new THREE\.IcosahedronGeometry/);
   assert.doesNotMatch(hero, /rockRadius\(/);
@@ -20,6 +20,9 @@ test('MOTIL hero preserves original GLB physical materials and normalizes framin
   assert.match(hero, /ACESFilmicToneMapping/);
   assert.match(hero, /SRGBColorSpace/);
   assert.doesNotMatch(hero, /material\.onBeforeCompile/);
+  assert.doesNotMatch(hero, /material\.color\.setRGB/);
+  assert.doesNotMatch(hero, /material\.clone\(\)/);
+  assert.match(hero, /1\.16 \/ sphere\.radius/);
 });
 
 test('MOTIL hero adapts quality and motion safely', () => {
@@ -28,6 +31,9 @@ test('MOTIL hero adapts quality and motion safely', () => {
   assert.match(hero, /IntersectionObserver/);
   assert.match(hero, /visibilitychange/);
   assert.match(hero, /pointermove/);
+  assert.match(hero, /pointerdown/);
+  assert.match(hero, /dragYaw/);
+  assert.match(hero, /initialYawRad/);
   assert.match(hero, /Math\.exp\(-4\.2 \* delta\)/);
   assert.match(hero, /Math\.sin\(elapsed \* 0\.8\) \* 0\.035/);
 });
@@ -48,6 +54,7 @@ test('MOTIL hero stage retains premium responsive layout', () => {
 
 test('MOTIL hero defaults to the approved mineral artwork while 3D quality is under review', () => {
   assert.match(hero, /const HERO_3D_ENABLED = process\.env\.NEXT_PUBLIC_MOTIL_HERO_3D === 'enabled'/);
-  assert.match(hero, /useState\(!HERO_3D_ENABLED\)/);
-  assert.match(hero, /if \(!HERO_3D_ENABLED\) return/);
+  assert.match(hero, /useState\(true\)/);
+  assert.match(hero, /const enabled = HERO_3D_ENABLED \|\| force3D/);
+  assert.match(hero, /if \(!enabled\) return/);
 });
