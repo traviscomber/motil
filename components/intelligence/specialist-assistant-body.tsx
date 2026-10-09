@@ -27,6 +27,7 @@ type ChatState = {
   sessionIdleHours?: number;
   memoryCount?: number;
   cargo?: string | null;
+  persistence?: 'stateless_read_only' | string;
 };
 
 type SpecialistAssistantBodyProps = {
@@ -74,6 +75,7 @@ export function SpecialistAssistantBody({
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [memoryCount, setMemoryCount] = useState(0);
   const [cargo, setCargo] = useState<string | null>(null);
+  const [stateless, setStateless] = useState(false);
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -96,6 +98,7 @@ export function SpecialistAssistantBody({
         setOldestMessageAt(data.oldestMessageAt || null);
         setMemoryCount(data.memoryCount || 0);
         setCargo(data.cargo || null);
+        setStateless(data.persistence === 'stateless_read_only');
         setHandoffByMessage({});
         setLoaded(true);
       })
@@ -258,7 +261,7 @@ export function SpecialistAssistantBody({
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <span className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1"><Database className="size-3" />Canónico</span>
           {cargo ? <span className="max-w-48 truncate rounded-full border border-border px-2 py-1" title={cargo}>{cargo}</span> : null}
-          <span className="rounded-full border border-border px-2 py-1">Memoria {memoryCount}</span>
+          {stateless ? <span className="rounded-full border border-border px-2 py-1">Consulta sin historial</span> : <span className="rounded-full border border-border px-2 py-1">Memoria {memoryCount}</span>}
         </div>
         <Button type="button" size="icon-sm" variant="ghost" onClick={() => void startNewConversation()} disabled={sending} aria-label="Nueva conversación" title="Archivar conversación y comenzar una nueva">
           <RotateCcw className="size-4" />

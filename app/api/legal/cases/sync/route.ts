@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
   if (!context.ok) return context.response;
 
   const access = await getModuleAccessLevel(context.userId, context.role, MODULE_KEYS.LEGAL_MODULO);
-  if (access !== 'ED' && access !== 'LEC') {
+  if (access !== 'ED') {
     return NextResponse.json({ error: 'No tienes acceso al módulo Legal' }, { status: 403 });
   }
 

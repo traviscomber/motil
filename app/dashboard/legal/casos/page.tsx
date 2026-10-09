@@ -97,10 +97,10 @@ export default function LegalCasesPage() {
   };
 
   useEffect(() => {
-    void sync();
-    // sync once when the work center opens
+    if (data?.canWrite) void sync();
+    // Sync once only after confirming the current Legal role can write.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [data?.canWrite]);
 
   const openCases = useMemo(
     () => (data?.data || []).filter((item) => item.status !== 'closed'),
@@ -125,10 +125,10 @@ export default function LegalCasesPage() {
             Señales de otras áreas convertidas en trabajo Legal, sin quitar ownership al responsable operacional.
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => void sync()} disabled={syncing}>
+        {data.canWrite ? <Button variant="outline" size="sm" onClick={() => void sync()} disabled={syncing}>
           <RefreshCw className={`mr-2 h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
           Sincronizar
-        </Button>
+        </Button> : null}
       </header>
 
       {actionMessage ? <StatePanel tone="warning" title="Acción Legal no aplicada" description={actionMessage} className="min-h-0" /> : null}

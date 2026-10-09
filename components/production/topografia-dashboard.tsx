@@ -5,12 +5,26 @@ import { Map, Ruler, Target } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PageHeader, PageHeaderContent, PageHeaderDescription, PageHeaderEyebrow, PageHeaderTitle } from '@/components/ui/page-header';
 import { StatePanel } from '@/components/ui/state-panel';
+import { TopographyEvidenceQueue } from '@/components/production/topografia-evidence-queue';
+import { EngineeringRegulatoryDossier } from '@/components/production/engineering-regulatory-dossier';
 
 type TopografiaData = {
   plan: null | { plan_code:string; period_start:string; period_end:string };
-  summary: { canonicalSectors:number; planLines:number; plannedAdvanceM:number; plannedDrillingM:number; plannedTons:number; actualSurveyPoints:number|null; actualAdvanceM:number|null };
+  planPeriod: { status:'current'|'expired'|'upcoming'|'missing'|'invalid'; evaluatedDate:string; canUseAsCurrent:boolean };
+  summary: { canonicalSectors:number; planLines:number; plannedAdvanceM:number|null; plannedDrillingM:number|null; plannedTons:number|null; wasteTons:number|null; totalMovementTons:number|null; actualSurveyPoints:number|null; actualAdvanceM:number|null };
+  breakdown: { loadedLines:number; totalLines:number|null; complete:boolean; mineTotalTons:number|null; radialDrillingM:number|null; detailedAdvanceM:number|null; movementHeaderConsistent:boolean|null; overlapsByDesign:true; note:string };
+  readiness: {
+    evaluatedDate:string; planPeriod:string; comparisonReady:boolean;
+    checks:Array<{code:string;passed:boolean;label:string}>;
+    reports:{total:number|null;loaded:number;complete:boolean;statusCounts:{review:number;matched:number;approved:number;other:number};resolvedMine:number;resolvedSector:number;bothResolved:number;withReportedMeters:number;invalidRawMine:number;unregisteredRawSector:number;firstDate:string|null;lastDate:string|null;notVerifiedExecution:true};
+    note:string;
+  };
   lines: Array<{ id:string; line_type:string; mine_name_raw:string|null; sector_raw:string|null; level_raw:string|null; section_raw:string|null; planned_tons:number|null; planned_grade_pct:number|null; planned_advance_m:number|null; planned_drilling_m:number|null; priority:number|null; source_reference:string|null }>;
   intelligenceStatus: { surveyCanonical:boolean; coordinatesCanonical:boolean; actualAdvanceCanonical:boolean; note:string };
+  regulatoryGuidance: { authority:'SERNAGEOMIN'; source:'canonical_sernageomin_obligations';
+    items:Array<{id:string;title:string;legalBasis:string[];sourceUrl:string;businessOwner:string;nextAction:string;applicabilityNote:string;expectedEvidence:string[]}>;
+    humanValidationRequired:true; complianceVerdictCalculated:false; roleAssignmentVerified:false;
+  };
 };
 
 const fetcher=async(url:string):Promise<TopografiaData>=>{const r=await fetch(url,{credentials:'include'});const d=await r.json();if(!r.ok)throw new Error(d.error||'No fue posible cargar Topografía');return d;};
@@ -24,25 +38,90 @@ export function TopografiaDashboard(){
  const {data,error,isLoading,mutate}=useSWR('/api/produccion/topografia',fetcher);
  const s=data?.summary;
  const hasActualTopography=Boolean(data&&(data.intelligenceStatus.surveyCanonical||data.intelligenceStatus.coordinatesCanonical||data.intelligenceStatus.actualAdvanceCanonical));
+ const currentPlan=data?.planPeriod.status === 'current';
+ const referencePlan=Boolean(data?.plan && !currentPlan);
+ const planStatusTitle=data?.planPeriod.status === 'expired' ? 'Plan vencido' : data?.planPeriod.status === 'upcoming' ? 'Plan aún no vigente' : 'Período del plan sin vigencia acreditada';
+ const referenceKind=data?.planPeriod.status === 'expired' ? 'histórica' : data?.planPeriod.status === 'upcoming' ? 'futura' : 'con período no verificable';
 
  return <div className="space-y-6">
   <PageHeader><PageHeaderContent><PageHeaderEyebrow>Producción · Control espacial</PageHeaderEyebrow><PageHeaderTitle>Topografía</PageHeaderTitle><PageHeaderDescription>Plan espacial y evidencia topográfica real se mantienen separados. Un dato planificado nunca se presenta como levantamiento ejecutado.</PageHeaderDescription></PageHeaderContent></PageHeader>
   {error?<StatePanel tone="error" title="No fue posible cargar Topografía" description="Reintenta la consulta." actions={<Button variant="outline" onClick={()=>void mutate()}>Reintentar</Button>} className="min-h-0 py-5"/>:null}
 
-  <section className="overflow-hidden rounded-lg border" aria-label="Plan topográfico vigente">
-   <div className="border-b bg-card px-5 py-4"><p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Plan vigente</p><p className="mt-1 font-medium">{data?.plan?.plan_code||'Sin plan activo identificado'}</p><p className="mt-1 text-sm text-muted-foreground">Objetivos de labores cargados desde planificación. No representan medición topográfica ejecutada.</p></div>
+  {referencePlan ? <StatePanel
+    tone="warning"
+    title={planStatusTitle}
+    description={`El plan ${data?.plan?.plan_code} corresponde al período ${data?.plan?.period_start} a ${data?.plan?.period_end}. A fecha ${data?.planPeriod.evaluatedDate} sólo puede consultarse como referencia ${referenceKind}; no demuestra objetivos vigentes ni cumplimiento. Solicita un nuevo plan aprobado a Ingeniería.`}
+    className="min-h-0 py-5"
+  /> : null}
+
+  <section className="overflow-hidden rounded-lg border" aria-label="Plan topográfico y período de referencia">
+   <div className="border-b bg-card px-5 py-4"><p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">{currentPlan ? 'Plan vigente' : data?.plan ? 'Plan de referencia · no vigente' : 'Sin plan vigente'}</p><p className="mt-1 font-medium">{data?.plan?.plan_code||'Sin plan activo identificado'}</p>{data?.plan ? <p className="mt-1 text-xs text-muted-foreground">Período: {data.plan.period_start} a {data.plan.period_end}</p> : null}<p className="mt-1 text-sm text-muted-foreground">{currentPlan ? 'Objetivos vigentes cargados desde planificación. No representan medición topográfica ejecutada.' : 'Objetivos no vigentes: no utilizarlos como metas actuales. Ningún dato del plan representa ejecución real.'}</p></div>
    <div className="grid gap-px bg-border sm:grid-cols-2 xl:grid-cols-4">
     <PlanMetric label="Sectores canónicos" value={isLoading?'—':s?n(s.canonicalSectors):'—'} detail="Maestro operacional"/>
-    <PlanMetric label="Avance planificado" value={isLoading?'—':s?`${n(s.plannedAdvanceM)} m`:'—'} detail="Objetivo de avance"/>
-    <PlanMetric label="Sondaje planificado" value={isLoading?'—':s?`${n(s.plannedDrillingM)} m`:'—'} detail={`${s?.planLines??0} líneas de plan`}/>
-    <PlanMetric label="Toneladas planificadas" value={isLoading?'—':s?n(s.plannedTons,1):'—'} detail="Objetivo del plan"/>
+    <PlanMetric label="Avance planificado" value={s?.plannedAdvanceM==null?'—':`${n(s.plannedAdvanceM)} m`} detail="Total en cabecera del plan"/>
+    <PlanMetric label="Perforación planificada" value={s?.plannedDrillingM==null?'—':`${n(s.plannedDrillingM)} m`} detail="Total mensual en cabecera del plan"/>
+    <PlanMetric label="Mineral a planta planificado" value={s?.plannedTons==null?'—':n(s.plannedTons,1)} detail="Total en cabecera · no suma de partidas"/>
    </div>
   </section>
+
+
+  {data?.plan ? <section className="rounded-lg border bg-card px-5 py-4" aria-label="Control de cifras del plan">
+    <div className="space-y-2">
+      <p className="font-medium">Control de cifras del plan</p>
+      <p className="text-sm text-muted-foreground">Los totales se toman de la cabecera documental del plan mensual. Las partidas incluyen agregados y subtotales que pueden solaparse; no deben sumarse indiscriminadamente.</p>
+      <div className="grid gap-3 pt-2 text-sm sm:grid-cols-2">
+        <p>Estéril planificado: <strong>{s?.wasteTons==null?'—':`${n(s.wasteTons,1)} t`}</strong></p>
+        <p>Movimiento total planificado: <strong>{s?.totalMovementTons==null?'—':`${n(s.totalMovementTons,1)} t`}</strong></p>
+        <p>Desglose de perforación radial: <strong>{data.breakdown.radialDrillingM==null?'—':`${n(data.breakdown.radialDrillingM,1)} m`}</strong></p>
+        <p>Toneladas desglosadas por mina: <strong>{data.breakdown.mineTotalTons==null?'—':`${n(data.breakdown.mineTotalTons,1)} t`}</strong></p>
+      </div>
+      <p className="text-xs text-muted-foreground">La perforación radial detallada puede representar solo una parte del objetivo total de perforación: no es ejecución ni una diferencia de avance pendiente.</p>
+      {!data.breakdown.complete ? <p className="text-sm text-destructive">Detalle parcial: {data.breakdown.loadedLines} de {data.breakdown.totalLines ?? 'total no conocido'} líneas; no se certifica cobertura.</p> : null}
+      {data.breakdown.movementHeaderConsistent===false ? <p className="text-sm text-destructive">Las toneladas de movimiento no coinciden con mineral a planta más estéril en la cabecera; se requiere validación documental.</p> : null}
+    </div>
+  </section> : null}
+
+
+  {data?.plan ? <section className="rounded-lg border bg-card px-5 py-5" aria-label="Preparación de conciliación plan y ejecución">
+    <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Integridad operacional</p>
+    <h2 className="mt-1 text-lg font-semibold">¿Podemos comparar lo planificado con lo ejecutado?</h2>
+    <p className="mt-2 text-sm font-medium">{data.readiness.comparisonReady?'Fuentes verificadas':'Todavía no: faltan verificaciones de origen'}</p>
+    <p className="mt-2 text-sm text-muted-foreground">{data.readiness.note}</p>
+    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+      {data.readiness.checks.map(item=><div key={item.code} className="rounded-md border px-3 py-3">
+        <p className="text-xs text-muted-foreground">{item.passed?'Verificado':'Pendiente de validar'}</p>
+        <p className="mt-1 text-sm font-medium">{item.label}</p>
+      </div>)}
+    </div>
+    <div className="mt-4 border-t pt-4 text-sm">
+      <p className="font-medium">Fuente de perforación del período del plan</p>
+      <p className="mt-1 text-muted-foreground">{data.readiness.reports.total==null?'Total no verificable':data.readiness.reports.complete?String(data.readiness.reports.total)+' registros fuente':String(data.readiness.reports.loaded)+' de '+String(data.readiness.reports.total)+' registros (muestra parcial)'}; no representan avance topográfico validado.</p>
+      <div className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
+        <p>Con sector canónico: <strong>{data.readiness.reports.bothResolved} de {data.readiness.reports.complete?data.readiness.reports.total ?? 0:data.readiness.reports.loaded}</strong></p>
+        <p>Pendientes de revisión: <strong>{data.readiness.reports.statusCounts.review}{data.readiness.reports.complete?'':' en muestra'}</strong></p>
+        <p>Conciliados documentalmente: <strong>{data.readiness.reports.statusCounts.matched}{data.readiness.reports.complete?'':' en muestra'}</strong></p>
+        <p>Último registro disponible: <strong>{data.readiness.reports.lastDate || 'Sin fecha disponible'}</strong></p>
+      </div>
+      <p className="mt-3 text-xs text-muted-foreground">La validación requiere un plan del mes, identificación de mina y sector, conciliación de los registros y evidencia topográfica original. No se calculan porcentajes de cumplimiento sin estas fuentes.</p>
+    </div>
+  </section> : null}
 
   {data&&!hasActualTopography?<StatePanel title="Sin fuente topográfica canónica" description={data.intelligenceStatus.note} className="min-h-0 py-5"/>:null}
 
   {data&&hasActualTopography?<section className="rounded-lg border bg-card p-5" aria-label="Actual topográfico"><div className="flex items-start justify-between gap-4"><div><p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Actual topográfico</p><p className="mt-1 font-medium">Levantamiento canónico disponible</p><p className="mt-1 text-sm text-muted-foreground">Sólo se muestran valores provenientes de la fuente topográfica canónica.</p></div><Map className="h-5 w-5 text-muted-foreground"/></div><div className="mt-4 grid gap-4 sm:grid-cols-2"><div><p className="text-xs text-muted-foreground">Puntos de levantamiento</p><p className="mt-1 text-xl font-semibold tabular-nums">{s?.actualSurveyPoints==null?'—':n(s.actualSurveyPoints)}</p></div><div><p className="text-xs text-muted-foreground">Avance real</p><p className="mt-1 text-xl font-semibold tabular-nums">{s?.actualAdvanceM==null?'—':`${n(s.actualAdvanceM,1)} m`}</p></div></div></section>:null}
 
   {data?.plan?<section className="overflow-hidden rounded-lg border bg-card"><div className="border-b px-4 py-3"><div className="flex items-start justify-between gap-4"><div><p className="font-medium">Plan de labores</p><p className="mt-1 text-sm text-muted-foreground">Detalle planificado. La futura reconciliación con avance, coordenadas y cotas reales ocurrirá sólo cuando exista evidencia topográfica canónica.</p></div><div className="flex gap-2 text-muted-foreground"><Ruler className="h-4 w-4"/><Target className="h-4 w-4"/></div></div></div><div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-muted/30 text-left text-xs text-muted-foreground"><tr><th className="px-4 py-3">Tipo</th><th className="px-4 py-3">Mina / sector</th><th className="px-4 py-3">Nivel / sección</th><th className="px-4 py-3 text-right">Toneladas</th><th className="px-4 py-3 text-right">Avance</th><th className="px-4 py-3 text-right">Perforación</th></tr></thead><tbody className="divide-y">{data.lines.map(l=><tr key={l.id}><td className="px-4 py-3">{l.line_type}</td><td className="px-4 py-3"><p>{l.mine_name_raw||'—'}</p><p className="text-xs text-muted-foreground">{l.sector_raw||'Sin sector'}</p></td><td className="px-4 py-3"><p>{l.level_raw||'—'}</p><p className="text-xs text-muted-foreground">{l.section_raw||'—'}</p></td><td className="px-4 py-3 text-right tabular-nums">{l.planned_tons==null?'—':n(Number(l.planned_tons),1)}</td><td className="px-4 py-3 text-right tabular-nums">{l.planned_advance_m==null?'—':`${n(Number(l.planned_advance_m),1)} m`}</td><td className="px-4 py-3 text-right tabular-nums">{l.planned_drilling_m==null?'—':`${n(Number(l.planned_drilling_m),1)} m`}</td></tr>)}</tbody></table></div></section>:data&&!isLoading?<StatePanel title="Sin plan topográfico activo" description="No hay un plan mensual activo para mostrar. Esto no se reemplaza por valores estimados." className="min-h-0 py-5"/>:null}
+  {data?.regulatoryGuidance?.items?.length ? <details className="overflow-hidden rounded-lg border bg-card" aria-label="Criterios normativos para Ingeniería">
+    <summary className="cursor-pointer px-5 py-4 text-sm font-medium">Criterios técnicos SERNAGEOMIN · responsabilidades y documentos</summary>
+    <div className="space-y-4 border-t px-5 py-4">
+      <p className="max-w-3xl text-sm text-muted-foreground">
+        Referencias para preparar antecedentes. El cargo interno de Ingeniería no equivale automáticamente a Jefe de Mina ni habilita la firma de proyectos. La empresa identifica responsables y Legal valida aplicabilidad.
+      </p>
+      <EngineeringRegulatoryDossier />
+      <p className="text-xs text-muted-foreground">Referencia normativa, no dictamen de cumplimiento. No se han acreditado aquí nombramientos, firmas, resoluciones ni vigencias concretas. El seguimiento y cierre de obligaciones permanece en Legal.</p>
+    </div>
+  </details> : null}
+
+  <TopographyEvidenceQueue />
  </div>;
 }

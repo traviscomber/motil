@@ -23,7 +23,7 @@ test('RES 0886 stays pending until exact taxonomy is extracted and human reviewe
 
 test('registry exposes official source provenance and domains', () => {
   assert.match(registry, /https:\/\/www\.sernageomin\.cl\/mineria\//);
-  assert.match(registry, /https:\/\/www\.sernageomin\.cl\/seguridad-minera\//);
+  assert.match(registry, /https:\/\/www\.bcn\.cl\/leychile\/navegar\?idNorma=221064/);
   assert.match(registry, /https:\/\/www\.sernageomin\.cl\/formularios-seguridad-minera\//);
   assert.match(registry, /lastReviewedAt/);
   assert.match(registry, /versionOrResolution/);
