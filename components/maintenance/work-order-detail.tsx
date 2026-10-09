@@ -16,6 +16,7 @@ import { WorkOrderPartsPanel } from '@/components/maintenance/work-order-parts-p
 import { WorkOrderPurchasingFlow } from '@/components/maintenance/work-order-purchasing-flow';
 import { WorkOrderStandardPlanPanel } from '@/components/maintenance/work-order-standard-plan-panel';
 import { WorkOrderTimer } from '@/components/maintenance/work-order-timer';
+import { MaintenanceOfflineDraft } from '@/components/maintenance/maintenance-offline-draft';
 import { MobileWorkOrderFlow } from '@/components/maintenance/mobile-work-order-flow';
 import { WorkOrderEvidenceAndApproval } from '@/components/maintenance/work-order-evidence-and-approval';
 import { EntityTimeline } from '@/components/shared/entity-timeline';
@@ -129,6 +130,7 @@ export function WorkOrderDetail({ locale, dictionary }: { locale: Locale; dictio
   if (isExecution) {
     return (
       <div className="space-y-4 py-2 sm:py-6">
+        <MaintenanceOfflineDraft workOrderId={id} />
         <MobileWorkOrderFlow
           workOrderId={id}
           workOrderNumber={workOrder.work_order_number}
