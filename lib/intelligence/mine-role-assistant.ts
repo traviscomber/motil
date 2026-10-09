@@ -192,8 +192,8 @@ export async function loadMineEvidence(
       : Promise.resolve({data:[],error:null}),
     'Instalaciones confirmadas por supervisión, separadas de retiros físicos de bodega.',100);
 
-  await checked('assets','canonical.assets',
-    () => db.schema('canonical').from('assets')
+  await checked('assets','canonical_assets_current',
+    () => db.from('canonical_assets_current')
       .select('id,asset_code,name,asset_type,location,operational_status,criticality,is_active,updated_at')
       .eq('organization_id',org).in('location',[mine,'Mina '+mine])
       .order('updated_at',{ascending:false}).limit(65),
