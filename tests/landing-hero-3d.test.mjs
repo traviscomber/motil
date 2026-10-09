@@ -52,9 +52,12 @@ test('MOTIL hero stage retains premium responsive layout', () => {
   assert.match(css, /width: min\(78vw, 390px\)/);
 });
 
-test('MOTIL hero defaults to the approved mineral artwork while 3D quality is under review', () => {
-  assert.match(hero, /const HERO_3D_ENABLED = process\.env\.NEXT_PUBLIC_MOTIL_HERO_3D === 'enabled'/);
+test('MOTIL hero renders Rock Master 3D by default, with a reversible static fallback', () => {
+  assert.match(hero, /const HERO_3D_ENABLED = process\.env\.NEXT_PUBLIC_MOTIL_HERO_3D !== 'disabled'/);
   assert.match(hero, /useState\(true\)/);
   assert.match(hero, /const enabled = HERO_3D_ENABLED \|\| force3D/);
   assert.match(hero, /if \(!enabled\) return/);
+  assert.match(hero, /className={`ld-stone-stage\$\{enabled/);
+  assert.match(hero, /touchAction: 'pan-y'/);
+  assert.match(hero, /setFallback\(false\)/);
 });
