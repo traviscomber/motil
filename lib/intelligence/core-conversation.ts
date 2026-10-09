@@ -5,7 +5,8 @@ type CoreConversationDomain =
   | 'production'
   | 'finance'
   | 'documents'
-  | 'data_health';
+  | 'data_health'
+  | 'mine_role';
 
 type DbClient = any;
 
