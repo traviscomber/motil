@@ -96,6 +96,7 @@ export type MineEvidence = {
     supervisorReviews: EvidenceSet;
     confirmedInstallations: EvidenceSet;
     assets: EvidenceSet;
+    team: EvidenceSet;
     drilling: EvidenceSet;
     planLines: EvidenceSet;
     plans: EvidenceSet;
@@ -199,6 +200,14 @@ export async function loadMineEvidence(
       .order('updated_at',{ascending:false}).limit(65),
     'Sólo activos con ubicación de faena identificada; activos sin ubicación quedan excluidos.',65);
 
+  await checked('team','people',
+    () => db.from('people')
+      .select('full_name,role_title,employment_status')
+      .eq('organization_id',org).eq('employment_status','active')
+      .ilike('role_title','%Mina '+mine+'%')
+      .order('full_name',{ascending:true}).limit(50),
+    'Equipo del sitio identificado por cargo explícito; no equiparar alias inciertos ni cargos generales.',50);
+
   if (persona.kind === 'mine_manager') {
     const { data: mineSource, error: mineError } = await db.from('production_mine_sources')
       .select('id,name,status').eq('organization_id',org).eq('name','Mina '+mine)
@@ -288,6 +297,9 @@ export function renderMineReport(evidence: MineEvidence): string {
     '',
     '## Equipos identificados en la mina',
     ...data.assets.rows.slice(0,18).map(r => '- '+value(r,'asset_code')+': '+value(r,'name')+' · '+value(r,'operational_status')+' · '+value(r,'location')),
+    '',
+    '## Personas con cargo identificado en esta faena',
+    ...data.team.rows.map(r => '- '+value(r,'full_name')+' · '+value(r,'role_title')),
   ];
   if (user.role === 'mine_manager') {
     const inPeriod = data.drilling.rows.filter(r => String(r.operation_date || '') >= periodStart && String(r.operation_date || '') <= periodEnd);
