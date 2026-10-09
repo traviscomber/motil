@@ -49,3 +49,11 @@ test('critical accident timing is explicit while uncertain deadlines remain vali
   assert.match(obligations, /validar fecha de corte/);
   assert.match(obligations, /no inferir plazo/);
 });
+
+test('Legal can locate the technical Engineering contact without granting Legal access or crossing tenants', () => {
+  assert.match(api, /engineering: \['prod_topografia'\]/);
+  assert.match(api, /loadModulePeople\(context\.supabase, allModuleKeys, context\.organizationId\)/);
+  assert.match(api, /\.eq\('organization_id', organizationId\)/);
+  assert.match(api, /MODULE_KEYS\.LEGAL_MODULO/);
+  assert.doesNotMatch(api, /engineering: \['legal_modulo'\]/);
+});
