@@ -10,7 +10,8 @@ import { TopographyEvidenceQueue } from '@/components/production/topografia-evid
 type TopografiaData = {
   plan: null | { plan_code:string; period_start:string; period_end:string };
   planPeriod: { status:'current'|'expired'|'upcoming'|'missing'|'invalid'; evaluatedDate:string; canUseAsCurrent:boolean };
-  summary: { canonicalSectors:number; planLines:number; plannedAdvanceM:number; plannedDrillingM:number; plannedTons:number; actualSurveyPoints:number|null; actualAdvanceM:number|null };
+  summary: { canonicalSectors:number; planLines:number; plannedAdvanceM:number|null; plannedDrillingM:number|null; plannedTons:number|null; wasteTons:number|null; totalMovementTons:number|null; actualSurveyPoints:number|null; actualAdvanceM:number|null };
+  breakdown: { loadedLines:number; totalLines:number|null; complete:boolean; mineTotalTons:number|null; radialDrillingM:number|null; detailedAdvanceM:number|null; movementHeaderConsistent:boolean|null; overlapsByDesign:true; note:string };
   lines: Array<{ id:string; line_type:string; mine_name_raw:string|null; sector_raw:string|null; level_raw:string|null; section_raw:string|null; planned_tons:number|null; planned_grade_pct:number|null; planned_advance_m:number|null; planned_drilling_m:number|null; priority:number|null; source_reference:string|null }>;
   intelligenceStatus: { surveyCanonical:boolean; coordinatesCanonical:boolean; actualAdvanceCanonical:boolean; note:string };
 };
@@ -46,11 +47,28 @@ export function TopografiaDashboard(){
    <div className="border-b bg-card px-5 py-4"><p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">{currentPlan ? 'Plan vigente' : data?.plan ? 'Plan de referencia · no vigente' : 'Sin plan vigente'}</p><p className="mt-1 font-medium">{data?.plan?.plan_code||'Sin plan activo identificado'}</p>{data?.plan ? <p className="mt-1 text-xs text-muted-foreground">Período: {data.plan.period_start} a {data.plan.period_end}</p> : null}<p className="mt-1 text-sm text-muted-foreground">{currentPlan ? 'Objetivos vigentes cargados desde planificación. No representan medición topográfica ejecutada.' : 'Objetivos no vigentes: no utilizarlos como metas actuales. Ningún dato del plan representa ejecución real.'}</p></div>
    <div className="grid gap-px bg-border sm:grid-cols-2 xl:grid-cols-4">
     <PlanMetric label="Sectores canónicos" value={isLoading?'—':s?n(s.canonicalSectors):'—'} detail="Maestro operacional"/>
-    <PlanMetric label="Avance planificado" value={isLoading?'—':s?`${n(s.plannedAdvanceM)} m`:'—'} detail="Objetivo de avance"/>
-    <PlanMetric label="Sondaje planificado" value={isLoading?'—':s?`${n(s.plannedDrillingM)} m`:'—'} detail={`${s?.planLines??0} líneas de plan`}/>
-    <PlanMetric label="Toneladas planificadas" value={isLoading?'—':s?n(s.plannedTons,1):'—'} detail="Objetivo del plan"/>
+    <PlanMetric label="Avance planificado" value={s?.plannedAdvanceM==null?'—':`${n(s.plannedAdvanceM)} m`} detail="Total en cabecera del plan"/>
+    <PlanMetric label="Perforación planificada" value={s?.plannedDrillingM==null?'—':`${n(s.plannedDrillingM)} m`} detail="Total mensual en cabecera del plan"/>
+    <PlanMetric label="Mineral a planta planificado" value={s?.plannedTons==null?'—':n(s.plannedTons,1)} detail="Total en cabecera · no suma de partidas"/>
    </div>
   </section>
+
+
+  {data?.plan ? <section className="rounded-lg border bg-card px-5 py-4" aria-label="Control de cifras del plan">
+    <div className="space-y-2">
+      <p className="font-medium">Control de cifras del plan</p>
+      <p className="text-sm text-muted-foreground">Los totales se toman de la cabecera documental del plan mensual. Las partidas incluyen agregados y subtotales que pueden solaparse; no deben sumarse indiscriminadamente.</p>
+      <div className="grid gap-3 pt-2 text-sm sm:grid-cols-2">
+        <p>Estéril planificado: <strong>{s?.wasteTons==null?'—':`${n(s.wasteTons,1)} t`}</strong></p>
+        <p>Movimiento total planificado: <strong>{s?.totalMovementTons==null?'—':`${n(s.totalMovementTons,1)} t`}</strong></p>
+        <p>Desglose de perforación radial: <strong>{data.breakdown.radialDrillingM==null?'—':`${n(data.breakdown.radialDrillingM,1)} m`}</strong></p>
+        <p>Toneladas desglosadas por mina: <strong>{data.breakdown.mineTotalTons==null?'—':`${n(data.breakdown.mineTotalTons,1)} t`}</strong></p>
+      </div>
+      <p className="text-xs text-muted-foreground">La perforación radial detallada puede representar solo una parte del objetivo total de perforación: no es ejecución ni una diferencia de avance pendiente.</p>
+      {!data.breakdown.complete ? <p className="text-sm text-destructive">Detalle parcial: {data.breakdown.loadedLines} de {data.breakdown.totalLines ?? 'total no conocido'} líneas; no se certifica cobertura.</p> : null}
+      {data.breakdown.movementHeaderConsistent===false ? <p className="text-sm text-destructive">Las toneladas de movimiento no coinciden con mineral a planta más estéril en la cabecera; se requiere validación documental.</p> : null}
+    </div>
+  </section> : null}
 
   {data&&!hasActualTopography?<StatePanel title="Sin fuente topográfica canónica" description={data.intelligenceStatus.note} className="min-h-0 py-5"/>:null}
 
