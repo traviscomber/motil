@@ -212,7 +212,16 @@ export async function POST(request:NextRequest) {
     } else {
       const recent=history.filter((row:any)=>row.role==='user' || row.role==='assistant' || row.role==='memory')
         .slice(-12).map((row:any)=>({role:row.role,content:String(row.content||'').slice(0,1800)}));
-      const generated=await callRoleAI(access.persona,question,recent,evidence);
+      // Send bounded per-source evidence to the model. Retain full scoped data for deterministic reports.
+      const modelEvidence={
+        ...evidence,
+        data:Object.fromEntries(Object.entries(evidence.data).map(([source, set]) => {
+          const limit=source==='drilling'?32:source==='workOrders'?40:24;
+          return [source,{...set,loadedRows:set.rows.length,rows:set.rows.slice(0,limit),
+            modelSampleTruncated:set.truncated || set.rows.length>limit}];
+        })),
+      };
+      const generated=await callRoleAI(access.persona,question,recent,modelEvidence);
       answer=generated.text;
       model=generated.model;
     }
