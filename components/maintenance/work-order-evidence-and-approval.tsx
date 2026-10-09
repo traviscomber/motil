@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import useSWR from 'swr';
 import { CheckCircle2, Image as ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -25,17 +26,29 @@ export function WorkOrderEvidenceAndApproval({ workOrderId, status }: { workOrde
   const primaryPhoto = photos[0];
   const currentReview = review.data?.review;
   const canApprove = Boolean(review.data?.canApprove);
+  const [confirmMaterialsInstalled, setConfirmMaterialsInstalled] = useState(false);
+  const [approving, setApproving] = useState(false);
+  const [approvalError, setApprovalError] = useState<string | null>(null);
+  const materialLines = review.data?.materialRequirementsCount ?? 0;
 
   const approve = async () => {
-    const response = await fetch(`/api/maintenance/work-orders/${workOrderId}/review`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({}),
-    });
-    const payload = await response.json().catch(() => null);
-    if (!response.ok) throw new Error(payload?.error || 'No se pudo aprobar la OT.');
-    await review.mutate();
+    setApproving(true);
+    setApprovalError(null);
+    try {
+      const response = await fetch(`/api/maintenance/work-orders/${workOrderId}/review`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirmMaterialsInstalled }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(payload?.error || 'No se pudo aprobar la OT.');
+      await review.mutate();
+    } catch (error) {
+      setApprovalError(error instanceof Error ? error.message : 'No se pudo aprobar la OT.');
+    } finally {
+      setApproving(false);
+    }
   };
 
   return (
@@ -90,6 +103,7 @@ export function WorkOrderEvidenceAndApproval({ workOrderId, status }: { workOrde
                 <>
                   <p className="flex items-center gap-2 text-sm font-medium"><CheckCircle2 className="h-4 w-4" />Aprobada</p>
                   <p className="mt-1 text-xs text-muted-foreground">{currentReview.reviewed_by_name || 'Supervisor'} · {formatDate(currentReview.reviewed_at)}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{(review.data?.approvedInstallations || []).length} repuesto(s) registrados como instalados por aprobación · conciliación de bodega pendiente</p>
                 </>
               ) : (
                 <>
@@ -98,7 +112,14 @@ export function WorkOrderEvidenceAndApproval({ workOrderId, status }: { workOrde
                 </>
               )}
             </div>
-            {canApprove ? <Button onClick={() => void approve()}><CheckCircle2 className="mr-2 h-4 w-4" />Aprobar OT</Button> : null}
+            {canApprove ? <div className="space-y-3">
+              {materialLines > 0 ? <label className="flex items-start gap-2 text-sm">
+                <input type="checkbox" checked={confirmMaterialsInstalled} onChange={(event) => setConfirmMaterialsInstalled(event.target.checked)} className="mt-1" />
+                <span>Confirmo que los {materialLines} repuestos requeridos fueron instalados. La regularización de bodega queda pendiente.</span>
+              </label> : null}
+              {approvalError ? <p role="alert" className="text-sm text-destructive">{approvalError}</p> : null}
+              <Button onClick={() => void approve()} disabled={approving || (materialLines > 0 && !confirmMaterialsInstalled)}><CheckCircle2 className="mr-2 h-4 w-4" />{approving ? 'Aprobando…' : 'Aprobar OT'}</Button>
+            </div> : null}
           </CardContent>
         </Card>
       ) : null}
