@@ -393,6 +393,9 @@ export async function POST(request: NextRequest) {
         .eq('id', result.work_order_id)
         .single();
       if (linkedOrderError) throw linkedOrderError;
+      if (workshopScope.isWorkshopHead && linkedOrder.workshop_site && linkedOrder.workshop_site !== workshopScope.site) {
+        return NextResponse.json({ error: 'La revisión ya está vinculada a una OT de otra mina.' }, { status: 403 });
+      }
       const { data: assignedLinkedOrder, error: assignedLinkedOrderError } = await context.supabase
         .from('maintenance_work_orders')
         .update({
@@ -437,6 +440,9 @@ export async function POST(request: NextRequest) {
     if (existingRequestError) throw existingRequestError;
 
     if (existingRequestOrder) {
+      if (workshopScope.isWorkshopHead && existingRequestOrder.workshop_site !== workshopScope.site) {
+        return NextResponse.json({ error: 'La solicitud ya pertenece a otra faena.' }, { status: 403 });
+      }
       const replayedOrder = existingRequestOrder as WorkOrderRow;
       await recordRequestedMaterials(context, replayedOrder, requestedMaterials);
       await recordStructuredMaterials(context, replayedOrder.id, materials);
