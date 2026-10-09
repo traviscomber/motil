@@ -28,6 +28,7 @@ type ChatState = {
   memoryCount?: number;
   cargo?: string | null;
   persistence?: 'stateless_read_only' | string;
+  assistantRequests?: Array<{id:string;title:string;status:string;created_at:string}>;
 };
 
 type SpecialistAssistantBodyProps = {
@@ -80,6 +81,7 @@ export function SpecialistAssistantBody({
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mineRequests, setMineRequests] = useState<Array<{id:string;title:string;status:string;created_at:string}>>([]);
   const [handoffByMessage, setHandoffByMessage] = useState<Record<string, HandoffState>>({});
   const bottomRef = useRef<HTMLDivElement>(null);
   const suppressAutoScrollRef = useRef(false);
@@ -101,6 +103,7 @@ export function SpecialistAssistantBody({
         setCargo(data.cargo || null);
         setStateless(data.persistence === 'stateless_read_only');
         setHandoffByMessage({});
+        setMineRequests(Array.isArray(data.assistantRequests) ? data.assistantRequests : []);
         setLoaded(true);
       })
       .catch((cause) => {
@@ -239,6 +242,10 @@ export function SpecialistAssistantBody({
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok) throw new Error(payload?.error || 'No fue posible registrar la solicitud.');
+      if (payload?.request?.id) {
+        setMineRequests((current) => current.some((row) => row.id === payload.request.id)
+          ? current : [payload.request, ...current].slice(0, 8));
+      }
       setHandoffByMessage((current) => ({
         ...current, [item.id!]: { state: 'done', label: 'Solicitud registrada · pendiente de revisión' },
       }));
@@ -331,6 +338,19 @@ export function SpecialistAssistantBody({
         </Button>
       </div>
 
+      {mineAssistant && mineRequests.length > 0 ? (
+        <details className="border-b border-border bg-background px-4 py-2">
+          <summary className="cursor-pointer text-xs text-muted-foreground">Mis solicitudes · {mineRequests.length} recientes</summary>
+          <div className="mt-2 max-h-32 space-y-1 overflow-y-auto text-xs">
+            {mineRequests.map((req) => (
+              <p key={req.id} className="flex items-center justify-between gap-2 rounded border border-border px-2 py-1">
+                <span className="truncate">{req.title}</span>
+                <span className="shrink-0 text-muted-foreground">{req.status === 'requested' ? 'Por revisar' : req.status}</span>
+              </p>
+            ))}
+          </div>
+        </details>
+      ) : null}
       <div className="min-h-0 flex-1 overflow-y-auto bg-muted/10 px-4 py-4" aria-live="polite">
         {!loaded ? <p className="text-sm text-muted-foreground">{loadingCopy}</p> : null}
         {loaded && hasMore ? (
