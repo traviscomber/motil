@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getOrganizationContext } from '@/lib/api/organization-context';
 import { getModuleAccessLevel, MODULE_KEYS } from '@/lib/api/module-access';
+import { resolveWorkshopHeadScope, workshopHeadOrderFilter } from '@/lib/maintenance/workshop-site-scope';
 
 type CloseQueueRow = {
   organization_id: string;
@@ -65,8 +66,24 @@ export async function GET(request: NextRequest) {
     const accessLevel = await getModuleAccessLevel(context.userId, context.role, MODULE_KEYS.MANT_OPERACIONES);
     let allowedWorkOrderIds: string[] | null = null;
     let canEditAssigned = false;
+    const workshopScope = await resolveWorkshopHeadScope(context);
 
-    if (accessLevel !== 'ED') {
+    if (workshopScope.isWorkshopHead) {
+      // An ED grant is not permission to see other mines' queues.
+      if (workshopScope.personId) {
+        const { data: siteOrders, error: siteError } = await context.supabase
+          .from('maintenance_work_orders')
+          .select('id')
+          .eq('organization_id', context.organizationId)
+          .or(workshopHeadOrderFilter(workshopScope))
+          .not('status', 'in', '("completed","closed","cancelled","canceled")');
+        if (siteError) throw siteError;
+        allowedWorkOrderIds = (siteOrders || []).map((row) => row.id);
+        canEditAssigned = true;
+      } else {
+        allowedWorkOrderIds = [];
+      }
+    } else if (accessLevel !== 'ED') {
       const { data: person, error: personError } = await context.supabase
         .from('people')
         .select('id')
@@ -106,6 +123,19 @@ export async function GET(request: NextRequest) {
           source: 'work_order_close_readiness_v2',
         });
       }
+    }
+
+    if (allowedWorkOrderIds !== null && allowedWorkOrderIds.length === 0) {
+      return NextResponse.json({
+        queue: [],
+        summary: {
+          openOrders: 0, readyToClose: 0, blocked: 0, pendingPlanSteps: 0,
+          workOrdersWithPendingPlan: 0, missingRootCause: 0,
+          missingPreventiveActions: 0, missingActualHours: 0, missingRuntimeEvidence: 0,
+        },
+        canEdit: canEditAssigned, source: 'work_order_close_readiness_v2',
+        workshopSite: workshopScope.isWorkshopHead ? workshopScope.site : null,
+      });
     }
 
     let readinessQuery = context.supabase
@@ -150,7 +180,7 @@ export async function GET(request: NextRequest) {
       missingRuntimeEvidence: queue.filter((row) => row.missing_runtime_evidence).length,
     };
 
-    return NextResponse.json({ queue, summary, canEdit: accessLevel === 'ED' || canEditAssigned, source: 'work_order_close_readiness_v2' });
+    return NextResponse.json({ queue, summary, canEdit: accessLevel === 'ED' || canEditAssigned, source: 'work_order_close_readiness_v2', workshopSite: workshopScope.isWorkshopHead ? workshopScope.site : null });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'No se pudo cargar la cola de cierre de OT';
     return NextResponse.json({ queue: [], error: message }, { status: 500 });
