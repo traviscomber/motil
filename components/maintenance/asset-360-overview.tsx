@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import useSWR from 'swr';
 import {
   Activity,
@@ -54,6 +54,7 @@ import {
 import {
   Asset360DrillingSection,
   Asset360DrillEconomics,
+  Asset360DrillEconomicsMonthlyRow,
   Asset360DrillEconomicsChange,
   Asset360DrillingHistoryRow,
   Asset360DrillingMaintenanceReviewRow,
@@ -104,10 +105,18 @@ type Asset360Response = {
     mobility_class?: string | null;
     lifecycle_state?: string | null;
     lifecycle_reason?: string | null;
+    lifecycle_changed_at?: string | null;
+    lifecycle_changed_by?: string | null;
     acquisition_date?: string | null;
     acquisition_cost?: number | string | null;
     expected_lifespan_years?: number | string | null;
     baseline_mtbf_hours?: number | string | null;
+    source_year?: number | string | null;
+    source_assignment?: string | null;
+    source_last_record?: string | null;
+    source_maintenance_records?: number | string | null;
+    source_maintenance_spend?: number | string | null;
+    source_history_evidence_source?: string | null;
     source_file?: string | null;
     source_sheet?: string | null;
     source_row?: number | null;
@@ -115,6 +124,7 @@ type Asset360Response = {
     updated_at?: string | null;
     is_active?: boolean | null;
     validation_status?: string | null;
+    validation_notes?: string[];
     cost_center_evidence_source?: string | null;
     location_evidence_source?: string | null;
     location_evidence_at?: string | null;
@@ -171,6 +181,7 @@ type Asset360Response = {
   pendingParts?: Asset360PartsRow[];
   economicHistory?: Asset360EconomicHistoryRow[];
   drillEconomics?: Asset360DrillEconomics;
+  drillEconomicsMonthly?: Asset360DrillEconomicsMonthlyRow[];
   drillingMaintenanceReview?: Asset360DrillingMaintenanceReviewRow[];
   drillingHistory?: Asset360DrillingHistoryRow[];
   maintenanceTaskCandidates?: Asset360MaintenanceTaskCandidate[];
@@ -205,6 +216,59 @@ const fetcher = async (url: string): Promise<Asset360Response> => {
   if (!response.ok) throw new Error(payload?.error || 'No se pudo cargar la ficha 360 operacional');
   return payload;
 };
+
+
+const asset360Sections = [
+  ['resumen', 'Resumen'],
+  ['operacion', 'Operación'],
+  ['mantenimiento', 'Mantención'],
+  ['economia', 'Economía'],
+  ['historia', 'Historia'],
+  ['evidencia', 'Evidencia'],
+] as const;
+
+function Asset360SectionNav() {
+  return (
+    <nav
+      aria-label="Secciones de la Ficha 360"
+      className="sticky top-12 z-20 -mx-1 overflow-x-auto border-y border-border bg-background/95 px-1 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80"
+    >
+      <div className="flex min-w-max items-center gap-1">
+        {asset360Sections.map(([id, label]) => (
+          <a
+            key={id}
+            href={`#${id}`}
+            className="inline-flex min-h-10 items-center rounded-md px-3 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {label}
+          </a>
+        ))}
+      </div>
+    </nav>
+  );
+}
+
+function Asset360Domain({
+  id,
+  title,
+  description,
+  children,
+}: {
+  id: string;
+  title: string;
+  description: string;
+  children: ReactNode;
+}) {
+  return (
+    <section id={id} className="scroll-mt-20 space-y-4">
+      <div className="border-b border-border pb-2">
+        <h2 className="text-lg font-semibold">{title}</h2>
+        <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+      </div>
+      {children}
+    </section>
+  );
+}
 
 export function Asset360Overview({
   assetId,
@@ -417,6 +481,7 @@ export function Asset360Overview({
     { value: lastOperationalEvidenceAt, source: 'Operación' },
     { value: latestPlan?.updated_at || null, source: 'Planificación' },
     { value: runtimeCostIntelligence?.last_reading_at || null, source: effectiveMeterLabel },
+    { value: asset.source_last_record || null, source: 'Histórico del maestro' },
   ]
     .filter((item): item is { value: string; source: string } => Boolean(item.value))
     .map((item) => ({ ...item, time: new Date(item.value).getTime() }))
@@ -424,7 +489,10 @@ export function Asset360Overview({
     .sort((a, b) => b.time - a.time)[0] || null;
 
   const hasPurchaseEvidence = Number(purchaseHistorySummary?.purchaseLines || 0) > 0 || procurementOrders.length > 0;
-  const hasMaintenanceEvidence = auditedInterventions.length > 0 || Number(operationalState?.work_order_count || 0) > 0;
+  const hasMaintenanceEvidence =
+    auditedInterventions.length > 0 ||
+    Number(operationalState?.work_order_count || 0) > 0 ||
+    Number(asset.source_maintenance_records || 0) > 0;
   const hasMaterialEvidence = installedParts.length > 0 || pendingParts.length > 0 || supplyChain.length > 0;
   const hasProductionEvidence = drillingHistory.length > 0 || Number(operationalState?.drilling_report_count || 0) > 0;
   const hasRuntimeEvidence =
@@ -432,7 +500,9 @@ export function Asset360Overview({
     Number(runtimeCostIntelligence?.reading_count || 0) > 0 ||
     runtimeCostIntelligence?.latest_meter_hours != null ||
     defendableNextPreventiveMeter;
-  const hasEconomicEvidence = economicHistory.length > 0 || Number(operationalState?.recognized_cost_event_count || 0) > 0;
+  const hasCanonicalEconomicEvidence = economicHistory.length > 0 || Number(operationalState?.recognized_cost_event_count || 0) > 0;
+  const hasImportedEconomicHistory = asset.source_maintenance_spend != null || asset.source_maintenance_records != null;
+  const hasEconomicEvidence = hasCanonicalEconomicEvidence || hasImportedEconomicHistory;
   const hasLifecycleEvidence = Boolean(
     asset.acquisition_date ||
     asset.acquisition_cost != null ||
@@ -459,9 +529,25 @@ export function Asset360Overview({
             ? 'Disponible'
             : 'Sin lectura defendible',
     ],
-    ['Economía / costos', hasEconomicEvidence, hasEconomicEvidence ? 'Disponible' : 'Sin movimientos'],
+    [
+      'Economía / costos',
+      hasEconomicEvidence,
+      hasCanonicalEconomicEvidence
+        ? 'Disponible'
+        : hasImportedEconomicHistory
+          ? 'Histórico importado disponible'
+          : 'Sin movimientos',
+    ],
     ['Compras / proveedores', hasPurchaseEvidence, hasPurchaseEvidence ? 'Disponible' : 'Sin compras enlazadas'],
-    ['OT / mantenciones', hasMaintenanceEvidence, hasMaintenanceEvidence ? 'Disponible' : 'Sin OT enlazadas'],
+    [
+      'OT / mantenciones',
+      hasMaintenanceEvidence,
+      auditedInterventions.length > 0 || Number(operationalState?.work_order_count || 0) > 0
+        ? 'Disponible'
+        : Number(asset.source_maintenance_records || 0) > 0
+          ? `${Number(asset.source_maintenance_records).toLocaleString('es-CL')} registros históricos importados`
+          : 'Sin OT enlazadas',
+    ],
     ['Materiales / repuestos', hasMaterialEvidence, hasMaterialEvidence ? 'Disponible' : 'Sin movimientos enlazados'],
     ['Vida útil', expectedLifespan != null || asset.acquisition_date != null, expectedLifespan != null || asset.acquisition_date != null ? 'Disponible' : 'No informada'],
     ['Producción / actividad', hasProductionEvidence || recentEvents.length > 0, hasProductionEvidence || recentEvents.length > 0 ? 'Disponible' : 'Sin actividad enlazada'],
@@ -471,137 +557,180 @@ export function Asset360Overview({
   const planningPriorityText = String(maintenancePriority?.priority || '');
 
   return (
-    <div className="space-y-5">
-      <Asset360IdentityHeader
-        asset={asset}
-        assetNoun={noun}
-        basePath={basePath}
-        displayCriticality={displayCriticality}
-        displayStatus={displayStatus}
-        metrics={metrics}
-      />
+    <div className="space-y-6">
+      <section id="resumen" className="scroll-mt-20 space-y-4">
+        <Asset360IdentityHeader
+          asset={asset}
+          assetNoun={noun}
+          basePath={basePath}
+          displayCriticality={displayCriticality}
+          displayStatus={displayStatus}
+          metrics={metrics}
+        />
 
-      <Asset360AttentionCard
-        criticalOpen={summary.criticalOpen}
-        overduePreventives={summary.overduePreventives}
-        operationalBlockers={summary.operationalBlockers}
-        pendingPlanSteps={summary.pendingPlanSteps}
-        planningPriorityText={planningPriorityText}
-        actionableWorkOrder={actionableWorkOrder}
-        maintenancePriority={maintenancePriority}
-      />
+        <Asset360AttentionCard
+          criticalOpen={summary.criticalOpen}
+          overduePreventives={summary.overduePreventives}
+          operationalBlockers={summary.operationalBlockers}
+          pendingPlanSteps={summary.pendingPlanSteps}
+          planningPriorityText={planningPriorityText}
+          actionableWorkOrder={actionableWorkOrder}
+          maintenancePriority={maintenancePriority}
+        />
+      </section>
 
-      <Asset360MaintenanceSection
-        nextPreventive={nextPreventive}
-        pendingPlanSteps={summary.pendingPlanSteps}
-        readyToClose={summary.readyToClose}
-        criticalOpen={summary.criticalOpen}
-        overduePreventives={summary.overduePreventives}
-        operationalBlockers={summary.operationalBlockers}
-        runtimeResetCount={Number(runtime?.reset_count || 0)}
-        actionableWorkOrder={actionableWorkOrder}
-        reliability={data.reliability}
-        runtimeReliability={data.runtimeReliability}
-      />
+      <Asset360SectionNav />
 
-      <Asset360AvailabilitySection
-        operationalState={operationalState}
-        generatedAt={data.generatedAt}
-      />
+      <Asset360Domain
+        id="operacion"
+        title="Operación"
+        description="Estado, uso y actividad observada del equipo."
+      >
+        <Asset360AvailabilitySection
+          operationalState={operationalState}
+          generatedAt={data.generatedAt}
+        />
 
-      <Asset360EconomicsSection
-        economicHistory={economicHistory}
-        operationalState={operationalState}
-        lastCostEventAt={operatingSpine?.last_cost_event_at}
-      />
+        <Asset360RuntimeSection
+          hasRuntimeEvidence={hasRuntimeEvidence}
+          runtimeCostIntelligence={runtimeCostIntelligence}
+          meterHistory={meterHistory}
+          effectiveMeterLabel={effectiveMeterLabel}
+          effectiveMeterSuffix={effectiveMeterSuffix}
+          effectiveMeterDisplayLabel={effectiveMeterDisplayLabel}
+          meterIsScheduleReference={meterIsScheduleReference}
+        />
 
-      <Asset360PurchaseSection
-        hasPurchaseEvidence={hasPurchaseEvidence}
-        supplyChain={supplyChain}
-        procurementOrders={procurementOrders}
-        costCenterPurchaseHistory={costCenterPurchaseHistory}
-        purchaseHistorySummary={purchaseHistorySummary}
-        openSupplyNeedsCount={openSupplyNeedsCount}
-        materialShortageCount={materialShortageCount}
-        costCenterCode={asset.cost_center_code}
-      />
+        <Asset360DrillingSection
+          drillingHistory={drillingHistory}
+          recentDrillingMeters={recentDrillingMeters}
+          consolidatedDrillingMeters={consolidatedDrillingMeters}
+          consolidatedDrillingReports={consolidatedDrillingReports}
+          lastDrillingDate={operatingSpine?.last_drilling_date}
+          drillOperationalEvidence={drillOperationalEvidence}
+          drillEconomics={drillEconomics}
+          drillEconomicsMonthly={data.drillEconomicsMonthly || []}
+          drillEconomicsChange={drillEconomicsChange}
+          drillingMaintenanceReview={drillingMaintenanceReview}
+        />
+      </Asset360Domain>
 
-      <Asset360InterventionSection
-        maintenanceTaskCandidates={maintenanceTaskCandidates}
-        standardJobPlans={standardJobPlans}
-      />
+      <Asset360Domain
+        id="mantenimiento"
+        title="Mantención"
+        description="Trabajo abierto, planificación, intervención y materiales."
+      >
+        <Asset360MaintenanceSection
+          nextPreventive={nextPreventive}
+          pendingPlanSteps={summary.pendingPlanSteps}
+          readyToClose={summary.readyToClose}
+          criticalOpen={summary.criticalOpen}
+          overduePreventives={summary.overduePreventives}
+          operationalBlockers={summary.operationalBlockers}
+          runtimeResetCount={Number(runtime?.reset_count || 0)}
+          actionableWorkOrder={actionableWorkOrder}
+          reliability={data.reliability}
+          runtimeReliability={data.runtimeReliability}
+        />
 
-      <Asset360RuntimeSection
-        hasRuntimeEvidence={hasRuntimeEvidence}
-        runtimeCostIntelligence={runtimeCostIntelligence}
-        meterHistory={meterHistory}
-        effectiveMeterLabel={effectiveMeterLabel}
-        effectiveMeterSuffix={effectiveMeterSuffix}
-        effectiveMeterDisplayLabel={effectiveMeterDisplayLabel}
-        meterIsScheduleReference={meterIsScheduleReference}
-      />
+        <Asset360PlanningSection
+          planningPriorityText={planningPriorityText}
+          maintenancePriority={maintenancePriority}
+          latestPlan={latestPlan}
+          canEdit={data.canEdit}
+          assetCode={asset.asset_code}
+          assetName={asset.name}
+        />
 
-      <Asset360PlanningSection
-        planningPriorityText={planningPriorityText}
-        maintenancePriority={maintenancePriority}
-        latestPlan={latestPlan}
-        canEdit={data.canEdit}
-        assetCode={asset.asset_code}
-        assetName={asset.name}
-      />
+        <Asset360InterventionSection
+          maintenanceTaskCandidates={maintenanceTaskCandidates}
+          standardJobPlans={standardJobPlans}
+        />
 
-      <Asset360DrillingSection
-        drillingHistory={drillingHistory}
-        recentDrillingMeters={recentDrillingMeters}
-        consolidatedDrillingMeters={consolidatedDrillingMeters}
-        consolidatedDrillingReports={consolidatedDrillingReports}
-        lastDrillingDate={operatingSpine?.last_drilling_date}
-        drillOperationalEvidence={drillOperationalEvidence}
-        drillEconomics={drillEconomics}
-        drillEconomicsChange={drillEconomicsChange}
-        drillingMaintenanceReview={drillingMaintenanceReview}
-      />
+        <Asset360MaterialsSection
+          hasMaterialEvidence={hasMaterialEvidence}
+          pendingParts={pendingParts}
+          installedParts={installedParts}
+          latestPlanPartsStatus={latestPlan?.parts_status_raw}
+        />
+      </Asset360Domain>
 
-      <Asset360HistorySection
-        auditedInterventions={auditedInterventions}
-        recentEvents={recentEvents}
-        laborEntries={laborEntries}
-      />
+      <Asset360Domain
+        id="economia"
+        title="Economía"
+        description="Costo reconocido, compras y abastecimiento enlazado."
+      >
+        <Asset360EconomicsSection
+          economicHistory={economicHistory}
+          operationalState={operationalState}
+          lastCostEventAt={operatingSpine?.last_cost_event_at}
+          sourceMaintenanceSpend={asset.source_maintenance_spend}
+          sourceMaintenanceRecords={asset.source_maintenance_records}
+          sourceLastRecord={asset.source_last_record}
+        />
 
-      <Asset360MaterialsSection
-        hasMaterialEvidence={hasMaterialEvidence}
-        pendingParts={pendingParts}
-        installedParts={installedParts}
-        latestPlanPartsStatus={latestPlan?.parts_status_raw}
-      />
+        <Asset360PurchaseSection
+          hasPurchaseEvidence={hasPurchaseEvidence}
+          supplyChain={supplyChain}
+          procurementOrders={procurementOrders}
+          costCenterPurchaseHistory={costCenterPurchaseHistory}
+          purchaseHistorySummary={purchaseHistorySummary}
+          openSupplyNeedsCount={openSupplyNeedsCount}
+          materialShortageCount={materialShortageCount}
+          costCenterCode={asset.cost_center_code}
+        />
+      </Asset360Domain>
 
-      <Asset360LifecycleSection
-        hasLifecycleEvidence={hasLifecycleEvidence}
-        assetAgeYears={assetAgeYears}
-        expectedLifespan={expectedLifespan}
-        remainingLifeYears={remainingLifeYears}
-        acquisitionDate={asset.acquisition_date}
-        acquisitionCost={asset.acquisition_cost}
-      />
+      <Asset360Domain
+        id="historia"
+        title="Historia"
+        description="Intervenciones auditadas, eventos y ciclo de vida."
+      >
+        <Asset360HistorySection
+          auditedInterventions={auditedInterventions}
+          recentEvents={recentEvents}
+          laborEntries={laborEntries}
+        />
 
-      <Asset360CoverageSection
-        coverageItems={coverageItems}
-        coverageAvailableCount={coverageAvailableCount}
-        coverageMissingCount={coverageMissingCount}
-        asset={asset}
-        displayCriticality={displayCriticality}
-        displayStatus={displayStatus}
-        effectiveMeterLabel={effectiveMeterLabel}
-        effectiveMeterSuffix={effectiveMeterSuffix}
-        meterHours={runtimeCostIntelligence?.latest_meter_hours}
-        meterEvidenceSource={runtimeCostIntelligence?.meter_evidence_source}
-        usesAnnualControl={usesAnnualControl}
-        hasAnnualReadingConflict={hasAnnualReadingConflict}
-        latestEvidence={latestEvidence}
-        evidenceDomainCount={operatingSpine?.evidence_domain_count}
-        financeReconciliation={financeReconciliation}
-        identityHistory={identityHistory}
-      />
+        <Asset360LifecycleSection
+          hasLifecycleEvidence={hasLifecycleEvidence}
+          assetAgeYears={assetAgeYears}
+          expectedLifespan={expectedLifespan}
+          remainingLifeYears={remainingLifeYears}
+          acquisitionDate={asset.acquisition_date}
+          acquisitionCost={asset.acquisition_cost}
+          lifecycleState={asset.lifecycle_state}
+          lifecycleReason={asset.lifecycle_reason}
+          lifecycleChangedAt={asset.lifecycle_changed_at}
+          lifecycleChangedBy={asset.lifecycle_changed_by}
+        />
+      </Asset360Domain>
+
+      <Asset360Domain
+        id="evidencia"
+        title="Evidencia"
+        description="Cobertura, calidad, procedencia y fuentes disponibles."
+      >
+        <Asset360CoverageSection
+          coverageItems={coverageItems}
+          coverageAvailableCount={coverageAvailableCount}
+          coverageMissingCount={coverageMissingCount}
+          asset={asset}
+          displayCriticality={displayCriticality}
+          displayStatus={displayStatus}
+          effectiveMeterLabel={effectiveMeterLabel}
+          effectiveMeterSuffix={effectiveMeterSuffix}
+          meterHours={runtimeCostIntelligence?.latest_meter_hours}
+          meterEvidenceSource={runtimeCostIntelligence?.meter_evidence_source}
+          usesAnnualControl={usesAnnualControl}
+          hasAnnualReadingConflict={hasAnnualReadingConflict}
+          latestEvidence={latestEvidence}
+          evidenceDomainCount={operatingSpine?.evidence_domain_count}
+          financeReconciliation={financeReconciliation}
+          identityHistory={identityHistory}
+          unavailableSources={data.unavailableSources || []}
+        />
+      </Asset360Domain>
     </div>
   );
 }

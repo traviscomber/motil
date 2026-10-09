@@ -98,7 +98,7 @@ export async function queryAsset360Sources(
           .eq('organization_id', context.organizationId)
       : Promise.resolve({ data: [], error: null });
 
-  const [ordersResult, closeResult, preventiveResult, runtimeResult, reliabilityResult, runtimeReliabilityResult, snapshotsResult, partsResult, laborResult, eventsResult, statusHistoryResult, planningResult, operationalStateResult, operatingSpineResult, supplyChainResult, procurementOrdersResult, costCenterPurchaseHistoryResult, namePurchaseHistoryResult, economicHistoryResult, drillingHistoryResult, drillEconomicsResult, drillingReviewResult, maintenancePriorityResult, financeReconciliationResult, runtimeCostResult, meterHistoryResult, drillEvidenceResult, drillEconomicsChangeResult, taskCandidatesResult, standardPlanResult, identityHistoryResult, exactCostCenterDetailResult, costCenterMatchResult] = await Promise.all([
+  const [ordersResult, closeResult, preventiveResult, runtimeResult, reliabilityResult, runtimeReliabilityResult, snapshotsResult, partsResult, laborResult, eventsResult, statusHistoryResult, planningResult, operationalStateResult, operatingSpineResult, supplyChainResult, procurementOrdersResult, costCenterPurchaseHistoryResult, namePurchaseHistoryResult, economicHistoryResult, drillingHistoryResult, drillEconomicsResult, drillEconomicsMonthlyResult, drillingReviewResult, maintenancePriorityResult, financeReconciliationResult, runtimeCostResult, meterHistoryResult, drillEvidenceResult, drillEconomicsChangeResult, taskCandidatesResult, standardPlanResult, identityHistoryResult, exactCostCenterDetailResult, costCenterMatchResult] = await Promise.all([
     context.supabase
       .from('maintenance_operational_work_order_flow_v1')
       .select('work_order_id,work_order_number,status,priority,work_type,scheduled_date,assigned_person_name,flow_status,open_purchase_order_count,quantity_requested,quantity_issued,quantity_installed,total_cost')
@@ -232,6 +232,18 @@ export async function queryAsset360Sources(
         )
       : Promise.resolve({ data: null, error: null }),
     isDrillRig
+      ? withOptionalTimeout(
+          context.supabase
+            .from('drill_asset_unit_economics_monthly_v1')
+            .select('month_start,month_end,recognized_cost_events,recognized_cost_clp,last_cost_date,drilling_reports,drilled_meters,last_drilling_date,cost_clp_per_meter,evidence_status')
+            .eq('organization_id', context.organizationId)
+            .eq('canonical_asset_id', id)
+            .order('month_start', { ascending: false })
+            .limit(24),
+          'drillEconomicsMonthly',
+        )
+      : Promise.resolve({ data: [], error: null }),
+    isDrillRig
       ? context.supabase
           .from('drilling_maintenance_review_queue_v1')
           .select('source_report_id,operation_date,review_reason,equipment_status_raw,machine_observations,review_status,linked_work_order_id,decision_note,reviewed_at,has_linked_work_order,policy')
@@ -338,6 +350,7 @@ export async function queryAsset360Sources(
     ['economicHistory', economicHistoryResult],
     ['drillingHistory', drillingHistoryResult],
     ['drillEconomics', drillEconomicsResult],
+    ['drillEconomicsMonthly', drillEconomicsMonthlyResult],
     ['drillingReview', drillingReviewResult],
     ['maintenancePriority', maintenancePriorityResult],
     ['financeReconciliation', financeReconciliationResult],
@@ -384,6 +397,7 @@ export async function queryAsset360Sources(
     economicHistoryResult,
     drillingHistoryResult,
     drillEconomicsResult,
+    drillEconomicsMonthlyResult,
     drillingReviewResult,
     maintenancePriorityResult,
     financeReconciliationResult,

@@ -41,7 +41,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   try {
     const { data: asset, error: assetError } = await context.supabase
       .from('maintenance_canonical_assets_v1')
-      .select('id,asset_code,name,asset_type,category,manufacturer,model,serial_number,license_plate,cost_center_code,is_active,validation_status,source_file,source_sheet,source_row,imported_at,updated_at,source_payload')
+      .select('id,asset_code,name,asset_type,category,manufacturer,model,serial_number,license_plate,cost_center_code,is_active,validation_status,validation_notes,source_file,source_sheet,source_row,imported_at,updated_at,source_payload')
       .eq('organization_id', context.organizationId)
       .eq('id', id)
       .maybeSingle();
@@ -82,10 +82,45 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       mobility_class: sourcePayload.mobility_class || null,
       lifecycle_state: sourcePayload.lifecycle_state || null,
       lifecycle_reason: sourcePayload.lifecycle_reason || null,
+      lifecycle_changed_at:
+        typeof sourcePayload.lifecycle_changed_at === 'string' && sourcePayload.lifecycle_changed_at.trim()
+          ? sourcePayload.lifecycle_changed_at.trim()
+          : null,
+      lifecycle_changed_by:
+        typeof sourcePayload.lifecycle_changed_by === 'string' && sourcePayload.lifecycle_changed_by.trim()
+          ? sourcePayload.lifecycle_changed_by.trim()
+          : null,
       acquisition_date: sourcePayload.acquisition_date || canonicalCurrent?.acquisition_date || null,
       acquisition_cost: sourcePayload.acquisition_cost ?? canonicalCurrent?.acquisition_cost ?? null,
       expected_lifespan_years: sourcePayload.expected_lifespan_years ?? canonicalCurrent?.expected_lifespan_years ?? null,
       baseline_mtbf_hours: sourcePayload.mtbf_hours ?? canonicalCurrent?.mtbf_hours ?? null,
+      source_year:
+        sourcePayload.year != null && Number.isFinite(Number(sourcePayload.year))
+          ? Number(sourcePayload.year)
+          : null,
+      source_assignment:
+        typeof sourcePayload.assignment === 'string' && sourcePayload.assignment.trim()
+          ? sourcePayload.assignment.trim()
+          : null,
+      source_last_record:
+        typeof sourcePayload.last_record === 'string' && sourcePayload.last_record.trim()
+          ? sourcePayload.last_record.trim()
+          : null,
+      source_maintenance_records:
+        sourcePayload.maintenance_records != null && Number.isFinite(Number(sourcePayload.maintenance_records))
+          ? Number(sourcePayload.maintenance_records)
+          : null,
+      source_maintenance_spend:
+        sourcePayload.aggregated_spend != null && Number.isFinite(Number(sourcePayload.aggregated_spend))
+          ? Number(sourcePayload.aggregated_spend)
+          : null,
+      source_history_evidence_source:
+        sourcePayload.maintenance_records != null ||
+        sourcePayload.aggregated_spend != null ||
+        sourcePayload.assignment != null ||
+        sourcePayload.year != null
+          ? 'maintenance_canonical_assets_v1.source_payload'
+          : null,
       source_file: asset.source_file,
       source_sheet: asset.source_sheet,
       source_row: asset.source_row,
@@ -93,9 +128,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       updated_at: asset.updated_at,
       is_active: asset.is_active,
       validation_status: asset.validation_status,
+      validation_notes: Array.isArray(asset.validation_notes) ? asset.validation_notes : [],
     };
 
-    const { ordersResult, closeResult, preventiveResult, runtimeResult, reliabilityResult, runtimeReliabilityResult, snapshotsResult, partsResult, laborResult, eventsResult, statusHistoryResult, planningResult, operationalStateResult, operatingSpineResult, supplyChainResult, procurementOrdersResult, costCenterPurchaseHistoryResult, namePurchaseHistoryResult, economicHistoryResult, drillingHistoryResult, drillEconomicsResult, drillingReviewResult, maintenancePriorityResult, financeReconciliationResult, runtimeCostResult, meterHistoryResult, drillEvidenceResult, drillEconomicsChangeResult, taskCandidatesResult, standardPlanResult, identityHistoryResult, exactCostCenterDetailResult, costCenterMatchResult, sourceErrors } = await queryAsset360Sources(context, id, asset, purchaseSelect);
+    const { ordersResult, closeResult, preventiveResult, runtimeResult, reliabilityResult, runtimeReliabilityResult, snapshotsResult, partsResult, laborResult, eventsResult, statusHistoryResult, planningResult, operationalStateResult, operatingSpineResult, supplyChainResult, procurementOrdersResult, costCenterPurchaseHistoryResult, namePurchaseHistoryResult, economicHistoryResult, drillingHistoryResult, drillEconomicsResult, drillEconomicsMonthlyResult, drillingReviewResult, maintenancePriorityResult, financeReconciliationResult, runtimeCostResult, meterHistoryResult, drillEvidenceResult, drillEconomicsChangeResult, taskCandidatesResult, standardPlanResult, identityHistoryResult, exactCostCenterDetailResult, costCenterMatchResult, sourceErrors } = await queryAsset360Sources(context, id, asset, purchaseSelect);
 
     const closeRows = closeResult.data || [];
     const preventives = [...(preventiveResult.data || [])].sort((a: any, b: any) => {
@@ -501,6 +537,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       economicHistory: economicHistoryResult.data || [],
       drillingHistory: drillingHistoryResult.data || [],
       drillEconomics: drillEconomicsResult.data || null,
+      drillEconomicsMonthly: drillEconomicsMonthlyResult.data || [],
       drillingMaintenanceReview: drillingReviewResult.data || [],
       maintenancePriority: maintenancePriorityResult.data || null,
       financeReconciliation: financeReconciliationResult.data || null,

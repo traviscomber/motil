@@ -75,6 +75,19 @@ export type Asset360DrillOperationalEvidence = {
   evidence_status?: string | null;
 } | null;
 
+export type Asset360DrillEconomicsMonthlyRow = {
+  month_start?: string | null;
+  month_end?: string | null;
+  recognized_cost_events?: number | string | null;
+  recognized_cost_clp?: number | string | null;
+  last_cost_date?: string | null;
+  drilling_reports?: number | string | null;
+  drilled_meters?: number | string | null;
+  last_drilling_date?: string | null;
+  cost_clp_per_meter?: number | string | null;
+  evidence_status?: string | null;
+};
+
 export type Asset360DrillEconomicsChange = {
   current_month?: string | null;
   previous_month?: string | null;
@@ -98,6 +111,7 @@ export function Asset360DrillingSection({
   lastDrillingDate,
   drillOperationalEvidence,
   drillEconomics,
+  drillEconomicsMonthly,
   drillEconomicsChange,
   drillingMaintenanceReview,
 }: {
@@ -108,6 +122,7 @@ export function Asset360DrillingSection({
   lastDrillingDate?: string | null;
   drillOperationalEvidence?: Asset360DrillOperationalEvidence;
   drillEconomics?: Asset360DrillEconomics;
+  drillEconomicsMonthly: Asset360DrillEconomicsMonthlyRow[];
   drillEconomicsChange?: Asset360DrillEconomicsChange;
   drillingMaintenanceReview: Asset360DrillingMaintenanceReviewRow[];
 }) {
@@ -170,7 +185,7 @@ export function Asset360DrillingSection({
           </div>
         ) : null}
 
-        {(drillEconomicsChange || drillEconomics || drillingMaintenanceReview.length > 0 || drillingHistory.length > 0) ? (
+        {(drillEconomicsChange || drillEconomics || drillEconomicsMonthly.length > 0 || drillingMaintenanceReview.length > 0 || drillingHistory.length > 0) ? (
           <details className="group border-t border-border px-4 py-4">
             <summary className="cursor-pointer list-none">
               <span className="flex items-center justify-between gap-4">
@@ -240,6 +255,33 @@ export function Asset360DrillingSection({
                     : null}
                   meta={drillEconomics.evidence_status || null}
                 />
+              </div>
+            ) : null}
+
+            {drillEconomicsMonthly.length > 0 ? (
+              <div className="border-t border-border py-4">
+                <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                  Serie mensual costo + producción
+                </p>
+                <div className="mt-3 divide-y divide-border">
+                  {drillEconomicsMonthly.slice(0, 12).map((row) => (
+                    <div key={String(row.month_start)} className="grid gap-2 py-3 md:grid-cols-[110px_120px_120px_140px_minmax(0,1fr)] md:items-center">
+                      <span className="text-xs text-muted-foreground">{date(row.month_start)}</span>
+                      <span className="text-sm font-medium">
+                        {row.drilled_meters != null ? `${number(row.drilled_meters, 1)} m` : 'Sin metros'}
+                      </span>
+                      <span className="text-sm">
+                        {row.drilling_reports != null ? `${number(row.drilling_reports, 0)} reportes` : 'Sin reportes'}
+                      </span>
+                      <span className="text-sm font-medium">
+                        {row.recognized_cost_clp != null ? money(row.recognized_cost_clp) : 'Sin costo'}
+                      </span>
+                      <span className="text-xs text-muted-foreground md:text-right">
+                        {row.cost_clp_per_meter != null ? `${money(row.cost_clp_per_meter)}/m` : row.evidence_status || 'Sin costo/m defendible'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
             ) : null}
 
