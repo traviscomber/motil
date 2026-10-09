@@ -18,8 +18,10 @@ test('completed OTs pending supervisor review enter the action queue', () => {
   assert.match(control, /pendingApprovals/);
 });
 
-test('secondary detail is collapsed and evidence is large', () => {
+test('secondary detail is collapsed and evidence is large with visible selectable thumbnails', () => {
   assert.match(home, /<summary[^>]*>Ver detalle<\/summary>/);
   assert.match(evidence, /max-h-\[560px\]/);
-  assert.match(evidence, /Ver \{photos.length - 1\} evidencia/);
+  assert.match(evidence, /Miniaturas de evidencia/);
+  assert.match(evidence, /setSelectedPhotoId\(photo.id\)/);
+  assert.doesNotMatch(evidence, /Ver \{photos.length - 1\} evidencia/);
 });
