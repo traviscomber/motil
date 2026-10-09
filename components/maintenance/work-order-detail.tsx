@@ -117,10 +117,6 @@ export function WorkOrderDetail({ locale, dictionary }: { locale: Locale; dictio
             <p className="mt-1 text-sm text-muted-foreground">{formatAssetIdentity(workOrder.asset_name, workOrder.asset_code) || t.noAsset}</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <div className="min-w-40 rounded-lg border px-5 py-3">
-              <p className="text-xs text-muted-foreground">Tiempo ejecutado</p>
-              <p className="mt-1 text-3xl font-semibold tabular-nums">{durationLabel(workOrder.actual_duration_hours)}</p>
-            </div>
             {(workOrder.canonical_asset_id || workOrder.asset_id) ? <Button asChild variant="outline"><Link href={`/dashboard/mantenimiento/equipos/${workOrder.canonical_asset_id || workOrder.asset_id}`}>Ficha 360</Link></Button> : null}
           </div>
         </header>
