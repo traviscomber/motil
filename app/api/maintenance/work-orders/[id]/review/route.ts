@@ -59,8 +59,16 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     .neq('status', 'cancelled');
   if (requirementsError) return NextResponse.json({ error: requirementsError.message }, { status: 500 });
 
+  const { data: approvedInstallations, error: installationsError } = await context.supabase
+    .from('work_order_material_approval_installations')
+    .select('canonical_product_id,installed_quantity,confirmed_by_name,confirmed_at,warehouse_reconciliation_status')
+    .eq('organization_id', context.organizationId)
+    .eq('work_order_id', id);
+  if (installationsError) return NextResponse.json({ error: installationsError.message }, { status: 500 });
+
   const reviewer = await getReviewerPerson(context);
   return NextResponse.json({
+    approvedInstallations: approvedInstallations || [],
     materialRequirementsCount: materialRequirementsCount || 0,
     review: review || {
       status: String(workOrder.status || '') === 'completed' ? 'pending' : null,
