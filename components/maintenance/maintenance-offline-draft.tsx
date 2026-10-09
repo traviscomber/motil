@@ -106,7 +106,9 @@ export function MaintenanceOfflineDraft({ workOrderId, offlineScope }: { workOrd
   const registerJournal = async () => {
     if (!journal.length) return;
     const summary = journal.map((item) => `${new Date(item.capturedAt).toLocaleString('es-CL')} · ${item.action === 'play' ? 'Inicio' : item.action === 'pause' ? 'Pausa' : item.action === 'resume' ? 'Reanudación' : 'Término'}${item.notes ? ` (${item.notes})` : ''}`).join('\\n');
-    const next = [...queue, { operationId: crypto.randomUUID(), capturedAt: journal[0].capturedAt, notes: `Bitácora temporal offline (requiere conciliación del supervisor; NO modifica temporizador oficial):\\n${summary}` }];
+    const journalText = `Bitácora temporal offline (requiere conciliación del supervisor; NO modifica temporizador oficial):\\n${summary}`;
+    if (journalText.length > 8000) { setError('La bitácora es demasiado extensa. Registra períodos más cortos.'); return; }
+    const next = [...queue, { operationId: crypto.randomUUID(), capturedAt: journal[0].capturedAt, notes: journalText }];
     try {
       await writeDraft({ id: draftId, notes, updatedAt: new Date().toISOString(), queue: next, journal: [] });
       setQueue(next);
@@ -137,7 +139,7 @@ export function MaintenanceOfflineDraft({ workOrderId, offlineScope }: { workOrd
           body: JSON.stringify(item),
         });
         if (!response.ok) {
-          setError(response.status === 401 || response.status === 403 ? 'Inicia sesión o revisa tus permisos para sincronizar.' : 'Sincronización pendiente; vuelve a intentar.');
+          setError(response.status === 401 || response.status === 403 ? 'Inicia sesión o revisa tus permisos para sincronizar.' : response.status === 409 ? 'Conflicto de sincronización: requiere revisión, la nota sigue guardada.' : 'Sincronización pendiente; vuelve a intentar.');
           break;
         }
         remaining = remaining.filter((entry) => entry.operationId !== item.operationId);
@@ -183,6 +185,7 @@ export function MaintenanceOfflineDraft({ workOrderId, offlineScope }: { workOrd
         <Button type="button" size="sm" disabled={!notes.trim() || !loaded} onClick={() => void capture()}>Guardar nota para sincronizar</Button>
         <Button type="button" variant="outline" size="sm" disabled={!online || !queue.length || syncing} onClick={() => void synchronize()}>{syncing ? 'Sincronizando…' : `Sincronizar (${queue.length})`}</Button>
       </div>
+      <p className="text-xs text-muted-foreground">El registro offline funciona mientras esta OT permanezca abierta en el dispositivo. Sin señal, cerrarla o recargarla puede impedir reabrirla. El reloj y cierre oficiales solo funcionan con conexión.</p>
       <p className="text-xs text-amber-700 dark:text-amber-400">{queue.length ? `${queue.length} nota(s) guardada(s) localmente, pendiente(s) de confirmación del servidor.` : 'Las notas enviadas se incorporan a la trazabilidad de la OT.'} No guardes información sensible en dispositivos compartidos.</p>
       {error ? <p role="alert" className="text-xs text-destructive">{error}</p> : null}
     </Card>

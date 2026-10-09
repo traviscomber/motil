@@ -95,7 +95,7 @@ export function MaintenanceOfflinePhotos({ workOrderId, offlineScope }: { workOr
   }
   return <section className="space-y-3 rounded-lg border p-4" aria-label="Fotos offline">
     <p className="text-sm font-semibold">Fotografías sin conexión</p>
-    <p className="text-xs text-muted-foreground">Las fotos permanecen en este dispositivo hasta que el servidor confirme su recepción. No desinstales MOTIL ni borres los datos del navegador mientras estén pendientes.</p>
+    <p className="text-xs text-muted-foreground">Las fotos permanecen en este dispositivo hasta que el servidor confirme su recepción. Mantén abierta la OT si estás sin señal. No desinstales MOTIL ni borres los datos del navegador mientras estén pendientes.</p>
     <label className="block text-sm">Agregar fotografías para sincronizar
       <input type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" multiple capture="environment" disabled={working} className="mt-2 block w-full text-sm" onChange={(event) => { void capture(event.target.files); event.target.value = ''; }} />
     </label>
