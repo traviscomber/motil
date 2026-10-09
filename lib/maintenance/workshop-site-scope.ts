@@ -73,5 +73,5 @@ export function workshopHeadCanAccessOrder(
 
 export function workshopHeadOrderFilter(scope: Extract<WorkshopHeadScope, { isWorkshopHead: true }>): string {
   // Values are from fixed canonical site constants and a verified UUID, never client input.
-  return `workshop_site.eq.${scope.site},and(workshop_site.is.null,assigned_person_id.eq.${scope.personId})`;
+  return `workshop_site.eq."${scope.site}",and(workshop_site.is.null,assigned_person_id.eq.${scope.personId})`;
 }
