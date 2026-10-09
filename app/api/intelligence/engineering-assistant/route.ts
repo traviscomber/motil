@@ -5,9 +5,20 @@ import { getOrganizationContext } from '@/lib/api/organization-context';
 import { getModuleAccessLevel, MODULE_KEYS } from '@/lib/api/module-access';
 import { assessPlanPeriod, currentChileDate } from '@/lib/production/engineering-plan-period.mjs';
 import { summarizeEngineeringEvidence, formatEngineeringBriefing } from '@/lib/production/engineering-briefing.mjs';
+import { listSernageominObligations } from '@/lib/intelligence/sernageomin-obligations';
 
 const ENGINEERING_CARGO = 'JEFE ING. PLA MINA';
 const privateHeaders = { 'Cache-Control': 'private, no-store' };
+
+// Public legal references shared with the existing Legal cockpit; no Legal API permission is granted.
+function engineeringRegulatoryReference() {
+  return listSernageominObligations('engineering').map(item => ({
+    id:item.id, title:item.title, legalBasis:item.legalBasis,
+    sourceUrl:item.sourceUrl, applicabilityNote:item.applicabilityNote,
+    nextAction:item.nextAction, expectedEvidence:item.expectedEvidence,
+    humanValidationRequired:item.humanValidationRequired,
+  }));
+}
 
 async function authorizedEngineering(request: NextRequest) {
   const context = await getOrganizationContext(request);
@@ -88,6 +99,7 @@ export async function GET(request: NextRequest) {
     }],
     cargo: ENGINEERING_CARGO, memoryCount: 0, persistence: 'stateless_read_only',
     scope: 'ingenieria_topografia', executionVerified: false,
+    regulatoryGuidance: { references: engineeringRegulatoryReference(), complianceVerdictCalculated: false, roleAssignmentVerified: false },
   }, { headers: privateHeaders });
 }
 
@@ -122,6 +134,11 @@ export async function POST(request: NextRequest) {
     'La bandeja sin tareas no acredita que las labores estén resueltas.',
     'No uses datos globales de planta para inferir avance de una mina o sector.',
     'No autorices tareas, cambios de plan, cierres de OT, cumplimiento HSE, ni emitas órdenes operativas.',
+    'SERNAGEOMIN es referencia normativa, no dictamen legal ni prueba de cumplimiento; Legal valida aplicabilidad y la empresa designa funciones.',
+    'JEFE ING. PLA MINA no equivale automáticamente a Jefe de Mina (DS 132 art. 34) ni a ingeniero firmante (art. 33); se requiere nombramiento documentado.',
+    'DS 132 arts. 60-61: no declares actualizados planos mineros o registros sin evidencia original con versión, fecha y coordenadas.',
+    'DS 132 art. 22: no presumas autorización de proyecto o modificación mayor sin resolución aprobatoria del método aplicable.',
+    'No clasifiques la faena por metas mensuales: se necesita capacidad autorizada, método aprobado y tipo de proyecto.',
     'La acción apropiada es indicar evidencia o responsables a verificar por el humano.',
     'No simules memoria o acciones ejecutadas. Las consultas no generan escritura en la operación.',
   ].join(' ');
@@ -130,7 +147,7 @@ export async function POST(request: NextRequest) {
     headers: { Authorization: 'Bearer ' + apiKey, 'Content-Type':'application/json' },
     body: JSON.stringify({
       model: process.env.OPENAI_OPERATIONAL_ASSISTANT_MODEL || 'gpt-5.6',
-      instructions, input: JSON.stringify({ question, verifiedEvidence: evidence }),
+      instructions, input: JSON.stringify({ question, verifiedEvidence: evidence, advisorySernageominReferences: engineeringRegulatoryReference() }),
       max_output_tokens: 720,
     }),
     signal: AbortSignal.timeout(20000),
@@ -153,6 +170,7 @@ export async function POST(request: NextRequest) {
     operationalMutationExecuted: false, executionVerified: false,
     model: payload?.model || null,
     sources: [
+      'SERNAGEOMIN_DS_132_OFFICIAL_REFERENCE',
       'production_monthly_plans', 'production_monthly_plan_lines',
       'production_geology_topography_source_gap_2026_v1', 'role_tasks_actionable_v1',
     ],
