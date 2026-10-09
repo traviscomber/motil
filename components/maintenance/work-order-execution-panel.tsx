@@ -119,6 +119,14 @@ export function WorkOrderExecutionPanel({ workOrderId, readOnly = false }: { wor
   const events = (Array.isArray(data?.events) ? data.events : []) as WorkOrderEvent[];
   const costs = data?.costs || {};
   const reportPhotos = (Array.isArray(photoData?.evidence) ? photoData.evidence : []).filter((photo: { signed_url?: string | null }) => Boolean(photo.signed_url)).slice(0, 2) as Array<{ id: string; signed_url: string; file_name?: string | null }>;
+  // Una ausencia de registro NO equivale a cero recursos ejecutados.
+  const installedParts = parts.filter((part) => Number(part.quantity_installed || 0) > 0);
+  const laborTracked = labor.length > 0;
+  const partsTracked = installedParts.length > 0;
+  const costsComplete = partsTracked && laborTracked && costs.total_cost != null;
+  const totalCostLabel = costsComplete ? money(costs.total_cost) : 'No determinado';
+  const executionEvidence = (Array.isArray(photoData?.evidence) && photoData.evidence.length > 0) || workOrder.status === 'completed';
+
 
   const execute = async (payload: Record<string, unknown>, key: string) => {
     setBusyKey(key);
@@ -243,8 +251,8 @@ export function WorkOrderExecutionPanel({ workOrderId, readOnly = false }: { wor
           </div>
           <h2 className="hidden border-b pb-1 text-sm font-semibold print:block">Recursos</h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div><p className="text-xs text-muted-foreground">Técnicos</p><p className="mt-1 font-medium">{labor.length}</p></div>
-            <div><p className="text-xs text-muted-foreground">Costo total</p><p className="mt-1 font-medium">{money(costs.total_cost)}</p></div>
+            <div><p className="text-xs text-muted-foreground">Técnicos</p><p className="mt-1 font-medium">{laborTracked ? String(labor.length) : 'No registrados'}</p></div>
+            <div><p className="text-xs text-muted-foreground">Costo total</p><p className="mt-1 font-medium">{totalCostLabel}</p></div>
           </div>
           {reportPhotos.length > 0 ? (
             <section className="hidden print:block">
@@ -259,9 +267,9 @@ export function WorkOrderExecutionPanel({ workOrderId, readOnly = false }: { wor
             </section>
           ) : null}
           <div className="grid gap-5 lg:grid-cols-3">
-            <div><p className="text-sm font-medium">Repuestos instalados</p><ul className="mt-2 space-y-1 text-sm text-muted-foreground">{parts.filter((part) => Number(part.quantity_installed || 0) > 0).map((part) => <li key={part.id}>{part.stock?.part_name || 'Repuesto'} · {part.quantity_installed}</li>)}{parts.every((part) => Number(part.quantity_installed || 0) <= 0) ? <li>Sin repuestos instalados</li> : null}</ul></div>
-            <div><p className="text-sm font-medium">Mano de obra</p><ul className="mt-2 space-y-1 text-sm text-muted-foreground">{labor.map((entry) => <li key={entry.id}>{entry.technician_name} · {entry.hours} h</li>)}{labor.length === 0 ? <li>Sin mano de obra registrada</li> : null}</ul></div>
-            <div><p className="text-sm font-medium">Servicios externos</p><ul className="mt-2 space-y-1 text-sm text-muted-foreground">{services.map((service) => <li key={service.id}>{service.provider_name} · {money(service.amount)}</li>)}{services.length === 0 ? <li>Sin servicios externos</li> : null}</ul></div>
+            <div><p className="text-sm font-medium">Repuestos instalados</p><ul className="mt-2 space-y-1 text-sm text-muted-foreground">{installedParts.map((part) => <li key={part.id}>{part.stock?.part_name || 'Repuesto'} · {part.quantity_installed}</li>)}{!partsTracked ? <li>{executionEvidence ? 'Sin trazabilidad de repuestos en la OT; existe evidencia de la intervención.' : 'Repuestos no registrados en la OT.'}</li> : null}</ul></div>
+            <div><p className="text-sm font-medium">Mano de obra</p><ul className="mt-2 space-y-1 text-sm text-muted-foreground">{labor.map((entry) => <li key={entry.id}>{entry.technician_name} · {entry.hours} h</li>)}{!laborTracked ? <li>Detalle de mano de obra pendiente de registro; no implica ausencia de trabajo.</li> : null}</ul></div>
+            <div><p className="text-sm font-medium">Servicios externos</p><ul className="mt-2 space-y-1 text-sm text-muted-foreground">{services.map((service) => <li key={service.id}>{service.provider_name} · {money(service.amount)}</li>)}{services.length === 0 ? <li>Servicios externos no registrados en la OT.</li> : null}</ul></div>
           </div>
           <section className="hidden border-t pt-3 print:block">
             <h2 className="mb-2 text-sm font-semibold">Trazabilidad de la orden</h2>
