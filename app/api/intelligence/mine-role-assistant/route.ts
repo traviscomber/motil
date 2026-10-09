@@ -110,8 +110,16 @@ export async function GET(request:NextRequest) {
       conversationId:request.nextUrl.searchParams.get('conversationId'),
       before:request.nextUrl.searchParams.get('before'),
     });
+    const {data:requests,error:requestsError}=await access.context.supabase
+      .from('mine_assistant_requests').select('id,title,status,created_at')
+      .eq('organization_id',access.context.organizationId)
+      .eq('user_id',access.context.userId)
+      .eq('mine_name',access.persona.mine)
+      .order('created_at',{ascending:false}).limit(8);
+    if(requestsError) throw requestsError;
     return json({
       ...state,
+      assistantRequests:requests || [],
       cargo:access.persona.cargoName,
       persona:{name:access.persona.fullName,mine:access.persona.mine,role:access.persona.kind},
       persistence:'mine_role_private_v1',
