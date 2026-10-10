@@ -20,7 +20,7 @@ export function AreaNavigation({ label, primary, secondary, isActive }: {
       <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto overscroll-x-contain" role="group" aria-label={`${label}: vistas principales`}>
       {primary.map((item) => (
         <Link key={item.href} href={item.href} onClick={item.onSelect ? (event) => { if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return; event.preventDefault(); item.onSelect?.(); } : undefined} aria-current={isActive(item.href) ? 'page' : undefined}
-          className={cn('inline-flex min-h-11 items-center rounded-md px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+          className={cn('inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-md px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
             isActive(item.href) ? 'bg-muted font-medium text-foreground' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground')}>
           {item.label}
         </Link>
