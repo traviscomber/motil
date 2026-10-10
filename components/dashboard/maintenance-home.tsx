@@ -160,7 +160,6 @@ export function MaintenanceHome({ locale, dictionary }: { locale: Locale; dictio
         <PageHeaderDescription>{pageDescription}</PageHeaderDescription>
       </PageHeaderContent>
       <PageHeaderActions>
-        <Button variant="outline" onClick={() => void mutate()} disabled={isLoading}><RefreshCw className="h-4 w-4" />{t.refresh}</Button>
         {viewer?.canCreateWorkOrder
           ? <Button asChild><Link href="/dashboard/mantenimiento/ordenes-trabajo/create"><Wrench className="h-4 w-4" />Nueva OT</Link></Button>
           : mode === 'leadership' && firstLeadershipAction
@@ -170,6 +169,24 @@ export function MaintenanceHome({ locale, dictionary }: { locale: Locale; dictio
               : <Button asChild><Link href="/dashboard/mantenimiento/ordenes-trabajo"><ArrowRight className="h-4 w-4" />{t.cta.reviewOrders}</Link></Button>}
       </PageHeaderActions>
     </PageHeader>
+    <p className="text-sm text-muted-foreground">Lo que requiere tu atención aparece primero. Abre una acción para continuar o consulta el contexto en Ver más.</p>
+    <Card className="shadow-none">
+      <CardHeader className="flex flex-row items-start justify-between gap-4"><div><CardTitle className="text-lg">{t.queue.titles[mode as WorkMode]}</CardTitle><CardDescription>{t.queue.descriptions[mode as WorkMode]}</CardDescription></div>{!isLoading && !error ? <Badge variant="outline">{fill(t.queue.actionsBadge, { n: actions.length })}</Badge> : null}</CardHeader>
+      <CardContent>
+        {isLoading ? <StatePanel tone="loading" title={t.queue.loading} className="min-h-64 border-0 bg-transparent" /> : !error && actions.length === 0 ? <StatePanel tone="neutral" title={t.queue.emptyTitle} description={t.queue.emptyDescriptions[mode as WorkMode]} className="min-h-64 border-0 bg-transparent" /> : !error ? <div className="divide-y rounded-lg border">{actions.map((action, index) => {
+          const kindKey = (action.kind in kindMeta ? action.kind : kindFallback) as KindKey;
+          const meta = kindMeta[kindKey];
+          const Icon = meta.icon;
+          return <div key={action.id} className="grid gap-3 p-4 md:grid-cols-[40px_1fr_auto] md:items-center"><div className="flex h-9 w-9 items-center justify-center rounded-md border bg-background"><Icon className="h-4 w-4" /></div><Link href={action.href} className="min-w-0 rounded-sm outline-none hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring"><div className="flex flex-wrap items-center gap-2"><span className="text-xs tabular-nums text-muted-foreground">#{index + 1}</span><Badge variant={meta.variant}>{t.kinds[kindKey]}</Badge><p className="font-medium">{action.title}</p></div><details className="mt-2 text-xs text-muted-foreground"><summary className="cursor-pointer select-none font-medium text-foreground/80">Ver detalle</summary><div className="mt-2 space-y-1 border-l border-border pl-3"><p>{action.description}</p><p>{fill(t.evidenceLabel, { text: action.evidence })}</p>{action.autopilot ? <><p><span className="font-medium text-foreground">Autopilot prepara:</span> {action.autopilot.preparedAction}</p><p><span className="font-medium text-foreground">Decisión humana:</span> {action.autopilot.authority}</p></> : null}</div></details></Link><Button asChild variant="ghost" size="icon-sm" aria-label={t.openActionAria}><Link href={action.href}><ArrowRight className="h-4 w-4" /></Link></Button></div>;
+        })}</div> : null}
+      </CardContent>
+    </Card>
+
+    <details data-testid="maintenance-more-details" className="rounded-lg border bg-card">
+      <summary className="cursor-pointer select-none px-4 py-3 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">Ver más · Indicadores y herramientas</summary>
+      <div className="space-y-6 border-t p-4">
+        <Button variant="outline" onClick={() => void mutate()} disabled={isLoading}><RefreshCw className="mr-2 h-4 w-4" />{t.refresh}</Button>
+
 
     {!supervisorInboxMode ? <section aria-label={t.metricsAria} className={`grid gap-3 sm:grid-cols-2 ${metrics.length === 4 ? 'xl:grid-cols-4' : 'xl:grid-cols-3'}`}>
       {metrics.map(([label, value, detail, href]) => <Link key={label} href={href} className="rounded-lg border bg-card px-4 py-4 shadow-none outline-none transition-colors hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-ring"><p className="text-xs text-muted-foreground">{label}</p><div className="mt-2 flex items-end justify-between gap-3"><p className="text-3xl font-semibold tracking-tight">{isLoading ? '—' : value}</p><p className="text-right text-xs text-muted-foreground">{detail}</p></div></Link>)}
@@ -209,18 +226,6 @@ export function MaintenanceHome({ locale, dictionary }: { locale: Locale; dictio
 
     {error ? <StatePanel tone="error" title={t.error.title} description={error.message} actions={<Button variant="outline" onClick={() => void mutate()}>{t.error.retry}</Button>} className="min-h-0 py-5" /> : null}
 
-    <Card className="shadow-none">
-      <CardHeader className="flex flex-row items-start justify-between gap-4"><div><CardTitle className="text-lg">{t.queue.titles[mode as WorkMode]}</CardTitle><CardDescription>{t.queue.descriptions[mode as WorkMode]}</CardDescription></div>{!isLoading && !error ? <Badge variant="outline">{fill(t.queue.actionsBadge, { n: actions.length })}</Badge> : null}</CardHeader>
-      <CardContent>
-        {isLoading ? <StatePanel tone="loading" title={t.queue.loading} className="min-h-64 border-0 bg-transparent" /> : !error && actions.length === 0 ? <StatePanel tone="neutral" title={t.queue.emptyTitle} description={t.queue.emptyDescriptions[mode as WorkMode]} className="min-h-64 border-0 bg-transparent" /> : !error ? <div className="divide-y rounded-lg border">{actions.map((action, index) => {
-          const kindKey = (action.kind in kindMeta ? action.kind : kindFallback) as KindKey;
-          const meta = kindMeta[kindKey];
-          const Icon = meta.icon;
-          return <div key={action.id} className="grid gap-3 p-4 md:grid-cols-[40px_1fr_auto] md:items-center"><div className="flex h-9 w-9 items-center justify-center rounded-md border bg-background"><Icon className="h-4 w-4" /></div><Link href={action.href} className="min-w-0 rounded-sm outline-none hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring"><div className="flex flex-wrap items-center gap-2"><span className="text-xs tabular-nums text-muted-foreground">#{index + 1}</span><Badge variant={meta.variant}>{t.kinds[kindKey]}</Badge><p className="font-medium">{action.title}</p></div><details className="mt-2 text-xs text-muted-foreground"><summary className="cursor-pointer select-none font-medium text-foreground/80">Ver detalle</summary><div className="mt-2 space-y-1 border-l border-border pl-3"><p>{action.description}</p><p>{fill(t.evidenceLabel, { text: action.evidence })}</p>{action.autopilot ? <><p><span className="font-medium text-foreground">Autopilot prepara:</span> {action.autopilot.preparedAction}</p><p><span className="font-medium text-foreground">Decisión humana:</span> {action.autopilot.authority}</p></> : null}</div></details></Link><Button asChild variant="ghost" size="icon-sm" aria-label={t.openActionAria}><Link href={action.href}><ArrowRight className="h-4 w-4" /></Link></Button></div>;
-        })}</div> : null}
-      </CardContent>
-    </Card>
-
     <div className="flex flex-wrap gap-x-5 gap-y-2 border-t pt-4 text-sm text-muted-foreground" aria-label={t.relatedAria}>
       {mode === 'planning' ? <>
         <Link className="hover:text-foreground" href="/dashboard/mantenimiento/preventivo-horas">{t.related.preventiveHours}</Link>
@@ -238,5 +243,7 @@ export function MaintenanceHome({ locale, dictionary }: { locale: Locale; dictio
         <Link className="hover:text-foreground" href="/dashboard/mantenimiento/horometros">{t.related.hourMeters}</Link>
       </>}
     </div>
+      </div>
+    </details>
   </div>;
 }
