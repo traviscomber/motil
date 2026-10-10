@@ -164,18 +164,23 @@ export default function PlanificacionPage() {
               <div className="overflow-hidden rounded-lg border border-border bg-card">
                 <div className="divide-y divide-border">
                   {priorities.slice(0, 12).map((item) => (
-                    <article key={item.source_row_id} className="grid gap-3 px-4 py-4 lg:grid-cols-[minmax(0,1.3fr)_repeat(3,minmax(120px,.45fr))_auto] lg:items-center lg:px-5">
-                      <div className="min-w-0">
+                    <article key={item.source_row_id} className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between lg:px-5">
+                      <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
                           <h3 className="text-sm font-semibold">{item.asset_code || item.asset_name || 'Equipo'}</h3>
                           <Badge variant={priorityVariant(item.priority)}>{item.priority || 'Sin clasificar'}</Badge>
                         </div>
-                        <p className="mt-1 text-xs text-muted-foreground">{item.mine_raw || 'Sin mina'} · Criticidad {item.criticality_raw || 'sin validar'}</p>
-                        {item.recommended_action ? <p className="mt-2 text-sm text-muted-foreground">{item.recommended_action}</p> : null}
+                        <p className="mt-1 text-sm text-muted-foreground">{item.recommended_action || 'Revisar prioridad y programación'}</p>
+                        <details className="mt-2 text-xs text-muted-foreground">
+                          <summary className="w-fit cursor-pointer font-medium">Ver detalles</summary>
+                          <dl className="mt-2 grid gap-2 rounded-md border p-3 sm:grid-cols-3">
+                            <div><dt>Lectura</dt><dd className="font-medium text-foreground">{number(item.current_reading, item.meter_unit ? ` ${item.meter_unit}` : '')}</dd></div>
+                            <div><dt>Saldo</dt><dd className="font-medium text-foreground">{number(item.remaining_meter, item.meter_unit ? ` ${item.meter_unit}` : '')}</dd></div>
+                            <div><dt>Proyección</dt><dd className="font-medium text-foreground">{number(item.projected_days, ' días')}</dd></div>
+                            <div className="sm:col-span-3">{item.mine_raw || 'Sin mina'} · Criticidad {item.criticality_raw || 'sin validar'}</div>
+                          </dl>
+                        </details>
                       </div>
-                      <div><p className="text-xs text-muted-foreground">Lectura</p><p className="mt-1 text-sm font-medium">{number(item.current_reading, item.meter_unit ? ` ${item.meter_unit}` : '')}</p></div>
-                      <div><p className="text-xs text-muted-foreground">Saldo</p><p className="mt-1 text-sm font-medium">{number(item.remaining_meter, item.meter_unit ? ` ${item.meter_unit}` : '')}</p></div>
-                      <div><p className="text-xs text-muted-foreground">Proyección</p><p className="mt-1 text-sm font-medium">{number(item.projected_days, ' días')}</p></div>
                       <Button size="sm" variant="outline" asChild><Link href="/dashboard/mantenimiento/planificacion">Revisar</Link></Button>
                     </article>
                   ))}
