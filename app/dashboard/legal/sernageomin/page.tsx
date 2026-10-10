@@ -83,37 +83,44 @@ export default function MiningLegalObligationsPage() {
         <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Legal · Control regulatorio</p>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight">Obligaciones y acciones</h1>
         <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-          Legal valida qué aplica y controla la trazabilidad. El área dueña ejecuta la acción y entrega la evidencia. SERNAGEOMIN aparece como autoridad y fuente, no como un silo de trabajo.
+          Revisa qué requiere acción, quién responde y qué evidencia falta validar.
         </p>
       </header>
 
-      <section className="rounded-md border bg-muted/20 p-4">
-        <p className="text-sm font-semibold">Cómo trabajar esta bandeja</p>
-        <div className="mt-3 grid gap-3 text-sm md:grid-cols-3">
-          <p><span className="font-medium">1. Legal</span><br /><span className="text-muted-foreground">{data.operatingModel?.legal}</span></p>
-          <p><span className="font-medium">2. Área responsable</span><br /><span className="text-muted-foreground">{data.operatingModel?.businessOwner}</span></p>
-          <p><span className="font-medium">3. Cierre</span><br /><span className="text-muted-foreground">{data.operatingModel?.closeRule}</span></p>
+      <details className="rounded-md border" aria-label="Metodología e indicadores regulatorios">
+        <summary className="min-h-11 cursor-pointer px-4 py-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">Ver metodología e indicadores</summary>
+        <div className="space-y-4 border-t p-4">
+        <section className="rounded-md border bg-muted/20 p-4">
+          <p className="text-sm font-semibold">Cómo trabajar esta bandeja</p>
+          <div className="mt-3 grid gap-3 text-sm md:grid-cols-3">
+            <p><span className="font-medium">1. Legal</span><br /><span className="text-muted-foreground">{data.operatingModel?.legal}</span></p>
+            <p><span className="font-medium">2. Área responsable</span><br /><span className="text-muted-foreground">{data.operatingModel?.businessOwner}</span></p>
+            <p><span className="font-medium">3. Cierre</span><br /><span className="text-muted-foreground">{data.operatingModel?.closeRule}</span></p>
+          </div>
+        </section>
+  
+        <section aria-label="Resumen regulatorio" className="grid overflow-hidden rounded-md border sm:grid-cols-4">
+          <div className="px-4 py-3">
+            <p className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">Obligaciones</p>
+            <p className="mt-1 text-xl font-semibold">{summary?.obligations ?? '—'}</p>
+          </div>
+          <div className="border-t px-4 py-3 sm:border-l sm:border-t-0">
+            <p className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">Críticas</p>
+            <p className="mt-1 text-xl font-semibold">{summary?.critical ?? '—'}</p>
+          </div>
+          <div className="border-t px-4 py-3 sm:border-l sm:border-t-0">
+            <p className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">Con evidencia candidata</p>
+            <p className="mt-1 text-xl font-semibold">{summary?.withMatchedEvidence ?? '—'}</p>
+          </div>
+          <div className="border-t px-4 py-3 sm:border-l sm:border-t-0">
+            <p className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">Sin evidencia vinculada</p>
+            <p className="mt-1 text-xl font-semibold">{summary?.withoutMatchedEvidence ?? '—'}</p>
+          </div>
+        </section>
+  
+  
         </div>
-      </section>
-
-      <section aria-label="Resumen regulatorio" className="grid overflow-hidden rounded-md border sm:grid-cols-4">
-        <div className="px-4 py-3">
-          <p className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">Obligaciones</p>
-          <p className="mt-1 text-xl font-semibold">{summary?.obligations ?? '—'}</p>
-        </div>
-        <div className="border-t px-4 py-3 sm:border-l sm:border-t-0">
-          <p className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">Críticas</p>
-          <p className="mt-1 text-xl font-semibold">{summary?.critical ?? '—'}</p>
-        </div>
-        <div className="border-t px-4 py-3 sm:border-l sm:border-t-0">
-          <p className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">Con evidencia candidata</p>
-          <p className="mt-1 text-xl font-semibold">{summary?.withMatchedEvidence ?? '—'}</p>
-        </div>
-        <div className="border-t px-4 py-3 sm:border-l sm:border-t-0">
-          <p className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">Sin evidencia vinculada</p>
-          <p className="mt-1 text-xl font-semibold">{summary?.withoutMatchedEvidence ?? '—'}</p>
-        </div>
-      </section>
+      </details>
 
       <div className="space-y-3">
         {data.obligations.map((item) => (
