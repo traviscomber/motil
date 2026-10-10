@@ -47,3 +47,11 @@ test('offline photos carry their actual timestamp and conflict invalid clocks', 
   assert.match(evidence, /captured_at: capturedAt \|\| new Date\(\)\.toISOString\(\)/);
   assert.match(evidence, /Fecha de fotografía fuera de rango/);
 });
+
+test('queued notes retry when operator returns to the visible OT', () => {
+  const notes = read('components/maintenance/maintenance-offline-draft.tsx');
+  assert.match(notes, /visibilitychange/);
+  assert.match(notes, /document\.visibilityState === 'visible'/);
+  assert.match(notes, /navigator\.onLine/);
+  assert.match(notes, /await writeDraft\(\{ id: draftId, notes, updatedAt: new Date\(\)\.toISOString\(\), queue: remaining, journal \}\)/);
+});
