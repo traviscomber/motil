@@ -66,17 +66,7 @@ export function ProduccionDashboard(){
       <PageHeaderActions>{ready && canEdit('prod_operaciones') ? <Button asChild variant="outline"><Link href="/dashboard/produccion/ingreso-datos"><Upload className="h-4 w-4"/>Ingresar datos</Link></Button> : null}</PageHeaderActions>
     </PageHeader>
 
-    <section aria-label="Operación actual" className="space-y-3">
-      <div><p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Ahora</p><h2 className="mt-1 text-lg font-semibold tracking-tight">Ejecución del período</h2></div>
-      <div className="grid gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-2 xl:grid-cols-6">
-        <Metric icon={Factory} label="Tratado" value={p?tons(p.treatedTons,1):'—'} detail={plan?`${pct(plan.treatmentProgressPct)} del plan de mineral a planta`:'Sin plan activo'}/>
-        <Metric icon={Target} label="Ritmo mensual" value={paceLabel} detail={plan?`Índice ${pct(plan.paceIndexPct)} · calendario ${pct(p?.calendarProgressPct)}`:'Sin comparación'}/>
-        <Metric icon={Gauge} label="Ley cabeza Cu" value={pct(p?.avgHeadGradePct,3)} detail={plan?.targetCuGradePct!=null?`Objetivo ${pct(plan.targetCuGradePct,2)}`:'Sin objetivo'}/>
-        <Metric icon={Activity} label="Recuperación" value={pct(p?.avgRecoveryPct,2)} detail={p?`${p.deterministicShifts}/${p.plantShifts} turnos determinísticos`:'—'}/>
-        <Metric icon={Beaker} label="Cu fino recuperado" value={p?tons(p.recoveredFineCuTons,3):'—'} detail={p?`${tons(p.containedCuTons,3)} Cu contenido`:'—'}/>
-        <Metric icon={PackageCheck} label="Concentrado despachado" value={p?tons(p.dispatch.wetMetricTons,2):'—'} detail={p?`${p.dispatch.validShipmentRows} válidos · ${p.dispatch.reviewShipmentRows} revisión`:'—'}/>
-      </div>
-    </section>
+
 
     <section className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
       <div className="rounded-lg border bg-card">
@@ -100,6 +90,20 @@ export function ProduccionDashboard(){
       <div className="border-b px-5 py-4"><h2 className="font-medium">Transporte comparable</h2><p className="mt-1 text-xs text-muted-foreground">Misma ventana de evidencia para transporte y tratamiento.</p></div>
       <div className="grid gap-px bg-border sm:grid-cols-3"><Mini label="Transportado" value={p?tons(p.transportComparable.transportedTons,1):'—'} detail={`Hasta ${date(p?.transportComparable.sourceThrough)}`}/><Mini label="Tratado comparable" value={p?tons(p.transportComparable.treatedTons,1):'—'} detail="Misma ventana"/><Mini label="Brecha comparable" value={p?tons(p.transportComparable.deltaTons,1):'—'} detail="No equivale a pérdida"/></div>
     </section>
+
+    <details data-testid="production-more-metrics" className="rounded-lg border bg-card"><summary className="cursor-pointer px-4 py-3 text-sm font-medium">Ver más · Indicadores del período</summary><div className="border-t p-4">
+    <section aria-label="Operación actual" className="space-y-3">
+      <div><p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Ahora</p><h2 className="mt-1 text-lg font-semibold tracking-tight">Ejecución del período</h2></div>
+      <div className="grid gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-2 xl:grid-cols-6">
+        <Metric icon={Factory} label="Tratado" value={p?tons(p.treatedTons,1):'—'} detail={plan?`${pct(plan.treatmentProgressPct)} del plan de mineral a planta`:'Sin plan activo'}/>
+        <Metric icon={Target} label="Ritmo mensual" value={paceLabel} detail={plan?`Índice ${pct(plan.paceIndexPct)} · calendario ${pct(p?.calendarProgressPct)}`:'Sin comparación'}/>
+        <Metric icon={Gauge} label="Ley cabeza Cu" value={pct(p?.avgHeadGradePct,3)} detail={plan?.targetCuGradePct!=null?`Objetivo ${pct(plan.targetCuGradePct,2)}`:'Sin objetivo'}/>
+        <Metric icon={Activity} label="Recuperación" value={pct(p?.avgRecoveryPct,2)} detail={p?`${p.deterministicShifts}/${p.plantShifts} turnos determinísticos`:'—'}/>
+        <Metric icon={Beaker} label="Cu fino recuperado" value={p?tons(p.recoveredFineCuTons,3):'—'} detail={p?`${tons(p.containedCuTons,3)} Cu contenido`:'—'}/>
+        <Metric icon={PackageCheck} label="Concentrado despachado" value={p?tons(p.dispatch.wetMetricTons,2):'—'} detail={p?`${p.dispatch.validShipmentRows} válidos · ${p.dispatch.reviewShipmentRows} revisión`:'—'}/>
+      </div>
+    </section>
+    </div></details>
 
     <CoverageOverview data={data}/>
 
