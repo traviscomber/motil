@@ -60,5 +60,15 @@ export async function POST(request: NextRequest) {
       { onConflict: 'corrective_action_id,work_order_id', ignoreDuplicates: true })
     .select('id, corrective_action_id, work_order_id, linked_at').maybeSingle();
   if (error) return NextResponse.json({ error: 'No se pudo vincular la OT' }, { status: 500 });
-  return NextResponse.json({ linked: true, data: data || null });
+  if (!data) {
+    const existing = await context.supabase.from('sostenibilidad_corrective_action_work_orders')
+      .select('id, corrective_action_id, work_order_id, linked_at')
+      .eq('organization_id', context.organizationId)
+      .eq('corrective_action_id', actionId)
+      .eq('work_order_id', orderResult.data.id)
+      .maybeSingle();
+    if (existing.error || !existing.data) return NextResponse.json({ error: 'No se pudo confirmar el vínculo' }, { status: 500 });
+    return NextResponse.json({ linked: true, alreadyLinked: true, data: existing.data });
+  }
+  return NextResponse.json({ linked: true, alreadyLinked: false, data });
 }
