@@ -24,24 +24,20 @@ export function CorrectiveActionsPage() {
   const searchParams = useSearchParams();
   const ncId = searchParams.get('ncId');
 
-  const { data: stats } = useSWR('/api/sostenibilidad/corrective-actions/stats', fetcher);
   const { data: actions, mutate } = useSWR(
     ncId ? `/api/sostenibilidad/corrective-actions?ncId=${ncId}` : '/api/sostenibilidad/corrective-actions',
     fetcher
   );
 
   const actionList: CorrectiveActionRecord[] = Array.isArray(actions?.data) ? actions.data : [];
-  const statsData: Record<string, number> =
-    stats?.data && typeof stats.data === 'object' ? (stats.data as Record<string, number>) : {};
-
-  const inProgressCount = actionList.filter((a) => a.status === 'in_progress').length || 0;
-  const completedCount = actionList.filter((a) => a.status === 'completed' || a.status === 'verified').length || 0;
+  const inProgressCount = actionList.filter((a) => a.status === 'in_progress').length;
+  const completedCount = actionList.filter((a) => a.status === 'completed' || a.status === 'verified').length;
   const overDueCount =
     actionList.filter((a) => {
       const dueDate = formatDate(a.scheduled_completion_date);
-      return Boolean(dueDate) && new Date(dueDate) < new Date() && a.status !== 'completed';
-    }).length || 0;
-  const totalActions = actionList.length || 0;
+      return Boolean(dueDate) && new Date(dueDate) < new Date() && !['completed', 'verified'].includes(a.status);
+    }).length;
+  const totalActions = actionList.length;
 
   return (
     <div className="space-y-6 p-6">
@@ -87,7 +83,7 @@ export function CorrectiveActionsPage() {
             <CardTitle className="text-sm font-medium text-muted-foreground">En progreso</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{inProgressCount || statsData.in_progress || 0}</div>
+            <div className="text-2xl font-bold">{actions ? inProgressCount : '—'}</div>
           </CardContent>
         </Card>
         <Card>
@@ -95,7 +91,7 @@ export function CorrectiveActionsPage() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Completadas</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{completedCount || statsData.completed || 0}</div>
+            <div className="text-2xl font-bold">{actions ? completedCount : '—'}</div>
           </CardContent>
         </Card>
         <Card>
@@ -103,7 +99,7 @@ export function CorrectiveActionsPage() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Vencidas</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{overDueCount || statsData.overdue || 0}</div>
+            <div className="text-2xl font-bold text-red-600">{actions ? overDueCount : '—'}</div>
           </CardContent>
         </Card>
         <Card>
@@ -112,7 +108,7 @@ export function CorrectiveActionsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {totalActions ? Math.round((completedCount / totalActions) * 100) : statsData?.completionRate || 0}%
+              {!actions ? '—' : totalActions ? `${Math.round((completedCount / totalActions) * 100)}%` : '—'}
             </div>
           </CardContent>
         </Card>
@@ -150,7 +146,7 @@ export function CorrectiveActionsPage() {
             {actionList
               .filter((a) => {
                 const dueDate = formatDate(a.scheduled_completion_date);
-                return Boolean(dueDate) && new Date(dueDate) < new Date() && a.status !== 'completed';
+                return Boolean(dueDate) && new Date(dueDate) < new Date() && !['completed', 'verified'].includes(a.status);
               })
               .map((action) => (
                 <CorrectiveActionCard key={action.id} action={action} onUpdate={() => mutate()} />
