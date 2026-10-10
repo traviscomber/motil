@@ -147,9 +147,7 @@ export default function SostenibilidadDashboard() {
 
       {overviewError ? <StatePanel tone="warning" title="Resumen HSE no disponible" description="Las demás fuentes siguen visibles por separado. No se muestran ceros de reemplazo para cumplimiento, no conformidades o acciones vencidas." actions={<Button variant="outline" onClick={() => void refreshOverview()}>Reintentar</Button>} className="min-h-0 py-5"/> : null}
 
-      <section aria-label="Estado de Sostenibilidad" className="grid gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-2 xl:grid-cols-6">
-        {metrics.map((metric) => <div key={metric.label} className="bg-card px-4 py-4"><p className="text-xs text-muted-foreground">{metric.label}</p><p className="mt-1 text-2xl font-semibold tracking-tight">{overviewLoading && ['Cumplimiento','NC abiertas','Acciones vencidas'].includes(metric.label) ? '—' : metric.value}</p><p className="mt-1 text-xs text-muted-foreground">{metric.detail}</p></div>)}
-      </section>
+
 
       <section className="space-y-3" aria-labelledby="sustainability-areas">
         <div><h2 id="sustainability-areas" className="text-lg font-semibold tracking-tight">Áreas</h2><p className="text-sm text-muted-foreground">Cada cifra conserva su fuente. Cero es un dato real; “—” es falta de respuesta.</p></div>
@@ -172,6 +170,11 @@ export default function SostenibilidadDashboard() {
           <Button asChild variant="outline"><Link href="/dashboard/sostenibilidad/reportes">Reportes</Link></Button>
         </div>
       </section>
+      <details data-testid="hse-more-metrics" className="rounded-lg border bg-card"><summary className="cursor-pointer px-4 py-3 text-sm font-medium">Ver más · Indicadores HSE</summary><div className="border-t p-4">
+      <section aria-label="Estado de Sostenibilidad" className="grid gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-2 xl:grid-cols-6">
+        {metrics.map((metric) => <div key={metric.label} className="bg-card px-4 py-4"><p className="text-xs text-muted-foreground">{metric.label}</p><p className="mt-1 text-2xl font-semibold tracking-tight">{overviewLoading && ['Cumplimiento','NC abiertas','Acciones vencidas'].includes(metric.label) ? '—' : metric.value}</p><p className="mt-1 text-xs text-muted-foreground">{metric.detail}</p></div>)}
+      </section>
+      </div></details>
     </div>
   );
 }
