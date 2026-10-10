@@ -2,7 +2,80 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { test } from 'node:test';
-import { deriveKey, seal, unseal, packageId, canUseOffline, acknowledge, assertOwner, validatePin } from '../public/motil-terrain.mjs';
+import { deriveKey, seal, unseal, packageId, canUseOffline, acknowledge, assertOwner, validatePin, synchronizePending } from '../public/motil-terrain.mjs';
+
+function outbox() {
+  return { scope: 'org:person', workOrderId: 'order', notes: [{ id: 'n1', notes: 'Nota', capturedAt: '2026-10-10T12:00:00Z' }], photos: [{ id: 'p1', fileName: 'foto.jpg', mimeType: 'image/jpeg', sizeBytes: 10 }] };
+}
+
+test('sync denies wrong identity or revoked assignment before transmitting observations', async () => {
+  for (const reason of ['owner', 'assignment']) {
+    const calls = [];
+    await assert.rejects(synchronizePending(outbox(), {
+      api: async path => {
+        calls.push(path);
+        if (path.endsWith('viewer-context')) return { offlineScope: reason === 'owner' ? 'org:other' : 'org:person' };
+        throw new Error('Assignment revoked');
+      },
+      uploadPhoto: () => assert.fail('Unexpected photo transfer'),
+      confirm: () => assert.fail('Unexpected removal'),
+    }));
+    assert.equal(calls.length, reason === 'owner' ? 1 : 2);
+    assert.equal(calls.some(path => /offline-notes|evidence/.test(path)), false);
+  }
+});
+
+test('interrupted receipt and local-save failure retry stable IDs without removing other pending items', async () => {
+  for (const failure of ['receipt', 'local-save']) {
+    let pending = outbox();
+    const server = new Set();
+    const ids = [];
+    let failOnce = true;
+    const transport = {
+      api: async (path, body) => {
+        if (path.endsWith('viewer-context')) return { offlineScope: 'org:person' };
+        if (path.endsWith('terrain')) return {};
+        if (path.endsWith('offline-notes')) {
+          ids.push(body.operationId); server.add(body.operationId);
+          if (failOnce && failure === 'receipt') { failOnce = false; throw new Error('Connection interrupted after commit'); }
+          return { ok: true, eventId: body.operationId };
+        }
+        return { alreadyCompleted: true, evidenceId: body.evidenceId };
+      },
+      uploadPhoto: () => assert.fail('Already uploaded'),
+      confirm: async (kind, id) => {
+        if (failOnce && failure === 'local-save') { failOnce = false; throw new Error('Storage write failed'); }
+        pending = acknowledge(pending, kind, id);
+      },
+    };
+    await assert.rejects(synchronizePending(pending, transport));
+    assert.equal(pending.notes.length, 1); assert.equal(pending.photos.length, 1);
+    await synchronizePending(pending, transport);
+    assert.deepEqual(ids, ['n1', 'n1']); assert.equal(server.size, 1);
+    assert.equal(pending.notes.length + pending.photos.length, 0);
+  }
+});
+
+test('photo remains pending after missing server confirmation and resumes from an existing upload', async () => {
+  let pending = { ...outbox(), notes: [] };
+  let completed = false;
+  const uploads = [];
+  const transport = {
+    api: async (path, body) => {
+      if (path.endsWith('viewer-context')) return { offlineScope: 'org:person' };
+      if (path.endsWith('terrain')) return {};
+      if (body.action === 'create_upload') return completed ? { alreadyCompleted: true, evidenceId: body.evidenceId } : { upload: { storagePath: 'org/order/p1.jpg' } };
+      completed = true;
+      throw new Error('Confirmation interrupted');
+    },
+    uploadPhoto: async photo => { uploads.push(photo.id); },
+    confirm: async (kind, id) => { pending = acknowledge(pending, kind, id); },
+  };
+  await assert.rejects(synchronizePending(pending, transport));
+  assert.equal(pending.photos.length, 1);
+  await synchronizePending(pending, transport);
+  assert.deepEqual(uploads, ['p1']); assert.equal(pending.photos.length, 0);
+});
 
 test('field package encryption survives reload, rejects wrong PIN, tampering and swapped identity', async () => {
   const salt = crypto.getRandomValues(new Uint8Array(16));
@@ -57,6 +130,24 @@ test('service worker executes and recovers only maintenance navigation/static sh
   handlers.fetch({ request: { method: 'GET', mode: 'cors', url: 'https://motil.test/api/maintenance/work-orders' }, respondWith: value => { apiResponse = value; } });
   await assert.rejects(apiResponse);
   assert.equal(cacheLookups.length, count);
+});
+
+test('worker upgrade replaces old shells without deleting unrelated caches or field packages', async () => {
+  const handlers = {};
+  const removed = [];
+  const context = {
+    self: { addEventListener: (type, fn) => { handlers[type] = fn; }, clients: { claim: async () => {} } },
+    Set,
+    caches: {
+      keys: async () => ['motil-offline-shell-v1', 'motil-offline-shell-v2', 'motil-offline-shell-v3', 'other-product', 'sostenibilidad-v2'],
+      delete: async name => { removed.push(name); },
+    },
+  };
+  vm.runInNewContext(readFileSync('public/motil-sw-v2.js', 'utf8'), context);
+  let activation;
+  handlers.activate({ waitUntil: value => { activation = value; } });
+  await activation;
+  assert.deepEqual(removed.sort(), ['motil-offline-shell-v1', 'motil-offline-shell-v2', 'sostenibilidad-v2']);
 });
 
 test('terrain preparation rejects unauthenticated, unassigned and historical orders before reading a snapshot', async () => {

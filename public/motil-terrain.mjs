@@ -35,6 +35,29 @@ export function acknowledge(data, kind, id) {
 export function assertOwner(data, scope) {
   if (data.scope !== scope) throw new Error('Inicia sesión con la misma cuenta que preparó esta OT. Los registros siguen guardados.');
 }
+// A server receipt is not enough: retain the item until its encrypted local
+// acknowledgement is durable. A retry always uses the original operation ID.
+export async function synchronizePending(data, { api, uploadPhoto, confirm }) {
+  const viewer = await api('/api/maintenance/viewer-context');
+  assertOwner(data, viewer.offlineScope);
+  const root = `/api/maintenance/work-orders/${data.workOrderId}`;
+  await api(`${root}/terrain`);
+  for (const item of [...data.notes]) {
+    const receipt = await api(`${root}/offline-notes`, { operationId: item.id, notes: item.notes, capturedAt: item.capturedAt });
+    if (!receipt?.ok || !receipt.eventId) throw new Error('El servidor no confirmó la nota.');
+    await confirm('notes', item.id);
+  }
+  for (const photo of [...data.photos]) {
+    const metadata = { evidenceId: photo.id, fileName: photo.fileName, mimeType: photo.mimeType, sizeBytes: photo.sizeBytes, capturedAt: photo.capturedAt };
+    const prepared = await api(`${root}/evidence`, { action: 'create_upload', ...metadata });
+    if (!prepared.alreadyCompleted) {
+      await uploadPhoto(photo, prepared.upload);
+      const receipt = await api(`${root}/evidence`, { action: 'complete_upload', storagePath: prepared.upload.storagePath, ...metadata });
+      if (receipt?.evidence?.id !== photo.id) throw new Error('El servidor no confirmó la foto.');
+    } else if (prepared.evidenceId !== photo.id) throw new Error('Confirmación de foto no válida.');
+    await confirm('photos', photo.id);
+  }
+}
 export async function records(operation, mode = 'readonly') {
   const db = await new Promise((resolve, reject) => {
     const req = indexedDB.open(DB, 1);

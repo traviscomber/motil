@@ -22,12 +22,12 @@ export function MaintenanceTerrainPrepare({ workOrderId }: { workOrderId: string
         channel.port1.onmessage = event => {
           clearTimeout(timeout);
           channel.port1.close();
-          if (event.data?.ready && event.data?.cache === 'motil-offline-shell-v2') resolve();
+          if (event.data?.ready && event.data?.cache === 'motil-offline-shell-v3') resolve();
           else reject(new Error('Actualiza MOTIL antes de preparar la OT.'));
         };
         ready.active!.postMessage({ type: 'GET_TERRAIN_READY' }, [channel.port2]);
       });
-      const cache = await caches.open('motil-offline-shell-v2');
+      const cache = await caches.open('motil-offline-shell-v3');
       await cache.addAll(['/offline-maintenance.html', '/motil-terrain.mjs', '/motil-terrain-ui.mjs']);
       const response = await fetch(`/api/maintenance/work-orders/${workOrderId}/terrain`, { credentials: 'include', cache: 'no-store' });
       const payload = await response.json();

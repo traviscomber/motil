@@ -1,4 +1,4 @@
-import { listPackages, putPackage, records, unseal, seal, canUseOffline, acknowledge, assertOwner, MAX_PHOTOS } from './motil-terrain.mjs';
+import { listPackages, putPackage, records, unseal, seal, canUseOffline, acknowledge, synchronizePending, MAX_PHOTOS } from './motil-terrain.mjs';
 
 const $ = id => document.getElementById(id);
 let packages = [];
@@ -16,7 +16,12 @@ window.addEventListener('offline', () => { connection(); render(); });
 
 function render() {
   previews.forEach(url => URL.revokeObjectURL(url)); previews = [];
-  if (!active) { $('editor').hidden = true; return; }
+  if (!active) {
+    $('editor').hidden = true;
+    ['title', 'asset', 'instructions', 'validity', 'saved-notes', 'photos', 'pending', 'journal'].forEach(id => { $(id).textContent = ''; });
+    $('notes').value = '';
+    return;
+  }
   const { data } = active;
   const valid = canUseOffline(data);
   $('editor').hidden = false;
@@ -39,6 +44,13 @@ function render() {
   $('remove').disabled = busy || Boolean(data.notes.length || data.photos.length || data.journal.length || data.draft);
   $('list').querySelectorAll('button').forEach(button => { button.disabled = busy; });
   $('lock').disabled = busy;
+  $('saved-notes').replaceChildren();
+  if (valid) for (const note of data.notes) {
+    const article = document.createElement('article');
+    const time = document.createElement('small'); time.textContent = new Date(note.capturedAt).toLocaleString('es-CL');
+    const text = document.createElement('p'); text.textContent = note.notes; text.style.whiteSpace = 'pre-wrap';
+    article.append(time, text); $('saved-notes').append(article);
+  }
   $('photos').replaceChildren();
   if (valid) for (const photo of data.photos) {
     const img = document.createElement('img');
@@ -182,20 +194,11 @@ async function api(path, body) {
 $('sync').onclick = () => void run(async () => {
   await flushDraft(); busy = true; render();
   try {
-    const viewer = await api('/api/maintenance/viewer-context'); assertOwner(active.data, viewer.offlineScope);
-    // Recheck assignment and active state before transferring any local observations.
-    await api(`/api/maintenance/work-orders/${active.data.workOrderId}/terrain`);
-    const root = `/api/maintenance/work-orders/${active.data.workOrderId}`;
-    for (const item of [...active.data.notes]) {
-      const ack = await api(`${root}/offline-notes`, { operationId: item.id, notes: item.notes, capturedAt: item.capturedAt });
-      if (!ack?.ok || !ack.eventId) throw new Error('El servidor no confirmó la nota.');
-      await update(data => acknowledge(data, 'notes', item.id));
-    }
-    for (const photo of [...active.data.photos]) {
-      const metadata = { evidenceId: photo.id, fileName: photo.fileName, mimeType: photo.mimeType, sizeBytes: photo.sizeBytes, capturedAt: photo.capturedAt };
-      const prepared = await api(`${root}/evidence`, { action: 'create_upload', ...metadata });
-      if (!prepared.alreadyCompleted) {
-        const signedUrl = prepared.upload?.signedUrl;
+    await synchronizePending(active.data, {
+      api,
+      confirm: (kind, id) => update(data => acknowledge(data, kind, id)),
+      uploadPhoto: async (photo, uploadInfo) => {
+        const signedUrl = uploadInfo?.signedUrl;
         if (!signedUrl || !/^https:\/\/[a-z0-9-]+\.supabase\.co\/storage\/v1\/object\/upload\/sign\//i.test(signedUrl)) throw new Error('Respuesta de subida no válida.');
         const blob = await (await fetch(photo.dataUrl)).blob();
         const form = new FormData(); form.append('cacheControl', '3600'); form.append('', blob, photo.fileName);
@@ -204,11 +207,8 @@ $('sync').onclick = () => void run(async () => {
           const error = await upload.json().catch(() => null);
           if (!/already exists|duplicate/i.test(error?.message || error?.error || '')) throw new Error('La foto no terminó de subir. Permanece guardada.');
         }
-        const ack = await api(`${root}/evidence`, { action: 'complete_upload', storagePath: prepared.upload.storagePath, ...metadata });
-        if (ack?.evidence?.id !== photo.id) throw new Error('El servidor no confirmó la foto.');
-      } else if (prepared.evidenceId !== photo.id) throw new Error('Confirmación de foto no válida.');
-      await update(data => acknowledge(data, 'photos', photo.id));
-    }
+      },
+    });
     message('Sincronización confirmada. Las notas y fotos están registradas en la OT.');
   } finally { busy = false; }
 });
@@ -222,7 +222,7 @@ $('remove').onclick = () => void run(async () => {
   orderList(); message('Copia local retirada. La OT oficial permanece intacta.');
 });
 // BFCache must not retain decrypted field data after leaving the screen.
-window.addEventListener('pagehide', () => { packages = []; active = null; $('notes').value = ''; $('photos').replaceChildren(); $('editor').hidden = true; releaseLock?.(); releaseLock = null; });
+window.addEventListener('pagehide', () => { packages = []; active = null; $('notes').value = ''; $('photos').replaceChildren(); $('saved-notes').replaceChildren(); $('editor').hidden = true; releaseLock?.(); releaseLock = null; });
 window.addEventListener('pageshow', event => { if (event.persisted) location.reload(); });
 window.addEventListener('beforeunload', event => {
   if (busy || (active && $('notes').value !== active.data.draft && canUseOffline(active.data))) { event.preventDefault(); event.returnValue = ''; }

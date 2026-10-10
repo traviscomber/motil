@@ -1,5 +1,5 @@
 const MOTIL_SW_VERSION = 'motil-pwa-v2';
-const OFFLINE_SHELL_CACHE = 'motil-offline-shell-v2';
+const OFFLINE_SHELL_CACHE = 'motil-offline-shell-v3';
 const OFFLINE_SHELL_URL = '/offline-maintenance.html';
 const TERRAIN_ASSETS = [OFFLINE_SHELL_URL, '/motil-terrain.mjs', '/motil-terrain-ui.mjs'];
 const LEGACY_CACHES = new Set([
@@ -18,7 +18,7 @@ self.addEventListener('activate', (event) => {
       const cacheNames = await caches.keys();
       await Promise.all(
         cacheNames
-          .filter((name) => LEGACY_CACHES.has(name) || name === 'motil-offline-shell-v1')
+          .filter((name) => LEGACY_CACHES.has(name) || (name.startsWith('motil-offline-shell-') && name !== OFFLINE_SHELL_CACHE))
           .map((name) => caches.delete(name)),
       );
       await self.clients.claim();
