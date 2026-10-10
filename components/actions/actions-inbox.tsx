@@ -260,23 +260,28 @@ export function ActionsInbox({ locale, dictionary }: { locale: Locale; dictionar
                   {familyTasks.map((task) => {
                     const state = stateMap.get(task.task_key);
                     const isOwner = task.responsibility === 'owner';
-                    return <div key={task.task_key} className="grid gap-4 p-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
-                      <div>
-                        <div className="flex flex-wrap gap-2">
+                    return <div key={task.task_key} className="flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium">{task.title}</p>
+                        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                           <Badge variant={task.severity === 'critical' ? 'destructive' : 'outline'}>{t.severity[task.severity]}</Badge>
-                          <Badge variant="secondary">{task.responsibility_label}</Badge>
-                          {task.urgency_label ? <Badge variant="outline">{task.urgency_label}</Badge> : null}
-                          {state?.status === 'read' ? <Badge variant="secondary">{t.readBadge}</Badge> : null}
+                          <span>{task.responsibility_label}</span>
+                          {task.urgency_label ? <span>{task.urgency_label}</span> : null}
                         </div>
-                        <p className="mt-2 font-medium">{task.title}</p>
-                        {task.evidence_summary ? <p className="mt-1 text-sm text-muted-foreground">{task.evidence_summary}</p> : null}
-                        <p className="mt-1 text-xs text-muted-foreground">{task.domain} · {task.cargo_name}</p>
+                        <details className="mt-2 text-sm" data-testid="task-row-details">
+                          <summary className="w-fit cursor-pointer text-xs text-muted-foreground hover:text-foreground">Ver detalles</summary>
+                          <div className="mt-2 space-y-2 border-l pl-3 text-sm text-muted-foreground">
+                            {task.evidence_summary ? <p>{task.evidence_summary}</p> : null}
+                            <p>{task.domain} · {task.cargo_name}</p>
+                            {state?.status === 'read' ? <p>{t.readBadge}</p> : null}
+                            <div className="flex flex-wrap gap-2">
+                              <Button size="sm" variant="outline" onClick={() => void setState(task.task_key, state?.status === 'read' ? 'pending' : 'read')}>{state?.status === 'read' ? t.markPending : t.markRead}</Button>
+                              {task.severity !== 'critical' ? <Button size="sm" variant="outline" onClick={() => void setState(task.task_key, 'snoozed')}><Clock3 className="mr-2 h-4 w-4" />{t.snooze}</Button> : null}
+                            </div>
+                          </div>
+                        </details>
                       </div>
-                      <div className="flex flex-wrap gap-2">
-                        <Button size="sm" variant="ghost" onClick={() => void setState(task.task_key, state?.status === 'read' ? 'pending' : 'read')}>{state?.status === 'read' ? t.markPending : t.markRead}</Button>
-                        {task.severity !== 'critical' ? <Button size="sm" variant="ghost" onClick={() => void setState(task.task_key, 'snoozed')}><Clock3 className="mr-2 h-4 w-4" />{t.snooze}</Button> : null}
-                        <Button asChild size="sm" variant={isOwner ? 'default' : 'outline'}><Link href={task.module_route}>{isOwner ? t.cta.resolve : task.responsibility === 'support' ? t.cta.support : t.cta.review}<ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
-                      </div>
+                      <Button asChild size="sm" variant={isOwner ? 'default' : 'outline'}><Link href={task.module_route}>{isOwner ? t.cta.resolve : task.responsibility === 'support' ? t.cta.support : t.cta.review}<ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
                     </div>;
                   })}
                 </div>
