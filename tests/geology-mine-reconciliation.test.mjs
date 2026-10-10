@@ -59,7 +59,7 @@ test('geology dashboard follows the La Patagua operating workflow', async () => 
   assert.match(shell, /Resultados/);
   assert.match(shell, /Pendientes/);
   assert.match(shell, /Histórico/);
-  assert.match(shell, /Controles locales de Geología/);
+  assert.match(shell, /<AreaNavigation label="Geología"/);
   assert.doesNotMatch(shell, /sticky top-0/);
   assert.doesNotMatch(shell, /Vistas principales de Geología/);
   assert.match(page, /GeologiaWorkspaceShell/);

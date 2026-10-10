@@ -1,9 +1,8 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { cn } from '@/lib/utils';
+import { AreaNavigation } from '@/components/ui/area-navigation';
 
 const operationItems = [
   { href: '/dashboard/sostenibilidad/prevencion-riesgos', label: 'Resumen' },
@@ -34,51 +33,8 @@ export default function RiskPreventionLayout({ children }: { children: ReactNode
 
   return (
     <div className="space-y-5">
-      <section className="border-b border-border/70 pb-2" aria-label="Controles locales de Seguridad y salud">
-        <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/60">
-          Seguridad y salud
-        </div>
-        <div className="flex items-center overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <nav className="flex shrink-0 items-center" aria-label="Trabajo de Seguridad y salud">
-            {operationItems.map((item) => {
-              const active = isActive(pathname, item.href);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  aria-current={active ? 'page' : undefined}
-                  className={cn(
-                    'rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                    active ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
-                  )}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
-          <div className="mx-2 h-4 w-px shrink-0 bg-border" aria-hidden="true" />
-          <span className="mr-1.5 shrink-0 text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/45">Control</span>
-          <nav className="flex shrink-0 items-center" aria-label="Control de Seguridad y salud">
-            {controlItems.map((item) => {
-              const active = isActive(pathname, item.href);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  aria-current={active ? 'page' : undefined}
-                  className={cn(
-                    'rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                    active ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
-                  )}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
-        </div>
-      </section>
+      <AreaNavigation label="Seguridad y salud" primary={operationItems.slice(0, 3)} secondary={[...operationItems.slice(3), ...controlItems]}
+        isActive={(href) => isActive(pathname, href)} />
       {children}
     </div>
   );

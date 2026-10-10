@@ -1,13 +1,11 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import useSWR from 'swr';
-import { ChevronRight } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { AreaNavigation } from '@/components/ui/area-navigation';
 
-type ViewerMode = 'leadership' | 'planning' | 'execution' | 'general';
+type ViewerMode = 'leadership' | 'planning' | 'execution' | 'oversight' | 'general';
 type ViewerContext = { mode?: ViewerMode };
 
 type NavItem = { href: string; label: string; step?: number };
@@ -40,6 +38,10 @@ const roleNavigation: Record<ViewerMode, { flow: string[]; support: string[] }> 
   execution: {
     flow: ['Órdenes', 'Cierre'],
     support: ['Resumen'],
+  },
+  oversight: {
+    flow: ['Órdenes'],
+    support: ['Resumen', 'Activos', 'Indicadores', 'Fuentes'],
   },
   general: {
     flow: ['Planificar', 'Órdenes', 'Cierre'],
@@ -110,68 +112,14 @@ export default function MaintenanceLayout({ children }: { children: ReactNode })
     { revalidateOnFocus: false },
   );
   const mode: ViewerMode = viewer?.mode || 'general';
-  const allowed = roleNavigation[mode];
+  const allowed = roleNavigation[mode] || roleNavigation.general;
   const visibleFlowItems = flowItems.filter((item) => allowed.flow.includes(item.label));
   const visibleSupportItems = supportItems.filter((item) => allowed.support.includes(item.label));
 
   return (
     <div className="space-y-5">
-      <section className="border-b border-border" aria-label="Flujo de Mantenimiento">
-        <div className="flex min-h-12 items-stretch overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <nav className="flex shrink-0 items-stretch" aria-label="Flujo operacional de Mantenimiento">
-            {visibleFlowItems.map((item, index) => {
-              const active = isFlowActive(pathname, item.href);
-              return (
-                <div key={item.href} className="flex shrink-0 items-center">
-                  <Link
-                    href={item.href}
-                    aria-current={active ? 'page' : undefined}
-                    className={cn(
-                      'relative inline-flex min-h-12 shrink-0 items-center gap-1.5 px-2.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
-                      active ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
-                    )}
-                  >
-                    <span className={cn('text-[9px] font-semibold tracking-[0.12em]', active ? 'text-primary' : 'text-muted-foreground/60')}>
-                      {String(item.step).padStart(2, '0')}
-                    </span>
-                    <span className="whitespace-nowrap">{item.label}</span>
-                    {active ? <span className="absolute inset-x-2.5 bottom-0 h-0.5 bg-primary" aria-hidden="true" /> : null}
-                  </Link>
-                  {index < visibleFlowItems.length - 1 ? <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground/35" aria-hidden="true" /> : null}
-                </div>
-              );
-            })}
-          </nav>
-
-          {visibleSupportItems.length > 0 ? <>
-            <div className="mx-2 my-3 w-px shrink-0 bg-border" aria-hidden="true" />
-            <div className="flex shrink-0 items-stretch">
-              <span className="flex items-center px-2 text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/55">
-                Soporte
-              </span>
-              <nav className="flex items-stretch" aria-label="Soporte de Mantenimiento">
-                {visibleSupportItems.map((item) => {
-                  const active = isSupportActive(pathname, item.href);
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      aria-current={active ? 'page' : undefined}
-                      className={cn(
-                        'relative inline-flex min-h-12 shrink-0 items-center px-2.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
-                        active ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
-                      )}
-                    >
-                      <span className="whitespace-nowrap">{item.label}</span>
-                      {active ? <span className="absolute inset-x-2.5 bottom-0 h-0.5 bg-primary" aria-hidden="true" /> : null}
-                    </Link>
-                  );
-                })}
-              </nav>
-            </div>
-          </> : null}
-        </div>
-      </section>
+      <AreaNavigation label="Mantenimiento" primary={visibleFlowItems} secondary={visibleSupportItems}
+        isActive={(href) => flowItems.some((item) => item.href === href) ? isFlowActive(pathname, href) : isSupportActive(pathname, href)} />
       {children}
     </div>
   );

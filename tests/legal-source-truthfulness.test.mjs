@@ -14,8 +14,10 @@ test('legal overview preserves source uncertainty and never fabricates operation
   assert.match(page, /expiring_contracts \?\? '—'/);
   assert.match(page, /expiring_documents \?\? '—'/);
   assert.match(page, /withMatchedEvidence \?\? '—'/);
-  assert.match(page, /Los datos faltantes no se sustituyen por cero ni por estados inferidos/);
-  assert.match(page, /No hay señales operacionales pendientes en las fuentes disponibles/);
+  assert.match(page, /complianceLoading \|\| complianceError \? '—'/);
+  assert.match(page, /attentionLoading \? /);
+  assert.match(page, /complianceError \? /);
+  assert.match(page, /Sin contratos ni documentos pendientes en esta fuente/);
   assert.doesNotMatch(page, /new Date\(\)\.toISOString\(\)/);
   assert.doesNotMatch(page, /Cumplimiento.*100%|Cumplimiento.*0%/);
 

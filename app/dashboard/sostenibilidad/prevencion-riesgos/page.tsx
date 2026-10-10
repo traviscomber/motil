@@ -6,6 +6,7 @@ import { ArrowRight, CalendarDays, FileCheck2, ShieldCheck } from 'lucide-react'
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { StatePanel } from '@/components/ui/state-panel';
+import { SecondaryDetails } from '@/components/ui/secondary-details';
 
 const fetcher = async (url: string) => {
   const response = await fetch(url, { credentials: 'include', cache: 'no-store' });
@@ -33,11 +34,9 @@ export default function PrevencionRiesgosPage() {
     <div className="space-y-6">
       <header className="flex flex-col gap-4 border-b border-border/70 pb-5 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Seguridad y salud</p>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight">Prevención de Riesgos</h1>
-          <p className="mt-2 max-w-3xl text-sm text-muted-foreground">Documentos, compromisos, inspecciones y acciones HSE conectados a una sola operación.</p>
+          <h1 className="mt-1 text-3xl font-semibold tracking-tight">Seguridad y salud</h1>
         </div>
-        <Button asChild><Link href="/dashboard/tareas"><CalendarDays className="mr-2 h-4 w-4" />Calendario organización</Link></Button>
+        <Button asChild><Link href="/dashboard/tareas"><CalendarDays className="mr-2 h-4 w-4" />Abrir calendario</Link></Button>
       </header>
 
       {data.warnings?.length ? (
@@ -46,6 +45,53 @@ export default function PrevencionRiesgosPage() {
         </div>
       ) : null}
 
+
+      {commitmentActions.length ? (
+        <section>
+          <div className="mb-2">
+            <h2 className="text-base font-semibold">Pendientes</h2>
+          </div>
+          <div className="divide-y overflow-hidden rounded-lg border">
+            {commitmentActions.slice(0, 8).map((item: any) => (
+              <Link key={item.id} href="/dashboard/sostenibilidad/prevencion-riesgos/compromisos" className="flex items-start justify-between gap-4 px-4 py-3 hover:bg-muted/30">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="outline">{item.commitmentId}</Badge>
+                    {item.component ? <Badge variant="secondary">{item.component}</Badge> : null}
+                  </div>
+                  <p className="mt-2 line-clamp-2 text-sm font-medium">{item.description}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{item.actionRequired}</p>
+                </div>
+                <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" />
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      <section>
+        <div className="mb-2 flex items-end justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold">Próximas acciones</h2>
+          </div>
+          <Button asChild variant="ghost" size="sm"><Link href="/dashboard/tareas">Ver calendario <ArrowRight className="ml-1 h-4 w-4" /></Link></Button>
+        </div>
+        <div className="divide-y overflow-hidden rounded-lg border">
+          {upcoming.length ? upcoming.map((event: any) => (
+            <Link key={event.id} href="/dashboard/tareas" className="flex items-start justify-between gap-4 px-4 py-3 hover:bg-muted/30">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline">{event.event_type}</Badge>
+                  <p className="text-sm font-medium">{event.title}</p>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">{event.responsible_person_name || 'Responsable sin asignar'}{event.location ? ` · ${event.location}` : ''}</p>
+              </div>
+              <span className="shrink-0 text-xs text-muted-foreground">{event.due_date}</span>
+            </Link>
+          )) : <p className="px-4 py-4 text-sm text-muted-foreground">No hay acciones HSE futuras con fecha registrada.</p>}
+        </div>
+      </section>
+      <SecondaryDetails>
       <section className="grid overflow-hidden rounded-lg border sm:grid-cols-2 xl:grid-cols-4">
         {[
           ['Documentos canónicos', summary.canonicalDocuments ?? '—'],
@@ -83,53 +129,7 @@ export default function PrevencionRiesgosPage() {
         </Link>
       </section>
 
-      {commitmentActions.length ? (
-        <section>
-          <div className="mb-2">
-            <h2 className="text-base font-semibold">Acciones sobre compromisos</h2>
-            <p className="text-sm text-muted-foreground">Brechas reales de la fuente que requieren decisión humana; no se inventan responsables ni fechas.</p>
-          </div>
-          <div className="divide-y overflow-hidden rounded-lg border">
-            {commitmentActions.slice(0, 8).map((item: any) => (
-              <Link key={item.id} href="/dashboard/sostenibilidad/prevencion-riesgos/compromisos" className="flex items-start justify-between gap-4 px-4 py-3 hover:bg-muted/30">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant="outline">{item.commitmentId}</Badge>
-                    {item.component ? <Badge variant="secondary">{item.component}</Badge> : null}
-                  </div>
-                  <p className="mt-2 line-clamp-2 text-sm font-medium">{item.description}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{item.actionRequired}</p>
-                </div>
-                <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" />
-              </Link>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
-      <section>
-        <div className="mb-2 flex items-end justify-between gap-3">
-          <div>
-            <h2 className="text-base font-semibold">Próximas acciones HSE</h2>
-            <p className="text-sm text-muted-foreground">Eventos con fecha real ya registrados en la organización.</p>
-          </div>
-          <Button asChild variant="ghost" size="sm"><Link href="/dashboard/tareas">Ver calendario <ArrowRight className="ml-1 h-4 w-4" /></Link></Button>
-        </div>
-        <div className="divide-y overflow-hidden rounded-lg border">
-          {upcoming.length ? upcoming.map((event: any) => (
-            <Link key={event.id} href="/dashboard/tareas" className="flex items-start justify-between gap-4 px-4 py-3 hover:bg-muted/30">
-              <div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline">{event.event_type}</Badge>
-                  <p className="text-sm font-medium">{event.title}</p>
-                </div>
-                <p className="mt-1 text-xs text-muted-foreground">{event.responsible_person_name || 'Responsable sin asignar'}{event.location ? ` · ${event.location}` : ''}</p>
-              </div>
-              <span className="shrink-0 text-xs text-muted-foreground">{event.due_date}</span>
-            </Link>
-          )) : <p className="px-4 py-4 text-sm text-muted-foreground">No hay acciones HSE futuras con fecha registrada.</p>}
-        </div>
-      </section>
+      </SecondaryDetails>
     </div>
   );
 }

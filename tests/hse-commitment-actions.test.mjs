@@ -16,8 +16,10 @@ test('HSE commitment actions are derived only from missing canonical owner evide
 
 test('HSE overview surfaces commitment actions without inventing calendar dates', async () => {
   const source = await readFile(overviewPage, 'utf8');
-  assert.match(source, /Acciones sobre compromisos/);
-  assert.match(source, /no se inventan responsables ni fechas/);
+  assert.match(source, /Pendientes/);
+  assert.match(source, /item\.actionRequired/);
+  assert.match(source, /event\.due_date/);
+  assert.doesNotMatch(source, /new Date\(\)\.toISOString/);
   assert.match(source, /requieren asignar responsable/);
 });
 

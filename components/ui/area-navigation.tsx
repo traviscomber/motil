@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 
-type Item = { href: string; label: string };
+type Item = { href: string; label: string; onSelect?: () => void };
 
 export function AreaNavigation({ label, primary, secondary, isActive }: {
   label: string;
@@ -18,7 +18,7 @@ export function AreaNavigation({ label, primary, secondary, isActive }: {
   return (
     <nav aria-label={label} className="flex flex-wrap items-center gap-1 border-b pb-2">
       {primary.map((item) => (
-        <Link key={item.href} href={item.href} aria-current={isActive(item.href) ? 'page' : undefined}
+        <Link key={item.href} href={item.href} onClick={item.onSelect ? (event) => { if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return; event.preventDefault(); item.onSelect?.(); } : undefined} aria-current={isActive(item.href) ? 'page' : undefined}
           className={cn('inline-flex min-h-11 items-center rounded-md px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
             isActive(item.href) ? 'bg-muted font-medium text-foreground' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground')}>
           {item.label}
@@ -34,7 +34,7 @@ export function AreaNavigation({ label, primary, secondary, isActive }: {
           <DropdownMenuContent align="start">
             {secondary.map((item) => (
               <DropdownMenuItem key={item.href} asChild>
-                <Link href={item.href} aria-current={isActive(item.href) ? 'page' : undefined}>{item.label}</Link>
+                <Link href={item.href} onClick={item.onSelect ? (event) => { if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return; event.preventDefault(); item.onSelect?.(); } : undefined} aria-current={isActive(item.href) ? 'page' : undefined}>{item.label}</Link>
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>

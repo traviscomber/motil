@@ -30,7 +30,8 @@ test('operational areas use flow numbering only where a real sequence exists', a
   assert.match(maintenance, /label: 'Órdenes', step: 2/);
   assert.match(maintenance, /label: 'Cierre', step: 3/);
   assert.match(maintenance, /label: 'Imputación'/);
-  assert.match(maintenance, /Soporte de Mantenimiento/);
+  assert.match(maintenance, /primary=\{visibleFlowItems\}/);
+  assert.match(maintenance, /secondary=\{visibleSupportItems\}/);
 
   assert.match(purchases, /label: 'Comprar', step: 1/);
   assert.match(purchases, /label: 'Cotizar', step: 2/);
@@ -56,12 +57,12 @@ test('non-sequential areas separate operational context from tools instead of fa
   assert.match(warehouse, /secondary=\{visibleSupportItems\}/);
   assert.match(finance, /primary=\{visibleOperationItems\}/);
   assert.match(finance, /secondary=\{visibleControlItems\}/);
-  assert.match(sustainability, /Ámbitos de Sostenibilidad y HSE/);
-  assert.match(sustainability, /Soporte de Sostenibilidad y HSE/);
+  assert.match(sustainability, /primary=\{domainItems.slice\(0, 2\)\}/);
+  assert.match(sustainability, /secondary=\{\[\.\.\.domainItems.slice\(2\), \.\.\.supportItems\]\}/);
   assert.doesNotMatch(sustainability, /insideRiskPrevention/);
-  assert.match(legal, /Control legal/);
-  assert.match(legal, /Herramientas legales/);
-  assert.match(hse, /Controles locales de Seguridad y salud/);
+  assert.match(legal, /primary=\{controlItems.slice\(0, 3\)\}/);
+  assert.match(legal, /secondary=\{\[\.\.\.controlItems.slice\(3\), \.\.\.supportItems\]\}/);
+  assert.match(hse, /<AreaNavigation label="Seguridad y salud"/);
   assert.doesNotMatch(hse, /ArrowLeft/);
 });
 

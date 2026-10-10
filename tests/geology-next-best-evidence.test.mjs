@@ -59,7 +59,7 @@ test('evidence exceptions stay canonical first and outside the operational task 
   assert.match(workspace, /Límites conocidos de la fuente/);
   assert.match(workspace, /no como lista de datos que haya que conseguir/i);
   assert.match(shell, /\['priorities', 'Excepciones'\]/);
-  assert.match(shell, /key: 'evidence'[\s\S]*\['priorities', 'Excepciones'\]/);
+  assert.match(shell, /secondary=\{navigationItems.slice\(3\)\}/);
   assert.match(shell, /GeologiaNextBestEvidence/);
   assert.doesNotMatch(shell, /GeologiaEvidenceRecoveryCampaign|GeologiaEvidenceRecoverySources|GeologiaEvidenceRecoveryWorklist/);
 });
