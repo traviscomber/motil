@@ -39,20 +39,24 @@ export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null);
   const actionId = body?.correctiveActionId;
   const orderId = body?.workOrderId;
-  if (typeof actionId !== 'string' || !UUID.test(actionId) || typeof orderId !== 'string' || !UUID.test(orderId))
+  const orderNumber = typeof body?.workOrderNumber === 'string' ? body.workOrderNumber.trim() : '';
+  if (typeof actionId !== 'string' || !UUID.test(actionId) ||
+      !(typeof orderId === 'string' && UUID.test(orderId)) && !(orderNumber.length > 0 && orderNumber.length <= 80))
     return NextResponse.json({ error: 'Identificadores inválidos' }, { status: 400 });
 
   const [actionResult, orderResult] = await Promise.all([
     context.supabase.from('sostenibilidad_corrective_actions').select('id, sostenibilidad_nonconformances!inner(organization_id)')
       .eq('id', actionId).eq('sostenibilidad_nonconformances.organization_id', context.organizationId).maybeSingle(),
-    context.supabase.from('maintenance_work_orders').select('id')
-      .eq('id', orderId).eq('organization_id', context.organizationId).maybeSingle(),
+    (orderNumber ? context.supabase.from('maintenance_work_orders').select('id')
+      .eq('work_order_number', orderNumber).eq('organization_id', context.organizationId).maybeSingle()
+      : context.supabase.from('maintenance_work_orders').select('id')
+      .eq('id', orderId).eq('organization_id', context.organizationId).maybeSingle()),
   ]);
   if (actionResult.error || orderResult.error) return NextResponse.json({ error: 'No se pudo validar el origen' }, { status: 500 });
   if (!actionResult.data || !orderResult.data) return NextResponse.json({ error: 'Acción u OT no encontrada en esta organización' }, { status: 404 });
 
   const { data, error } = await context.supabase.from('sostenibilidad_corrective_action_work_orders')
-    .upsert({ organization_id: context.organizationId, corrective_action_id: actionId, work_order_id: orderId, linked_by: context.userId },
+    .upsert({ organization_id: context.organizationId, corrective_action_id: actionId, work_order_id: orderResult.data.id, linked_by: context.userId },
       { onConflict: 'corrective_action_id,work_order_id', ignoreDuplicates: true })
     .select('id, corrective_action_id, work_order_id, linked_at').maybeSingle();
   if (error) return NextResponse.json({ error: 'No se pudo vincular la OT' }, { status: 500 });
