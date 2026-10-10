@@ -1,6 +1,8 @@
 'use client';
 
 import useSWR from 'swr';
+import { Button } from '@/components/ui/button';
+import { SecondaryDetails } from '@/components/ui/secondary-details';
 import { AlertTriangle, ArrowRight, Beaker, CheckCircle2, Compass, Drill, FileSearch, MapPinned, ShieldCheck } from 'lucide-react';
 
 type Summary = {
@@ -93,6 +95,23 @@ export function GeologiaTodayDecisionBoard({summary:s,pending,chemistryLinkedToH
         : `La lectura espacial es parcial con ${s.locatedHoles}/${s.holes} collares. Los faltantes son excepciones dentro de una dimensión que sí tiene cobertura suficiente.`;
 
   return <div className="space-y-5">
+    <section className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-base font-semibold">Pendientes</h2>
+        <Button onClick={onOpenPending}>Abrir tareas<ArrowRight className="h-4 w-4" /></Button>
+      </div>
+      <div className="divide-y rounded-lg border">
+        {decisions.filter((item)=>item.active).map((item)=><button key={item.title} type="button" onClick={item.onClick} className="flex min-h-11 w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><span className="font-medium">{item.title}</span><ArrowRight className="h-4 w-4 shrink-0" /></button>)}
+        {!decisions.some((item)=>item.active)?<p className="p-4 text-sm text-muted-foreground">Sin acciones pendientes en la evidencia disponible.</p>:null}
+      </div>
+    </section>
+      <section className="rounded-lg border bg-card p-5">
+        <div className="flex items-center justify-between gap-3"><div><h2 className="font-semibold">Por atender</h2></div><AlertTriangle className="h-4 w-4 text-muted-foreground"/></div>
+        {topPending.length?<div className="mt-4 space-y-3">{topPending.map((row,index)=><div key={`${row.hole_code}-${index}`} className="border-t pt-3 first:border-t-0 first:pt-0"><div className="flex items-center justify-between gap-3"><p className="font-medium">{row.hole_code}</p><span className="text-xs text-muted-foreground">P{row.review_priority??'—'}</span></div><p className="mt-1 text-xs text-muted-foreground">{[row.proposed_mine_name,row.proposed_sector_name].filter(Boolean).join(' · ')||'Sin ubicación propuesta'}</p><p className="mt-2 text-sm">{row.recommended_action||'Revisar y reconciliar evidencia.'}</p></div>)}</div>:<div className="mt-5 rounded-lg border border-dashed p-5 text-center text-sm text-muted-foreground">No hay pendientes operacionales priorizados abiertos.</div>}
+        {topPending.length?<button type="button" onClick={onOpenPending} className="mt-4 inline-flex items-center gap-1 text-sm font-medium">Ver cola operacional <ArrowRight className="h-4 w-4"/></button>:null}
+        {historicalPending.length>0?<p className="mt-4 border-t pt-3 text-xs leading-5 text-muted-foreground">{historicalPending.length.toLocaleString('es-CL')} casos históricos permanecen registrados para recuperación de evidencia y no alteran la prioridad diaria.</p>:null}
+      </section>
+    <SecondaryDetails>
     <section className="overflow-hidden rounded-lg border bg-card">
       <div className="border-b px-5 py-4"><p className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">Ahora · {currentYear}</p><h2 className="mt-2 text-lg font-semibold tracking-tight">Evidencia vigente primero</h2><p className="mt-1 max-w-3xl text-sm text-muted-foreground">La lectura operacional prioriza el año en curso antes del histórico. Estos indicadores usan únicamente sondajes canónicos con fecha de inicio {currentYear}.</p></div>
       <div className="grid gap-px bg-border sm:grid-cols-2 xl:grid-cols-4">
@@ -115,7 +134,6 @@ export function GeologiaTodayDecisionBoard({summary:s,pending,chemistryLinkedToH
       <Signal label="Química histórica" value={`${s.samplesValidated}`} detail={`${s.samplesValidated}/${s.samples} validados · ${chemistryLinkedToHole} ligados a sondaje`} />
     </section>
 
-    <div className="grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,.8fr)]">
       <section className="rounded-lg border bg-card p-5">
         <div className="flex items-center gap-2"><FileSearch className="h-4 w-4 text-muted-foreground"/><p className="font-medium">Lectura senior de la evidencia</p></div>
         <div className="mt-4 space-y-3 text-sm">
@@ -125,12 +143,6 @@ export function GeologiaTodayDecisionBoard({summary:s,pending,chemistryLinkedToH
         </div>
       </section>
 
-      <section className="rounded-lg border bg-card p-5">
-        <div className="flex items-center justify-between gap-3"><div><p className="font-medium">Pendientes prioritarios</p><p className="mt-1 text-sm text-muted-foreground">Sólo reconciliaciones operacionales sobre evidencia existente.</p></div><AlertTriangle className="h-4 w-4 text-muted-foreground"/></div>
-        {topPending.length?<div className="mt-4 space-y-3">{topPending.map((row,index)=><div key={`${row.hole_code}-${index}`} className="border-t pt-3 first:border-t-0 first:pt-0"><div className="flex items-center justify-between gap-3"><p className="font-medium">{row.hole_code}</p><span className="text-xs text-muted-foreground">P{row.review_priority??'—'}</span></div><p className="mt-1 text-xs text-muted-foreground">{[row.proposed_mine_name,row.proposed_sector_name].filter(Boolean).join(' · ')||'Sin ubicación propuesta'}</p><p className="mt-2 text-sm">{row.recommended_action||'Revisar y reconciliar evidencia.'}</p></div>)}</div>:<div className="mt-5 rounded-lg border border-dashed p-5 text-center text-sm text-muted-foreground">No hay pendientes operacionales priorizados abiertos.</div>}
-        {topPending.length?<button type="button" onClick={onOpenPending} className="mt-4 inline-flex items-center gap-1 text-sm font-medium">Ver cola operacional <ArrowRight className="h-4 w-4"/></button>:null}
-        {historicalPending.length>0?<p className="mt-4 border-t pt-3 text-xs leading-5 text-muted-foreground">{historicalPending.length.toLocaleString('es-CL')} casos históricos permanecen registrados para recuperación de evidencia y no alteran la prioridad diaria.</p>:null}
-      </section>
-    </div>
+    </SecondaryDetails>
   </div>;
 }

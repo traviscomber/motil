@@ -4,8 +4,9 @@ import Link from 'next/link';
 import useSWR from 'swr';
 import { AlertTriangle, ArrowRight, FileCheck2, Leaf, ShieldCheck, Upload, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { PageHeader, PageHeaderActions, PageHeaderContent, PageHeaderDescription, PageHeaderEyebrow, PageHeaderTitle } from '@/components/ui/page-header';
+import { PageHeader, PageHeaderActions, PageHeaderContent, PageHeaderTitle } from '@/components/ui/page-header';
 import { StatePanel } from '@/components/ui/state-panel';
+import { SecondaryDetails } from '@/components/ui/secondary-details';
 
 type OverviewResponse = {
   period: string;
@@ -136,42 +137,46 @@ export default function SostenibilidadDashboard() {
     <div className="space-y-6">
       <PageHeader>
         <PageHeaderContent>
-          <PageHeaderEyebrow>HSE · Sostenibilidad</PageHeaderEyebrow>
           <PageHeaderTitle>Sostenibilidad</PageHeaderTitle>
-          <PageHeaderDescription>Cumplimiento, no conformidades y trabajo HSE desde sus fuentes reales. “—” significa que la fuente no respondió.</PageHeaderDescription>
         </PageHeaderContent>
         <PageHeaderActions>
-          <Button asChild variant="outline"><Link href="/dashboard/sostenibilidad/prevencion-riesgos/inspecciones/importar"><Upload className="h-4 w-4"/>Importar inspecciones</Link></Button>
+          <Button asChild><Link href="/dashboard/sostenibilidad/prevencion-riesgos/inspecciones">Revisar inspecciones<ArrowRight className="h-4 w-4" /></Link></Button>
         </PageHeaderActions>
       </PageHeader>
 
-      {overviewError ? <StatePanel tone="warning" title="Resumen HSE no disponible" description="Las demás fuentes siguen visibles por separado. No se muestran ceros de reemplazo para cumplimiento, no conformidades o acciones vencidas." actions={<Button variant="outline" onClick={() => void refreshOverview()}>Reintentar</Button>} className="min-h-0 py-5"/> : null}
+      {overviewError ? <StatePanel tone="warning" title="Resumen HSE no disponible" description="Reintenta para revisar no conformidades y acciones vencidas." actions={<Button variant="outline" onClick={() => void refreshOverview()}>Reintentar</Button>} className="min-h-0 py-5"/> : null}
 
-      <section aria-label="Estado de Sostenibilidad" className="grid gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-2 xl:grid-cols-6">
-        {metrics.map((metric) => <div key={metric.label} className="bg-card px-4 py-4"><p className="text-xs text-muted-foreground">{metric.label}</p><p className="mt-1 text-2xl font-semibold tracking-tight">{overviewLoading && ['Cumplimiento','NC abiertas','Acciones vencidas'].includes(metric.label) ? '—' : metric.value}</p><p className="mt-1 text-xs text-muted-foreground">{metric.detail}</p></div>)}
-      </section>
-
-      <section className="space-y-3" aria-labelledby="sustainability-areas">
-        <div><h2 id="sustainability-areas" className="text-lg font-semibold tracking-tight">Áreas</h2><p className="text-sm text-muted-foreground">Cada cifra conserva su fuente. Cero es un dato real; “—” es falta de respuesta.</p></div>
-        <div className="grid gap-px overflow-hidden rounded-lg border bg-border lg:grid-cols-2">
-          {areas.map((area) => {
-            const Icon = area.icon;
-            return <Link key={area.title} href={area.href} className="group bg-card px-5 py-4 transition-colors hover:bg-muted/30"><div className="flex items-start gap-3"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border bg-background"><Icon className="h-4 w-4"/></div><div className="min-w-0 flex-1"><div className="flex items-center justify-between gap-3"><h3 className="font-medium">{area.title}</h3><ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1"/></div><p className="mt-1 text-sm text-muted-foreground">{area.description}</p><div className="mt-3 flex flex-wrap gap-x-5 gap-y-2">{area.facts.map((fact) => <div key={fact.label}><p className="text-lg font-semibold tabular-nums">{value(fact.value)}</p><p className="text-xs text-muted-foreground">{fact.label}</p></div>)}</div></div></div></Link>;
-          })}
+      <section aria-labelledby="sustainability-pending" className="space-y-3">
+        <h2 id="sustainability-pending" className="text-base font-semibold">Pendientes</h2>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Link href="/dashboard/sostenibilidad/no-conformidades" className="rounded-lg border p-4 hover:bg-muted/30">
+            <p className="text-sm font-medium">No conformidades abiertas</p>
+            <p className="mt-1 text-2xl font-semibold">{overviewLoading || overviewError ? '—' : overview?.open_ncs ?? '—'}</p>
+          </Link>
+          <Link href="/dashboard/sostenibilidad/prevencion-riesgos/acciones-correctivas" className="rounded-lg border p-4 hover:bg-muted/30">
+            <p className="text-sm font-medium">Acciones vencidas</p>
+            <p className="mt-1 text-2xl font-semibold">{overviewLoading || overviewError ? '—' : overview?.overdue_cas ?? '—'}</p>
+          </Link>
         </div>
       </section>
 
-      <section className="space-y-3 border-t pt-5">
-        <div><h2 className="text-lg font-semibold tracking-tight">Accesos</h2><p className="text-sm text-muted-foreground">Abre directamente el flujo que necesitas.</p></div>
+      <SecondaryDetails>
+        <section aria-label="Estado de Sostenibilidad" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {metrics.map((metric) => <div key={metric.label} className="rounded-lg border px-4 py-3"><p className="text-xs text-muted-foreground">{metric.label}</p><p className="mt-1 text-xl font-semibold">{overviewError && ['Cumplimiento', 'NC abiertas', 'Acciones vencidas'].includes(metric.label) ? '—' : metric.value}</p><p className="mt-1 text-xs text-muted-foreground">{metric.detail}</p></div>)}
+        </section>
+        <p className="text-xs text-muted-foreground">“—” indica una fuente no disponible.</p>
+        <section className="space-y-3" aria-label="Fuentes de Sostenibilidad">
+          {areas.map((area) => <div key={area.title} className="rounded-lg border p-4">
+            <Link href={area.href} className="flex min-h-11 items-center justify-between gap-3 font-medium hover:underline">{area.title}<ArrowRight className="h-4 w-4" /></Link>
+            <div className="flex flex-wrap gap-x-5 gap-y-2">{area.facts.map((fact) => <p key={fact.label} className="text-sm">{fact.label}: <span className="font-medium">{value(fact.value)}</span></p>)}</div>
+            <details className="mt-3 text-xs text-muted-foreground"><summary className="min-h-11 cursor-pointer py-3">Ver fuente</summary><p>{area.description}</p></details>
+          </div>)}
+        </section>
         <div className="flex flex-wrap gap-2">
-          <Button asChild variant="outline"><Link href="/dashboard/sostenibilidad/prevencion-riesgos/capacitaciones">Capacitaciones</Link></Button>
-          <Button asChild variant="outline"><Link href="/dashboard/sostenibilidad/prevencion-riesgos/epp">EPP</Link></Button>
-          <Button asChild variant="outline"><Link href="/dashboard/sostenibilidad/prevencion-riesgos/inspecciones-externas">Inspecciones externas</Link></Button>
-          <Button asChild variant="outline"><Link href="/dashboard/sostenibilidad/medio-ambiente">Medio ambiente</Link></Button>
-          <Button asChild variant="outline"><Link href="/dashboard/sostenibilidad/comunidades">Comunidades</Link></Button>
+          <Button asChild variant="outline"><Link href="/dashboard/sostenibilidad/prevencion-riesgos/inspecciones/importar"><Upload className="h-4 w-4" />Importar inspecciones</Link></Button>
           <Button asChild variant="outline"><Link href="/dashboard/sostenibilidad/reportes">Reportes</Link></Button>
         </div>
-      </section>
+      </SecondaryDetails>
     </div>
   );
 }

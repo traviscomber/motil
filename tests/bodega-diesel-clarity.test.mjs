@@ -35,12 +35,15 @@ test('conflicted diesel cannot contaminate trusted inventory valuation in the UI
 test('bodega is an operational workspace, not a thin inventory table', async () => {
   const page = await readFile(pagePath, 'utf8');
   assert.match(page, /<PageHeaderTitle>\{negativeStockMode \? 'Conciliar stock negativo' : 'Bodega'\}<\/PageHeaderTitle>/);
-  assert.match(page, /Qué requiere atención hoy/);
+  assert.match(page, /Pendientes/);
   assert.match(page, /Saldos negativos/);
   assert.match(page, /Sin stock/);
   assert.match(page, /Por reponer/);
   assert.match(page, /Posición de inventario/);
-  assert.match(page, /<span>Bodega<\/span><span>Evidencia<\/span>/);
+  assert.match(page, /Detalles del diésel/);
+  assert.match(page, /<span>Disponible<\/span>/);
+  assert.doesNotMatch(page, /<span>Bodega<\/span><span>Evidencia<\/span>/);
   assert.doesNotMatch(page, /<span>Reservado<\/span>/);
-  assert.match(page, /Busca por producto o código y abre la posición para revisar su evidencia/);
+  assert.match(page, /href=\{`\/dashboard\/bodega\/productos\//);
+  assert.match(page, /<SecondaryDetails>/);
 });

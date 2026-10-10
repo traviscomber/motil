@@ -11,12 +11,10 @@ const drillingHomeUrl = new URL('../app/dashboard/produccion/sondaje/page.tsx', 
 test('geology keeps decision views as local controls inside Production instead of a second navbar', async () => {
   const shell = await readFile(shellUrl, 'utf8');
 
-  for (const label of ['Hoy', 'Sondajes', 'Interpretación', 'Evidencia', 'Histórico']) {
-    assert.match(shell, new RegExp(`label: '${label}'`));
-  }
-
-  assert.match(shell, /Controles locales de Geología/);
-  assert.match(shell, /role="tablist"/);
+  assert.match(shell, /<AreaNavigation label="Geología"/);
+  assert.match(shell, /primary=\{navigationItems.slice\(0, 3\)\}/);
+  assert.match(shell, /secondary=\{navigationItems.slice\(3\)\}/);
+  assert.match(shell, /onSelect: \(\) => selectTab\(key\)/);
   assert.doesNotMatch(shell, /sticky top-0/);
   assert.doesNotMatch(shell, /Vistas principales de Geología/);
   assert.match(shell, /\['pending', 'Tareas'\]/);
@@ -26,10 +24,8 @@ test('geology keeps decision views as local controls inside Production instead o
   assert.match(shell, /\['completeness', 'Cobertura'\]/);
   assert.match(shell, /\['priorities', 'Excepciones'\]/);
   assert.match(shell, /\['canonical', 'Estado'\]/);
-  assert.match(shell, /Resultados, cobertura, excepciones de evidencia y estado canónico/);
   assert.doesNotMatch(shell, /\['priorities', 'Prioridades'\]/);
   assert.doesNotMatch(shell, /\['canonical', 'Fuentes'\]/);
-  assert.match(shell, /mismo sondaje canónico de Producción → Perforación/);
 });
 
 test('Today contains operational work while evidence exceptions live under Evidence', async () => {
@@ -38,9 +34,12 @@ test('Today contains operational work while evidence exceptions live under Evide
     readFile(evidenceExceptionsUrl, 'utf8'),
   ]);
 
-  assert.match(shell, /key: 'today'[\s\S]*\['today', 'Resumen'\][\s\S]*\['pending', 'Tareas'\]/);
-  assert.doesNotMatch(shell, /key: 'today'[\s\S]*\['priorities', 'Excepciones'\][\s\S]*key: 'holes'/);
-  assert.match(shell, /key: 'evidence'[\s\S]*\['priorities', 'Excepciones'\]/);
+  const primary = shell.slice(shell.indexOf('const tabs ='), shell.indexOf("['corevision'"));
+  assert.match(primary, /\['today', 'Resumen'\]/);
+  assert.match(primary, /\['pending', 'Tareas'\]/);
+  assert.match(primary, /\['holes', 'Ficha'\]/);
+  assert.doesNotMatch(primary, /priorities|canonical/);
+  assert.match(shell, /\['priorities', 'Excepciones'\]/);
   assert.match(evidenceExceptions, /Esta vista no es una cola de trabajo/);
   assert.match(evidenceExceptions, /Excepciones de evidencia/);
   assert.match(evidenceExceptions, /Sólo faltantes que vale la pena revisar/);
@@ -54,7 +53,7 @@ test('canonical State is traceability while actionable work has one home in Toda
 
   assert.match(shell, /Estado = control y trazabilidad canónica/);
   assert.match(shell, /Toda acción operativa se atiende en Hoy → Tareas/);
-  assert.match(shell, /Abrir Hoy → Tareas/);
+  assert.match(shell, /Abrir tareas/);
   assert.match(shell, /selectTab\('pending'\)/);
   assert.match(canonicalStatus, /Estado por sondaje/);
   assert.match(canonicalStatus, /Las acciones operativas se atienden exclusivamente en Hoy → Tareas/);
@@ -86,9 +85,8 @@ test('production uses one operational flow rail while keeping technical discipli
   assert.match(layout, /label: 'Geología'.*lane: 'technical'/);
   assert.match(layout, /label: 'Topografía'.*lane: 'technical'/);
   assert.match(layout, /label: 'Química'.*lane: 'technical'/);
-  assert.match(layout, /aria-label="Flujo operacional de Producción"/);
-  assert.match(layout, /aria-label="Control técnico de Producción"/);
-  assert.match(layout, /String\(item\.step\)\.padStart\(2, '0'\)/);
+  assert.match(layout, /<AreaNavigation label="Producción"/);
+  assert.match(layout, /secondary=\{\[\.\.\.flowItems\.slice\(2\), \.\.\.technicalItems\]\}/);
   assert.doesNotMatch(layout, /Grupos de Producción/);
   assert.doesNotMatch(layout, /activeGroupKey/);
   assert.match(drillingHome, /mismo sondaje canónico/);

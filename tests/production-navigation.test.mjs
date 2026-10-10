@@ -29,8 +29,8 @@ test('drilling stays inside Produccion while geology owns the geological drill-h
   );
   assert.match(productionLayout, /label: 'Perforación'.*lane: 'flow'.*step: 3/);
   assert.match(productionLayout, /label: 'Geología'.*lane: 'technical'/);
-  assert.match(productionLayout, /Flujo operacional de Producción/);
-  assert.match(productionLayout, /Control técnico de Producción/);
+  assert.match(productionLayout, /<AreaNavigation label="Producción"/);
+  assert.match(productionLayout, /technicalItems/);
   assert.doesNotMatch(productionLayout, /Grupos de Producción/);
   assert.match(dict, /sondaje: 'Perforación'/);
   assert.match(dict, /exploracion: 'Campañas exploratorias'/);

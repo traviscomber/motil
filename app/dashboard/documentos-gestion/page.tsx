@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { SecondaryDetails } from '@/components/ui/secondary-details';
 
 const fetcher = async (url: string) => {
   const response = await fetch(url, { credentials: 'include' });
@@ -34,6 +35,14 @@ type DocumentSummaryItem = {
   creador?: string | null;
 };
 
+type ExpiringDocument = {
+  id: string | number;
+  title?: string | null;
+  documentNumber?: string | null;
+  status?: string | null;
+  daysUntilExpiry?: number | null;
+};
+
 function statusBadge(estado?: string | null) {
   switch (estado) {
     case 'aprobado':
@@ -50,7 +59,7 @@ function statusBadge(estado?: string | null) {
     case 'rejected':
       return <Badge className="gap-1 bg-[var(--brand-rojo)]"><XCircle className="h-3 w-3" />Rechazado</Badge>;
     default:
-      return <Badge variant="outline">{estado || 'Sin estado'}</Badge>;
+      return <Badge variant="outline">{estado ? 'Revisar estado' : 'Sin estado'}</Badge>;
   }
 }
 
@@ -65,8 +74,8 @@ export default function DocumentosGestionPage() {
   const categories = (data?.categories || []) as DocumentCategory[];
   const pendingApprovals = (data?.pendingApprovals || []) as DocumentSummaryItem[];
   const recentDocuments = (data?.recentDocuments || []) as DocumentSummaryItem[];
-  const expiringDocuments = (data?.expiringDocuments || []) as DocumentSummaryItem[];
-  const stats = data?.stats || { total: 0, pending: 0, expiring: 0 };
+  const expiringDocuments = (data?.expiringDocuments || []) as ExpiringDocument[];
+  const stats = data?.stats;
 
   const filteredCategories = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
@@ -105,27 +114,16 @@ export default function DocumentosGestionPage() {
     <div className="space-y-6">
       <header className="flex flex-col gap-4 border-b border-border/70 pb-6 md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-            Documentación
-          </p>
           <h1 className="mt-2 text-3xl font-bold tracking-tight">Control documental</h1>
-          <p className="mt-2 max-w-3xl text-muted-foreground">
-            Controla aprobaciones, vencimientos y categorías documentales.
-          </p>
         </div>
         <Button asChild className="gap-2">
           <Link href="/dashboard/documentos-gestion/contratos"><Plus className="h-4 w-4" />Gestionar contratos</Link>
         </Button>
       </header>
 
-      <div className="grid gap-px overflow-hidden rounded-lg border bg-border md:grid-cols-3">
-        <div className="bg-card p-4"><p className="text-xs text-muted-foreground">Documentos</p><p className="mt-1 text-2xl font-semibold">{stats.total}</p></div>
-        <div className="bg-card p-4"><p className="text-xs text-muted-foreground">Pendientes</p><p className="mt-1 text-2xl font-semibold">{stats.pending}</p></div>
-        <div className="bg-card p-4"><p className="text-xs text-muted-foreground">Por vencer</p><p className="mt-1 text-2xl font-semibold">{expiringDocuments.length}</p></div>
-      </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <section><div className="mb-2"><h2 className="text-base font-semibold">Pendientes de aprobación</h2><p className="text-sm text-muted-foreground">Documentos que requieren decisión.</p></div><div className="divide-y overflow-hidden rounded-lg border">
+        <section><div className="mb-2"><h2 className="text-base font-semibold">Pendientes de aprobación</h2></div><div className="divide-y overflow-hidden rounded-lg border">
             {pendingApprovals.length === 0 ? <p className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">No hay aprobaciones pendientes.</p> : pendingApprovals.slice(0, 6).map((doc) => (
               <div key={doc.id} className="flex items-center justify-between gap-3 px-4 py-3">
                 <div className="min-w-0"><p className="truncate font-medium">{doc.nombre || 'Documento sin nombre'}</p><p className="text-xs text-muted-foreground">{doc.documentId || 'Sin ID'} · {doc.pendingBy || 'Sin responsable'}</p></div>
@@ -134,39 +132,47 @@ export default function DocumentosGestionPage() {
             ))}
           </div></section>
 
-        <section><div className="mb-2"><h2 className="text-base font-semibold">Vencimientos próximos</h2><p className="text-sm text-muted-foreground">Prioridades de control documental.</p></div><div className="divide-y overflow-hidden rounded-lg border">
+        <section><div className="mb-2"><h2 className="text-base font-semibold">Vencimientos próximos</h2></div><div className="divide-y overflow-hidden rounded-lg border">
             {expiringDocuments.length === 0 ? <p className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">No hay documentos próximos a vencer.</p> : expiringDocuments.slice(0, 6).map((doc) => (
               <div key={doc.id} className="flex items-center justify-between gap-3 px-4 py-3">
-                <div className="min-w-0"><p className="truncate font-medium">{doc.nombre || 'Documento sin nombre'}</p><p className="text-xs text-muted-foreground">{doc.documentId || 'Sin ID'}</p></div>
-                {statusBadge(doc.estado)}
+                <div className="min-w-0"><p className="truncate font-medium">{doc.title || 'Documento sin nombre'}</p><p className="text-xs text-muted-foreground">{doc.documentNumber || doc.id}</p>{typeof doc.daysUntilExpiry === 'number' ? <p className="mt-1 text-xs text-muted-foreground">{doc.daysUntilExpiry < 0 ? `Venció hace ${Math.abs(doc.daysUntilExpiry)} días` : doc.daysUntilExpiry === 0 ? 'Vence hoy' : `Vence en ${doc.daysUntilExpiry} días`}</p> : null}</div>
+                {statusBadge(doc.status)}
               </div>
             ))}
           </div></section>
       </div>
 
-      <section className="space-y-4 border-t pt-5"><div><h2 className="flex items-center gap-2 text-base font-semibold"><FolderOpen className="h-4 w-4" />Categorías</h2><p className="text-sm text-muted-foreground">Busca y entra a la categoría correspondiente.</p></div>
+      <section className="space-y-4 border-t pt-5"><div><h2 className="flex items-center gap-2 text-base font-semibold"><FolderOpen className="h-4 w-4" />Categorías</h2></div>
           <div className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Buscar por nombre o descripción" className="pl-10" /></div>
           {filteredCategories.length === 0 ? <p className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">No hay categorías para esta búsqueda.</p> : (
             <div className="divide-y border-y">
               {filteredCategories.map((category) => (
                 <Link key={category.id} href={`/dashboard/documentos-gestion/${category.id}`} className="border-b py-3 transition-colors last:border-b-0 hover:bg-muted/30">
-                  <div className="flex items-center justify-between gap-4 px-1"><div className="min-w-0"><p className="font-medium">{category.name || category.id}</p><p className="mt-1 truncate text-sm text-muted-foreground">{category.description || 'Documentos asociados a esta categoría.'}</p></div><div className="flex shrink-0 items-center gap-2"><Badge variant="outline">{category.count || 0}</Badge>{(category.pendingApprovals || 0) > 0 && <span className="text-xs font-medium text-[var(--secondary)]">{category.pendingApprovals} pendientes</span>}</div></div>
+                  <div className="flex items-center justify-between gap-4 px-1"><div className="min-w-0"><p className="font-medium">{category.name || category.id}</p></div><div className="flex shrink-0 items-center gap-2"><Badge variant="outline">{category.count ?? '—'}</Badge>{(category.pendingApprovals || 0) > 0 && <span className="text-xs font-medium text-[var(--secondary)]">{category.pendingApprovals} pendientes</span>}</div></div>
                 </Link>
               ))}
             </div>
           )}
         </section>
 
+      <SecondaryDetails>
+      <div className="grid gap-px overflow-hidden rounded-lg border bg-border md:grid-cols-3">
+        <div className="bg-card p-4"><p className="text-xs text-muted-foreground">Documentos</p><p className="mt-1 text-2xl font-semibold">{stats?.total ?? '—'}</p></div>
+        <div className="bg-card p-4"><p className="text-xs text-muted-foreground">Pendientes</p><p className="mt-1 text-2xl font-semibold">{stats?.pending ?? '—'}</p></div>
+        <div className="bg-card p-4"><p className="text-xs text-muted-foreground">Por vencer</p><p className="mt-1 text-2xl font-semibold">{expiringDocuments.length}</p></div>
+      </div>
+
       {recentDocuments.length > 0 && (
         <section className="border-t pt-5"><h2 className="mb-2 text-base font-semibold">Actividad reciente</h2><div className="divide-y overflow-hidden rounded-lg border">
             {recentDocuments.slice(0, 6).map((doc) => (
-              <div key={doc.id} className="flex items-center justify-between gap-3 rounded-lg border p-3">
+              <div key={doc.documentId || doc.id} className="flex items-center justify-between gap-3 rounded-lg border p-3">
                 <div className="min-w-0"><p className="truncate font-medium">{doc.nombre || 'Documento sin nombre'}</p><p className="text-xs text-muted-foreground">{doc.documentId || 'Sin ID'} · v{doc.version || '—'} · {doc.creador || 'Sin autor'}</p></div>
                 {statusBadge(doc.estado)}
               </div>
             ))}
           </div></section>
       )}
+      </SecondaryDetails>
     </div>
   );
 }

@@ -7,13 +7,19 @@ import { Plus, Upload } from 'lucide-react';
 import useSWR from 'swr';
 
 import { Button } from '@/components/ui/button';
+import { StatePanel } from '@/components/ui/state-panel';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CorrectiveActionCard } from '@/components/sostenibilidad/corrective-action-card';
 import { CorrectiveActionModal } from '@/components/sostenibilidad/corrective-action-modal';
 import type { CorrectiveActionRecord } from '@/components/sostenibilidad/nonconformance-types';
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+const fetcher = async (url: string) => {
+  const response = await fetch(url, { credentials: 'include' });
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(payload?.error || 'No fue posible cargar las acciones correctivas');
+  return payload;
+};
 
 function formatDate(value: unknown): string {
   return typeof value === 'string' ? value : '';
@@ -24,31 +30,27 @@ export function CorrectiveActionsPage() {
   const searchParams = useSearchParams();
   const ncId = searchParams.get('ncId');
 
-  const { data: stats } = useSWR('/api/sostenibilidad/corrective-actions/stats', fetcher);
-  const { data: actions, mutate } = useSWR(
+  const { data: actions, error: actionsError, isLoading: actionsLoading, mutate } = useSWR(
     ncId ? `/api/sostenibilidad/corrective-actions?ncId=${ncId}` : '/api/sostenibilidad/corrective-actions',
     fetcher
   );
 
   const actionList: CorrectiveActionRecord[] = Array.isArray(actions?.data) ? actions.data : [];
-  const statsData: Record<string, number> =
-    stats?.data && typeof stats.data === 'object' ? (stats.data as Record<string, number>) : {};
-
-  const inProgressCount = actionList.filter((a) => a.status === 'in_progress').length || 0;
-  const completedCount = actionList.filter((a) => a.status === 'completed' || a.status === 'verified').length || 0;
+  const inProgressCount = actionList.filter((a) => a.status === 'in_progress').length;
+  const completedCount = actionList.filter((a) => a.status === 'completed' || a.status === 'verified').length;
   const overDueCount =
     actionList.filter((a) => {
       const dueDate = formatDate(a.scheduled_completion_date);
-      return Boolean(dueDate) && new Date(dueDate) < new Date() && a.status !== 'completed';
-    }).length || 0;
-  const totalActions = actionList.length || 0;
+      return Boolean(dueDate) && new Date(dueDate) < new Date() && !['completed', 'verified'].includes(a.status);
+    }).length;
+  const totalActions = actionList.length;
 
   return (
     <div className="space-y-6 p-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-3xl font-bold">Acciones correctivas</h1>
-          <p className="text-muted-foreground">Seguimiento y gestion de planes correctivos</p>
+          <p className="text-muted-foreground">Responsables, plazos y evidencia de las acciones registradas.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button asChild variant="outline">
@@ -68,10 +70,10 @@ export function CorrectiveActionsPage() {
         <CardContent className="space-y-2 pt-6 text-sm text-muted-foreground">
           {!ncId ? (
             <>
-              <p>Crea acciones correctivas desde una no conformidad seleccionada para mantener el vinculo con su hallazgo.</p>
-              <p>
-                Abre esta vista desde una NC o agrega <code>?ncId=...</code> a la URL para trabajar sobre un caso especifico.
-              </p>
+              <p>Selecciona una no conformidad para registrar una acción vinculada al hallazgo.</p>
+              <Button asChild variant="outline" size="sm">
+                <Link href="/dashboard/sostenibilidad/prevencion-riesgos/no-conformidades">Ver no conformidades</Link>
+              </Button>
             </>
           ) : (
             <p>
@@ -87,7 +89,7 @@ export function CorrectiveActionsPage() {
             <CardTitle className="text-sm font-medium text-muted-foreground">En progreso</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{inProgressCount || statsData.in_progress || 0}</div>
+            <div className="text-2xl font-bold">{actions ? inProgressCount : '—'}</div>
           </CardContent>
         </Card>
         <Card>
@@ -95,7 +97,7 @@ export function CorrectiveActionsPage() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Completadas</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{completedCount || statsData.completed || 0}</div>
+            <div className="text-2xl font-bold">{actions ? completedCount : '—'}</div>
           </CardContent>
         </Card>
         <Card>
@@ -103,7 +105,7 @@ export function CorrectiveActionsPage() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Vencidas</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{overDueCount || statsData.overdue || 0}</div>
+            <div className="text-2xl font-bold text-red-600">{actions ? overDueCount : '—'}</div>
           </CardContent>
         </Card>
         <Card>
@@ -112,13 +114,15 @@ export function CorrectiveActionsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {totalActions ? Math.round((completedCount / totalActions) * 100) : statsData?.completionRate || 0}%
+              {!actions ? '—' : totalActions ? `${Math.round((completedCount / totalActions) * 100)}%` : '—'}
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <Tabs defaultValue="active" className="w-full">
+      {actionsError ? <StatePanel tone="error" title="Acciones correctivas no disponibles" description="No se puede confirmar el estado de las acciones. Revisa la fuente antes de tomar decisiones." actions={<Button variant="outline" onClick={() => void mutate()}>Reintentar</Button>} /> : null}
+      {actionsLoading ? <StatePanel tone="loading" title="Cargando acciones correctivas" /> : null}
+      {!actionsError && !actionsLoading ? <Tabs defaultValue="active" className="w-full">
         <TabsList>
           <TabsTrigger value="active">Activas</TabsTrigger>
           <TabsTrigger value="completed">Completadas</TabsTrigger>
@@ -150,14 +154,14 @@ export function CorrectiveActionsPage() {
             {actionList
               .filter((a) => {
                 const dueDate = formatDate(a.scheduled_completion_date);
-                return Boolean(dueDate) && new Date(dueDate) < new Date() && a.status !== 'completed';
+                return Boolean(dueDate) && new Date(dueDate) < new Date() && !['completed', 'verified'].includes(a.status);
               })
               .map((action) => (
                 <CorrectiveActionCard key={action.id} action={action} onUpdate={() => mutate()} />
               ))}
           </div>
         </TabsContent>
-      </Tabs>
+      </Tabs> : null}
 
       <CorrectiveActionModal open={modalOpen} onOpenChange={setModalOpen} ncId={ncId} onCreate={() => mutate()} />
     </div>

@@ -4,13 +4,12 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Search, UserRound } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { SecondaryDetails } from '@/components/ui/secondary-details';
 import { Badge } from '@/components/ui/badge';
 import { StatePanel } from '@/components/ui/state-panel';
 import {
   PageHeader,
   PageHeaderContent,
-  PageHeaderDescription,
-  PageHeaderEyebrow,
   PageHeaderTitle,
 } from '@/components/ui/page-header';
 
@@ -64,14 +63,38 @@ export default function RrhhPage() {
     <div className="space-y-5">
       <PageHeader>
         <PageHeaderContent>
-          <PageHeaderEyebrow>RRHH</PageHeaderEyebrow>
           <PageHeaderTitle>Personas</PageHeaderTitle>
-          <PageHeaderDescription>
-            Personas, rol y evidencia operacional en una sola vista. La cuenta de acceso se mantiene separada de la ficha laboral.
-          </PageHeaderDescription>
+
         </PageHeaderContent>
       </PageHeader>
 
+      <div className="relative max-w-xl">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar por nombre, RUT o cargo" className="pl-9" />
+      </div>
+
+      {loading ? <StatePanel tone="loading" title="Cargando personas"  /> : null}
+      {error ? <StatePanel tone="error" title="No se pudo cargar RRHH" description={`${error}. Los conteos permanecen sin dato hasta recuperar la fuente.`} /> : null}
+      {!loading && !error && filtered.length === 0 ? <StatePanel tone="neutral" title="Sin personas" description="No hay personas canónicas que coincidan con la búsqueda." /> : null}
+
+      {!loading && !error && filtered.length > 0 ? (
+        <div className="overflow-hidden rounded-lg border bg-card">
+          {filtered.map((person) => (
+            <Link key={person.id} href={`/dashboard/rrhh/personas/${person.id}`} className="grid gap-3 border-b px-4 py-3 transition-colors last:border-b-0 hover:bg-muted/40 md:grid-cols-[minmax(0,1fr)] md:items-center">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <UserRound className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <span className="truncate font-medium">{person.full_name}</span>
+                  {person.employment_status !== 'active' ? <Badge variant="outline">{{ inactive: 'Inactiva', terminated: 'Desvinculada', suspended: 'Suspendida', on_leave: 'Con permiso' }[person.employment_status] || 'Revisar estado'}</Badge> : null}
+                </div>
+                <p className="mt-1 truncate text-xs text-muted-foreground">{person.role_title || 'Cargo no informado'}</p>
+              </div>
+            </Link>
+          ))}
+        </div>
+      ) : null}
+
+      <SecondaryDetails>
       <div className="grid gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-4">
         {[
           ['Personas', people.length],
@@ -86,38 +109,7 @@ export default function RrhhPage() {
         ))}
       </div>
 
-      <div className="relative max-w-xl">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar por nombre, RUT o cargo" className="pl-9" />
-      </div>
-
-      {loading ? <StatePanel tone="loading" title="Cargando personas" description="Reuniendo identidad laboral y evidencia disponible." /> : null}
-      {error ? <StatePanel tone="error" title="No se pudo cargar RRHH" description={`${error}. Los conteos permanecen sin dato hasta recuperar la fuente.`} /> : null}
-      {!loading && !error && filtered.length === 0 ? <StatePanel tone="neutral" title="Sin personas" description="No hay personas canónicas que coincidan con la búsqueda." /> : null}
-
-      {!loading && !error && filtered.length > 0 ? (
-        <div className="overflow-hidden rounded-lg border bg-card">
-          {filtered.map((person) => (
-            <Link key={person.id} href={`/dashboard/rrhh/personas/${person.id}`} className="grid gap-3 border-b px-4 py-3 transition-colors last:border-b-0 hover:bg-muted/40 md:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_auto] md:items-center">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <UserRound className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  <span className="truncate font-medium">{person.full_name}</span>
-                  <Badge variant={person.employment_status === 'active' ? 'secondary' : 'outline'}>{person.employment_status}</Badge>
-                </div>
-                <p className="mt-1 truncate text-xs text-muted-foreground">{person.role_title || 'Cargo no informado'}{person.rut ? ` · ${person.rut}` : ''}</p>
-              </div>
-              <div className="text-sm text-muted-foreground">
-                {person.evidence.workOrderCount} OT · {person.evidence.activityCount} actividades · {person.evidence.caseCount} casos
-              </div>
-              <div className="text-right">
-                <p className="text-xs text-muted-foreground">Evaluación</p>
-                <p className="font-semibold tabular-nums">{person.evidence.latestScore ?? '—'}</p>
-              </div>
-            </Link>
-          ))}
-        </div>
-      ) : null}
+      </SecondaryDetails>
 
       {!loading && !error && withoutProfile > 0 ? <StatePanel tone="neutral" title="Conciliación pendiente" description={`${withoutProfile} persona(s) canónica(s) aún no tienen usuario de acceso vinculado. Los perfiles no se incorporan automáticamente para evitar duplicar identidades o atribuir evidencia a la persona equivocada.`} /> : null}
     </div>

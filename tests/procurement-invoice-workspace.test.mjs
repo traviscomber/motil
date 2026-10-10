@@ -10,7 +10,7 @@ test('compras exposes a dedicated supplier invoice workspace', () => {
   assert.match(layout, /\/dashboard\/compras\/facturas/);
   assert.match(layout, /label: 'Facturas'/);
   assert.match(page, /ProgressiveInvoiceWorkflow/);
-  assert.match(ui, /Factura → match → aprobación → pago/);
+  assert.match(ui, /Facturas/);
 });
 
 test('invoice workspace uses operational API and renders honest empty states', () => {

@@ -6,7 +6,7 @@ import { AlertTriangle, ArrowRight, CheckCircle2, Clock3, Gauge, RefreshCw, Shie
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { PageHeader, PageHeaderActions, PageHeaderContent, PageHeaderDescription, PageHeaderEyebrow, PageHeaderTitle } from '@/components/ui/page-header';
+import { PageHeader, PageHeaderActions, PageHeaderContent, PageHeaderTitle } from '@/components/ui/page-header';
 import { StatePanel } from '@/components/ui/state-panel';
 import { MobileTerrainPanel } from '@/components/maintenance/mobile-terrain-panel';
 import { AutopilotDecisionStrip } from '@/components/maintenance/autopilot-decision-strip';
@@ -125,7 +125,6 @@ export function MaintenanceHome({ locale, dictionary }: { locale: Locale; dictio
   const metrics = metricsByMode[mode as WorkMode];
 
   const titles = t.titles;
-  const descriptions = t.descriptions;
   const pageTitle = mode === 'planning'
     ? titles.planning
     : mode === 'leadership'
@@ -133,14 +132,6 @@ export function MaintenanceHome({ locale, dictionary }: { locale: Locale; dictio
       : mode === 'oversight'
         ? titles.oversight
         : titles.general;
-  const pageDescription = mode === 'planning'
-    ? descriptions.planning
-    : mode === 'leadership'
-      ? descriptions.leadership
-      : mode === 'oversight'
-        ? descriptions.oversight
-        : descriptions.general;
-
   const visibleFlow = mode === 'planning'
     ? maintenanceFlow.slice(0, 3)
     : maintenanceFlow;
@@ -155,9 +146,7 @@ export function MaintenanceHome({ locale, dictionary }: { locale: Locale; dictio
   return <div className="mx-auto w-full max-w-[1600px] space-y-6">
     <PageHeader>
       <PageHeaderContent>
-        <PageHeaderEyebrow>{t.eyebrow}{viewer?.cargoName ? ` · ${viewer.cargoName}` : ` · ${t.transversalAccess}`}</PageHeaderEyebrow>
         <PageHeaderTitle>{pageTitle}</PageHeaderTitle>
-        <PageHeaderDescription>{pageDescription}</PageHeaderDescription>
       </PageHeaderContent>
       <PageHeaderActions>
         {viewer?.canCreateWorkOrder
@@ -169,9 +158,8 @@ export function MaintenanceHome({ locale, dictionary }: { locale: Locale; dictio
               : <Button asChild><Link href="/dashboard/mantenimiento/ordenes-trabajo"><ArrowRight className="h-4 w-4" />{t.cta.reviewOrders}</Link></Button>}
       </PageHeaderActions>
     </PageHeader>
-    <p className="text-sm text-muted-foreground">Lo que requiere tu atención aparece primero. Abre una acción para continuar o consulta el contexto en Ver más.</p>
     <Card className="shadow-none">
-      <CardHeader className="flex flex-row items-start justify-between gap-4"><div><CardTitle className="text-lg">{t.queue.titles[mode as WorkMode]}</CardTitle><CardDescription>{t.queue.descriptions[mode as WorkMode]}</CardDescription></div>{!isLoading && !error ? <Badge variant="outline">{fill(t.queue.actionsBadge, { n: actions.length })}</Badge> : null}</CardHeader>
+      <CardHeader className="flex flex-row items-start justify-between gap-4"><div><CardTitle className="text-lg">{t.queue.titles[mode as WorkMode]}</CardTitle></div>{!isLoading && !error ? <Badge variant="outline">{fill(t.queue.actionsBadge, { n: actions.length })}</Badge> : null}</CardHeader>
       <CardContent>
         {isLoading ? <StatePanel tone="loading" title={t.queue.loading} className="min-h-64 border-0 bg-transparent" /> : !error && actions.length === 0 ? <StatePanel tone="neutral" title={t.queue.emptyTitle} description={t.queue.emptyDescriptions[mode as WorkMode]} className="min-h-64 border-0 bg-transparent" /> : !error ? <div className="divide-y rounded-lg border">{actions.map((action, index) => {
           const kindKey = (action.kind in kindMeta ? action.kind : kindFallback) as KindKey;

@@ -42,6 +42,7 @@ const quotationExceptionLabels: Record<string, string> = {
 };
 
 const stageLabels: Record<string, string> = {
+  assignment: 'Asignación',
   request: 'Solicitud',
   requested: 'Solicitud',
   quotation: 'Cotización',
@@ -71,7 +72,7 @@ function stageLabel(value: string) {
   return stageLabels[normalized] || value || 'Pendiente';
 }
 
-export function OperationalPipelineBoard() {
+export function OperationalPipelineBoard({ compact = false }: { compact?: boolean }) {
   const { data, error, isLoading, mutate } = useSWR<Response>('/api/pipeline/operational?limit=20', fetcher, {
     revalidateOnFocus: false,
   });
@@ -79,14 +80,14 @@ export function OperationalPipelineBoard() {
 
   return (
     <Card>
-      <CardHeader className="pb-3">
+      {!compact ? <CardHeader className="pb-3">
         <CardTitle className="text-base">Seguimiento de compras</CardTitle>
         <p className="text-sm text-muted-foreground">Cada caso muestra su estado actual, bloqueos verificados y la siguiente acción disponible.</p>
-      </CardHeader>
-      <CardContent>
+      </CardHeader> : null}
+      <CardContent className={compact ? 'pt-2' : undefined}>
         {isLoading ? <StatePanel tone="loading" title="Cargando seguimiento" className="border-0 bg-transparent" /> : null}
         {error ? <StatePanel tone="error" title="No fue posible cargar el seguimiento" description={error.message} actions={<Button variant="outline" onClick={() => void mutate()}>Reintentar</Button>} className="border-0 bg-transparent" /> : null}
-        {!isLoading && !error && items.length === 0 ? <StatePanel tone="neutral" title="No hay compras abiertas" description="Los casos pendientes aparecerán aquí cuando exista una solicitud, cotización, orden o recepción en curso." className="border-0 bg-transparent" /> : null}
+        {!isLoading && !error && items.length === 0 ? <StatePanel tone="neutral" title="No hay compras abiertas" description={compact ? undefined : 'Los casos pendientes aparecerán aquí cuando exista una solicitud, cotización, orden o recepción en curso.'} className="border-0 bg-transparent" /> : null}
 
         {!isLoading && !error && items.length > 0 ? (
           <div className="divide-y">
@@ -96,6 +97,32 @@ export function OperationalPipelineBoard() {
               const distinctSupplierCount = Math.max(0, item.distinct_supplier_count || 0);
               const exceptionLabel = quotationExceptionLabels[item.quotation_exception_type || ''] || 'Excepción aprobada';
               const reference = item.request_number || item.work_order_number || item.order_number || 'Caso de compra';
+
+              if (compact) return (
+                <div key={item.pipeline_id} className="grid gap-3 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+                  <div className="min-w-0 space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-medium break-words">{item.work_order_title || item.asset_name || item.supplier_name || reference}</p>
+                      <Badge variant="outline">{stageLabel(item.current_stage)}</Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{item.next_action || 'Continuar revisión'}</p>
+                    {blockers.length ? <p className="text-sm text-destructive">{blockers[0]}</p> : null}
+                    <details className="text-xs text-muted-foreground">
+                      <summary className="inline-flex min-h-11 cursor-pointer items-center font-medium">Detalles</summary>
+                      <div className="space-y-1 pb-2">
+                        <p>{reference}</p>
+                        <p>{[item.asset_code, item.asset_name, item.supplier_name].filter(Boolean).join(' · ')}</p>
+                        {blockers.slice(1).map((blocker, index) => <p key={index} className="text-destructive">{blocker}</p>)}
+                        {item.uses_exception_policy ? <p>Excepción aprobada: {exceptionLabel} · {distinctSupplierCount} de {requiredSupplierQuotes} proveedores</p> : null}
+                        {item.quotation_exception_reason ? <p>{item.quotation_exception_reason}</p> : null}
+                      </div>
+                    </details>
+                  </div>
+                  <Button asChild variant="outline" className="min-h-11 w-full sm:w-auto">
+                    <Link href={item.next_action_href || '/dashboard/compras'}>Abrir<ArrowRight className="h-4 w-4" /></Link>
+                  </Button>
+                </div>
+              );
 
               return (
                 <div key={item.pipeline_id} className="grid gap-4 py-4 lg:grid-cols-[minmax(0,1fr)_260px_220px] lg:items-center">

@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import useSWR from 'swr';
-import { ArrowRight, Database, FileText, PackageCheck, Plus, Search, ShoppingCart, Users } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { PageHeader, PageHeaderActions, PageHeaderContent, PageHeaderDescription, PageHeaderEyebrow, PageHeaderTitle } from '@/components/ui/page-header';
+import { PageHeader, PageHeaderActions, PageHeaderContent, PageHeaderTitle } from '@/components/ui/page-header';
 import { StatePanel } from '@/components/ui/state-panel';
 import { OperationalPipelineBoard } from '@/components/pipeline/operational-pipeline-board';
+import { SecondaryDetails } from '@/components/ui/secondary-details';
 
 type Overview = {
   canonical: {
@@ -30,13 +31,6 @@ const fetcher = async (url: string): Promise<Overview> => {
   return payload as Overview;
 };
 
-const shortcuts = [
-  { href: '/dashboard/compras/control-proveedores/candidatos', label: 'Cotizar', description: 'Comparar proveedores habilitados y candidatos del rubro.', icon: Search },
-  { href: '/dashboard/compras/flujo', label: 'Seguimiento', description: 'Revisar solicitudes, órdenes, recepciones y pendientes.', icon: ShoppingCart },
-  { href: '/dashboard/compras/proveedores-360', label: 'Proveedores', description: 'Ficha única con historial, contratos, facturas y desempeño.', icon: Users },
-  { href: '/dashboard/compras/documentos', label: 'Documentos', description: 'Respaldos de compra vinculados al núcleo documental de MOTIL.', icon: FileText },
-];
-
 export default function ComprasPage() {
   const { data, error, isLoading, mutate } = useSWR<Overview>('/api/procurement/overview', fetcher, { revalidateOnFocus: false });
 
@@ -44,9 +38,7 @@ export default function ComprasPage() {
     <div className="space-y-6">
       <PageHeader>
         <PageHeaderContent>
-          <PageHeaderEyebrow>Abastecimiento</PageHeaderEyebrow>
           <PageHeaderTitle>Compras</PageHeaderTitle>
-          <PageHeaderDescription>Fuente canónica de compras, proveedores y ejecución operacional en un solo flujo.</PageHeaderDescription>
         </PageHeaderContent>
         <PageHeaderActions>
           <Button asChild>
@@ -55,11 +47,16 @@ export default function ComprasPage() {
         </PageHeaderActions>
       </PageHeader>
 
+      <section aria-labelledby="compras-pendientes" className="space-y-3">
+        <h2 id="compras-pendientes" className="text-lg font-semibold">Pendientes</h2>
+        <OperationalPipelineBoard compact />
+      </section>
+
+      <SecondaryDetails>
       {error ? (
         <StatePanel
           tone="error"
           title="Resumen de Compras no disponible"
-          description="Las fuentes faltantes no se reemplazan por cero."
           actions={<Button variant="outline" onClick={() => void mutate()}>Reintentar</Button>}
           className="min-h-0"
         />
@@ -67,7 +64,7 @@ export default function ComprasPage() {
 
       <section className="grid gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-2 xl:grid-cols-6" aria-label="Resumen de Compras">
         {[
-          ['OC canónicas', data?.canonical.purchaseOrders],
+          ['Órdenes de compra', data?.canonical.purchaseOrders],
           ['Proveedores', data?.canonical.suppliers],
           ['Solicitudes', data?.operational.intakeRequests],
           ['Órdenes operativas', data?.operational.operationalOrders],
@@ -81,46 +78,7 @@ export default function ComprasPage() {
         ))}
       </section>
 
-      <section className="grid gap-px overflow-hidden rounded-lg border bg-border md:grid-cols-2 xl:grid-cols-4" aria-label="Acciones de compras">
-        {shortcuts.map((item) => {
-          const Icon = item.icon;
-          return (
-            <Link key={item.href} href={item.href} className="group flex items-center gap-4 bg-card px-5 py-4 transition-colors hover:bg-muted/35">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted"><Icon className="h-4 w-4" /></div>
-              <div className="min-w-0 flex-1"><p className="font-medium">{item.label}</p><p className="mt-0.5 text-sm text-muted-foreground">{item.description}</p></div>
-              <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1" />
-            </Link>
-          );
-        })}
-      </section>
-
-      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <Link href="/dashboard/compras/flujo" className="rounded-lg border p-4 hover:bg-muted/30">
-          <PackageCheck className="h-4 w-4 text-muted-foreground" />
-          <p className="mt-3 text-sm font-semibold">Flujo operacional</p>
-          <p className="mt-1 text-xs text-muted-foreground">{data?.operational.receipts ?? '—'} recepciones · {data?.operational.invoices ?? '—'} facturas.</p>
-        </Link>
-        <Link href="/dashboard/compras/facturas" className="rounded-lg border p-4 hover:bg-muted/30">
-          <FileText className="h-4 w-4 text-muted-foreground" />
-          <p className="mt-3 text-sm font-semibold">Finanzas de proveedor</p>
-          <p className="mt-1 text-xs text-muted-foreground">{data?.operational.accountsPayable ?? '—'} cuentas por pagar registradas.</p>
-        </Link>
-        <Link href="/dashboard/compras/documentos" className="rounded-lg border p-4 hover:bg-muted/30">
-          <FileText className="h-4 w-4 text-muted-foreground" />
-          <p className="mt-3 text-sm font-semibold">Documentos</p>
-          <p className="mt-1 text-xs text-muted-foreground">{data?.operational.documents ?? '—'} documentos activos en el núcleo documental.</p>
-        </Link>
-        <Link href="/dashboard/compras/fuentes" className="rounded-lg border p-4 hover:bg-muted/30">
-          <Database className="h-4 w-4 text-muted-foreground" />
-          <p className="mt-3 text-sm font-semibold">Fuentes</p>
-          <p className="mt-1 text-xs text-muted-foreground">Provenance de OC y proveedores canónicos, separando baseline de archivo original.</p>
-        </Link>
-      </section>
-
-      <section aria-labelledby="compras-pendientes" className="space-y-3">
-        <div><h2 id="compras-pendientes" className="text-lg font-semibold tracking-tight">Qué necesita atención</h2><p className="text-sm text-muted-foreground">Pendientes y siguientes pasos del flujo de abastecimiento.</p></div>
-        <OperationalPipelineBoard />
-      </section>
+      </SecondaryDetails>
     </div>
   );
 }

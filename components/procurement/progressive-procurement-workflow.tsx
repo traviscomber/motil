@@ -6,12 +6,13 @@ import useSWR from 'swr';
 import { ArrowRight, CheckCircle2, ClipboardList, PackageCheck, Plus, ReceiptText, Search, Sparkles, WalletCards, type LucideIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { SecondaryDetails } from '@/components/ui/secondary-details';
 import { ProductPhoto } from '@/components/inventory/product-photo';
 
 const fetcher = async (url: string) => {
@@ -23,6 +24,10 @@ const fetcher = async (url: string) => {
 
 const money = (value: unknown) => new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(Number(value || 0));
 const dateLabel = (value?: string | null) => value ? value.split('-').reverse().join('-') : '';
+
+const procurementStatusLabels: Record<string, string> = { draft: 'Borrador', submitted: 'Enviada', requested: 'Solicitada', quoted: 'Cotizada', received: 'Recibida', selected: 'Adjudicada', awarded: 'Adjudicada', issued: 'Emitida', partially_received: 'Recepción parcial', closed: 'Cerrada', cancelled: 'Cancelada', rejected: 'Rechazada' };
+const priorityLabels: Record<string, string> = { low: 'Baja', medium: 'Media', high: 'Alta', critical: 'Crítica' };
+const procurementStatusLabel = (status?: string | null) => procurementStatusLabels[status || ''] || 'Revisar estado';
 
 type Product = { id: string; product_code: string; name: string; unit?: string | null; standard_cost?: number | null; media?: { image_url?: string | null; status?: string | null } | null };
 type Supplier = { id: string; tax_id: string; legal_name: string; trade_name?: string | null; payment_terms?: string | null };
@@ -87,7 +92,7 @@ export function ProgressiveProcurementWorkflow() {
 
   const nextAction = useMemo<NextAction>(() => {
     const awardable = quotations.find((quote) => quote.status === 'received');
-    if (awardable) return { kind: 'award', title: 'Revisar adjudicación', detail: `${awardable.quotation_number} ya tiene respuesta. Revisa precio, plazo, desempeño y registra el motivo antes de emitir la OC.`, quote: awardable };
+    if (awardable) return { kind: 'award', title: 'Revisar adjudicación', detail: `${awardable.quotation_number} tiene cotización para revisar.`, quote: awardable };
 
     const receivable = orders.find((order) => {
       const lines = orderLines.filter((line) => line.purchase_order_id === order.id);
@@ -103,13 +108,13 @@ export function ProgressiveProcurementWorkflow() {
     if (quoteable) return { kind: 'quote', title: 'Solicitar cotización', detail: `${quoteable.request_number} está lista para seleccionar proveedor.`, request: quoteable };
 
     const waitingQuote = requests.find((request) => quotations.some((quote) => quote.request_id === request.id && quote.status === 'requested'));
-    if (waitingQuote) return { kind: 'wait', title: 'Esperando cotización', detail: `${waitingQuote.request_number} ya fue enviada a proveedor. No hay una acción manual siguiente hasta recibir respuesta.` };
+    if (waitingQuote) return { kind: 'wait', title: 'Esperando cotización', detail: `${waitingQuote.request_number} espera respuesta del proveedor.` };
 
     if (orders.some((order) => ['received', 'closed'].includes(order.operational_status || order.status || ''))) {
-      return { kind: 'invoice', title: 'Continuar a factura', detail: 'La recepción quedó registrada. El siguiente control es factura → three-way match → aprobación de pago.' };
+      return { kind: 'invoice', title: 'Continuar a factura', detail: 'Recepción registrada.' };
     }
 
-    return { kind: 'new_request', title: 'Crear solicitud', detail: 'No hay una acción de abastecimiento pendiente. Crea una solicitud cuando exista una necesidad real.' };
+    return { kind: 'new_request', title: 'Crear solicitud', detail: 'No hay compras pendientes.' };
   }, [orderLines, orders, quotations, requests]);
 
   const execute = async (body: unknown) => {
@@ -172,13 +177,14 @@ export function ProgressiveProcurementWorkflow() {
     return <Badge variant="secondary">Sin acción manual pendiente</Badge>;
   };
 
+  if (isLoading) return <p role="status" className="p-5 text-sm text-muted-foreground">Cargando compras…</p>;
+  if (error) return <div role="alert" className="p-5 text-sm text-destructive">{error.message}</div>;
+
   return (
     <div className="space-y-6">
       <section className="flex flex-col gap-4 border-b border-border/70 pb-6 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-sm font-medium text-muted-foreground">Abastecimiento · Flujo progresivo</p>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight">Solicitud → Cotización → OC → Recepción → Factura → Pago</h1>
-          <p className="mt-2 max-w-3xl text-sm text-muted-foreground">Motil muestra primero la decisión que corresponde ahora. La adjudicación se realiza en una única superficie con evidencia y motivo registrado.</p>
+          <h1 className="text-3xl font-semibold tracking-tight">Comprar</h1>
         </div>
       </section>
 
@@ -192,13 +198,13 @@ export function ProgressiveProcurementWorkflow() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <SecondaryDetails><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {metrics.map(({ label, value, icon: Icon }) => <Card key={label} className="shadow-none"><CardContent className="flex items-center justify-between p-5"><div><p className="text-sm text-muted-foreground">{label}</p><p className="mt-1 text-2xl font-semibold">{value}</p></div><Icon className="h-5 w-5 text-muted-foreground" /></CardContent></Card>)}
-      </div>
+      </div></SecondaryDetails>
 
       <div className="grid gap-6 xl:grid-cols-2">
         <Card className="shadow-none">
-          <CardHeader><CardTitle>Solicitudes y cotizaciones</CardTitle><CardDescription>Cada solicitud muestra sólo la acción válida para su estado actual.</CardDescription></CardHeader>
+          <CardHeader><CardTitle>Solicitudes y cotizaciones</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             {isLoading ? <p className="text-sm text-muted-foreground">Cargando flujo...</p> : null}
             {!isLoading && !requests.length ? <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">No hay solicitudes operativas.</p> : null}
@@ -209,36 +215,36 @@ export function ProgressiveProcurementWorkflow() {
               const waiting = quotes.some((quote) => quote.status === 'requested');
               return <div key={request.id} className="rounded-lg border p-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div><div className="flex items-center gap-2"><p className="font-medium">{request.request_number}</p><Badge variant="outline">{request.status}</Badge></div><p className="mt-1 text-sm text-muted-foreground">{lines.length} producto(s) · prioridad {request.priority}</p><p className="mt-2 text-sm">{request.justification || 'Sin justificación adicional'}</p></div>
+                  <div><div className="flex items-center gap-2"><p className="font-medium">{request.request_number}</p><Badge variant="outline">{procurementStatusLabel(request.status)}</Badge></div><p className="mt-1 text-sm text-muted-foreground">{lines.length} producto(s) · prioridad {priorityLabels[request.priority] || 'Sin definir'}</p><p className="mt-2 text-sm">{request.justification || 'Sin justificación adicional'}</p></div>
                   {awardable ? <Button size="sm" onClick={openAwardDecision}>Revisar adjudicación</Button> : waiting ? <Badge variant="secondary">Esperando respuesta</Badge> : ['draft', 'submitted', 'quoted'].includes(request.status) ? <Button size="sm" variant="outline" onClick={() => openQuote(request)}>Solicitar cotización</Button> : <Badge variant="outline">Sin acción pendiente</Badge>}
                 </div>
-                {quotes.length ? <div className="mt-4 space-y-2 border-t pt-3">{quotes.map((quote) => <div key={quote.id} className="flex items-center justify-between gap-3 text-sm"><div><span className="font-medium">{quote.quotation_number}</span><span className="ml-2 text-muted-foreground">{quote.status === 'requested' ? `Solicitud enviada · ${quote.lead_time_days || 0} días` : `${money(quote.total_amount)} · ${quote.lead_time_days || 0} días`}</span></div><Badge variant="secondary">{quote.status}</Badge></div>)}</div> : null}
+                {quotes.length ? <div className="mt-4 space-y-2 border-t pt-3">{quotes.map((quote) => <div key={quote.id} className="flex items-center justify-between gap-3 text-sm"><div><span className="font-medium">{quote.quotation_number}</span><span className="ml-2 text-muted-foreground">{quote.status === 'requested' ? `Solicitud enviada · ${quote.lead_time_days || 0} días` : `${money(quote.total_amount)} · ${quote.lead_time_days || 0} días`}</span></div><Badge variant="secondary">{procurementStatusLabel(quote.status)}</Badge></div>)}</div> : null}
               </div>;
             })}
           </CardContent>
         </Card>
 
         <Card className="shadow-none">
-          <CardHeader><CardTitle>Órdenes y recepciones</CardTitle><CardDescription>Una OC recibida avanza a Factura; una OC con saldo pendiente muestra sólo Recepción.</CardDescription></CardHeader>
+          <CardHeader><CardTitle>Órdenes y recepciones</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             {!orders.length ? <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">Las OC emitidas desde cotizaciones aparecerán aquí.</p> : null}
             {orders.map((order) => {
               const lines = orderLines.filter((line) => line.purchase_order_id === order.id);
               const pending = lines.reduce((sum, line) => sum + Math.max(0, Number(line.quantity || 0) - Number(line.quantity_received || 0)), 0);
-              return <div key={order.id} className="rounded-lg border p-4"><div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><div className="flex items-center gap-2"><p className="font-medium">{order.order_number}</p><Badge variant="outline">{order.operational_status || order.status || 'issued'}</Badge></div><p className="mt-1 text-sm text-muted-foreground">{order.supplier_name || 'Proveedor'} · {money(order.total_amount)}</p><p className="mt-2 text-sm">{lines.length} línea(s) · {pending} unidad(es) pendientes</p></div>{pending > 0 ? <Button size="sm" onClick={() => openReceive(order)}>Registrar recepción</Button> : <Button size="sm" variant="outline" asChild><Link href="/dashboard/compras/facturas">Continuar a factura</Link></Button>}</div></div>;
+              return <div key={order.id} className="rounded-lg border p-4"><div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><div className="flex items-center gap-2"><p className="font-medium">{order.order_number}</p><Badge variant="outline">{procurementStatusLabel(order.operational_status || order.status)}</Badge></div><p className="mt-1 text-sm text-muted-foreground">{order.supplier_name || 'Proveedor'} · {money(order.total_amount)}</p><p className="mt-2 text-sm">{lines.length} línea(s) · {pending} unidad(es) pendientes</p></div>{pending > 0 ? <Button size="sm" onClick={() => openReceive(order)}>Registrar recepción</Button> : <Button size="sm" variant="outline" asChild><Link href="/dashboard/compras/facturas">Continuar a factura</Link></Button>}</div></div>;
             })}
           </CardContent>
         </Card>
       </div>
 
-      <Card className="shadow-none"><CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-medium">Continuidad financiera</p><p className="mt-1 text-sm text-muted-foreground">Después de recepción, Facturas aplica three-way match y sólo las facturas aprobadas pasan a Tesorería.</p></div><div className="flex gap-2"><Button asChild variant="outline"><Link href="/dashboard/compras/facturas"><ReceiptText className="mr-2 h-4 w-4" />Facturas</Link></Button><Button asChild variant="outline"><Link href="/dashboard/finanzas/pagos"><WalletCards className="mr-2 h-4 w-4" />Pagos</Link></Button></div></CardContent></Card>
+      <Card className="shadow-none"><CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-medium">Continuidad financiera</p></div><div className="flex gap-2"><Button asChild variant="outline"><Link href="/dashboard/compras/facturas"><ReceiptText className="mr-2 h-4 w-4" />Facturas</Link></Button><Button asChild variant="outline"><Link href="/dashboard/finanzas/pagos"><WalletCards className="mr-2 h-4 w-4" />Pagos</Link></Button></div></CardContent></Card>
 
       <Dialog open={requestOpen} onOpenChange={setRequestOpen}>
         <DialogContent className="max-w-2xl"><DialogHeader><DialogTitle>Nueva solicitud de compra</DialogTitle><DialogDescription>Selecciona productos canónicos. La solicitud podrá vincularse después a cotizaciones y OC.</DialogDescription></DialogHeader>
           <div className="grid gap-4 sm:grid-cols-2"><div><Label>Prioridad</Label><Select value={priority} onValueChange={setPriority}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="low">Baja</SelectItem><SelectItem value="medium">Media</SelectItem><SelectItem value="high">Alta</SelectItem><SelectItem value="critical">Crítica</SelectItem></SelectContent></Select></div><div><Label>Fecha requerida</Label><Input type="date" value={requiredDate} onChange={(e) => setRequiredDate(e.target.value)} /></div></div>
           <div><Label>Justificación</Label><Textarea value={justification} onChange={(e) => setJustification(e.target.value)} placeholder="Necesidad operacional, OT o reposición" /></div>
           <div><Label>Buscar producto</Label><div className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input className="pl-9" value={productQuery} onChange={(e) => setProductQuery(e.target.value)} placeholder="Código o nombre" /></div>{productData?.products?.length ? <div className="mt-2 max-h-52 overflow-auto rounded-md border">{productData.products.map((product: Product) => <button key={product.id} type="button" className="flex w-full items-center gap-3 border-b px-3 py-2 text-left text-sm last:border-0 hover:bg-muted" onClick={() => { if (!draftLines.some((line) => line.product.id === product.id)) setDraftLines([...draftLines, { product, quantity: 1 }]); setProductQuery(''); }}><ProductPhoto media={product.media} name={product.name} size="sm"/><span className="min-w-0 flex-1"><strong>{product.product_code}</strong> · {product.name}<span className="block text-xs text-muted-foreground">{product.media?.status === 'approved' ? 'Foto IA validada' : 'Foto pendiente'}</span></span><Plus className="h-4 w-4 shrink-0" /></button>)}</div> : null}</div>
-          <div className="space-y-2">{draftLines.map((line, index) => <div key={line.product.id} className="grid grid-cols-[auto_1fr_100px_auto] items-center gap-2 rounded-md border p-3"><ProductPhoto media={line.product.media} name={line.product.name} size="sm"/><div><p className="text-sm font-medium">{line.product.product_code} · {line.product.name}</p><p className="text-xs text-muted-foreground">{line.product.unit || 'unidad'} · {line.product.media?.status === 'approved' ? 'Foto validada' : 'Foto pendiente'}</p></div><Input type="number" min="1" value={line.quantity} onChange={(e) => setDraftLines(draftLines.map((item, itemIndex) => itemIndex === index ? { ...item, quantity: Number(e.target.value) } : item))} /><Button variant="ghost" size="sm" onClick={() => setDraftLines(draftLines.filter((_, itemIndex) => itemIndex !== index))}>Quitar</Button></div>)}</div>
+          <div className="space-y-2">{draftLines.map((line, index) => <div key={line.product.id} className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2 rounded-md border p-3 sm:grid-cols-[auto_minmax(0,1fr)_100px_auto]"><ProductPhoto media={line.product.media} name={line.product.name} size="sm"/><div className="min-w-0"><p className="break-words text-sm font-medium">{line.product.product_code} · {line.product.name}</p><p className="text-xs text-muted-foreground">{line.product.unit || 'unidad'} · {line.product.media?.status === 'approved' ? 'Foto validada' : 'Foto pendiente'}</p></div><Input aria-label={`Cantidad de ${line.product.name}`} className="col-start-1 w-full sm:col-auto" type="number" min="1" value={line.quantity} onChange={(e) => setDraftLines(draftLines.map((item, itemIndex) => itemIndex === index ? { ...item, quantity: Number(e.target.value) } : item))} /><Button className="justify-self-end sm:justify-self-auto" variant="ghost" size="sm" onClick={() => setDraftLines(draftLines.filter((_, itemIndex) => itemIndex !== index))}>Quitar</Button></div>)}</div>
           <DialogFooter><Button variant="outline" onClick={() => setRequestOpen(false)}>Cancelar</Button><Button onClick={createRequest} disabled={busy}>{busy ? 'Guardando...' : 'Crear solicitud'}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
