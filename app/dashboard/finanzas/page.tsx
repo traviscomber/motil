@@ -47,14 +47,7 @@ export default function FinanzasPage() {
 
       {error ? <div className="rounded-md border border-destructive/30 p-3 text-sm text-destructive">{error.message}</div> : null}
 
-      <section className="grid gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-2 xl:grid-cols-4">
-        {[
-          ['Costo reconocido', money(overview.recognized_clp)],
-          ['Compras comprometidas', money(overview.committed_clp)],
-          ['Eventos certificados', number(overview.event_count)],
-          ['Validación', validationPassed ? 'Aprobada' : 'Revisar'],
-        ].map(([label, value]) => <div key={label} className="bg-card px-5 py-4"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-2xl font-semibold tracking-tight">{isLoading ? '—' : value}</p></div>)}
-      </section>
+
 
       <section className="space-y-3 border-t pt-5">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"><div><h2 className="text-lg font-semibold">Tesorería</h2><p className="text-sm text-muted-foreground">Pagos, vencimientos y conciliación.</p></div>{ready && canEdit('fin_finanzas') ? <Link href="/dashboard/finanzas/pagos" className="text-sm font-medium text-primary hover:underline">Operar pagos</Link> : null}</div>
@@ -107,6 +100,16 @@ export default function FinanzasPage() {
       </section>
 
       {(data?.recentEvents || []).length ? <section className="border-t pt-4"><div className="flex items-center justify-between"><div><h2 className="text-sm font-semibold">Últimos registros auditados</h2><p className="text-xs text-muted-foreground">Origen y monto conservados para revisión.</p></div><Link className="text-sm text-muted-foreground hover:text-foreground" href="/dashboard/finanzas/trazabilidad">Ver todos</Link></div></section> : null}
+      <details data-testid="finance-more-metrics" className="rounded-lg border bg-card"><summary className="cursor-pointer px-4 py-3 text-sm font-medium">Ver más · Indicadores financieros</summary><div className="border-t p-4">
+      <section className="grid gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-2 xl:grid-cols-4">
+        {[
+          ['Costo reconocido', money(overview.recognized_clp)],
+          ['Compras comprometidas', money(overview.committed_clp)],
+          ['Eventos certificados', number(overview.event_count)],
+          ['Validación', validationPassed ? 'Aprobada' : 'Revisar'],
+        ].map(([label, value]) => <div key={label} className="bg-card px-5 py-4"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-2xl font-semibold tracking-tight">{isLoading ? '—' : value}</p></div>)}
+      </section>
+      </div></details>
     </div>
   );
 }
