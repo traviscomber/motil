@@ -25,11 +25,12 @@ test('procurement overview keeps operational flow distinct from canonical histor
 
 test('Compras home surfaces canonical history operational execution and documents', async () => {
   const source = await readFile(comprasPage, 'utf8');
-  assert.match(source, /OC canónicas/);
+  assert.match(source, /Órdenes de compra/);
   assert.match(source, /Proveedores/);
   assert.match(source, /Recepciones/);
-  assert.match(source, /Documentos/);
-  assert.match(source, /Las fuentes faltantes no se reemplazan por cero/);
+  assert.match(source, /<OperationalPipelineBoard compact/);
+  assert.match(source, /isLoading \|\| value === undefined \? '—'/);
+  assert.ok(source.indexOf('<OperationalPipelineBoard compact') < source.indexOf('<SecondaryDetails>'));
 });
 
 test('Compras navigation exposes the canonical document center', async () => {

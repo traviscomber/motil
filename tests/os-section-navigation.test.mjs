@@ -23,8 +23,8 @@ test('operational areas use flow numbering only where a real sequence exists', a
   ]);
 
   assert.match(production, /step: 1/);
-  assert.match(production, /Flujo operacional de Producción/);
-  assert.match(production, /Control técnico/);
+  assert.match(production, /<AreaNavigation/);
+  assert.match(production, /technicalItems/);
 
   assert.match(maintenance, /label: 'Planificar', step: 1/);
   assert.match(maintenance, /label: 'Órdenes', step: 2/);
@@ -36,7 +36,7 @@ test('operational areas use flow numbering only where a real sequence exists', a
   assert.match(purchases, /label: 'Cotizar', step: 2/);
   assert.match(purchases, /label: 'Órdenes', step: 3/);
   assert.match(purchases, /label: 'Facturas', step: 4/);
-  assert.match(purchases, /Soporte de Compras/);
+  assert.match(purchases, /secondary=\{\[flowItems\[1\], \.\.\.supportItems\]\}/);
 
   for (const source of [warehouse, finance, sustainability, legal]) {
     assert.doesNotMatch(source, /step:\s*\d/);
@@ -52,10 +52,10 @@ test('non-sequential areas separate operational context from tools instead of fa
     readFile(hseUrl, 'utf8'),
   ]);
 
-  assert.match(warehouse, /Operación de Bodega/);
-  assert.match(warehouse, /Herramientas de Bodega/);
-  assert.match(finance, /Operación financiera/);
-  assert.match(finance, /Control financiero/);
+  assert.match(warehouse, /primary=\{operationItems\}/);
+  assert.match(warehouse, /secondary=\{visibleSupportItems\}/);
+  assert.match(finance, /primary=\{visibleOperationItems\}/);
+  assert.match(finance, /secondary=\{visibleControlItems\}/);
   assert.match(sustainability, /Ámbitos de Sostenibilidad y HSE/);
   assert.match(sustainability, /Soporte de Sostenibilidad y HSE/);
   assert.doesNotMatch(sustainability, /insideRiskPrevention/);
@@ -65,7 +65,7 @@ test('non-sequential areas separate operational context from tools instead of fa
   assert.doesNotMatch(hse, /ArrowLeft/);
 });
 
-test('all converted area rails use the compact pescamar-style visual language', async () => {
+test('area navigation supports progressive tools while remaining legacy rails stay compact', async () => {
   const sources = await Promise.all([
     productionUrl,
     maintenanceUrl,
@@ -77,6 +77,7 @@ test('all converted area rails use the compact pescamar-style visual language', 
   ].map((url) => readFile(url, 'utf8')));
 
   for (const source of sources) {
+    if (source.includes('<AreaNavigation')) continue;
     assert.match(source, /min-h-12/);
     assert.match(source, /scrollbar-width:none/);
     assert.match(source, /bottom-0 h-0\.5 bg-primary/);

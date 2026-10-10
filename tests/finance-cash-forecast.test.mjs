@@ -29,7 +29,7 @@ test('finance executive API exposes forecast tenant scoped through organization 
 });
 
 test('finance UI renders 7 30 60 90 day horizons and honest empty state',()=>{
-  assert.match(page,/Forecast de caja/);
+  assert.match(page,/Proyección de caja/);
   assert.match(page,/Próx\. 7 días/);
   assert.match(page,/Próx\. 30 días/);
   assert.match(page,/Próx\. 60 días/);

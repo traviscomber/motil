@@ -13,9 +13,9 @@ test('production summary puts current operation before source coverage', async (
   assert.ok(currentIndex >= 0, 'current operation section must exist');
   assert.ok(coverageIndex > currentIndex, 'source coverage must follow current operation');
 
-  assert.match(dashboard, /Ahora/);
-  assert.match(dashboard, /Ejecución del período/);
-  assert.match(dashboard, /Qué requiere atención/);
+  assert.match(dashboard, /Pendientes/);
+  assert.ok(dashboard.indexOf('<SecondaryDetails>') > currentIndex);
+  assert.ok(coverageIndex > dashboard.indexOf('<SecondaryDetails>'));
   assert.match(dashboard, /Estado de fuentes/);
   assert.match(dashboard, /Detalle secundario de cobertura/);
   assert.doesNotMatch(dashboard, /Cobertura real por área/);

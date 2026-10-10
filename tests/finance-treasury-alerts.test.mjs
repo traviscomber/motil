@@ -32,6 +32,6 @@ test('finance executive exposes treasury summary and supplier aging without assu
   assert.match(executiveRoute,/procurement_accounts_payable_aging_summary_v1/);
   assert.match(executiveRoute,/treasuryAging/);
   assert.match(financePage,/currencyMoney/);
-  assert.match(financePage,/Aging por proveedor/);
+  assert.match(financePage,/Vencimientos por proveedor/);
   assert.match(financePage,/No hay cuentas por pagar aprobadas/);
 });

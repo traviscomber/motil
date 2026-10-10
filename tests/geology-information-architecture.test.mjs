@@ -86,9 +86,8 @@ test('production uses one operational flow rail while keeping technical discipli
   assert.match(layout, /label: 'Geología'.*lane: 'technical'/);
   assert.match(layout, /label: 'Topografía'.*lane: 'technical'/);
   assert.match(layout, /label: 'Química'.*lane: 'technical'/);
-  assert.match(layout, /aria-label="Flujo operacional de Producción"/);
-  assert.match(layout, /aria-label="Control técnico de Producción"/);
-  assert.match(layout, /String\(item\.step\)\.padStart\(2, '0'\)/);
+  assert.match(layout, /<AreaNavigation label="Producción"/);
+  assert.match(layout, /secondary=\{\[\.\.\.flowItems\.slice\(2\), \.\.\.technicalItems\]\}/);
   assert.doesNotMatch(layout, /Grupos de Producción/);
   assert.doesNotMatch(layout, /activeGroupKey/);
   assert.match(drillingHome, /mismo sondaje canónico/);
