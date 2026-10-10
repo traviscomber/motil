@@ -58,11 +58,12 @@ export default function PrevencionRiesgosPage() {
               <div key={item.id} className="px-4 py-3">
                 <Link href="/dashboard/sostenibilidad/prevencion-riesgos/compromisos" className="flex min-h-11 items-center justify-between gap-3 rounded-sm text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                   <span className="min-w-0 font-medium">{item.commitmentId}{item.component ? ` · ${item.component}` : ''}</span>
-                  <span className="shrink-0 text-xs">Asignar responsable<ArrowRight className="ml-2 inline h-4 w-4" /></span>
+                  <span className="shrink-0 text-xs">Abrir<ArrowRight className="ml-2 inline h-4 w-4" /></span>
                 </Link>
+                {item.actionRequired ? <p className="mt-1 text-sm text-muted-foreground">{item.actionRequired}</p> : null}
                 <details className="text-xs text-muted-foreground">
                   <summary className="min-h-11 cursor-pointer py-3">Ver detalle</summary>
-                  <div className="space-y-2 pb-2"><p>{item.description}</p><p>{item.actionRequired}</p></div>
+                  <div className="space-y-2 pb-2"><p>{item.description}</p></div>
                 </details>
               </div>
             ))}
