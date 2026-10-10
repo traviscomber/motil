@@ -55,3 +55,10 @@ test('queued notes retry when operator returns to the visible OT', () => {
   assert.match(notes, /navigator\.onLine/);
   assert.match(notes, /await writeDraft\(\{ id: draftId, notes, updatedAt: new Date\(\)\.toISOString\(\), queue: remaining, journal \}\)/);
 });
+
+test('pending offline photos are surfaced after reconnect without automatic upload', () => {
+  const photos = read('components/maintenance/maintenance-offline-photos.tsx');
+  assert.match(photos, /Hay fotografías locales listas para sincronizar/);
+  assert.match(photos, /\[online, photos\.length\]/);
+  assert.match(photos, /onClick=\{\(\) => void syncPhotos\(\)\}/);
+});
