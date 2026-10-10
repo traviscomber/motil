@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
   if (actionError) return NextResponse.json({ error: 'Error al verificar acción HSE' }, { status: 500 });
   if (!action) return NextResponse.json({ error: 'Acción HSE no encontrada' }, { status: 404 });
   const { data, error } = await context.supabase.from('sostenibilidad_corrective_action_work_orders')
-    .select('id, work_order_id, linked_at, linked_by')
+    .select('id, work_order_id, linked_at, linked_by, maintenance_work_orders!inner(work_order_number, status)')
     .eq('organization_id', context.organizationId).eq('corrective_action_id', actionId).order('linked_at', { ascending: false }).limit(50);
   if (error) return NextResponse.json({ error: 'Vínculos no disponibles' }, { status: 500 });
   return NextResponse.json({ data: data || [] });
