@@ -214,40 +214,18 @@ export function ActionsInbox({ locale, dictionary }: { locale: Locale; dictionar
     <section className="flex flex-col gap-4 border-b border-border/70 pb-6 md:flex-row md:items-end md:justify-between">
       <div>
         <p className="text-sm font-medium text-muted-foreground">{cargoName || t.fallbackCargo}</p>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight">{t.title}</h1>
-        <p className="mt-2 max-w-3xl text-sm text-muted-foreground">{t.subtitle}</p>
+        <h1 className="mt-1 text-3xl font-semibold tracking-tight">Mi trabajo</h1>
+        <p className="mt-2 max-w-3xl text-sm text-muted-foreground">Tareas y solicitudes que requieren atención según tu cargo. Abre una tarea para ver su detalle.</p>
       </div>
       <Button variant="outline" onClick={() => { setStateWriteError(null); void inbox.mutate(); void states.mutate(); }}><RefreshCw className="mr-2 h-4 w-4" />{t.refresh}</Button>
     </section>
 
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      <Card className="shadow-none"><CardContent className="p-4"><p className="text-xs text-muted-foreground">{t.summary.owners}</p><p className="mt-1 text-2xl font-semibold">{summaryValue('owners')}</p></CardContent></Card>
-      <Card className="shadow-none"><CardContent className="p-4"><p className="text-xs text-muted-foreground">{t.summary.critical}</p><p className="mt-1 text-2xl font-semibold">{summaryValue('critical')}</p></CardContent></Card>
-      <Card className="shadow-none"><CardContent className="p-4"><p className="text-xs text-muted-foreground">{t.summary.overdue}</p><p className="mt-1 text-2xl font-semibold">{summaryValue('overdue')}</p></CardContent></Card>
-      <Card className="shadow-none"><CardContent className="p-4"><p className="text-xs text-muted-foreground">{t.summary.escalations}</p><p className="mt-1 text-2xl font-semibold">{summaryValue('escalations')}</p></CardContent></Card>
-    </div>
+
 
     {stateWriteError ? <Card className="border-destructive/30 shadow-none"><CardContent className="p-4 text-sm text-destructive">{stateWriteError}</CardContent></Card> : null}
     {inbox.data?.degraded ? <Card className="border-amber-500/30 shadow-none"><CardContent className="p-4 text-sm text-muted-foreground"><strong className="text-foreground">{t.degradedTitle}.</strong> {t.degradedDescription}</CardContent></Card> : null}
 
-    <div className="space-y-3">
-      <div className="relative max-w-2xl">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <input
-          value={searchQuery}
-          onChange={(event) => setSearchQuery(event.target.value)}
-          placeholder={t.searchPlaceholder}
-          aria-label={t.searchAria}
-          className="h-10 w-full rounded-md border border-input bg-background pl-9 pr-10 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-        />
-        {hasSearch ? <button type="button" aria-label={t.clearSearch} onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"><X className="h-4 w-4" /></button> : null}
-      </div>
 
-      <div className="flex flex-wrap items-center gap-2" aria-label={t.filtersAria}>
-        {(['all', 'critical', 'overdue', 'owner'] as const).map((value) => <Button key={value} size="sm" variant={taskFilter === value ? 'default' : 'outline'} onClick={() => setTaskFilter(value)} disabled={summaryUnavailable || Boolean(inbox.data?.degraded)}>{t.filters[value]}<Badge variant="secondary" className="ml-2">{filterCount(value)}</Badge></Button>)}
-        {(taskFilter !== 'all' || hasSearch) && !summaryUnavailable ? <span className="text-xs text-muted-foreground">{fill(t.showing, { visible: visibleTasks.length, total: tasks.length })}</span> : null}
-      </div>
-    </div>
 
     {inbox.error || states.error ? <Card className="shadow-none"><CardContent className="p-8 text-center text-sm text-muted-foreground">{t.inboxError}</CardContent></Card> : inbox.isLoading || states.isLoading ? <Card className="shadow-none"><CardContent className="p-8 text-sm text-muted-foreground">{t.loading}</CardContent></Card> : inbox.data?.degraded ? null : tasks.length === 0 ? <Card className="shadow-none"><CardContent className="p-10 text-center"><CheckCircle2 className="mx-auto h-7 w-7" /><p className="mt-3 font-medium">{t.empty.title}</p><p className="mt-1 text-sm text-muted-foreground">{t.empty.description}</p></CardContent></Card> : visibleTasks.length === 0 ? <Card className="shadow-none"><CardContent className="p-8 text-center"><p className="font-medium">{t.noResults.title}</p><p className="mt-1 text-sm text-muted-foreground">{t.noResults.description}</p><div className="mt-4 flex justify-center gap-2">{hasSearch ? <Button size="sm" variant="outline" onClick={() => setSearchQuery('')}>{t.noResults.clear}</Button> : null}{taskFilter !== 'all' ? <Button size="sm" variant="outline" onClick={() => setTaskFilter('all')}>{t.noResults.viewAll}</Button> : null}</div></CardContent></Card> : <div className="space-y-5">
       {LANE_ORDER.map((lane) => {
@@ -308,5 +286,36 @@ export function ActionsInbox({ locale, dictionary }: { locale: Locale; dictionar
         </Card>;
       })}
     </div>}
+    <details data-testid="actions-more-details" className="rounded-lg border bg-card">
+      <summary className="cursor-pointer px-4 py-3 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
+        Ver más · Buscar, filtrar e indicadores
+      </summary>
+      <div className="space-y-5 border-t p-4">
+    <div className="space-y-3">
+      <div className="relative max-w-2xl">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <input
+          value={searchQuery}
+          onChange={(event) => setSearchQuery(event.target.value)}
+          placeholder={t.searchPlaceholder}
+          aria-label={t.searchAria}
+          className="h-10 w-full rounded-md border border-input bg-background pl-9 pr-10 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        />
+        {hasSearch ? <button type="button" aria-label={t.clearSearch} onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"><X className="h-4 w-4" /></button> : null}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2" aria-label={t.filtersAria}>
+        {(['all', 'critical', 'overdue', 'owner'] as const).map((value) => <Button key={value} size="sm" variant={taskFilter === value ? 'default' : 'outline'} onClick={() => setTaskFilter(value)} disabled={summaryUnavailable || Boolean(inbox.data?.degraded)}>{t.filters[value]}<Badge variant="secondary" className="ml-2">{filterCount(value)}</Badge></Button>)}
+        {(taskFilter !== 'all' || hasSearch) && !summaryUnavailable ? <span className="text-xs text-muted-foreground">{fill(t.showing, { visible: visibleTasks.length, total: tasks.length })}</span> : null}
+      </div>
+    </div>
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <Card className="shadow-none"><CardContent className="p-4"><p className="text-xs text-muted-foreground">{t.summary.owners}</p><p className="mt-1 text-2xl font-semibold">{summaryValue('owners')}</p></CardContent></Card>
+      <Card className="shadow-none"><CardContent className="p-4"><p className="text-xs text-muted-foreground">{t.summary.critical}</p><p className="mt-1 text-2xl font-semibold">{summaryValue('critical')}</p></CardContent></Card>
+      <Card className="shadow-none"><CardContent className="p-4"><p className="text-xs text-muted-foreground">{t.summary.overdue}</p><p className="mt-1 text-2xl font-semibold">{summaryValue('overdue')}</p></CardContent></Card>
+      <Card className="shadow-none"><CardContent className="p-4"><p className="text-xs text-muted-foreground">{t.summary.escalations}</p><p className="mt-1 text-2xl font-semibold">{summaryValue('escalations')}</p></CardContent></Card>
+    </div>
+      </div>
+    </details>
   </div>;
 }
