@@ -91,11 +91,7 @@ export default function BodegaPage() {
       <div className="grid gap-3 md:grid-cols-3">{attention.map((item) => <Link key={item.label} href={item.href} className="group rounded-lg border bg-card p-4 transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><div className="flex items-start justify-between gap-3"><div><p className="text-sm font-medium">{item.label}</p><p className="mt-1 text-3xl font-semibold tracking-tight tabular-nums">{isLoading ? '—' : number(item.value)}</p></div><ArrowRight className="mt-1 h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1" /></div><p className="mt-3 text-xs leading-5 text-muted-foreground">{item.detail}</p></Link>)}</div>
     </section> : null}
 
-    {!negativeStockMode ? <section aria-label="Posición de inventario" className="grid gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-3">
-      <div className="bg-card px-5 py-4"><div className="flex items-center gap-2 text-xs text-muted-foreground"><PackageCheck className="h-4 w-4"/>Productos disponibles</div><p className="mt-2 text-2xl font-semibold tracking-tight">{isLoading ? '—' : number(overview.products_with_stock)}</p></div>
-      <div className="bg-card px-5 py-4"><div className="flex items-center gap-2 text-xs text-muted-foreground"><Boxes className="h-4 w-4"/>Valor del inventario</div><p className="mt-2 text-2xl font-semibold tracking-tight">{isLoading ? '—' : valuationTrusted ? money(overview.total_stock_value) : 'En conciliación'}</p>{!valuationTrusted && !isLoading ? <p className="mt-1 text-xs text-muted-foreground">Petróleo impide una valorización confiable hasta conciliar fuentes.</p> : null}</div>
-      <div className="bg-card px-5 py-4"><div className="flex items-center gap-2 text-xs text-muted-foreground"><AlertTriangle className="h-4 w-4"/>Conteos pendientes</div><p className="mt-2 text-2xl font-semibold tracking-tight">{isLoading ? '—' : number(overview.count_overdue_products)}</p></div>
-    </section> : null}
+
 
     <section className="space-y-4">
       <div className="flex flex-col gap-1"><h2 className="text-lg font-semibold">Existencias</h2><p className="text-sm text-muted-foreground">Busca por producto o código y abre la posición para revisar su evidencia.</p></div>
@@ -108,5 +104,16 @@ export default function BodegaPage() {
         return <Link key={row.stock_id} href={`/dashboard/bodega/productos/${row.product_id}`} className="group grid gap-2 border-b px-4 py-4 transition-colors last:border-0 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring lg:grid-cols-[130px_1fr_145px_130px_150px_140px_32px] lg:items-center lg:gap-4"><p className="font-mono text-sm">{row.product_code}</p><div><p className="font-medium group-hover:text-primary">{row.product_name}</p><p className="text-xs text-muted-foreground">{row.family || 'Sin familia'} · {row.unit || 'unidad'}</p></div><p className="text-sm font-medium tabular-nums"><span className="text-muted-foreground lg:hidden">Disponible: </span>{conflictedDiesel ? 'En conciliación' : `${number(row.quantity_available)} ${row.unit || ''}`}</p><p className="text-sm"><span className="text-muted-foreground lg:hidden">Bodega: </span>{row.warehouse_code || 'Sin código'}</p><p className="text-sm text-muted-foreground"><span className="lg:hidden">Evidencia: </span>{dateOnly(row.last_counted_date)}</p>{conflictedDiesel ? <Badge variant="destructive">Revisar fuente</Badge> : <Badge variant={statusVariant(row.stock_status)}>{statusLabels[row.stock_status] || 'Revisar'}</Badge>}<ArrowRight className="hidden h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1 lg:block" /></Link>;
       })}</div> : null}
     </section>
+    <details data-testid="bodega-more-indicators" className="rounded-lg border bg-card">
+      <summary className="cursor-pointer px-4 py-3 text-sm font-medium">Ver más · Indicadores de inventario</summary>
+      <div className="border-t p-4">
+    {!negativeStockMode ? <section aria-label="Posición de inventario" className="grid gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-3">
+      <div className="bg-card px-5 py-4"><div className="flex items-center gap-2 text-xs text-muted-foreground"><PackageCheck className="h-4 w-4"/>Productos disponibles</div><p className="mt-2 text-2xl font-semibold tracking-tight">{isLoading ? '—' : number(overview.products_with_stock)}</p></div>
+      <div className="bg-card px-5 py-4"><div className="flex items-center gap-2 text-xs text-muted-foreground"><Boxes className="h-4 w-4"/>Valor del inventario</div><p className="mt-2 text-2xl font-semibold tracking-tight">{isLoading ? '—' : valuationTrusted ? money(overview.total_stock_value) : 'En conciliación'}</p>{!valuationTrusted && !isLoading ? <p className="mt-1 text-xs text-muted-foreground">Petróleo impide una valorización confiable hasta conciliar fuentes.</p> : null}</div>
+      <div className="bg-card px-5 py-4"><div className="flex items-center gap-2 text-xs text-muted-foreground"><AlertTriangle className="h-4 w-4"/>Conteos pendientes</div><p className="mt-2 text-2xl font-semibold tracking-tight">{isLoading ? '—' : number(overview.count_overdue_products)}</p></div>
+    </section> : null}
+      </div>
+    </details>
+
   </div>;
 }
