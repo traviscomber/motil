@@ -34,7 +34,7 @@ export function CorrectiveActionOtLinks({ actionId }: { actionId: string }) {
       const result = await response.json().catch(() => null);
       if (!response.ok) throw new Error(result?.error || 'No se pudo vincular la OT');
       setNumber('');
-      setMessage('OT vinculada. Su aprobación y la verificación HSE siguen siendo independientes.');
+      setMessage(result?.alreadyLinked ? 'Esta OT ya estaba vinculada; no se creó un duplicado.' : 'OT vinculada. Su aprobación y la verificación HSE siguen siendo independientes.');
       await mutate();
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'No se pudo vincular la OT');
