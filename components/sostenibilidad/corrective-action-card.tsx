@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Plus, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import type { CorrectiveActionRecord } from '@/components/sostenibilidad/nonconformance-types';
+import { CorrectiveActionOtLinks } from '@/components/sostenibilidad/corrective-action-ot-links';
 
 interface CorrectiveActionCardProps {
   action: CorrectiveActionRecord;
@@ -71,6 +72,7 @@ export function CorrectiveActionCard({ action, onUpdate }: CorrectiveActionCardP
             </div>
           )}
         </div>
+        <CorrectiveActionOtLinks actionId={action.id} />
         <Button size="sm" className="w-full mt-4" disabled={updating} onClick={() => onUpdate(action.id)}>
           Actualizar estado
         </Button>
