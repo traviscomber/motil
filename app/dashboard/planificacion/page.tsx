@@ -147,20 +147,7 @@ export default function PlanificacionPage() {
         <StatePanel tone="warning" title="Vista parcial de planificación" description="Una o más fuentes no respondieron. Los datos disponibles se mantienen visibles y la ausencia no se interpreta como cero." className="min-h-0" />
       ) : null}
 
-      <section className="grid divide-y rounded-lg border border-border bg-card sm:grid-cols-4 sm:divide-x sm:divide-y-0" aria-label="Resumen de planificación">
-        {[
-          ['Cobertura Ariel', ariel ? `${ariel.sourceCoverage.matched_percent}%` : '—', ariel ? `${ariel.sourceCoverage.matched_rows}/${ariel.sourceCoverage.total_rows} equipos enlazados` : 'Fuente Ariel'],
-          ['P1 vencidos', ariel?.priorityCounts['P1 - VENCIDO'] ?? '—', 'Revisión prioritaria'],
-          ['Señales', summary ? summary.active_alerts : '—', 'Señales pendientes'],
-          ['Bloqueos', summary ? summary.material_blockers : '—', 'Dependencias de abastecimiento'],
-        ].map(([label, value, detail]) => (
-          <div key={String(label)} className="px-5 py-4">
-            <p className="text-xs text-muted-foreground">{label}</p>
-            <p className="mt-1 text-2xl font-semibold tracking-tight">{String(value)}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
-          </div>
-        ))}
-      </section>
+
 
       {isLoading ? <StatePanel tone="loading" title="Construyendo la vista de planificación" description="Consultando plan maestro, atención operacional, mantenimiento preventivo y producción." /> : null}
       {error ? <StatePanel tone="error" title="No fue posible cargar planificación" description={error.message} actions={<Button variant="outline" onClick={() => void mutate()}>Reintentar</Button>} /> : null}
@@ -239,6 +226,22 @@ export default function PlanificacionPage() {
           </div>
         </>
       ) : null}
+      <details data-testid="planning-more-indicators" className="rounded-lg border bg-card"><summary className="cursor-pointer px-4 py-3 text-sm font-medium">Ver más · Indicadores de planificación</summary><div className="border-t">
+      <section className="grid divide-y rounded-lg border border-border bg-card sm:grid-cols-4 sm:divide-x sm:divide-y-0" aria-label="Resumen de planificación">
+        {[
+          ['Cobertura Ariel', ariel ? `${ariel.sourceCoverage.matched_percent}%` : '—', ariel ? `${ariel.sourceCoverage.matched_rows}/${ariel.sourceCoverage.total_rows} equipos enlazados` : 'Fuente Ariel'],
+          ['P1 vencidos', ariel?.priorityCounts['P1 - VENCIDO'] ?? '—', 'Revisión prioritaria'],
+          ['Señales', summary ? summary.active_alerts : '—', 'Señales pendientes'],
+          ['Bloqueos', summary ? summary.material_blockers : '—', 'Dependencias de abastecimiento'],
+        ].map(([label, value, detail]) => (
+          <div key={String(label)} className="px-5 py-4">
+            <p className="text-xs text-muted-foreground">{label}</p>
+            <p className="mt-1 text-2xl font-semibold tracking-tight">{String(value)}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
+          </div>
+        ))}
+      </section>
+      </div></details>
     </div>
   );
 }
