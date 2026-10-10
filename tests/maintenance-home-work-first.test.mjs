@@ -16,3 +16,9 @@ test('execution remains terrain-first and role-controlled', () => {
   assert.match(home, /actions\.map/);
   assert.match(home, /Ver detalle/);
 });
+
+test('maintenance evidence disclosure is not nested inside a navigation link', () => {
+  const action = home.slice(home.indexOf('return <div key={action.id}'), home.indexOf(';\n        })}', home.indexOf('return <div key={action.id}')));
+  assert.match(action, /<\/Link><details/);
+  assert.doesNotMatch(action, /<details[^>]*>.*<\/details><\/Link>/s);
+});
