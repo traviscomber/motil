@@ -53,12 +53,7 @@ export default function RrhhOperationalPeoplePage() {
 
       {error ? <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error.message}</div> : null}
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Card className="shadow-none"><CardContent className="flex items-center justify-between p-5"><div><p className="text-sm text-muted-foreground">Personas activas</p><p className="mt-1 text-2xl font-semibold">{number(overview.active_people)}</p></div><Users className="h-5 w-5 text-muted-foreground" /></CardContent></Card>
-        <Card className="shadow-none"><CardContent className="flex items-center justify-between p-5"><div><p className="text-sm text-muted-foreground">OT relacionadas</p><p className="mt-1 text-2xl font-semibold">{number(overview.work_order_count)}</p></div><BriefcaseBusiness className="h-5 w-5 text-muted-foreground" /></CardContent></Card>
-        <Card className="shadow-none"><CardContent className="flex items-center justify-between p-5"><div><p className="text-sm text-muted-foreground">Credenciales por vencer</p><p className="mt-1 text-2xl font-semibold">{number(overview.credentials_expiring_30d)}</p></div><ShieldCheck className="h-5 w-5 text-muted-foreground" /></CardContent></Card>
-        <Card className="shadow-none"><CardContent className="flex items-center justify-between p-5"><div><p className="text-sm text-muted-foreground">OT sin competencias</p><p className="mt-1 text-2xl font-semibold">{number(overview.people_with_ot_without_competencies)}</p></div><AlertTriangle className="h-5 w-5 text-muted-foreground" /></CardContent></Card>
-      </div>
+
 
       <section className="space-y-4">
         <div className="relative max-w-2xl">
@@ -89,6 +84,14 @@ export default function RrhhOperationalPeoplePage() {
           })}
         </div>
       </section>
+      <details data-testid="people-more-metrics" className="rounded-lg border bg-card"><summary className="cursor-pointer px-4 py-3 text-sm font-medium">Ver más · Indicadores de personas</summary><div className="border-t p-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <Card className="shadow-none"><CardContent className="flex items-center justify-between p-5"><div><p className="text-sm text-muted-foreground">Personas activas</p><p className="mt-1 text-2xl font-semibold">{number(overview.active_people)}</p></div><Users className="h-5 w-5 text-muted-foreground" /></CardContent></Card>
+        <Card className="shadow-none"><CardContent className="flex items-center justify-between p-5"><div><p className="text-sm text-muted-foreground">OT relacionadas</p><p className="mt-1 text-2xl font-semibold">{number(overview.work_order_count)}</p></div><BriefcaseBusiness className="h-5 w-5 text-muted-foreground" /></CardContent></Card>
+        <Card className="shadow-none"><CardContent className="flex items-center justify-between p-5"><div><p className="text-sm text-muted-foreground">Credenciales por vencer</p><p className="mt-1 text-2xl font-semibold">{number(overview.credentials_expiring_30d)}</p></div><ShieldCheck className="h-5 w-5 text-muted-foreground" /></CardContent></Card>
+        <Card className="shadow-none"><CardContent className="flex items-center justify-between p-5"><div><p className="text-sm text-muted-foreground">OT sin competencias</p><p className="mt-1 text-2xl font-semibold">{number(overview.people_with_ot_without_competencies)}</p></div><AlertTriangle className="h-5 w-5 text-muted-foreground" /></CardContent></Card>
+      </div>
+      </div></details>
     </div>
   );
 }
