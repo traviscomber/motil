@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { AreaNavigation } from '@/components/ui/area-navigation';
 import { SecondaryDetails } from '@/components/ui/secondary-details';
@@ -30,30 +30,13 @@ const tabs = [
 type TabKey = (typeof tabs)[number][0];
 const tabKeys = new Set<TabKey>(tabs.map(([key]) => key));
 
-const dashboardLabels: Record<Exclude<TabKey, 'history' | 'canonical' | 'completeness' | 'interpretation' | 'matrix' | 'priorities' | 'corevision'>, string> = {
-  today: 'Hoy',
-  holes: 'Mapa y sondajes',
-  results: 'Resultados',
-  pending: 'Pendientes',
-};
-
 export function GeologiaWorkspaceShell() {
   const [tab, setTab] = useState<TabKey>('today');
-  const dashboardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const requested = new URLSearchParams(window.location.search).get('tab') as TabKey | null;
     if (requested && tabKeys.has(requested)) setTab(requested);
   }, []);
-
-  useEffect(() => {
-    if (tab === 'history' || tab === 'canonical' || tab === 'completeness' || tab === 'interpretation' || tab === 'matrix' || tab === 'priorities' || tab === 'corevision') return;
-    const root = dashboardRef.current;
-    if (!root) return;
-    const buttons = Array.from(root.querySelectorAll<HTMLButtonElement>('nav[aria-label="Vistas de Geología"] button'));
-    const target = buttons.find((button) => button.textContent?.trim() === dashboardLabels[tab]);
-    target?.click();
-  }, [tab]);
 
   const selectTab = (key: TabKey) => {
     setTab(key);
@@ -90,7 +73,7 @@ export function GeologiaWorkspaceShell() {
       ) : null}
 
 
-      <div ref={dashboardRef} className={dashboardClassName}>
+      <div className={dashboardClassName}>
         <style>{`
           nav[aria-label="Vistas de Geología"] { display: none !important; }
           .geologia-dashboard-simplified section[aria-label="Resumen geológico"] { display: none !important; }
@@ -99,7 +82,7 @@ export function GeologiaWorkspaceShell() {
           .geologia-holes-focus aside > section:first-child { display: none !important; }
           .geologia-holes-focus > div.space-y-6 > div.grid > div.space-y-5 > section:first-child:has(.border-dashed) { display: none !important; }
         `}</style>
-        <GeologiaDashboard />
+        <GeologiaDashboard view={showDashboard ? tab as 'today' | 'holes' | 'results' | 'pending' : 'today'} onViewChange={selectTab} />
       </div>
 
       {tab === 'interpretation' ? <GeologiaInterpretation /> : null}

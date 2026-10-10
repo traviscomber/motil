@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { StatePanel } from '@/components/ui/state-panel';
 import { SecondaryDetails } from '@/components/ui/secondary-details';
 
+const eventLabels: Record<string, string> = { monitoring: 'Monitoreo', inspection: 'Inspección', legal: 'Legal', audit: 'Auditoría', training: 'Capacitación', meeting: 'Reunión' };
+
 const fetcher = async (url: string) => {
   const response = await fetch(url, { credentials: 'include', cache: 'no-store' });
   const payload = await response.json().catch(() => null);
@@ -52,20 +54,20 @@ export default function PrevencionRiesgosPage() {
             <h2 className="text-base font-semibold">Pendientes</h2>
           </div>
           <div className="divide-y overflow-hidden rounded-lg border">
-            {commitmentActions.slice(0, 8).map((item: any) => (
-              <Link key={item.id} href="/dashboard/sostenibilidad/prevencion-riesgos/compromisos" className="flex items-start justify-between gap-4 px-4 py-3 hover:bg-muted/30">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant="outline">{item.commitmentId}</Badge>
-                    {item.component ? <Badge variant="secondary">{item.component}</Badge> : null}
-                  </div>
-                  <p className="mt-2 line-clamp-2 text-sm font-medium">{item.description}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{item.actionRequired}</p>
-                </div>
-                <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" />
-              </Link>
+            {commitmentActions.slice(0, 5).map((item: any) => (
+              <div key={item.id} className="px-4 py-3">
+                <Link href="/dashboard/sostenibilidad/prevencion-riesgos/compromisos" className="flex min-h-11 items-center justify-between gap-3 rounded-sm text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                  <span className="min-w-0 font-medium">{item.commitmentId}{item.component ? ` · ${item.component}` : ''}</span>
+                  <span className="shrink-0 text-xs">Asignar responsable<ArrowRight className="ml-2 inline h-4 w-4" /></span>
+                </Link>
+                <details className="text-xs text-muted-foreground">
+                  <summary className="min-h-11 cursor-pointer py-3">Ver detalle</summary>
+                  <div className="space-y-2 pb-2"><p>{item.description}</p><p>{item.actionRequired}</p></div>
+                </details>
+              </div>
             ))}
           </div>
+          <Button asChild variant="ghost" className="mt-2"><Link href="/dashboard/sostenibilidad/prevencion-riesgos/compromisos">Ver compromisos</Link></Button>
         </section>
       ) : null}
 
@@ -77,11 +79,11 @@ export default function PrevencionRiesgosPage() {
           <Button asChild variant="ghost" size="sm"><Link href="/dashboard/tareas">Ver calendario <ArrowRight className="ml-1 h-4 w-4" /></Link></Button>
         </div>
         <div className="divide-y overflow-hidden rounded-lg border">
-          {upcoming.length ? upcoming.map((event: any) => (
+          {upcoming.length ? upcoming.slice(0, 3).map((event: any) => (
             <Link key={event.id} href="/dashboard/tareas" className="flex items-start justify-between gap-4 px-4 py-3 hover:bg-muted/30">
               <div>
                 <div className="flex items-center gap-2">
-                  <Badge variant="outline">{event.event_type}</Badge>
+                  <Badge variant="outline">{eventLabels[event.event_type] || 'Evento'}</Badge>
                   <p className="text-sm font-medium">{event.title}</p>
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">{event.responsible_person_name || 'Responsable sin asignar'}{event.location ? ` · ${event.location}` : ''}</p>

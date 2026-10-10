@@ -5,8 +5,9 @@ import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { AlertTriangle, Beaker, Drill, Layers3, MapPinned, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { PageHeader, PageHeaderContent, PageHeaderDescription, PageHeaderEyebrow, PageHeaderTitle } from '@/components/ui/page-header';
+import { PageHeader, PageHeaderContent, PageHeaderTitle } from '@/components/ui/page-header';
 import { StatePanel } from '@/components/ui/state-panel';
+import { SecondaryDetails } from '@/components/ui/secondary-details';
 import { periodUrl, useDashboardPeriod } from '@/components/dashboard/dashboard-period-provider';
 import { GeologiaTodayDecisionBoard } from '@/components/production/geologia-today-decision-board';
 import { GeologiaResultsDecisionBoard } from '@/components/production/geologia-results-decision-board';
@@ -78,10 +79,12 @@ function Metric({label,value,detail}:{label:string;value:string|number;detail:st
   return <div><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-xl font-semibold tracking-tight">{value}</p><p className="mt-1 text-xs text-muted-foreground">{detail}</p></div>;
 }
 
-export function GeologiaDashboard(){
+export function GeologiaDashboard({ view, onViewChange }: { view?: TabKey; onViewChange?: (view: TabKey) => void } = {}){
   const {month}=useDashboardPeriod();
   const {data,error,isLoading,mutate}=useSWR(periodUrl('/api/produccion/geologia',month),fetcher);
-  const [tab,setTab]=useState<TabKey>('today');
+  const [localTab,setLocalTab]=useState<TabKey>('today');
+  const tab=view??localTab;
+  const setTab=(next:TabKey)=>{setLocalTab(next);onViewChange?.(next);};
   const [selectedHoleId,setSelectedHoleId]=useState('');
   const [holeSearch,setHoleSearch]=useState('');
   const [selectedMines,setSelectedMines]=useState<Record<string,string>>({});
@@ -126,7 +129,7 @@ export function GeologiaDashboard(){
   const noPurpose=(data?.holes||[]).filter((h)=>!h.geological_purpose?.trim());
 
   return <div className="space-y-6">
-    <PageHeader><PageHeaderContent><PageHeaderEyebrow>Producción · La Patagua</PageHeaderEyebrow><PageHeaderTitle>Geología</PageHeaderTitle><PageHeaderDescription>Mesa operativa para convertir evidencia canónica en prioridades, interpretación y acciones geológicas.</PageHeaderDescription></PageHeaderContent></PageHeader>
+    <PageHeader><PageHeaderContent><PageHeaderTitle>Geología</PageHeaderTitle></PageHeaderContent></PageHeader>
 
     {error?<StatePanel tone="error" title="No fue posible cargar Geología" description="Reintenta la consulta." actions={<Button variant="outline" onClick={()=>void mutate()}>Reintentar</Button>} className="min-h-0 py-5"/>:null}
 
@@ -141,7 +144,7 @@ export function GeologiaDashboard(){
 
     <nav className="flex flex-wrap gap-2 border-b pb-3" aria-label="Vistas de Geología">{tabs.map(([key,label])=><Button key={key} size="sm" variant={tab===key?'default':'ghost'} onClick={()=>setTab(key)}>{label}</Button>)}</nav>
 
-    {data&&tab==='today'?<div className="space-y-5"><GeologiaTodayDecisionBoard summary={data.summary} pending={topPending} chemistryLinkedToHole={chemistryLinkedToHole} onOpenHoles={()=>setTab('holes')} onOpenResults={()=>setTab('results')} onOpenPending={()=>setTab('pending')}/><GeologiaMineEvidenceOverview mines={data.mines} holes={data.holes} samples={data.samples}/></div>:null}
+    {data&&tab==='today'?<div className="space-y-5"><GeologiaTodayDecisionBoard summary={data.summary} pending={topPending} chemistryLinkedToHole={chemistryLinkedToHole} onOpenHoles={()=>setTab('holes')} onOpenResults={()=>setTab('results')} onOpenPending={()=>setTab('pending')}/><SecondaryDetails label="Cobertura por mina"><GeologiaMineEvidenceOverview mines={data.mines} holes={data.holes} samples={data.samples}/></SecondaryDetails></div>:null}
 
     {data&&tab==='holes'?<div className="grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,.85fr)]">
       <div className="space-y-5">
