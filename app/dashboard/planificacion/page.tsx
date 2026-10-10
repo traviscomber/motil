@@ -147,20 +147,7 @@ export default function PlanificacionPage() {
         <StatePanel tone="warning" title="Vista parcial de planificación" description="Una o más fuentes no respondieron. Los datos disponibles se mantienen visibles y la ausencia no se interpreta como cero." className="min-h-0" />
       ) : null}
 
-      <section className="grid divide-y rounded-lg border border-border bg-card sm:grid-cols-4 sm:divide-x sm:divide-y-0" aria-label="Resumen de planificación">
-        {[
-          ['Cobertura Ariel', ariel ? `${ariel.sourceCoverage.matched_percent}%` : '—', ariel ? `${ariel.sourceCoverage.matched_rows}/${ariel.sourceCoverage.total_rows} equipos enlazados` : 'Fuente Ariel'],
-          ['P1 vencidos', ariel?.priorityCounts['P1 - VENCIDO'] ?? '—', 'Revisión prioritaria'],
-          ['Señales', summary ? summary.active_alerts : '—', 'Señales pendientes'],
-          ['Bloqueos', summary ? summary.material_blockers : '—', 'Dependencias de abastecimiento'],
-        ].map(([label, value, detail]) => (
-          <div key={String(label)} className="px-5 py-4">
-            <p className="text-xs text-muted-foreground">{label}</p>
-            <p className="mt-1 text-2xl font-semibold tracking-tight">{String(value)}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
-          </div>
-        ))}
-      </section>
+
 
       {isLoading ? <StatePanel tone="loading" title="Construyendo la vista de planificación" description="Consultando plan maestro, atención operacional, mantenimiento preventivo y producción." /> : null}
       {error ? <StatePanel tone="error" title="No fue posible cargar planificación" description={error.message} actions={<Button variant="outline" onClick={() => void mutate()}>Reintentar</Button>} /> : null}
@@ -177,18 +164,23 @@ export default function PlanificacionPage() {
               <div className="overflow-hidden rounded-lg border border-border bg-card">
                 <div className="divide-y divide-border">
                   {priorities.slice(0, 12).map((item) => (
-                    <article key={item.source_row_id} className="grid gap-3 px-4 py-4 lg:grid-cols-[minmax(0,1.3fr)_repeat(3,minmax(120px,.45fr))_auto] lg:items-center lg:px-5">
-                      <div className="min-w-0">
+                    <article key={item.source_row_id} className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between lg:px-5">
+                      <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
                           <h3 className="text-sm font-semibold">{item.asset_code || item.asset_name || 'Equipo'}</h3>
                           <Badge variant={priorityVariant(item.priority)}>{item.priority || 'Sin clasificar'}</Badge>
                         </div>
-                        <p className="mt-1 text-xs text-muted-foreground">{item.mine_raw || 'Sin mina'} · Criticidad {item.criticality_raw || 'sin validar'}</p>
-                        {item.recommended_action ? <p className="mt-2 text-sm text-muted-foreground">{item.recommended_action}</p> : null}
+                        <p className="mt-1 text-sm text-muted-foreground">{item.recommended_action || 'Revisar prioridad y programación'}</p>
+                        <details className="mt-2 text-xs text-muted-foreground">
+                          <summary className="w-fit cursor-pointer font-medium">Ver detalles</summary>
+                          <dl className="mt-2 grid gap-2 rounded-md border p-3 sm:grid-cols-3">
+                            <div><dt>Lectura</dt><dd className="font-medium text-foreground">{number(item.current_reading, item.meter_unit ? ` ${item.meter_unit}` : '')}</dd></div>
+                            <div><dt>Saldo</dt><dd className="font-medium text-foreground">{number(item.remaining_meter, item.meter_unit ? ` ${item.meter_unit}` : '')}</dd></div>
+                            <div><dt>Proyección</dt><dd className="font-medium text-foreground">{number(item.projected_days, ' días')}</dd></div>
+                            <div className="sm:col-span-3">{item.mine_raw || 'Sin mina'} · Criticidad {item.criticality_raw || 'sin validar'}</div>
+                          </dl>
+                        </details>
                       </div>
-                      <div><p className="text-xs text-muted-foreground">Lectura</p><p className="mt-1 text-sm font-medium">{number(item.current_reading, item.meter_unit ? ` ${item.meter_unit}` : '')}</p></div>
-                      <div><p className="text-xs text-muted-foreground">Saldo</p><p className="mt-1 text-sm font-medium">{number(item.remaining_meter, item.meter_unit ? ` ${item.meter_unit}` : '')}</p></div>
-                      <div><p className="text-xs text-muted-foreground">Proyección</p><p className="mt-1 text-sm font-medium">{number(item.projected_days, ' días')}</p></div>
                       <Button size="sm" variant="outline" asChild><Link href="/dashboard/mantenimiento/planificacion">Revisar</Link></Button>
                     </article>
                   ))}
@@ -239,6 +231,22 @@ export default function PlanificacionPage() {
           </div>
         </>
       ) : null}
+      <details data-testid="planning-more-indicators" className="rounded-lg border bg-card"><summary className="cursor-pointer px-4 py-3 text-sm font-medium">Ver más · Indicadores de planificación</summary><div className="border-t">
+      <section className="grid divide-y rounded-lg border border-border bg-card sm:grid-cols-4 sm:divide-x sm:divide-y-0" aria-label="Resumen de planificación">
+        {[
+          ['Cobertura Ariel', ariel ? `${ariel.sourceCoverage.matched_percent}%` : '—', ariel ? `${ariel.sourceCoverage.matched_rows}/${ariel.sourceCoverage.total_rows} equipos enlazados` : 'Fuente Ariel'],
+          ['P1 vencidos', ariel?.priorityCounts['P1 - VENCIDO'] ?? '—', 'Revisión prioritaria'],
+          ['Señales', summary ? summary.active_alerts : '—', 'Señales pendientes'],
+          ['Bloqueos', summary ? summary.material_blockers : '—', 'Dependencias de abastecimiento'],
+        ].map(([label, value, detail]) => (
+          <div key={String(label)} className="px-5 py-4">
+            <p className="text-xs text-muted-foreground">{label}</p>
+            <p className="mt-1 text-2xl font-semibold tracking-tight">{String(value)}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
+          </div>
+        ))}
+      </section>
+      </div></details>
     </div>
   );
 }
