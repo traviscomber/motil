@@ -6,7 +6,8 @@ import useSWR from 'swr';
 import { AlertTriangle, ArrowRight, CheckCircle2, FileText, ReceiptText, ShieldCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { SecondaryDetails } from '@/components/ui/secondary-details';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -56,7 +57,7 @@ function exceptionLabel(type: string) {
 
 export function ProgressiveInvoiceWorkflow() {
   const { data, error, isLoading, mutate } = useSWR('/api/procurement/operational-pipeline', fetcher);
-  const { data: invoiceableData, error: invoiceableError, mutate: mutateInvoiceable } = useSWR('/api/procurement/invoiceable-lines', fetcher);
+  const { data: invoiceableData, error: invoiceableError, isLoading: invoiceableLoading, mutate: mutateInvoiceable } = useSWR('/api/procurement/invoiceable-lines', fetcher);
   const [selectedOrder, setSelectedOrder] = useState<PipelineRow | null>(null);
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [invoiceDate, setInvoiceDate] = useState('');
@@ -186,18 +187,21 @@ export function ProgressiveInvoiceWorkflow() {
     nextActionControl = <Button asChild><Link href="/dashboard/finanzas/pagos"><ArrowRight className="mr-2 h-4 w-4" />Ir a Pagos</Link></Button>;
   }
 
+  if (isLoading || invoiceableLoading) return <p role="status" className="p-5 text-sm text-muted-foreground">Cargando facturas…</p>;
+  if (error || invoiceableError) return <div role="alert" className="p-5 text-sm text-destructive">{error?.message || invoiceableError?.message}</div>;
+
   return <div className="space-y-6">
-    <section className="border-b border-border/70 pb-6"><p className="text-sm font-medium text-muted-foreground">Abastecimiento · Control de factura</p><h1 className="mt-1 text-3xl font-semibold tracking-tight">Factura → match → aprobación → pago</h1><p className="mt-2 max-w-3xl text-sm text-muted-foreground">Una sola decisión principal por vez. El three-way match controla OC, recepción aceptada, factura actual y facturación acumulada previa.</p></section>
+    <section className="border-b border-border/70 pb-6"><h1 className="text-3xl font-semibold tracking-tight">Facturas</h1></section>
     {actionError ? <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{actionError}</div> : null}
     {error || invoiceableError ? <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error?.message || invoiceableError?.message}</div> : null}
 
     <Card className="shadow-none"><CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Siguiente acción</p><p className="mt-1 text-lg font-semibold">{nextActionLabel}</p><p className="mt-1 max-w-3xl text-sm text-muted-foreground">{nextActionDescription}</p></div>{nextActionControl}</CardContent></Card>
 
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+    <SecondaryDetails><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
       {[['Facturas', counts.total], ['Coinciden', counts.matched], ['Esperan recepción', counts.pending], ['Excepciones abiertas', counts.exceptions], ['Aprobadas pago', counts.approved]].map(([label, value]) => <Card key={String(label)} className="shadow-none"><CardContent className="p-4"><p className="text-sm text-muted-foreground">{label}</p><p className="mt-1 text-xl font-semibold">{value}</p></CardContent></Card>)}
-    </div>
+    </div></SecondaryDetails>
 
-    <Card className="shadow-none"><CardHeader><CardTitle>Expedientes de factura</CardTitle><CardDescription>El detalle conserva evidencia de esta factura y del acumulado de la OC, sin competir con la acción principal.</CardDescription></CardHeader><CardContent className="space-y-3">
+    <Card className="shadow-none"><CardHeader><CardTitle>Expedientes de factura</CardTitle></CardHeader><CardContent className="space-y-3">
       {isLoading ? <p className="text-sm text-muted-foreground">Cargando facturas...</p> : null}
       {!isLoading && !summaries.length ? <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">No hay facturas registradas para contrastar.</p> : null}
       {summaries.map((summary) => {
@@ -208,7 +212,7 @@ export function ProgressiveInvoiceWorkflow() {
       })}
     </CardContent></Card>
 
-    {ordersToInvoice.length > 1 ? <Card className="shadow-none"><CardHeader><CardTitle>Otros saldos facturables</CardTitle><CardDescription>Sólo aparecen recepciones aceptadas que aún no han sido facturadas.</CardDescription></CardHeader><CardContent className="space-y-2">{ordersToInvoice.slice(1).map((order) => { const balance = invoiceableLines.filter((line) => line.order_id === order.order_id).reduce((sum, line) => sum + Number(line.quantity_invoiceable || 0), 0); return <div key={order.order_id} className="flex items-center justify-between rounded-md border p-3"><div><p className="text-sm font-medium">{order.order_number}</p><p className="text-xs text-muted-foreground">{order.supplier_name || 'Proveedor'} · {balance} unidad(es) facturables</p></div><Button size="sm" variant="outline" onClick={() => openInvoice(order)} disabled={!canEdit || busy}>Registrar</Button></div>; })}</CardContent></Card> : null}
+    {ordersToInvoice.length > 1 ? <Card className="shadow-none"><CardHeader><CardTitle>Otros saldos facturables</CardTitle></CardHeader><CardContent className="space-y-2">{ordersToInvoice.slice(1).map((order) => { const balance = invoiceableLines.filter((line) => line.order_id === order.order_id).reduce((sum, line) => sum + Number(line.quantity_invoiceable || 0), 0); return <div key={order.order_id} className="flex items-center justify-between rounded-md border p-3"><div><p className="text-sm font-medium">{order.order_number}</p><p className="text-xs text-muted-foreground">{order.supplier_name || 'Proveedor'} · {balance} unidad(es) facturables</p></div><Button size="sm" variant="outline" onClick={() => openInvoice(order)} disabled={!canEdit || busy}>Registrar</Button></div>; })}</CardContent></Card> : null}
 
     <Dialog open={Boolean(selectedOrder)} onOpenChange={(open) => { if (!open) setSelectedOrder(null); }}><DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl"><DialogHeader><DialogTitle>Registrar factura proveedor</DialogTitle><DialogDescription>{selectedOrder?.order_number} · sólo se propone el saldo recibido, aceptado y todavía no facturado.</DialogDescription></DialogHeader><div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label>Número de factura</Label><Input value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} /></div><div className="space-y-2"><Label>Fecha</Label><Input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} /></div><div className="space-y-2"><Label>Impuesto</Label><Input type="number" min="0" value={taxAmount} onChange={(e) => setTaxAmount(e.target.value)} /></div><div className="space-y-2"><Label>URL documento</Label><Input value={documentUrl} onChange={(e) => setDocumentUrl(e.target.value)} placeholder="Opcional" /></div></div><div className="space-y-3">{selectedInvoiceableLines.map((line) => { const draft = draftLines.find((item) => item.orderLineId === line.order_line_id); return <div key={line.order_line_id} className="grid gap-3 rounded-lg border p-3 sm:grid-cols-[1fr_120px_140px] sm:items-end"><div><p className="text-sm font-medium">{line.product_code || line.description || 'Producto'}</p><p className="text-xs text-muted-foreground">OC {Number(line.quantity_ordered)} · aceptado {Number(line.quantity_accepted)} · ya facturado {Number(line.quantity_invoiced)}</p><p className="mt-1 text-xs font-medium">Facturable ahora: {Number(line.quantity_invoiceable)} {line.unit || ''}</p></div><div className="space-y-1"><Label className="text-xs">Cantidad</Label><Input type="number" min="0" max={Number(line.quantity_invoiceable)} step="any" value={draft?.quantity || ''} onChange={(e) => setDraftLines((rows) => rows.map((row) => row.orderLineId === line.order_line_id ? { ...row, quantity: e.target.value } : row))} /></div><div className="space-y-1"><Label className="text-xs">Precio unitario</Label><Input type="number" min="0" step="any" value={draft?.unitCost || ''} onChange={(e) => setDraftLines((rows) => rows.map((row) => row.orderLineId === line.order_line_id ? { ...row, unitCost: e.target.value } : row))} /></div></div>; })}</div><div className="rounded-lg bg-muted/50 p-3 text-sm"><div className="flex justify-between"><span>Neto</span><span>{money(netAmount, selectedCurrency)}</span></div><div className="mt-1 flex justify-between"><span>Impuesto</span><span>{money(taxAmount, selectedCurrency)}</span></div><div className="mt-2 flex justify-between border-t pt-2 font-medium"><span>Total</span><span>{money(totalAmount, selectedCurrency)}</span></div></div><DialogFooter><Button variant="outline" onClick={() => setSelectedOrder(null)}>Cancelar</Button><Button onClick={submitInvoice} disabled={busy || !canEdit}>{busy ? 'Guardando...' : 'Guardar y validar'}</Button></DialogFooter></DialogContent></Dialog>
 

@@ -16,10 +16,10 @@ test('procurement workflow exposes one explicit next action', () => {
 });
 
 test('procurement progression continues into invoice and payment controls', () => {
-  assert.match(ui, /Solicitud → Cotización → OC → Recepción → Factura → Pago/);
+  assert.match(ui, /Comprar/);
   assert.match(ui, /\/dashboard\/compras\/facturas/);
   assert.match(ui, /\/dashboard\/finanzas\/pagos/);
-  assert.match(ui, /three-way match/);
+  assert.match(ui, /SecondaryDetails/);
 });
 
 test('progressive workflow uses the operational API except for canonical award decision', () => {

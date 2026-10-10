@@ -6,12 +6,13 @@ import useSWR from 'swr';
 import { ArrowRight, CheckCircle2, ClipboardList, PackageCheck, Plus, ReceiptText, Search, Sparkles, WalletCards, type LucideIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { SecondaryDetails } from '@/components/ui/secondary-details';
 import { ProductPhoto } from '@/components/inventory/product-photo';
 
 const fetcher = async (url: string) => {
@@ -87,7 +88,7 @@ export function ProgressiveProcurementWorkflow() {
 
   const nextAction = useMemo<NextAction>(() => {
     const awardable = quotations.find((quote) => quote.status === 'received');
-    if (awardable) return { kind: 'award', title: 'Revisar adjudicación', detail: `${awardable.quotation_number} ya tiene respuesta. Revisa precio, plazo, desempeño y registra el motivo antes de emitir la OC.`, quote: awardable };
+    if (awardable) return { kind: 'award', title: 'Revisar adjudicación', detail: `${awardable.quotation_number} tiene cotización para revisar.`, quote: awardable };
 
     const receivable = orders.find((order) => {
       const lines = orderLines.filter((line) => line.purchase_order_id === order.id);
@@ -103,13 +104,13 @@ export function ProgressiveProcurementWorkflow() {
     if (quoteable) return { kind: 'quote', title: 'Solicitar cotización', detail: `${quoteable.request_number} está lista para seleccionar proveedor.`, request: quoteable };
 
     const waitingQuote = requests.find((request) => quotations.some((quote) => quote.request_id === request.id && quote.status === 'requested'));
-    if (waitingQuote) return { kind: 'wait', title: 'Esperando cotización', detail: `${waitingQuote.request_number} ya fue enviada a proveedor. No hay una acción manual siguiente hasta recibir respuesta.` };
+    if (waitingQuote) return { kind: 'wait', title: 'Esperando cotización', detail: `${waitingQuote.request_number} espera respuesta del proveedor.` };
 
     if (orders.some((order) => ['received', 'closed'].includes(order.operational_status || order.status || ''))) {
-      return { kind: 'invoice', title: 'Continuar a factura', detail: 'La recepción quedó registrada. El siguiente control es factura → three-way match → aprobación de pago.' };
+      return { kind: 'invoice', title: 'Continuar a factura', detail: 'Recepción registrada.' };
     }
 
-    return { kind: 'new_request', title: 'Crear solicitud', detail: 'No hay una acción de abastecimiento pendiente. Crea una solicitud cuando exista una necesidad real.' };
+    return { kind: 'new_request', title: 'Crear solicitud', detail: 'No hay compras pendientes.' };
   }, [orderLines, orders, quotations, requests]);
 
   const execute = async (body: unknown) => {
@@ -172,13 +173,14 @@ export function ProgressiveProcurementWorkflow() {
     return <Badge variant="secondary">Sin acción manual pendiente</Badge>;
   };
 
+  if (isLoading) return <p role="status" className="p-5 text-sm text-muted-foreground">Cargando compras…</p>;
+  if (error) return <div role="alert" className="p-5 text-sm text-destructive">{error.message}</div>;
+
   return (
     <div className="space-y-6">
       <section className="flex flex-col gap-4 border-b border-border/70 pb-6 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-sm font-medium text-muted-foreground">Abastecimiento · Flujo progresivo</p>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight">Solicitud → Cotización → OC → Recepción → Factura → Pago</h1>
-          <p className="mt-2 max-w-3xl text-sm text-muted-foreground">Motil muestra primero la decisión que corresponde ahora. La adjudicación se realiza en una única superficie con evidencia y motivo registrado.</p>
+          <h1 className="text-3xl font-semibold tracking-tight">Comprar</h1>
         </div>
       </section>
 
@@ -192,13 +194,13 @@ export function ProgressiveProcurementWorkflow() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <SecondaryDetails><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {metrics.map(({ label, value, icon: Icon }) => <Card key={label} className="shadow-none"><CardContent className="flex items-center justify-between p-5"><div><p className="text-sm text-muted-foreground">{label}</p><p className="mt-1 text-2xl font-semibold">{value}</p></div><Icon className="h-5 w-5 text-muted-foreground" /></CardContent></Card>)}
-      </div>
+      </div></SecondaryDetails>
 
       <div className="grid gap-6 xl:grid-cols-2">
         <Card className="shadow-none">
-          <CardHeader><CardTitle>Solicitudes y cotizaciones</CardTitle><CardDescription>Cada solicitud muestra sólo la acción válida para su estado actual.</CardDescription></CardHeader>
+          <CardHeader><CardTitle>Solicitudes y cotizaciones</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             {isLoading ? <p className="text-sm text-muted-foreground">Cargando flujo...</p> : null}
             {!isLoading && !requests.length ? <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">No hay solicitudes operativas.</p> : null}
@@ -219,7 +221,7 @@ export function ProgressiveProcurementWorkflow() {
         </Card>
 
         <Card className="shadow-none">
-          <CardHeader><CardTitle>Órdenes y recepciones</CardTitle><CardDescription>Una OC recibida avanza a Factura; una OC con saldo pendiente muestra sólo Recepción.</CardDescription></CardHeader>
+          <CardHeader><CardTitle>Órdenes y recepciones</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             {!orders.length ? <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">Las OC emitidas desde cotizaciones aparecerán aquí.</p> : null}
             {orders.map((order) => {
@@ -231,7 +233,7 @@ export function ProgressiveProcurementWorkflow() {
         </Card>
       </div>
 
-      <Card className="shadow-none"><CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-medium">Continuidad financiera</p><p className="mt-1 text-sm text-muted-foreground">Después de recepción, Facturas aplica three-way match y sólo las facturas aprobadas pasan a Tesorería.</p></div><div className="flex gap-2"><Button asChild variant="outline"><Link href="/dashboard/compras/facturas"><ReceiptText className="mr-2 h-4 w-4" />Facturas</Link></Button><Button asChild variant="outline"><Link href="/dashboard/finanzas/pagos"><WalletCards className="mr-2 h-4 w-4" />Pagos</Link></Button></div></CardContent></Card>
+      <Card className="shadow-none"><CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-medium">Continuidad financiera</p></div><div className="flex gap-2"><Button asChild variant="outline"><Link href="/dashboard/compras/facturas"><ReceiptText className="mr-2 h-4 w-4" />Facturas</Link></Button><Button asChild variant="outline"><Link href="/dashboard/finanzas/pagos"><WalletCards className="mr-2 h-4 w-4" />Pagos</Link></Button></div></CardContent></Card>
 
       <Dialog open={requestOpen} onOpenChange={setRequestOpen}>
         <DialogContent className="max-w-2xl"><DialogHeader><DialogTitle>Nueva solicitud de compra</DialogTitle><DialogDescription>Selecciona productos canónicos. La solicitud podrá vincularse después a cotizaciones y OC.</DialogDescription></DialogHeader>
