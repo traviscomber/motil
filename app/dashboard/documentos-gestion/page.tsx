@@ -35,6 +35,14 @@ type DocumentSummaryItem = {
   creador?: string | null;
 };
 
+type ExpiringDocument = {
+  id: string | number;
+  title?: string | null;
+  documentNumber?: string | null;
+  status?: string | null;
+  daysUntilExpiry?: number | null;
+};
+
 function statusBadge(estado?: string | null) {
   switch (estado) {
     case 'aprobado':
@@ -66,7 +74,7 @@ export default function DocumentosGestionPage() {
   const categories = (data?.categories || []) as DocumentCategory[];
   const pendingApprovals = (data?.pendingApprovals || []) as DocumentSummaryItem[];
   const recentDocuments = (data?.recentDocuments || []) as DocumentSummaryItem[];
-  const expiringDocuments = (data?.expiringDocuments || []) as DocumentSummaryItem[];
+  const expiringDocuments = (data?.expiringDocuments || []) as ExpiringDocument[];
   const stats = data?.stats;
 
   const filteredCategories = useMemo(() => {
@@ -127,8 +135,8 @@ export default function DocumentosGestionPage() {
         <section><div className="mb-2"><h2 className="text-base font-semibold">Vencimientos próximos</h2></div><div className="divide-y overflow-hidden rounded-lg border">
             {expiringDocuments.length === 0 ? <p className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">No hay documentos próximos a vencer.</p> : expiringDocuments.slice(0, 6).map((doc) => (
               <div key={doc.id} className="flex items-center justify-between gap-3 px-4 py-3">
-                <div className="min-w-0"><p className="truncate font-medium">{doc.nombre || 'Documento sin nombre'}</p><p className="text-xs text-muted-foreground">{doc.documentId || 'Sin ID'}</p></div>
-                {statusBadge(doc.estado)}
+                <div className="min-w-0"><p className="truncate font-medium">{doc.title || 'Documento sin nombre'}</p><p className="text-xs text-muted-foreground">{doc.documentNumber || doc.id}</p>{typeof doc.daysUntilExpiry === 'number' ? <p className="mt-1 text-xs text-muted-foreground">{doc.daysUntilExpiry < 0 ? `Venció hace ${Math.abs(doc.daysUntilExpiry)} días` : doc.daysUntilExpiry === 0 ? 'Vence hoy' : `Vence en ${doc.daysUntilExpiry} días`}</p> : null}</div>
+                {statusBadge(doc.status)}
               </div>
             ))}
           </div></section>
@@ -157,7 +165,7 @@ export default function DocumentosGestionPage() {
       {recentDocuments.length > 0 && (
         <section className="border-t pt-5"><h2 className="mb-2 text-base font-semibold">Actividad reciente</h2><div className="divide-y overflow-hidden rounded-lg border">
             {recentDocuments.slice(0, 6).map((doc) => (
-              <div key={doc.id} className="flex items-center justify-between gap-3 rounded-lg border p-3">
+              <div key={doc.documentId || doc.id} className="flex items-center justify-between gap-3 rounded-lg border p-3">
                 <div className="min-w-0"><p className="truncate font-medium">{doc.nombre || 'Documento sin nombre'}</p><p className="text-xs text-muted-foreground">{doc.documentId || 'Sin ID'} · v{doc.version || '—'} · {doc.creador || 'Sin autor'}</p></div>
                 {statusBadge(doc.estado)}
               </div>
