@@ -29,7 +29,9 @@ test('library and control retain distinct responsibilities', async () => {
 
   assert.match(library, /Subir documento/i);
   assert.match(library, /\/api\/documents/);
-  assert.match(control, /Controla aprobaciones, vencimientos y categorías documentales/);
+  assert.match(control, /Pendientes de aprobación/);
+  assert.match(control, /Vencimientos próximos/);
+  assert.match(control, /Categorías/);
   assert.match(control, /\/api\/dashboard\/documentos-gestion/);
 });
 

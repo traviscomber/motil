@@ -30,8 +30,8 @@ test('operational areas use flow numbering only where a real sequence exists', a
   assert.match(maintenance, /label: 'Órdenes', step: 2/);
   assert.match(maintenance, /label: 'Cierre', step: 3/);
   assert.match(maintenance, /label: 'Imputación'/);
-  assert.match(maintenance, /primary=\{visibleFlowItems\}/);
-  assert.match(maintenance, /secondary=\{visibleSupportItems\}/);
+  assert.match(maintenance, /visibleFlowItems.slice\(0, 2\)/);
+  assert.match(maintenance, /visibleFlowItems.slice\(2\)/);
 
   assert.match(purchases, /label: 'Comprar', step: 1/);
   assert.match(purchases, /label: 'Cotizar', step: 2/);

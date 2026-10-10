@@ -118,7 +118,8 @@ export default function MaintenanceLayout({ children }: { children: ReactNode })
 
   return (
     <div className="space-y-5">
-      <AreaNavigation label="Mantenimiento" primary={visibleFlowItems} secondary={visibleSupportItems}
+      <AreaNavigation label="Mantenimiento" primary={[...visibleSupportItems.filter((item) => item.href === '/dashboard/mantenimiento'), ...visibleFlowItems.slice(0, 2)]}
+        secondary={[...visibleFlowItems.slice(2), ...visibleSupportItems.filter((item) => item.href !== '/dashboard/mantenimiento')]}
         isActive={(href) => flowItems.some((item) => item.href === href) ? isFlowActive(pathname, href) : isSupportActive(pathname, href)} />
       {children}
     </div>
