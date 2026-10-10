@@ -45,7 +45,7 @@ test('legacy close endpoint delegates terminal transition to canonical RPC', asy
   assert.match(route, /getModuleAccessLevel/);
   assert.match(route, /requireAssignedMaintenanceExecution/);
   assert.match(route, /accessLevel !== 'ED' && !executionAccess\.ok/);
-  assert.match(route, /rpc\('close_work_order_safely'/);
+  assert.match(route, /rpc\('close_work_order_atomically'/);
   assert.doesNotMatch(route, /status:\s*['"]closed['"]/);
 });
 
