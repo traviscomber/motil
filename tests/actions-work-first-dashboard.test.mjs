@@ -15,3 +15,12 @@ test('task state is not falsely represented as completed', () => {
   assert.match(source, /task\.module_route/);
   assert.match(source, /inbox\.data\?\.degraded/);
 });
+
+test('task rows keep evidence and secondary actions under Ver detalles', () => {
+  assert.match(source, /data-testid="task-row-details"/);
+  assert.match(source, /<summary[^>]*>Ver detalles<\/summary>/);
+  const row = source.slice(source.indexOf('data-testid="task-row-details"'));
+  assert.match(row, /task.evidence_summary/);
+  assert.match(row, /setState\(task.task_key/);
+  assert.match(row, /href=\{task.module_route\}/);
+});
