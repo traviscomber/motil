@@ -165,9 +165,7 @@ export default function DocumentosDashboard() {
 
       {anySourceError ? <StatePanel tone="error" title="Parte de Documentación no pudo actualizarse" description="Las listas o cifras afectadas permanecen sin dato; no se sustituyen por cero." actions={<Button variant="outline" onClick={() => void refreshAll()}>Reintentar</Button>} className="min-h-0" /> : null}
 
-      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border bg-border md:grid-cols-4">
-        {summaryCards.map(({ label, value }) => <div key={label} className="bg-card p-4"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-2xl font-semibold">{value}</p></div>)}
-      </div>
+
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-3">
         <TabsList>
@@ -198,6 +196,12 @@ export default function DocumentosDashboard() {
       <DocumentUploadModal open={uploadModalOpen} onOpenChange={setUploadModalOpen} organizationId="" onSuccess={handleUploadSuccess} />
 
       {selectedDocument ? <DocumentViewer open={viewerOpen} onOpenChange={setViewerOpen} document={selectedDocument} /> : null}
+      <details data-testid="documents-more-metrics" className="rounded-lg border bg-card"><summary className="cursor-pointer px-4 py-3 text-sm font-medium">Ver más · Indicadores documentales</summary><div className="border-t p-4">
+      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border bg-border md:grid-cols-4">
+        {summaryCards.map(({ label, value }) => <div key={label} className="bg-card p-4"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-2xl font-semibold">{value}</p></div>)}
+      </div>
+      </div></details>
+
     </div>
   );
 }
