@@ -13,3 +13,15 @@ test('approval and completed views remain distinct; historical is not operationa
   assert.match(source, /record_scope !== 'historical'/);
   assert.match(source, /approval_status/);
 });
+
+test('each OT row shows only identity, asset, assignee, status and next action', () => {
+  const row = source.slice(source.indexOf('{filteredOrders.map((order) => {'), source.indexOf('\n              })}', source.indexOf('{filteredOrders.map((order) => {')));
+  assert.match(row, /order.title/);
+  assert.match(row, /order.asset_name/);
+  assert.match(row, /order.assigned_to_name/);
+  assert.match(row, /stateLabel/);
+  assert.match(row, /nextAction/);
+  assert.doesNotMatch(row, /order.scheduled_date/);
+  assert.doesNotMatch(row, /order.completion_date/);
+  assert.match(row, /href=\{\`\/dashboard\/mantenimiento\/ordenes-trabajo\/\$\{order.id\}\`\}/);
+});
