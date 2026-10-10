@@ -8,6 +8,7 @@ const timerRoute = await readFile(new URL('../app/api/maintenance/work-orders/[i
 const closeRoute = await readFile(new URL('../app/api/maintenance/work-orders/[id]/close/route.ts', import.meta.url), 'utf8');
 const closeQueue = await readFile(new URL('../components/maintenance/progressive-work-order-close-queue.tsx', import.meta.url), 'utf8');
 const evidenceRoute = await readFile(new URL('../app/api/maintenance/work-orders/[id]/evidence/route.ts', import.meta.url), 'utf8');
+const atomicMigration = await readFile(new URL('../supabase/migrations/20261010110000_atomic_maintenance_work_order_close.sql', import.meta.url), 'utf8');
 const migration = await readFile(new URL('../supabase/migrations/20261005193000_work_order_timer_seconds_and_closure_evidence.sql', import.meta.url), 'utf8');
 
 test('OT timer keeps second precision in database and APIs', () => {
@@ -49,7 +50,8 @@ test('server stores private photo evidence and blocks closure without it', () =>
 });
 
 test('dedicated closure terminates a running or paused timer before final close', () => {
-  assert.match(closeRoute, /\['running', 'paused'\]/);
-  assert.match(closeRoute, /p_action: 'terminate'/);
-  assert.match(closeRoute, /close_work_order_safely/);
+  assert.match(closeRoute, /close_work_order_atomically/);
+  assert.match(atomicMigration, /v_wo.timer_status in \('running', 'paused'\)/);
+  assert.match(atomicMigration, /'terminate'/);
+  assert.match(atomicMigration, /close_work_order_safely/);
 });
