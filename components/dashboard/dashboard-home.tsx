@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import useSWR from 'swr';
+import { useState } from 'react';
 import { AlertTriangle, ArrowRight, CheckCircle2, Drill, Factory, Gauge, Inbox, Wrench } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -275,8 +276,9 @@ export function DashboardHome({ locale, dictionary }: { locale: Locale; dictiona
   const t = dictionary.app.home;
   const inbox = useSWR<InboxPayload>('/api/actions/inbox', fetcher, { refreshInterval: 60000, revalidateOnFocus: false });
   const mode = resolveMode(inbox.data?.profile?.cargoName);
+  const [moreOpen, setMoreOpen] = useState(false);
   // Area-scoped cargos should not read unrelated global operational summaries.
-  const needsBroadData = Boolean(inbox.data) && mode !== 'engineering' && mode !== 'mine';
+  const needsBroadData = moreOpen && Boolean(inbox.data) && mode !== 'engineering' && mode !== 'mine';
   const production = useSWR<ProductionOverview | null>(needsBroadData ? '/api/produccion/canonical-overview' : null, optionalFetcher, { revalidateOnFocus: false });
   const maintenance = useSWR<MaintenanceOverview | null>(needsBroadData ? '/api/maintenance/work-order-flow?limit=200' : null, optionalFetcher, { revalidateOnFocus: false });
 
@@ -312,7 +314,7 @@ export function DashboardHome({ locale, dictionary }: { locale: Locale; dictiona
           : <div className="overflow-hidden rounded-lg border bg-card">{tasks.map((task) => <Link key={task.task_key} href={task.module_route || '/dashboard/acciones'} className="group flex items-center gap-4 border-b px-4 py-3 last:border-0 hover:bg-muted/30"><AlertTriangle className="h-4 w-4 shrink-0 text-muted-foreground" /><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><p className="truncate text-sm font-medium">{task.title}</p>{task.severity === 'critical' ? <Badge variant="destructive">{t.criticalBadge}</Badge> : null}</div><p className="truncate text-xs text-muted-foreground">{task.evidence_summary || task.urgency_label || task.domain}</p></div><ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1" /></Link>)}</div>}
       </section>
 
-      <details className="group rounded-lg border bg-card" data-testid="dashboard-more-details">
+      <details className="group rounded-lg border bg-card" data-testid="dashboard-more-details" onToggle={(event) => setMoreOpen(event.currentTarget.open)}>
         <summary className="cursor-pointer select-none px-4 py-3 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
           Ver más · Indicadores y accesos
         </summary>
