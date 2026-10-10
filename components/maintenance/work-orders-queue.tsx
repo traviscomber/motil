@@ -218,13 +218,8 @@ export function WorkOrdersQueue({ locale, dictionary }: { locale: Locale; dictio
             <div className="p-10 text-center text-sm text-muted-foreground">{missingAssetOnly ? t.states.emptyDataHealth : t.states.empty}</div>
           ) : (
             <div className="divide-y">
-              <div className="hidden grid-cols-[90px_minmax(260px,1.5fr)_minmax(170px,.8fr)_minmax(170px,.8fr)_130px_32px] gap-4 bg-muted/20 px-4 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground lg:grid">
-                <span>Estado</span>
-                <span>Orden</span>
-                <span>Equipo</span>
-                <span>Responsable</span>
-                <span>Fecha</span>
-                <span />
+              <div className="hidden grid-cols-[minmax(220px,2fr)_minmax(120px,1fr)_minmax(120px,1fr)_minmax(100px,.7fr)_90px] gap-4 bg-muted/20 px-4 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground lg:grid">
+                <span>OT</span><span>Equipo</span><span>Responsable</span><span>Estado</span><span>Acción</span>
               </div>
               {filteredOrders.map((order) => {
                 const historical = order.record_scope === 'historical';
@@ -233,40 +228,31 @@ export function WorkOrdersQueue({ locale, dictionary }: { locale: Locale; dictio
                 const approved = normalizeText(order.approval_status) === 'approved';
                 const nextAction = completed
                   ? approved ? t.approval.record : t.approval.review
-                  : ['in_progress', 'en_progreso'].includes(status)
-                    ? 'Continuar'
-                    : 'Abrir';
+                  : ['in_progress', 'en_progreso'].includes(status) ? 'Continuar' : 'Abrir';
+                const stateLabel = completed && !historical
+                  ? approved ? t.approval.approved : t.approval.pending
+                  : getStatusLabel(order.status, t);
                 return (
                   <Link
                     key={order.id}
                     href={`/dashboard/mantenimiento/ordenes-trabajo/${order.id}`}
-                    className="group grid gap-3 px-4 py-3 transition-colors hover:bg-muted/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:grid-cols-[90px_minmax(260px,1.5fr)_minmax(170px,.8fr)_minmax(170px,.8fr)_130px_32px] lg:items-center"
+                    className="group grid gap-2 px-4 py-3 transition-colors hover:bg-muted/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:grid-cols-[minmax(220px,2fr)_minmax(120px,1fr)_minmax(120px,1fr)_minmax(100px,.7fr)_90px] lg:items-center lg:gap-4"
+                    aria-label={`${formatWorkOrderNumber(order.work_order_number, locale)} · ${order.title || t.untitled} · ${stateLabel} · ${nextAction}`}
                   >
-                    <div className="flex items-center gap-2">
-                      <span className={`h-2.5 w-2.5 rounded-full ${completed ? approved ? 'bg-emerald-500' : 'bg-amber-500' : ['in_progress', 'en_progreso'].includes(status) ? 'bg-blue-500' : isOverdue(order) ? 'bg-destructive' : 'bg-amber-500'}`} aria-hidden="true" />
-                      <span className="text-xs font-medium">{getStatusLabel(order.status, t)}</span>
-                    </div>
                     <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-mono text-xs text-muted-foreground">{order.work_order_number ? formatWorkOrderNumber(order.work_order_number, locale) : t.noFolio}</span>
-                        {historical ? <Badge variant="secondary">{t.historicalBadge}</Badge> : null}
-                        {!historical && completed ? <Badge variant={approved ? 'secondary' : 'outline'}>{approved ? t.approval.approved : t.approval.pending}</Badge> : null}
-                        {!historical && isOverdue(order) ? <Badge variant="destructive">{t.overdueBadge}</Badge> : null}
-                        {!historical && !order.asset_name ? <Badge variant="destructive">{t.missingAssetBadge}</Badge> : null}
-                        {['critical', 'high', 'urgente', 'alta'].includes(normalizeText(order.priority)) ? <Badge variant="outline">{getPriorityLabel(order.priority, t)}</Badge> : null}
-                      </div>
-                      <p className="mt-1 truncate text-sm font-medium">{order.title || t.untitled}</p>
-                      <p className="mt-1 text-xs text-muted-foreground lg:hidden">{getWorkTypeLabel(order.work_type, t)} · {nextAction}</p>
+                      <p className="truncate text-sm font-medium">{order.title || t.untitled}</p>
+                      <p className="mt-1 truncate text-xs text-muted-foreground">{order.work_order_number ? formatWorkOrderNumber(order.work_order_number, locale) : t.noFolio}</p>
                     </div>
                     <p className="truncate text-sm text-muted-foreground">{order.asset_name || (historical ? t.noAssetHistorical : t.noAsset)}</p>
-                    <p className="truncate text-sm">{order.assigned_to_name || t.unassigned}</p>
-                    <div>
-                      <p className="text-sm">{completed && order.completion_date ? new Date(order.completion_date).toLocaleDateString(dateLocale) : order.scheduled_date ? new Date(order.scheduled_date).toLocaleDateString(dateLocale) : t.noDate}</p>
-                      <p className="text-xs font-medium text-muted-foreground">{nextAction}</p>
-                    </div>
-                    <ChevronRight className="hidden h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 lg:block" />
+                    <p className="truncate text-sm text-muted-foreground">{order.assigned_to_name || t.unassigned}</p>
+                    <p className="flex items-center gap-2 text-xs font-medium">
+                      <span className={`h-2 w-2 shrink-0 rounded-full ${completed ? approved ? 'bg-emerald-500' : 'bg-amber-500' : ['in_progress', 'en_progreso'].includes(status) ? 'bg-blue-500' : isOverdue(order) ? 'bg-destructive' : 'bg-amber-500'}`} aria-hidden="true" />
+                      {stateLabel}
+                    </p>
+                    <p className="flex items-center gap-1 text-xs font-medium">{nextAction}<ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" /></p>
                   </Link>
                 );
+
               })}
             </div>
           )}
