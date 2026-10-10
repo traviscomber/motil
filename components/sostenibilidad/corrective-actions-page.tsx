@@ -7,13 +7,19 @@ import { Plus, Upload } from 'lucide-react';
 import useSWR from 'swr';
 
 import { Button } from '@/components/ui/button';
+import { StatePanel } from '@/components/ui/state-panel';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CorrectiveActionCard } from '@/components/sostenibilidad/corrective-action-card';
 import { CorrectiveActionModal } from '@/components/sostenibilidad/corrective-action-modal';
 import type { CorrectiveActionRecord } from '@/components/sostenibilidad/nonconformance-types';
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+const fetcher = async (url: string) => {
+  const response = await fetch(url, { credentials: 'include' });
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(payload?.error || 'No fue posible cargar las acciones correctivas');
+  return payload;
+};
 
 function formatDate(value: unknown): string {
   return typeof value === 'string' ? value : '';
@@ -24,7 +30,7 @@ export function CorrectiveActionsPage() {
   const searchParams = useSearchParams();
   const ncId = searchParams.get('ncId');
 
-  const { data: actions, mutate } = useSWR(
+  const { data: actions, error: actionsError, isLoading: actionsLoading, mutate } = useSWR(
     ncId ? `/api/sostenibilidad/corrective-actions?ncId=${ncId}` : '/api/sostenibilidad/corrective-actions',
     fetcher
   );
@@ -114,7 +120,9 @@ export function CorrectiveActionsPage() {
         </Card>
       </div>
 
-      <Tabs defaultValue="active" className="w-full">
+      {actionsError ? <StatePanel tone="error" title="Acciones correctivas no disponibles" description="No se puede confirmar el estado de las acciones. Revisa la fuente antes de tomar decisiones." actions={<Button variant="outline" onClick={() => void mutate()}>Reintentar</Button>} /> : null}
+      {actionsLoading ? <StatePanel tone="loading" title="Cargando acciones correctivas" /> : null}
+      {!actionsError && !actionsLoading ? <Tabs defaultValue="active" className="w-full">
         <TabsList>
           <TabsTrigger value="active">Activas</TabsTrigger>
           <TabsTrigger value="completed">Completadas</TabsTrigger>
@@ -153,7 +161,7 @@ export function CorrectiveActionsPage() {
               ))}
           </div>
         </TabsContent>
-      </Tabs>
+      </Tabs> : null}
 
       <CorrectiveActionModal open={modalOpen} onOpenChange={setModalOpen} ncId={ncId} onCreate={() => mutate()} />
     </div>
