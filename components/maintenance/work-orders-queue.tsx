@@ -165,18 +165,14 @@ export function WorkOrdersQueue({ locale, dictionary }: { locale: Locale; dictio
         </div>
         <div className="flex flex-wrap gap-2">
           {missingAssetOnly ? <Button asChild variant="outline"><Link href="/dashboard/mantenimiento/ordenes-trabajo">{t.viewAll}</Link></Button> : null}
-          {!missingAssetOnly ? <Button asChild variant="outline"><Link href="/dashboard/mantenimiento/ordenes-trabajo/cierre">{t.progressiveClose}</Link></Button> : null}
+
           <Button asChild><Link href="/dashboard/mantenimiento/ordenes-trabajo/create"><Plus className="mr-2 h-4 w-4" />{t.newOrder}</Link></Button>
         </div>
       </section>
 
       {missingAssetOnly ? <Card className="border-destructive/30 bg-destructive/5 shadow-none"><CardContent className="flex items-start gap-3 p-4"><AlertCircle className="mt-0.5 h-5 w-5 text-destructive" /><div><p className="font-medium">{t.dataHealthBanner.title}</p><p className="mt-1 text-sm text-muted-foreground">{t.dataHealthBanner.description}</p></div></CardContent></Card> : null}
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {([[t.summary.open, open], [t.summary.inProgress, inProgress], [t.summary.critical, critical], [t.summary.overdue, overdue]] as const).map(([label, value]) => (
-          <Card key={String(label)} className="shadow-none"><CardContent className="p-4"><p className="text-xs text-muted-foreground">{String(label)}</p><p className="mt-1 text-2xl font-semibold">{Number(value)}</p><p className="mt-1 text-[11px] text-muted-foreground">{t.summary.footer}</p></CardContent></Card>
-        ))}
-      </div>
+
 
       {!missingAssetOnly && historicalWorkOrders.length > 0 ? <Card className="shadow-none"><CardContent className="flex flex-col gap-2 p-4 text-sm sm:flex-row sm:items-center sm:justify-between"><div><p className="font-medium">{t.historicalBanner.title}</p><p className="text-muted-foreground">{fill(t.historicalBanner.description, { n: historicalWorkOrders.length })}</p></div><Button variant="outline" size="sm" onClick={() => setViewFilter('historical')}>{t.historicalBanner.cta}</Button></CardContent></Card> : null}
 
@@ -197,6 +193,9 @@ export function WorkOrdersQueue({ locale, dictionary }: { locale: Locale; dictio
                 </div>
               ) : null}
             </div>
+            <details className="rounded-md border bg-card" data-testid="ot-more-filters">
+              <summary className="cursor-pointer px-3 py-2 text-sm font-medium">Ver más · Buscar y filtrar</summary>
+              <div className="border-t p-3">
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(220px,1fr)_160px_160px_auto]">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -206,6 +205,8 @@ export function WorkOrdersQueue({ locale, dictionary }: { locale: Locale; dictio
               <Select value={priorityFilter} onValueChange={setPriorityFilter}><SelectTrigger><SelectValue placeholder={t.filters.priority} /></SelectTrigger><SelectContent><SelectItem value="all">{t.filters.priorities.all}</SelectItem><SelectItem value="critical">{t.filters.priorities.critical}</SelectItem><SelectItem value="high">{t.filters.priorities.high}</SelectItem><SelectItem value="medium">{t.filters.priorities.medium}</SelectItem><SelectItem value="low">{t.filters.priorities.low}</SelectItem></SelectContent></Select>
               <Button variant="ghost" onClick={() => { setSearch(''); setStatusFilter('all'); setPriorityFilter('all'); setViewFilter('active'); }}>{t.filters.clear}</Button>
             </div>
+              </div>
+            </details>
           </div>
         </CardHeader>
         <CardContent className="p-0">
@@ -217,13 +218,8 @@ export function WorkOrdersQueue({ locale, dictionary }: { locale: Locale; dictio
             <div className="p-10 text-center text-sm text-muted-foreground">{missingAssetOnly ? t.states.emptyDataHealth : t.states.empty}</div>
           ) : (
             <div className="divide-y">
-              <div className="hidden grid-cols-[90px_minmax(260px,1.5fr)_minmax(170px,.8fr)_minmax(170px,.8fr)_130px_32px] gap-4 bg-muted/20 px-4 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground lg:grid">
-                <span>Estado</span>
-                <span>Orden</span>
-                <span>Equipo</span>
-                <span>Responsable</span>
-                <span>Fecha</span>
-                <span />
+              <div className="hidden grid-cols-[minmax(220px,2fr)_minmax(120px,1fr)_minmax(120px,1fr)_minmax(100px,.7fr)_90px] gap-4 bg-muted/20 px-4 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground lg:grid">
+                <span>OT</span><span>Equipo</span><span>Responsable</span><span>Estado</span><span>Acción</span>
               </div>
               {filteredOrders.map((order) => {
                 const historical = order.record_scope === 'historical';
@@ -232,45 +228,47 @@ export function WorkOrdersQueue({ locale, dictionary }: { locale: Locale; dictio
                 const approved = normalizeText(order.approval_status) === 'approved';
                 const nextAction = completed
                   ? approved ? t.approval.record : t.approval.review
-                  : ['in_progress', 'en_progreso'].includes(status)
-                    ? 'Continuar'
-                    : 'Abrir';
+                  : ['in_progress', 'en_progreso'].includes(status) ? 'Continuar' : 'Abrir';
+                const stateLabel = completed && !historical
+                  ? approved ? t.approval.approved : t.approval.pending
+                  : getStatusLabel(order.status, t);
                 return (
                   <Link
                     key={order.id}
                     href={`/dashboard/mantenimiento/ordenes-trabajo/${order.id}`}
-                    className="group grid gap-3 px-4 py-3 transition-colors hover:bg-muted/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:grid-cols-[90px_minmax(260px,1.5fr)_minmax(170px,.8fr)_minmax(170px,.8fr)_130px_32px] lg:items-center"
+                    className="group grid gap-2 px-4 py-3 transition-colors hover:bg-muted/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:grid-cols-[minmax(220px,2fr)_minmax(120px,1fr)_minmax(120px,1fr)_minmax(100px,.7fr)_90px] lg:items-center lg:gap-4"
+                    aria-label={`${formatWorkOrderNumber(order.work_order_number, locale)} · ${order.title || t.untitled} · ${stateLabel} · ${nextAction}`}
                   >
-                    <div className="flex items-center gap-2">
-                      <span className={`h-2.5 w-2.5 rounded-full ${completed ? approved ? 'bg-emerald-500' : 'bg-amber-500' : ['in_progress', 'en_progreso'].includes(status) ? 'bg-blue-500' : isOverdue(order) ? 'bg-destructive' : 'bg-amber-500'}`} aria-hidden="true" />
-                      <span className="text-xs font-medium">{getStatusLabel(order.status, t)}</span>
-                    </div>
                     <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-mono text-xs text-muted-foreground">{order.work_order_number ? formatWorkOrderNumber(order.work_order_number, locale) : t.noFolio}</span>
-                        {historical ? <Badge variant="secondary">{t.historicalBadge}</Badge> : null}
-                        {!historical && completed ? <Badge variant={approved ? 'secondary' : 'outline'}>{approved ? t.approval.approved : t.approval.pending}</Badge> : null}
-                        {!historical && isOverdue(order) ? <Badge variant="destructive">{t.overdueBadge}</Badge> : null}
-                        {!historical && !order.asset_name ? <Badge variant="destructive">{t.missingAssetBadge}</Badge> : null}
-                        {['critical', 'high', 'urgente', 'alta'].includes(normalizeText(order.priority)) ? <Badge variant="outline">{getPriorityLabel(order.priority, t)}</Badge> : null}
-                      </div>
-                      <p className="mt-1 truncate text-sm font-medium">{order.title || t.untitled}</p>
-                      <p className="mt-1 text-xs text-muted-foreground lg:hidden">{getWorkTypeLabel(order.work_type, t)} · {nextAction}</p>
+                      <p className="truncate text-sm font-medium">{order.title || t.untitled}</p>
+                      <p className="mt-1 truncate text-xs text-muted-foreground">{order.work_order_number ? formatWorkOrderNumber(order.work_order_number, locale) : t.noFolio}</p>
                     </div>
                     <p className="truncate text-sm text-muted-foreground">{order.asset_name || (historical ? t.noAssetHistorical : t.noAsset)}</p>
-                    <p className="truncate text-sm">{order.assigned_to_name || t.unassigned}</p>
-                    <div>
-                      <p className="text-sm">{completed && order.completion_date ? new Date(order.completion_date).toLocaleDateString(dateLocale) : order.scheduled_date ? new Date(order.scheduled_date).toLocaleDateString(dateLocale) : t.noDate}</p>
-                      <p className="text-xs font-medium text-muted-foreground">{nextAction}</p>
-                    </div>
-                    <ChevronRight className="hidden h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 lg:block" />
+                    <p className="truncate text-sm text-muted-foreground">{order.assigned_to_name || t.unassigned}</p>
+                    <p className="flex items-center gap-2 text-xs font-medium">
+                      <span className={`h-2 w-2 shrink-0 rounded-full ${completed ? approved ? 'bg-emerald-500' : 'bg-amber-500' : ['in_progress', 'en_progreso'].includes(status) ? 'bg-blue-500' : isOverdue(order) ? 'bg-destructive' : 'bg-amber-500'}`} aria-hidden="true" />
+                      {stateLabel}
+                    </p>
+                    <p className="flex items-center gap-1 text-xs font-medium">{nextAction}<ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" /></p>
                   </Link>
                 );
+
               })}
             </div>
           )}
         </CardContent>
       </Card>
+
+      <details data-testid="ot-more-indicators" className="rounded-lg border bg-card">
+        <summary className="cursor-pointer px-4 py-3 text-sm font-medium">Ver más · Indicadores</summary>
+        <div className="border-t p-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {([[t.summary.open, open], [t.summary.inProgress, inProgress], [t.summary.critical, critical], [t.summary.overdue, overdue]] as const).map(([label, value]) => (
+          <Card key={String(label)} className="shadow-none"><CardContent className="p-4"><p className="text-xs text-muted-foreground">{String(label)}</p><p className="mt-1 text-2xl font-semibold">{Number(value)}</p><p className="mt-1 text-[11px] text-muted-foreground">{t.summary.footer}</p></CardContent></Card>
+        ))}
+      </div>
+        </div>
+      </details>
 
       {!missingAssetOnly && scheduleItems.length > 0 ? (
         <details className="rounded-lg border bg-card">

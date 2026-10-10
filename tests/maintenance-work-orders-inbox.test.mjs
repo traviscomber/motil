@@ -10,7 +10,7 @@ const detailApi = await readFile(new URL('../app/api/maintenance/work-orders/[id
 test('maintenance work orders render as an inbox-style clickable list', () => {
   assert.match(queue, /href=\{\`\/dashboard\/mantenimiento\/ordenes-trabajo\/\$\{order\.id\}\`\}/);
   assert.match(queue, /Estado<\/span>/);
-  assert.match(queue, /Orden<\/span>/);
+  assert.match(queue, /OT<\/span>/);
   assert.match(queue, /Equipo<\/span>/);
   assert.match(queue, /Responsable<\/span>/);
   assert.match(queue, /t\.inboxViews\.active/);
