@@ -165,18 +165,14 @@ export function WorkOrdersQueue({ locale, dictionary }: { locale: Locale; dictio
         </div>
         <div className="flex flex-wrap gap-2">
           {missingAssetOnly ? <Button asChild variant="outline"><Link href="/dashboard/mantenimiento/ordenes-trabajo">{t.viewAll}</Link></Button> : null}
-          {!missingAssetOnly ? <Button asChild variant="outline"><Link href="/dashboard/mantenimiento/ordenes-trabajo/cierre">{t.progressiveClose}</Link></Button> : null}
+
           <Button asChild><Link href="/dashboard/mantenimiento/ordenes-trabajo/create"><Plus className="mr-2 h-4 w-4" />{t.newOrder}</Link></Button>
         </div>
       </section>
 
       {missingAssetOnly ? <Card className="border-destructive/30 bg-destructive/5 shadow-none"><CardContent className="flex items-start gap-3 p-4"><AlertCircle className="mt-0.5 h-5 w-5 text-destructive" /><div><p className="font-medium">{t.dataHealthBanner.title}</p><p className="mt-1 text-sm text-muted-foreground">{t.dataHealthBanner.description}</p></div></CardContent></Card> : null}
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {([[t.summary.open, open], [t.summary.inProgress, inProgress], [t.summary.critical, critical], [t.summary.overdue, overdue]] as const).map(([label, value]) => (
-          <Card key={String(label)} className="shadow-none"><CardContent className="p-4"><p className="text-xs text-muted-foreground">{String(label)}</p><p className="mt-1 text-2xl font-semibold">{Number(value)}</p><p className="mt-1 text-[11px] text-muted-foreground">{t.summary.footer}</p></CardContent></Card>
-        ))}
-      </div>
+
 
       {!missingAssetOnly && historicalWorkOrders.length > 0 ? <Card className="shadow-none"><CardContent className="flex flex-col gap-2 p-4 text-sm sm:flex-row sm:items-center sm:justify-between"><div><p className="font-medium">{t.historicalBanner.title}</p><p className="text-muted-foreground">{fill(t.historicalBanner.description, { n: historicalWorkOrders.length })}</p></div><Button variant="outline" size="sm" onClick={() => setViewFilter('historical')}>{t.historicalBanner.cta}</Button></CardContent></Card> : null}
 
@@ -197,6 +193,9 @@ export function WorkOrdersQueue({ locale, dictionary }: { locale: Locale; dictio
                 </div>
               ) : null}
             </div>
+            <details className="rounded-md border bg-card" data-testid="ot-more-filters">
+              <summary className="cursor-pointer px-3 py-2 text-sm font-medium">Ver más · Buscar y filtrar</summary>
+              <div className="border-t p-3">
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(220px,1fr)_160px_160px_auto]">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -206,6 +205,8 @@ export function WorkOrdersQueue({ locale, dictionary }: { locale: Locale; dictio
               <Select value={priorityFilter} onValueChange={setPriorityFilter}><SelectTrigger><SelectValue placeholder={t.filters.priority} /></SelectTrigger><SelectContent><SelectItem value="all">{t.filters.priorities.all}</SelectItem><SelectItem value="critical">{t.filters.priorities.critical}</SelectItem><SelectItem value="high">{t.filters.priorities.high}</SelectItem><SelectItem value="medium">{t.filters.priorities.medium}</SelectItem><SelectItem value="low">{t.filters.priorities.low}</SelectItem></SelectContent></Select>
               <Button variant="ghost" onClick={() => { setSearch(''); setStatusFilter('all'); setPriorityFilter('all'); setViewFilter('active'); }}>{t.filters.clear}</Button>
             </div>
+              </div>
+            </details>
           </div>
         </CardHeader>
         <CardContent className="p-0">
@@ -271,6 +272,17 @@ export function WorkOrdersQueue({ locale, dictionary }: { locale: Locale; dictio
           )}
         </CardContent>
       </Card>
+
+      <details data-testid="ot-more-indicators" className="rounded-lg border bg-card">
+        <summary className="cursor-pointer px-4 py-3 text-sm font-medium">Ver más · Indicadores</summary>
+        <div className="border-t p-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {([[t.summary.open, open], [t.summary.inProgress, inProgress], [t.summary.critical, critical], [t.summary.overdue, overdue]] as const).map(([label, value]) => (
+          <Card key={String(label)} className="shadow-none"><CardContent className="p-4"><p className="text-xs text-muted-foreground">{String(label)}</p><p className="mt-1 text-2xl font-semibold">{Number(value)}</p><p className="mt-1 text-[11px] text-muted-foreground">{t.summary.footer}</p></CardContent></Card>
+        ))}
+      </div>
+        </div>
+      </details>
 
       {!missingAssetOnly && scheduleItems.length > 0 ? (
         <details className="rounded-lg border bg-card">
