@@ -31,10 +31,10 @@ export function CorrectiveActionCard({ action, onUpdate }: CorrectiveActionCardP
   };
 
   const dueDate = action.scheduled_completion_date || '';
-  const isOverdue = Boolean(dueDate) && new Date(dueDate) < new Date();
+  const isOverdue = Boolean(dueDate) && new Date(dueDate) < new Date() && !['completed', 'verified'].includes(action.status);
 
   return (
-    <Card className={isOverdue && !['completed', 'verified'].includes(action.status) ? 'border-red-300' : ''}>
+    <Card className={isOverdue ? 'border-red-300' : ''}>
       <CardHeader className="pb-3">
         <div className="flex justify-between items-start">
           <div>
