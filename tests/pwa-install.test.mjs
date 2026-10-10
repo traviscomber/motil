@@ -67,7 +67,9 @@ test('MOTIL service worker stays network-authoritative and removes only legacy s
   assert.match(serviceWorker, /sostenibilidad-v2/);
   assert.match(serviceWorker, /sostenibilidad-api-v2/);
   assert.doesNotMatch(serviceWorker, /cache\.put/);
-  assert.doesNotMatch(serviceWorker, /caches\.open/);
+  assert.match(serviceWorker, /OFFLINE_SHELL_URL/);
+  assert.match(serviceWorker, /cache\.match/);
+  assert.doesNotMatch(serviceWorker, /cache\.put\(request/);
 });
 
 
