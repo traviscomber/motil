@@ -22,3 +22,9 @@ test('link list displays canonical OT identity and separates HSE verification', 
   assert.match(form, /item\.maintenance_work_orders\?\.work_order_number/);
   assert.match(form, /Estado operacional, no verificación HSE/);
 });
+
+test('idempotent retries preserve first linking audit and report existing association', () => {
+  assert.match(api, /alreadyLinked: true, data: existing.data/);
+  assert.match(api, /alreadyLinked: false, data/);
+  assert.match(form, /Esta OT ya estaba vinculada; no se creó un duplicado/);
+});
