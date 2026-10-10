@@ -290,27 +290,15 @@ export function DashboardHome({ locale, dictionary }: { locale: Locale; dictiona
       <PageHeader>
         <PageHeaderContent>
           <PageHeaderEyebrow>{config.eyebrow}</PageHeaderEyebrow>
-          <PageHeaderTitle>{config.title}</PageHeaderTitle>
-          <PageHeaderDescription>{config.description}</PageHeaderDescription>
+          <PageHeaderTitle>{inbox.data?.profile?.name ? `Mi trabajo · ${inbox.data.profile.name}` : 'Mi trabajo'}</PageHeaderTitle>
+          <PageHeaderDescription>Revisa lo que requiere tu atención. Los indicadores y accesos adicionales están en Ver más.</PageHeaderDescription>
         </PageHeaderContent>
         <PageHeaderActions>
-          <Button asChild><Link href={mode === 'management' ? '/dashboard/decisiones' : '/dashboard/acciones'}><Inbox className="h-4 w-4" />{mode === 'management' ? t.executiveCenter : t.actions}</Link></Button>
+          <Button asChild><Link href="/dashboard/acciones"><Inbox className="h-4 w-4" />{t.actions}</Link></Button>
         </PageHeaderActions>
       </PageHeader>
 
       {inboxUnavailable ? <StatePanel tone="warning" title={t.roleUnresolvedTitle} description={t.roleUnresolvedDescription} /> : null}
-
-      {config.metrics.length > 0 ? <section aria-label={t.indicatorsLabel} className="grid gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-2 xl:grid-cols-4">
-        {config.metrics.map((metric) => (
-          <div key={metric.label} className="bg-card px-5 py-4">
-            <p className="text-xs text-muted-foreground">{metric.label}</p>
-            <p className="mt-1 text-2xl font-semibold tracking-tight">{loading ? '—' : metric.value}</p>
-            {metric.detail ? <p className="mt-1 text-xs text-muted-foreground">{metric.detail}</p> : null}
-          </div>
-        ))}
-      </section> : null}
-
-      {mode === 'management' ? <HomeDecisionPriorities dictionary={dictionary} locale={locale} /> : null}
 
       <section className="space-y-3">
         <div className="flex items-end justify-between gap-4">
@@ -324,6 +312,27 @@ export function DashboardHome({ locale, dictionary }: { locale: Locale; dictiona
           : <div className="overflow-hidden rounded-lg border bg-card">{tasks.map((task) => <Link key={task.task_key} href={task.module_route || '/dashboard/acciones'} className="group flex items-center gap-4 border-b px-4 py-3 last:border-0 hover:bg-muted/30"><AlertTriangle className="h-4 w-4 shrink-0 text-muted-foreground" /><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><p className="truncate text-sm font-medium">{task.title}</p>{task.severity === 'critical' ? <Badge variant="destructive">{t.criticalBadge}</Badge> : null}</div><p className="truncate text-xs text-muted-foreground">{task.evidence_summary || task.urgency_label || task.domain}</p></div><ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1" /></Link>)}</div>}
       </section>
 
+      <details className="group rounded-lg border bg-card" data-testid="dashboard-more-details">
+        <summary className="cursor-pointer select-none px-4 py-3 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
+          Ver más · Indicadores y accesos
+        </summary>
+        <div className="space-y-6 border-t p-4">
+          <div>
+            <h2 className="text-base font-semibold">{config.title}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{config.description}</p>
+          </div>
+      {config.metrics.length > 0 ? <section aria-label={t.indicatorsLabel} className="grid gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-2 xl:grid-cols-4">
+        {config.metrics.map((metric) => (
+          <div key={metric.label} className="bg-card px-5 py-4">
+            <p className="text-xs text-muted-foreground">{metric.label}</p>
+            <p className="mt-1 text-2xl font-semibold tracking-tight">{loading ? '—' : metric.value}</p>
+            {metric.detail ? <p className="mt-1 text-xs text-muted-foreground">{metric.detail}</p> : null}
+          </div>
+        ))}
+      </section> : null}
+
+      {mode === 'management' ? <HomeDecisionPriorities dictionary={dictionary} locale={locale} /> : null}
+
       <section className="space-y-3">
         <div><h2 className="text-lg font-semibold">{t.shortcutsTitle}</h2><p className="text-sm text-muted-foreground">{t.shortcutsSubtitle}</p></div>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -333,6 +342,8 @@ export function DashboardHome({ locale, dictionary }: { locale: Locale; dictiona
           })}
         </div>
       </section>
+        </div>
+      </details>
     </div>
   );
 }
