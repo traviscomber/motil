@@ -103,6 +103,11 @@ export default function LegalPage() {
         <div className="mb-2">
           <h2 className="text-base font-semibold">Pendientes</h2>
         </div>
+        {typeof openCases === 'number' && openCases > 0 && !casesLoading && !casesError ? (
+          <Link href="/dashboard/legal/casos" className="mb-3 flex min-h-11 items-center justify-between gap-3 rounded-md border px-4 py-3 text-sm hover:bg-muted/30">
+            <span>{openCases} casos abiertos</span><ArrowRight className="h-4 w-4" />
+          </Link>
+        ) : null}
         <div className="divide-y overflow-hidden rounded-md border">
           {attentionLoading ? <p className="px-4 py-4 text-sm text-muted-foreground">Cargando pendientes…</p> : complianceError ? <p className="px-4 py-4 text-sm text-muted-foreground">Pendientes no disponibles.</p> : attention.length ? attention.map((item) => (
             <Link key={item.id} href={item.href} className="flex items-center justify-between gap-4 px-4 py-3 hover:bg-muted/30">
