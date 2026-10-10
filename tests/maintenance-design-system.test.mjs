@@ -47,9 +47,11 @@ test('maintenance transversal oversight is read-focused and does not inherit ope
 
 test('maintenance header exposes one secondary action and one role-aware primary action', () => {
   const actions = page.match(/<PageHeaderActions>(.*?)<\/PageHeaderActions>/s)?.[1] || '';
-  assert.match(actions, /variant="outline"/);
-  assert.match(actions, /\{t\.refresh\}/);
-  assert.equal((actions.match(/variant="outline"/g) || []).length, 1);
+  assert.doesNotMatch(actions, /\{t\.refresh\}/);
+  assert.equal((actions.match(/variant="outline"/g) || []).length, 0);
+  assert.match(page, /data-testid="maintenance-more-details"/);
+  const more = page.slice(page.indexOf('data-testid="maintenance-more-details"'));
+  assert.match(more, /\{t\.refresh\}/);
 });
 
 test('maintenance header primary actions come from the dictionary', () => {
