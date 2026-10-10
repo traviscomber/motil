@@ -35,12 +35,6 @@ begin
   select (
     exists (
       select 1
-      from public.user_roles ur
-      where ur.user_id = v_actor
-        and ur.organization_id = v_wo.organization_id
-    )
-    or exists (
-      select 1
       from public.profiles p
       where p.id = v_actor
         and p.organization_id = v_wo.organization_id
