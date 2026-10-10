@@ -48,7 +48,7 @@ export function CorrectiveActionsPage() {
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-3xl font-bold">Acciones correctivas</h1>
-          <p className="text-muted-foreground">Seguimiento y gestion de planes correctivos</p>
+          <p className="text-muted-foreground">Responsables, plazos y evidencia de las acciones registradas.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button asChild variant="outline">
@@ -68,10 +68,10 @@ export function CorrectiveActionsPage() {
         <CardContent className="space-y-2 pt-6 text-sm text-muted-foreground">
           {!ncId ? (
             <>
-              <p>Crea acciones correctivas desde una no conformidad seleccionada para mantener el vinculo con su hallazgo.</p>
-              <p>
-                Abre esta vista desde una NC o agrega <code>?ncId=...</code> a la URL para trabajar sobre un caso especifico.
-              </p>
+              <p>Selecciona una no conformidad para registrar una acción vinculada al hallazgo.</p>
+              <Button asChild variant="outline" size="sm">
+                <Link href="/dashboard/sostenibilidad/prevencion-riesgos/no-conformidades">Ver no conformidades</Link>
+              </Button>
             </>
           ) : (
             <p>
