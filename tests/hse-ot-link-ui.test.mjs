@@ -16,3 +16,9 @@ test('corrective action card links without altering source statuses', () => {
   assert.match(form, /aprobación y la verificación HSE siguen siendo independientes/);
   assert.doesNotMatch(api, /\.update\(\{\s*status/);
 });
+
+test('link list displays canonical OT identity and separates HSE verification', () => {
+  assert.match(api, /maintenance_work_orders!inner\(work_order_number, status\)/);
+  assert.match(form, /item\.maintenance_work_orders\?\.work_order_number/);
+  assert.match(form, /Estado operacional, no verificación HSE/);
+});
