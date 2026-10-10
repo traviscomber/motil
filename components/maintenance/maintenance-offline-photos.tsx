@@ -93,6 +93,13 @@ export function MaintenanceOfflinePhotos({ workOrderId, offlineScope }: { workOr
     } catch (err) { setMessage(err instanceof Error ? err.message : 'Fotos pendientes: vuelve a intentar cuando tengas señal.'); }
     finally { setWorking(false); }
   }
+  // Keep uploads explicit on shared devices: connectivity alone does not authorize
+  // an automatic transfer of field photographs.
+  useEffect(() => {
+    if (!online || !photos.length) return;
+    setMessage((previous) => previous || 'Hay fotografías locales listas para sincronizar.');
+  }, [online, photos.length]);
+
   return <section className="space-y-3 rounded-lg border p-4" aria-label="Fotos offline">
     <p className="text-sm font-semibold">Fotografías sin conexión</p>
     <p className="text-xs text-muted-foreground">Las fotos permanecen en este dispositivo hasta que el servidor confirme su recepción. Mantén abierta la OT si estás sin señal. No desinstales MOTIL ni borres los datos del navegador mientras estén pendientes.</p>

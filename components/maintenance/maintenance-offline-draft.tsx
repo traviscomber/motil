@@ -157,6 +157,18 @@ export function MaintenanceOfflineDraft({ workOrderId, offlineScope }: { workOrd
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [online, loaded]);
 
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible' && navigator.onLine && queue.length && !syncing) {
+        void synchronize();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+    // Retry only when the operator returns to the OT; server de-duplicates each operation.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queue.length, syncing]);
+
   return (
     <Card className="space-y-3 p-4 shadow-none">
       <div className="flex items-center justify-between gap-3">

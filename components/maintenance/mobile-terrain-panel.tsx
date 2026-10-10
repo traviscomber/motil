@@ -74,6 +74,7 @@ export function MobileTerrainPanel() {
         </CardContent>
       </Card> : null}
 
+      <Button asChild variant="outline" className="w-full"><a href="/offline-maintenance.html">Abrir OT preparadas para terreno</a></Button>
       <p className="px-2 text-center text-xs leading-5 text-muted-foreground">Sólo ves trabajo asignado a tu identidad operativa. El cierre requiere evidencia y validación del responsable.</p>
     </section>
   );
