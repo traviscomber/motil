@@ -53,8 +53,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ data: rows, corrective_actions: rows });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'No se pudieron cargar las acciones correctivas';
-    console.error('[sostenibilidad][corrective-actions] GET fallback:', message);
-    return NextResponse.json({ data: [] });
+    console.error('[sostenibilidad][corrective-actions] GET failed:', message);
+    return NextResponse.json({ error: 'No se pudieron cargar las acciones correctivas' }, { status: 500 });
   }
 }
 
