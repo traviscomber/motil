@@ -21,7 +21,7 @@ test('invoice progression follows real controls and routes', () => {
   assert.match(ui, /approve_supplier_invoice_payment/);
   assert.match(ui, /\/dashboard\/compras\/flujo/);
   assert.match(ui, /\/dashboard\/finanzas\/pagos/);
-  assert.match(ui, /three-way match/);
+  assert.match(ui, /recepción aceptada/);
 });
 
 test('facturas route delegates to progressive workflow', () => {

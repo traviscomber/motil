@@ -25,6 +25,10 @@ const fetcher = async (url: string) => {
 const money = (value: unknown) => new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(Number(value || 0));
 const dateLabel = (value?: string | null) => value ? value.split('-').reverse().join('-') : '';
 
+const procurementStatusLabels: Record<string, string> = { draft: 'Borrador', submitted: 'Enviada', requested: 'Solicitada', quoted: 'Cotizada', received: 'Recibida', selected: 'Adjudicada', awarded: 'Adjudicada', issued: 'Emitida', partially_received: 'Recepción parcial', closed: 'Cerrada', cancelled: 'Cancelada', rejected: 'Rechazada' };
+const priorityLabels: Record<string, string> = { low: 'Baja', medium: 'Media', high: 'Alta', critical: 'Crítica' };
+const procurementStatusLabel = (status?: string | null) => procurementStatusLabels[status || ''] || 'Revisar estado';
+
 type Product = { id: string; product_code: string; name: string; unit?: string | null; standard_cost?: number | null; media?: { image_url?: string | null; status?: string | null } | null };
 type Supplier = { id: string; tax_id: string; legal_name: string; trade_name?: string | null; payment_terms?: string | null };
 type SupplierRecommendation = Supplier & { supplier_name?: string | null; order_count?: number; covered_products?: number; coverage_ratio?: number; last_order_date?: string | null; last_order_number?: string | null; last_unit_cost?: number | null; currency?: string | null; order_date?: string | null; order_number?: string | null; unit_cost?: number | null; product_code?: string | null };
@@ -211,10 +215,10 @@ export function ProgressiveProcurementWorkflow() {
               const waiting = quotes.some((quote) => quote.status === 'requested');
               return <div key={request.id} className="rounded-lg border p-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div><div className="flex items-center gap-2"><p className="font-medium">{request.request_number}</p><Badge variant="outline">{request.status}</Badge></div><p className="mt-1 text-sm text-muted-foreground">{lines.length} producto(s) · prioridad {request.priority}</p><p className="mt-2 text-sm">{request.justification || 'Sin justificación adicional'}</p></div>
+                  <div><div className="flex items-center gap-2"><p className="font-medium">{request.request_number}</p><Badge variant="outline">{procurementStatusLabel(request.status)}</Badge></div><p className="mt-1 text-sm text-muted-foreground">{lines.length} producto(s) · prioridad {priorityLabels[request.priority] || 'Sin definir'}</p><p className="mt-2 text-sm">{request.justification || 'Sin justificación adicional'}</p></div>
                   {awardable ? <Button size="sm" onClick={openAwardDecision}>Revisar adjudicación</Button> : waiting ? <Badge variant="secondary">Esperando respuesta</Badge> : ['draft', 'submitted', 'quoted'].includes(request.status) ? <Button size="sm" variant="outline" onClick={() => openQuote(request)}>Solicitar cotización</Button> : <Badge variant="outline">Sin acción pendiente</Badge>}
                 </div>
-                {quotes.length ? <div className="mt-4 space-y-2 border-t pt-3">{quotes.map((quote) => <div key={quote.id} className="flex items-center justify-between gap-3 text-sm"><div><span className="font-medium">{quote.quotation_number}</span><span className="ml-2 text-muted-foreground">{quote.status === 'requested' ? `Solicitud enviada · ${quote.lead_time_days || 0} días` : `${money(quote.total_amount)} · ${quote.lead_time_days || 0} días`}</span></div><Badge variant="secondary">{quote.status}</Badge></div>)}</div> : null}
+                {quotes.length ? <div className="mt-4 space-y-2 border-t pt-3">{quotes.map((quote) => <div key={quote.id} className="flex items-center justify-between gap-3 text-sm"><div><span className="font-medium">{quote.quotation_number}</span><span className="ml-2 text-muted-foreground">{quote.status === 'requested' ? `Solicitud enviada · ${quote.lead_time_days || 0} días` : `${money(quote.total_amount)} · ${quote.lead_time_days || 0} días`}</span></div><Badge variant="secondary">{procurementStatusLabel(quote.status)}</Badge></div>)}</div> : null}
               </div>;
             })}
           </CardContent>
@@ -227,7 +231,7 @@ export function ProgressiveProcurementWorkflow() {
             {orders.map((order) => {
               const lines = orderLines.filter((line) => line.purchase_order_id === order.id);
               const pending = lines.reduce((sum, line) => sum + Math.max(0, Number(line.quantity || 0) - Number(line.quantity_received || 0)), 0);
-              return <div key={order.id} className="rounded-lg border p-4"><div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><div className="flex items-center gap-2"><p className="font-medium">{order.order_number}</p><Badge variant="outline">{order.operational_status || order.status || 'issued'}</Badge></div><p className="mt-1 text-sm text-muted-foreground">{order.supplier_name || 'Proveedor'} · {money(order.total_amount)}</p><p className="mt-2 text-sm">{lines.length} línea(s) · {pending} unidad(es) pendientes</p></div>{pending > 0 ? <Button size="sm" onClick={() => openReceive(order)}>Registrar recepción</Button> : <Button size="sm" variant="outline" asChild><Link href="/dashboard/compras/facturas">Continuar a factura</Link></Button>}</div></div>;
+              return <div key={order.id} className="rounded-lg border p-4"><div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><div className="flex items-center gap-2"><p className="font-medium">{order.order_number}</p><Badge variant="outline">{procurementStatusLabel(order.operational_status || order.status)}</Badge></div><p className="mt-1 text-sm text-muted-foreground">{order.supplier_name || 'Proveedor'} · {money(order.total_amount)}</p><p className="mt-2 text-sm">{lines.length} línea(s) · {pending} unidad(es) pendientes</p></div>{pending > 0 ? <Button size="sm" onClick={() => openReceive(order)}>Registrar recepción</Button> : <Button size="sm" variant="outline" asChild><Link href="/dashboard/compras/facturas">Continuar a factura</Link></Button>}</div></div>;
             })}
           </CardContent>
         </Card>

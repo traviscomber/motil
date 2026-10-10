@@ -47,13 +47,15 @@ function statusMeta(status: string) {
 
 function lineStatusLabel(status: string) {
   const labels: Record<string, string> = { matched: 'Coincide', pending_receipt: 'Sin recepción aceptada', quantity_over_receipt: 'Facturación acumulada supera recepción', quantity_over_order: 'Facturación acumulada supera OC', price_mismatch: 'Precio distinto', product_mismatch: 'Producto distinto' };
-  return labels[status] || status;
+  return labels[status] || 'Revisar estado';
 }
 
 function exceptionLabel(type: string) {
   const labels: Record<string, string> = { quantity: 'Cantidad', unit_price: 'Precio unitario', total: 'Total factura', tax: 'Impuesto', missing_receipt: 'Recepción pendiente', unknown_product: 'Producto distinto', other: 'Otra diferencia' };
-  return labels[type] || type;
+  return labels[type] || 'Otra diferencia';
 }
+
+const exceptionStatusLabels: Record<MatchException['status'], string> = { open: 'Abierta', accepted: 'Aceptada', corrected: 'Corregida', rejected: 'Rechazada' };
 
 export function ProgressiveInvoiceWorkflow() {
   const { data, error, isLoading, mutate } = useSWR('/api/procurement/operational-pipeline', fetcher);
@@ -167,7 +169,7 @@ export function ProgressiveInvoiceWorkflow() {
     nextActionControl = <Button onClick={() => { setExpandedInvoice(exceptionInvoice.invoice_id); openResolution(openExceptions[0], 'accepted'); }} disabled={!canEdit || busy}><AlertTriangle className="mr-2 h-4 w-4" />Resolver excepción</Button>;
   } else if (pendingReceiptInvoice) {
     nextActionLabel = 'Completar recepción';
-    nextActionDescription = `Factura ${pendingReceiptInvoice.invoice_number}: el three-way match espera recepción aceptada.`;
+    nextActionDescription = `Factura ${pendingReceiptInvoice.invoice_number}: falta recepción aceptada.`;
     nextActionControl = <Button asChild><Link href="/dashboard/compras/flujo"><ReceiptText className="mr-2 h-4 w-4" />Ir a recepción</Link></Button>;
   } else if (approvableInvoice) {
     nextActionLabel = 'Aprobar pago';
@@ -183,7 +185,7 @@ export function ProgressiveInvoiceWorkflow() {
     nextActionControl = <Button asChild><Link href="/dashboard/compras/flujo"><ReceiptText className="mr-2 h-4 w-4" />Ir a recepción</Link></Button>;
   } else if (approvedCount > 0) {
     nextActionLabel = 'Continuar a Tesorería';
-    nextActionDescription = 'Las facturas aprobadas pasan a cuentas por pagar; el pago no vuelve a reconocer costo operacional.';
+    nextActionDescription = 'Facturas aprobadas listas para pago.';
     nextActionControl = <Button asChild><Link href="/dashboard/finanzas/pagos"><ArrowRight className="mr-2 h-4 w-4" />Ir a Pagos</Link></Button>;
   }
 
@@ -199,7 +201,7 @@ export function ProgressiveInvoiceWorkflow() {
 
     <SecondaryDetails><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
       {[['Facturas', counts.total], ['Coinciden', counts.matched], ['Esperan recepción', counts.pending], ['Excepciones abiertas', counts.exceptions], ['Aprobadas pago', counts.approved]].map(([label, value]) => <Card key={String(label)} className="shadow-none"><CardContent className="p-4"><p className="text-sm text-muted-foreground">{label}</p><p className="mt-1 text-xl font-semibold">{value}</p></CardContent></Card>)}
-    </div></SecondaryDetails>
+    </div><p className="mt-3 text-sm text-muted-foreground">La recepción aceptada reconoce el costo; el pago no vuelve a reconocer costo operacional.</p></SecondaryDetails>
 
     <Card className="shadow-none"><CardHeader><CardTitle>Expedientes de factura</CardTitle></CardHeader><CardContent className="space-y-3">
       {isLoading ? <p className="text-sm text-muted-foreground">Cargando facturas...</p> : null}
@@ -207,7 +209,7 @@ export function ProgressiveInvoiceWorkflow() {
       {summaries.map((summary) => {
         const meta = statusMeta(summary.match_status); const Icon = meta.icon; const invoice = invoices.find((row) => row.id === summary.invoice_id); const exceptions = invoiceExceptions.filter((row) => row.invoice_id === summary.invoice_id); const open = expandedInvoice === summary.invoice_id; const lines = matchLines.filter((row) => row.invoice_id === summary.invoice_id); const currency = summary.currency || 'CLP';
         return <div key={summary.invoice_id} className="rounded-lg border p-4"><div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><div className="flex flex-wrap items-center gap-2"><p className="font-medium">Factura {summary.invoice_number}</p><Badge variant="outline" className={meta.className}><Icon className="mr-1 h-3.5 w-3.5" />{meta.label}</Badge>{invoice?.status === 'approved' ? <Badge><ShieldCheck className="mr-1 h-3.5 w-3.5" />Pago aprobado</Badge> : null}</div><p className="mt-1 text-sm text-muted-foreground">{summary.order_number} · {money(summary.total_amount, currency)}</p><p className="mt-1 text-xs text-muted-foreground">{summary.matched_line_count}/{summary.line_count} líneas coinciden · {exceptions.filter((row) => row.status === 'open').length} excepción(es) abiertas</p></div><Button size="sm" variant="outline" onClick={() => setExpandedInvoice(open ? null : summary.invoice_id)}>{open ? 'Ocultar detalle' : 'Ver detalle'}</Button></div>
-        {open ? <div className="mt-4 space-y-4 border-t pt-3"><div className="space-y-2">{lines.map((line) => <div key={line.invoice_line_id} className="grid gap-2 rounded-md bg-muted/40 p-3 text-sm sm:grid-cols-[1fr_auto]"><div><p className="font-medium">{line.product_code || line.description || 'Línea'}</p><p className="text-xs text-muted-foreground">OC {Number(line.quantity_ordered)} · recibido aceptado {Number(line.quantity_accepted)} · factura actual {Number(line.quantity_invoiced)}</p><p className="mt-1 text-xs text-muted-foreground">Facturado antes {Number(line.prior_invoiced_quantity || 0)} · acumulado {Number(line.cumulative_invoiced_quantity ?? line.quantity_invoiced)}</p></div><div className="text-left sm:text-right"><Badge variant="outline">{lineStatusLabel(line.line_match_status)}</Badge><p className="mt-1 text-xs text-muted-foreground">{money(line.ordered_unit_cost, currency)} → {money(line.invoiced_unit_cost, currency)}</p></div></div>)}</div>{exceptions.length ? <div className="space-y-2"><p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Resolución de excepciones</p>{exceptions.map((exception) => <div key={exception.id} className="rounded-md border p-3 text-sm"><div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"><div><div className="flex items-center gap-2"><span className="font-medium">{exceptionLabel(exception.exception_type)}</span><Badge variant="outline">{exception.status}</Badge></div>{exception.resolution_notes ? <p className="mt-2 text-xs">{exception.resolution_notes}</p> : null}</div>{exception.status === 'open' ? <Button size="sm" variant="outline" onClick={() => openResolution(exception, 'accepted')} disabled={!canEdit || busy}>Resolver</Button> : null}</div></div>)}</div> : null}</div> : null}
+        {open ? <div className="mt-4 space-y-4 border-t pt-3"><div className="space-y-2">{lines.map((line) => <div key={line.invoice_line_id} className="grid gap-2 rounded-md bg-muted/40 p-3 text-sm sm:grid-cols-[1fr_auto]"><div><p className="font-medium">{line.product_code || line.description || 'Línea'}</p><p className="text-xs text-muted-foreground">OC {Number(line.quantity_ordered)} · recibido aceptado {Number(line.quantity_accepted)} · factura actual {Number(line.quantity_invoiced)}</p><p className="mt-1 text-xs text-muted-foreground">Facturado antes {Number(line.prior_invoiced_quantity || 0)} · acumulado {Number(line.cumulative_invoiced_quantity ?? line.quantity_invoiced)}</p></div><div className="text-left sm:text-right"><Badge variant="outline">{lineStatusLabel(line.line_match_status)}</Badge><p className="mt-1 text-xs text-muted-foreground">{money(line.ordered_unit_cost, currency)} → {money(line.invoiced_unit_cost, currency)}</p></div></div>)}</div>{exceptions.length ? <div className="space-y-2"><p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Resolución de excepciones</p>{exceptions.map((exception) => <div key={exception.id} className="rounded-md border p-3 text-sm"><div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"><div><div className="flex items-center gap-2"><span className="font-medium">{exceptionLabel(exception.exception_type)}</span><Badge variant="outline">{exceptionStatusLabels[exception.status] || 'Revisar estado'}</Badge></div>{exception.resolution_notes ? <p className="mt-2 text-xs">{exception.resolution_notes}</p> : null}</div>{exception.status === 'open' ? <Button size="sm" variant="outline" onClick={() => openResolution(exception, 'accepted')} disabled={!canEdit || busy}>Resolver</Button> : null}</div></div>)}</div> : null}</div> : null}
         </div>;
       })}
     </CardContent></Card>
