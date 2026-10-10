@@ -65,6 +65,13 @@ export default function ComprasPage() {
         />
       ) : null}
 
+      <section aria-labelledby="compras-pendientes" className="space-y-3">
+        <div><h2 id="compras-pendientes" className="text-lg font-semibold tracking-tight">Qué necesita atención</h2><p className="text-sm text-muted-foreground">Pendientes y siguientes pasos del flujo de abastecimiento.</p></div>
+        <OperationalPipelineBoard />
+      </section>
+      <details data-testid="compras-more-context" className="rounded-lg border bg-card">
+        <summary className="cursor-pointer px-4 py-3 text-sm font-medium">Ver más · Indicadores y accesos</summary>
+        <div className="space-y-5 border-t p-4">
       <section className="grid gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-2 xl:grid-cols-6" aria-label="Resumen de Compras">
         {[
           ['OC canónicas', data?.canonical.purchaseOrders],
@@ -80,6 +87,7 @@ export default function ComprasPage() {
           </div>
         ))}
       </section>
+
 
       <section className="grid gap-px overflow-hidden rounded-lg border bg-border md:grid-cols-2 xl:grid-cols-4" aria-label="Acciones de compras">
         {shortcuts.map((item) => {
@@ -117,10 +125,9 @@ export default function ComprasPage() {
         </Link>
       </section>
 
-      <section aria-labelledby="compras-pendientes" className="space-y-3">
-        <div><h2 id="compras-pendientes" className="text-lg font-semibold tracking-tight">Qué necesita atención</h2><p className="text-sm text-muted-foreground">Pendientes y siguientes pasos del flujo de abastecimiento.</p></div>
-        <OperationalPipelineBoard />
-      </section>
+
+        </div>
+      </details>
     </div>
   );
 }
