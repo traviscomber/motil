@@ -1,13 +1,14 @@
 const MOTIL_SW_VERSION = 'motil-pwa-v2';
-const OFFLINE_SHELL_CACHE = 'motil-offline-shell-v1';
+const OFFLINE_SHELL_CACHE = 'motil-offline-shell-v2';
 const OFFLINE_SHELL_URL = '/offline-maintenance.html';
+const TERRAIN_ASSETS = [OFFLINE_SHELL_URL, '/motil-terrain.mjs', '/motil-terrain-ui.mjs'];
 const LEGACY_CACHES = new Set([
   'sostenibilidad-v2',
   'sostenibilidad-api-v2',
 ]);
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(OFFLINE_SHELL_CACHE).then((cache) => cache.add(OFFLINE_SHELL_URL)));
+  event.waitUntil(caches.open(OFFLINE_SHELL_CACHE).then((cache) => cache.addAll(TERRAIN_ASSETS)));
   self.skipWaiting();
 });
 
@@ -17,7 +18,7 @@ self.addEventListener('activate', (event) => {
       const cacheNames = await caches.keys();
       await Promise.all(
         cacheNames
-          .filter((name) => LEGACY_CACHES.has(name))
+          .filter((name) => LEGACY_CACHES.has(name) || name === 'motil-offline-shell-v1')
           .map((name) => caches.delete(name)),
       );
       await self.clients.claim();
@@ -32,7 +33,11 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
-  if (request.mode === 'navigate' && /^\\/dashboard\\/mantenimiento\\/ordenes-trabajo\\/[0-9a-f-]{36}\\/?$/i.test(url.pathname)) {
+  if (TERRAIN_ASSETS.includes(url.pathname)) {
+    event.respondWith(caches.open(OFFLINE_SHELL_CACHE).then(async (cache) => (await cache.match(url.pathname)) || fetch(request)));
+    return;
+  }
+  if (request.mode === 'navigate' && (url.pathname === '/dashboard' || /^\/dashboard\/mantenimiento(?:\/ordenes-trabajo(?:\/[0-9a-f-]{36})?)?\/?$/i.test(url.pathname))) {
     event.respondWith(fetch(request).catch(async () => {
       const cache = await caches.open(OFFLINE_SHELL_CACHE);
       return (await cache.match(OFFLINE_SHELL_URL)) || Response.error();
@@ -48,5 +53,8 @@ self.addEventListener('message', (event) => {
   }
   if (event.data?.type === 'GET_VERSION') {
     event.source?.postMessage?.({ type: 'MOTIL_SW_VERSION', version: MOTIL_SW_VERSION });
+  }
+  if (event.data?.type === 'GET_TERRAIN_READY') {
+    event.ports[0]?.postMessage({ ready: true, cache: OFFLINE_SHELL_CACHE });
   }
 });

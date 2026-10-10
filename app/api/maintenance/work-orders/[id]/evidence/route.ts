@@ -141,6 +141,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
             evidenceId,
             storagePath,
             token: signed.token,
+            signedUrl: signed.signedUrl,
             mimeType,
             fileName,
             sizeBytes,

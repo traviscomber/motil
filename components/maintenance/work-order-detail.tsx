@@ -18,6 +18,7 @@ import { WorkOrderStandardPlanPanel } from '@/components/maintenance/work-order-
 import { WorkOrderTimer } from '@/components/maintenance/work-order-timer';
 import { MaintenanceOfflineDraft } from '@/components/maintenance/maintenance-offline-draft';
 import { MaintenanceOfflinePhotos } from '@/components/maintenance/maintenance-offline-photos';
+import { MaintenanceTerrainPrepare } from '@/components/maintenance/maintenance-terrain-prepare';
 import { MobileWorkOrderFlow } from '@/components/maintenance/mobile-work-order-flow';
 import { WorkOrderEvidenceAndApproval } from '@/components/maintenance/work-order-evidence-and-approval';
 import { EntityTimeline } from '@/components/shared/entity-timeline';
@@ -131,8 +132,12 @@ export function WorkOrderDetail({ locale, dictionary }: { locale: Locale; dictio
   if (isExecution) {
     return (
       <div className="space-y-4 py-2 sm:py-6">
-        {viewer?.offlineScope ? <MaintenanceOfflineDraft workOrderId={id} offlineScope={viewer.offlineScope} /> : null}
-        {viewer?.offlineScope ? <MaintenanceOfflinePhotos workOrderId={id} offlineScope={viewer.offlineScope} /> : null}
+        <MaintenanceTerrainPrepare workOrderId={id} />
+        <details className="rounded-lg border p-4">
+          <summary className="cursor-pointer text-sm">Registros locales de esta sesión</summary>
+          {viewer?.offlineScope ? <MaintenanceOfflineDraft workOrderId={id} offlineScope={viewer.offlineScope} /> : null}
+          {viewer?.offlineScope ? <MaintenanceOfflinePhotos workOrderId={id} offlineScope={viewer.offlineScope} /> : null}
+        </details>
         <MobileWorkOrderFlow
           workOrderId={id}
           workOrderNumber={workOrder.work_order_number}
