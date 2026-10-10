@@ -347,7 +347,12 @@ export function WorkOrderDetail({ locale, dictionary }: { locale: Locale; dictio
 
     {isHistorical ? <Card className="border-muted-foreground/20 bg-muted/20 shadow-none"><CardContent className="flex items-start gap-3 p-4"><History className="mt-0.5 h-5 w-5 text-muted-foreground" /><div><p className="font-medium">{t.historicalCard.title}</p><p className="mt-1 text-sm text-muted-foreground">{t.historicalCard.description}</p></div></CardContent></Card> : null}
 
+    <details data-testid="ot-detail-more-summary" className="rounded-lg border bg-card">
+      <summary className="cursor-pointer px-4 py-3 text-sm font-medium">Ver más · Datos de la OT</summary>
+      <div className="border-t p-3">
     <Card className="shadow-none"><CardHeader><CardTitle className="text-base">{t.summary.title} {isHistorical ? t.summary.historicalSuffix : t.summary.operationalSuffix}</CardTitle></CardHeader><CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6"><div><p className="text-xs text-muted-foreground">{t.summary.status}</p><p className="mt-1 font-medium">{statusLabel(workOrder.status, t)}</p></div><div><p className="text-xs text-muted-foreground">{t.summary.priority}</p><p className="mt-1 font-medium">{priorityLabel(workOrder.priority, t)}</p></div><div><p className="text-xs text-muted-foreground">{t.summary.type}</p><p className="mt-1 font-medium">{typeLabel(workOrder.work_type, t)}</p></div><div><p className="text-xs text-muted-foreground">{t.summary.assignee}</p><p className="mt-1 font-medium">{workOrder.assigned_to_name || t.summary.unassigned}</p></div><div><p className="text-xs text-muted-foreground">{t.summary.scheduled}</p><p className="mt-1 font-medium">{workOrder.scheduled_date ? new Date(workOrder.scheduled_date).toLocaleDateString(dateLocale) : t.summary.noDate}</p></div><div><p className="text-xs text-muted-foreground">{t.summary.initialReading}</p><p className="mt-1 font-medium">{workOrder.meter_reading ? `${workOrder.meter_reading} ${workOrder.meter_unit || ''}` : t.summary.noReading}</p></div></CardContent></Card>
+      </div>
+    </details>
 
     {!isHistorical ? <WorkOrderExecutionReadiness workOrderId={id} assignedToName={workOrder.assigned_to_name} status={workOrder.status} /> : null}
 
@@ -365,6 +370,9 @@ export function WorkOrderDetail({ locale, dictionary }: { locale: Locale; dictio
       <WorkOrderExecutionPanel workOrderId={id} />
     </> : null}
     {!isHistorical ? <WorkOrderEvidenceAndApproval workOrderId={id} status={workOrder.status} /> : null}
-    <EntityTimeline entity="work_order" id={id} limit={50} />
+    <details data-testid="ot-detail-history" className="rounded-lg border bg-card">
+      <summary className="cursor-pointer px-4 py-3 text-sm font-medium">Ver más · Historial de la OT</summary>
+      <div className="border-t p-4"><EntityTimeline entity="work_order" id={id} limit={50} /></div>
+    </details>
   </div>;
 }
